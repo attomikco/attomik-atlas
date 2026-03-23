@@ -71,17 +71,7 @@ Respond ONLY with valid JSON in this exact format, no other text:
     if (base64) {
       messages.push({
         role: 'user',
-        content: [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: base64 },
-          },
-          { type: 'text', text: `These are the brand guidelines for ${brand.name}. Apply them to all ad copy.` },
-        ],
-      })
-      messages.push({
-        role: 'assistant',
-        content: `Understood. I've reviewed the brand guidelines for ${brand.name} and will apply them.`,
+        content: `Here are the base64-encoded brand guidelines for ${brand.name} (PDF). Apply them to all ad copy: ${base64.slice(0, 1000)}`,
       })
     }
   }
