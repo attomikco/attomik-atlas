@@ -7,8 +7,8 @@ export default async function BrandsPage() {
   const { data: brands } = await supabase.from('brands').select('*').order('name')
 
   return (
-    <div className="p-10 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-10 max-w-5xl">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
           <h1>Brands</h1>
           <p className="text-muted mt-1">{brands?.length ?? 0} clients</p>
@@ -22,7 +22,7 @@ export default async function BrandsPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {brands?.map((brand) => (
           <Link key={brand.id} href={`/brands/${brand.id}`}
             className="bg-paper border border-border rounded-card p-6 hover:border-ink transition-all duration-150 group"

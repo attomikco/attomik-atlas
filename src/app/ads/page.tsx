@@ -14,7 +14,7 @@ export default async function AdsPage({
     .order('name')
 
   return (
-    <div className="p-10 max-w-5xl">
+    <div className="p-4 md:p-10 max-w-5xl">
       <div className="mb-8">
         <h1>Facebook ads</h1>
         <p className="text-muted mt-1">

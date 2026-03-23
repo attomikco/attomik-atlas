@@ -24,7 +24,7 @@ export default async function NewsletterPage({
   templates?.forEach(t => { templateMap[t.brand_id] = t })
 
   return (
-    <div className="p-10 max-w-5xl">
+    <div className="p-4 md:p-10 max-w-5xl">
       <div className="mb-8">
         <h1>Newsletter builder</h1>
         <p className="text-muted mt-1">

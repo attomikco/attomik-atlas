@@ -7,7 +7,7 @@ export default async function GeneratePage({ searchParams }: { searchParams: { b
     .from('brands').select('id, name, primary_color, tone_keywords, brand_voice, target_audience')
     .eq('status', 'active').order('name')
   return (
-    <div className="p-10 max-w-5xl">
+    <div className="p-4 md:p-10 max-w-5xl">
       <div className="mb-8">
         <h1>Generate</h1>
         <p className="text-muted mt-1">AI-powered content, aware of each brand&apos;s voice and guidelines.</p>

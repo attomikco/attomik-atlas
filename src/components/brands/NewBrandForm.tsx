@@ -33,7 +33,7 @@ export default function NewBrandForm() {
 
   return (
     <div className="bg-paper border border-border rounded-card p-6 space-y-5">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label block mb-1.5">Brand name *</label>
           <input className={inputCls} value={form.name} placeholder="Summer Water"
@@ -45,7 +45,7 @@ export default function NewBrandForm() {
             onChange={e => setForm(f => ({ ...f, slug: toSlug(e.target.value) }))} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label block mb-1.5">Website</label>
           <input className={inputCls} value={form.website} placeholder="https://brand.com"
@@ -57,7 +57,7 @@ export default function NewBrandForm() {
             onChange={e => setForm(f => ({ ...f, industry: e.target.value }))} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className="label block mb-1.5">Primary color</label>
           <div className="flex items-center gap-2">

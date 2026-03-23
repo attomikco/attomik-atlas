@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export default function NewBrandPage() {
   return (
-    <div className="p-10 max-w-2xl">
+    <div className="p-4 md:p-10 max-w-2xl">
       <Link href="/brands" className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors mb-6">
         <ArrowLeft size={14} /> All brands
       </Link>

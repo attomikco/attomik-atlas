@@ -10,7 +10,7 @@ export default async function CampaignsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="p-10 max-w-5xl">
+    <div className="p-4 md:p-10 max-w-5xl">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1>Campaigns</h1>
@@ -24,7 +24,7 @@ export default async function CampaignsPage() {
         </Link>
       </div>
 
-      <div className="attomik-table bg-paper">
+      <div className="attomik-table-wrap"><div className="attomik-table bg-paper">
         <table className="w-full">
           <thead>
             <tr>
@@ -54,7 +54,7 @@ export default async function CampaignsPage() {
             )}
           </tbody>
         </table>
-      </div>
+      </div></div>
     </div>
   )
 }

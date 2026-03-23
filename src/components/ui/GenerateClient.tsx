@@ -64,9 +64,9 @@ export default function GenerateClient({ brands, defaultBrandId }: { brands: Bra
   }
 
   return (
-    <div className="grid grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Controls */}
-      <div className="col-span-2 space-y-5">
+      <div className="lg:col-span-2 space-y-5">
         {/* Brand */}
         <div>
           <label className="label block mb-1.5">Brand</label>
@@ -163,7 +163,7 @@ export default function GenerateClient({ brands, defaultBrandId }: { brands: Bra
       </div>
 
       {/* Output */}
-      <div className="col-span-3">
+      <div className="lg:col-span-3">
         <div className="bg-paper border border-border rounded-card flex flex-col" style={{ minHeight: 480 }}>
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
             <span className="label">Output</span>

@@ -74,7 +74,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
             onChange={e => setForm(f => ({ ...f, target_audience: e.target.value }))}
             placeholder="e.g. millennial women 25–35 who love wine and entertaining" />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="label block mb-1.5">Tone keywords</label>
             <input className={inputCls} value={form.tone_keywords}
@@ -88,7 +88,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
               placeholder="cheap, discount, basic" />
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {(['primary_color','secondary_color','accent_color'] as const).map((key) => (
             <div key={key}>
               <label className="label block mb-1.5">
@@ -104,7 +104,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="label block mb-1.5">Client name</label>
             <input className={inputCls} value={form.client_name}

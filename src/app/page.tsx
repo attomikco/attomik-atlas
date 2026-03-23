@@ -22,7 +22,7 @@ export default async function HomePage() {
   ]
 
   return (
-    <div className="p-10 max-w-5xl">
+    <div className="p-4 md:p-10 max-w-5xl">
       {/* Header */}
       <div className="mb-8">
         <h1>Good morning</h1>
@@ -30,7 +30,7 @@ export default async function HomePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
         {stats.map(({ label, value, icon: Icon, href }) => (
           <Link key={label} href={href}
             className="bg-paper border border-border rounded-card p-6 hover:border-ink transition-all duration-150 group"
@@ -48,7 +48,7 @@ export default async function HomePage() {
       {/* Quick actions */}
       <div className="mb-8">
         <div className="label mb-3">Quick actions</div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <Link href="/brands/new"
             className="bg-paper border border-border rounded-card p-5 hover:border-ink transition-all duration-150"
           >
@@ -78,7 +78,7 @@ export default async function HomePage() {
             <div className="label">Recent campaigns</div>
             <Link href="/campaigns" className="text-sm text-muted hover:text-ink transition-colors">View all →</Link>
           </div>
-          <div className="attomik-table bg-paper">
+          <div className="attomik-table-wrap"><div className="attomik-table bg-paper">
             <table className="w-full">
               <thead>
                 <tr>
@@ -110,7 +110,7 @@ export default async function HomePage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div></div>
         </div>
       )}
     </div>

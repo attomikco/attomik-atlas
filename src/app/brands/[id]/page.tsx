@@ -18,15 +18,15 @@ export default async function BrandPage({ params }: { params: { id: string } }) 
   const templates  = assets?.filter(a => a.type === 'html_template') ?? []
 
   return (
-    <div className="p-10 max-w-5xl">
+    <div className="p-4 md:p-10 max-w-5xl">
       <Link href="/brands" className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors mb-6">
         <ArrowLeft size={14} /> All brands
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 md:mb-8">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-card border border-border"
+          <div className="w-10 h-10 md:w-14 md:h-14 rounded-card border border-border flex-shrink-0"
             style={{ background: brand.primary_color || '#f2f2f2' }} />
           <div>
             <h1>{brand.name}</h1>
@@ -51,8 +51,8 @@ export default async function BrandPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-5">
           <BrandVoiceEditor brand={brand} />
 
           {/* Colors */}

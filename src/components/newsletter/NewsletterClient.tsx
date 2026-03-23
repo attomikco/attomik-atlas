@@ -89,9 +89,9 @@ export default function NewsletterClient({
   }
 
   return (
-    <div className="grid grid-cols-5 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
       {/* LEFT — Brief */}
-      <div className="col-span-2 space-y-5">
+      <div className="lg:col-span-2 space-y-5">
         {/* Brand */}
         <div>
           <label className="label block mb-1.5">Brand</label>
@@ -227,7 +227,7 @@ export default function NewsletterClient({
       </div>
 
       {/* RIGHT — Output */}
-      <div className="col-span-3">
+      <div className="lg:col-span-3">
         {!html && !loading && (
           <div className="bg-paper border border-border rounded-card flex items-center justify-center" style={{ minHeight: 500 }}>
             <div className="text-center">
