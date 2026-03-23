@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -8,6 +9,29 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    // Handle hash fragment tokens from magic link redirect
+    const hash = window.location.hash
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1))
+      const errorDesc = params.get('error_description')
+      if (errorDesc) {
+        setError(errorDesc.replace(/\+/g, ' '))
+        return
+      }
+    }
+
+    // Check if user is already authenticated (e.g. from magic link)
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        router.push('/')
+      }
+    })
+  }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -18,7 +42,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
       },
     })
 
