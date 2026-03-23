@@ -1,0 +1,101 @@
+export type BrandStatus = 'active' | 'paused' | 'offboarded'
+export type CampaignType = 'email' | 'ad_copy' | 'social' | 'seo' | 'dtc_brief'
+export type CampaignStatus = 'draft' | 'in_review' | 'approved' | 'scheduled' | 'sent' | 'archived'
+export type AssetType = 'guidelines' | 'html_template' | 'logo' | 'other'
+
+export interface Brand {
+  id: string
+  created_at: string
+  updated_at: string
+  name: string
+  slug: string
+  website: string | null
+  industry: string | null
+  status: BrandStatus
+  primary_color: string | null
+  secondary_color: string | null
+  accent_color: string | null
+  font_primary: string | null
+  font_secondary: string | null
+  brand_voice: string | null
+  target_audience: string | null
+  tone_keywords: string[] | null
+  avoid_words: string[] | null
+  client_name: string | null
+  client_email: string | null
+  notes: string | null
+}
+
+export interface BrandAsset {
+  id: string
+  created_at: string
+  brand_id: string
+  type: AssetType
+  file_name: string
+  storage_path: string
+  mime_type: string | null
+  size_bytes: number | null
+  notes: string | null
+}
+
+export interface Campaign {
+  id: string
+  created_at: string
+  updated_at: string
+  brand_id: string
+  name: string
+  type: CampaignType
+  status: CampaignStatus
+  subject: string | null
+  platform: string | null
+  goal: string | null
+  key_message: string | null
+  offer: string | null
+  audience_notes: string | null
+  scheduled_at: string | null
+  sent_at: string | null
+  from_name: string | null
+  from_email: string | null
+  reply_to: string | null
+  preview_text: string | null
+  brand?: Brand
+}
+
+export interface GeneratedContent {
+  id: string
+  created_at: string
+  campaign_id: string
+  brand_id: string
+  type: string
+  version: number
+  content: string
+  prompt_used: string | null
+  is_approved: boolean
+  approved_at: string | null
+  notes: string | null
+}
+
+export interface EmailSend {
+  id: string
+  created_at: string
+  campaign_id: string
+  brand_id: string
+  content_id: string
+  resend_id: string | null
+  recipient_count: number | null
+  status: 'pending' | 'sent' | 'failed'
+  error_message: string | null
+  metadata: Record<string, unknown> | null
+}
+
+export type Database = {
+  public: {
+    Tables: {
+      brands: { Row: Brand; Insert: Omit<Brand, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Brand> }
+      brand_assets: { Row: BrandAsset; Insert: Omit<BrandAsset, 'id' | 'created_at'>; Update: Partial<BrandAsset> }
+      campaigns: { Row: Campaign; Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Campaign> }
+      generated_content: { Row: GeneratedContent; Insert: Omit<GeneratedContent, 'id' | 'created_at'>; Update: Partial<GeneratedContent> }
+      email_sends: { Row: EmailSend; Insert: Omit<EmailSend, 'id' | 'created_at'>; Update: Partial<EmailSend> }
+    }
+  }
+}
