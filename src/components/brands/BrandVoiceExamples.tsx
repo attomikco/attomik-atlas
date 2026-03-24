@@ -109,7 +109,7 @@ export default function BrandVoiceExamples({ brandId, examples }: Props) {
 
       {/* Examples list */}
       {current.length > 0 ? (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {current.map(ex => (
             <div key={ex.id} className="bg-cream rounded-btn p-4 relative group">
               <button onClick={() => handleDelete(ex.id)}

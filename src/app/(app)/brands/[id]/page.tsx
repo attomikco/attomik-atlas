@@ -55,68 +55,67 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Voice & Identity + Assets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2">
-          <BrandVoiceEditor brand={brand} />
-        </div>
-        <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Row 1: Voice editor (full width) */}
+        <BrandVoiceEditor brand={brand} />
+
+        {/* Row 2: Assets + Colors side by side */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <BrandUploadAsset brandId={brand.id} label="Brand guidelines" type="guidelines"
             assets={guidelines} accept=".pdf,.doc,.docx" hint="PDF or Word doc" />
           <BrandUploadAsset brandId={brand.id} label="HTML email template" type="html_template"
             assets={templates} accept=".html,.htm" hint=".html file" />
-          {/* Color palette */}
           <div className="bg-paper border border-border rounded-card p-5">
             <div className="label mb-3">Color palette</div>
-            <div className="flex gap-4">
+            <div className="flex gap-5">
               {[
                 { label: 'Primary',   value: brand.primary_color },
                 { label: 'Secondary', value: brand.secondary_color },
                 { label: 'Accent',    value: brand.accent_color },
               ].map(({ label, value }) => (
-                <div key={label} className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-btn border border-border flex-shrink-0"
+                <div key={label} className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-btn border border-border flex-shrink-0"
                     style={{ background: value || '#f2f2f2' }} />
                   <div>
-                    <div className="text-[10px] text-muted">{label}</div>
-                    <div className="text-xs font-mono font-medium">{value || '—'}</div>
+                    <div className="text-[10px] text-muted uppercase tracking-label">{label}</div>
+                    <div className="text-sm font-mono font-medium">{value || '—'}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Brand Profile + Voice Examples */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Row 3: Brand profile (full width) */}
         <BrandProfileEditor brand={brand} />
-        <BrandVoiceExamples brandId={brand.id} examples={voiceExamples ?? []} />
-      </div>
 
-      {/* Campaigns */}
-      <div className="bg-paper border border-border rounded-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="label">Campaigns</div>
-          <Link href={`/campaigns/new?brand=${brand.id}`}
-            className="text-sm font-semibold text-muted hover:text-ink transition-colors">+ New</Link>
-        </div>
-        {campaigns && campaigns.length > 0 ? (
-          <div className="space-y-0 divide-y divide-border">
-            {campaigns.map((c) => (
-              <Link key={c.id} href={`/campaigns/${c.id}`}
-                className="flex items-center justify-between py-3 hover:opacity-70 transition-opacity">
-                <div>
-                  <div className="font-semibold text-sm">{c.name}</div>
-                  <div className="text-muted text-xs mt-0.5">{c.type}</div>
-                </div>
-                <span className={`badge status-${c.status}`}>{c.status}</span>
-              </Link>
-            ))}
+        {/* Row 4: Voice examples (full width) */}
+        <BrandVoiceExamples brandId={brand.id} examples={voiceExamples ?? []} />
+
+        {/* Row 5: Campaigns (full width) */}
+        <div className="bg-paper border border-border rounded-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="label">Campaigns</div>
+            <Link href={`/campaigns/new?brand=${brand.id}`}
+              className="text-sm font-semibold text-muted hover:text-ink transition-colors">+ New</Link>
           </div>
-        ) : (
-          <p className="text-muted text-sm">No campaigns yet.</p>
-        )}
+          {campaigns && campaigns.length > 0 ? (
+            <div className="space-y-0 divide-y divide-border">
+              {campaigns.map((c) => (
+                <Link key={c.id} href={`/campaigns/${c.id}`}
+                  className="flex items-center justify-between py-3 hover:opacity-70 transition-opacity">
+                  <div>
+                    <div className="font-semibold text-sm">{c.name}</div>
+                    <div className="text-muted text-xs mt-0.5">{c.type}</div>
+                  </div>
+                  <span className={`badge status-${c.status}`}>{c.status}</span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted text-sm">No campaigns yet.</p>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -79,7 +79,7 @@ export default function BrandProfileEditor({ brand }: { brand: Brand }) {
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         {/* Core — Mission, Vision, Values */}
         <div>
           <div className={headerCls} onClick={() => toggle('core')}>
@@ -87,18 +87,20 @@ export default function BrandProfileEditor({ brand }: { brand: Brand }) {
             <ChevronDown size={14} className={`text-muted transition-transform ${open.core ? 'rotate-180' : ''}`} />
           </div>
           {open.core && (
-            <div className="space-y-3 mt-3">
-              <div>
-                <label className="label block mb-1.5">Mission</label>
-                <textarea className={inputCls + ' resize-none'} rows={2} value={mission}
-                  onChange={e => setMission(e.target.value)}
-                  placeholder="Why does this brand exist? What problem does it solve?" />
-              </div>
-              <div>
-                <label className="label block mb-1.5">Vision</label>
-                <textarea className={inputCls + ' resize-none'} rows={2} value={vision}
-                  onChange={e => setVision(e.target.value)}
-                  placeholder="Where is this brand headed? What future does it see?" />
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="label block mb-1.5">Mission</label>
+                  <textarea className={inputCls + ' resize-none'} rows={3} value={mission}
+                    onChange={e => setMission(e.target.value)}
+                    placeholder="Why does this brand exist? What problem does it solve?" />
+                </div>
+                <div>
+                  <label className="label block mb-1.5">Vision</label>
+                  <textarea className={inputCls + ' resize-none'} rows={3} value={vision}
+                    onChange={e => setVision(e.target.value)}
+                    placeholder="Where is this brand headed? What future does it see?" />
+                </div>
               </div>
               <div>
                 <label className="label block mb-1.5">Values</label>
@@ -121,25 +123,23 @@ export default function BrandProfileEditor({ brand }: { brand: Brand }) {
             </div>
           </div>
           {open.competitors && (
-            <div className="space-y-3 mt-3">
+            <div className="mt-3 space-y-2">
               {competitors.map((c, i) => (
-                <div key={i} className="flex gap-2 items-start">
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <input className={inputCls} value={c.name} placeholder="Name"
-                      onChange={e => updateCompetitor(i, 'name', e.target.value)} />
-                    <input className={inputCls} value={c.website || ''} placeholder="Website"
-                      onChange={e => updateCompetitor(i, 'website', e.target.value)} />
-                    <input className={inputCls} value={c.notes || ''} placeholder="Notes (how they differ)"
-                      onChange={e => updateCompetitor(i, 'notes', e.target.value)} />
-                  </div>
+                <div key={i} className="bg-cream rounded-btn px-3 py-2.5 flex gap-2 items-center">
+                  <input className={inputCls + ' !bg-paper'} value={c.name} placeholder="Name"
+                    onChange={e => updateCompetitor(i, 'name', e.target.value)} />
+                  <input className={inputCls + ' !bg-paper hidden sm:block'} value={c.website || ''} placeholder="Website"
+                    onChange={e => updateCompetitor(i, 'website', e.target.value)} />
+                  <input className={inputCls + ' !bg-paper hidden md:block'} value={c.notes || ''} placeholder="How they differ"
+                    onChange={e => updateCompetitor(i, 'notes', e.target.value)} />
                   <button onClick={() => setCompetitors(prev => prev.filter((_, j) => j !== i))}
-                    className="text-muted hover:text-danger transition-colors mt-2.5">
+                    className="text-muted hover:text-danger transition-colors flex-shrink-0">
                     <Trash2 size={13} />
                   </button>
                 </div>
               ))}
               <button onClick={() => setCompetitors(prev => [...prev, { name: '' }])}
-                className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors">
+                className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors pt-1">
                 <Plus size={13} /> Add competitor
               </button>
             </div>
@@ -156,29 +156,27 @@ export default function BrandProfileEditor({ brand }: { brand: Brand }) {
             </div>
           </div>
           {open.products && (
-            <div className="space-y-3 mt-3">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
               {products.map((p, i) => (
-                <div key={i} className="flex gap-2 items-start">
-                  <div className="flex-1 space-y-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input className={inputCls} value={p.name} placeholder="Product name"
-                        onChange={e => updateProduct(i, 'name', e.target.value)} />
-                      <input className={inputCls} value={p.price_range || ''} placeholder="Price range"
-                        onChange={e => updateProduct(i, 'price_range', e.target.value)} />
-                      <input className={inputCls} value={p.url || ''} placeholder="URL"
-                        onChange={e => updateProduct(i, 'url', e.target.value)} />
-                    </div>
-                    <input className={inputCls} value={p.description || ''} placeholder="Brief description"
-                      onChange={e => updateProduct(i, 'description', e.target.value)} />
-                  </div>
+                <div key={i} className="bg-cream rounded-btn p-3 relative group">
                   <button onClick={() => setProducts(prev => prev.filter((_, j) => j !== i))}
-                    className="text-muted hover:text-danger transition-colors mt-2.5">
+                    className="absolute top-2.5 right-2.5 text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
                   </button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input className={inputCls + ' !bg-paper font-semibold'} value={p.name} placeholder="Product name"
+                        onChange={e => updateProduct(i, 'name', e.target.value)} />
+                      <input className={inputCls + ' !bg-paper !w-32 flex-shrink-0'} value={p.price_range || ''} placeholder="Price"
+                        onChange={e => updateProduct(i, 'price_range', e.target.value)} />
+                    </div>
+                    <input className={inputCls + ' !bg-paper'} value={p.description || ''} placeholder="Brief description"
+                      onChange={e => updateProduct(i, 'description', e.target.value)} />
+                  </div>
                 </div>
               ))}
               <button onClick={() => setProducts(prev => [...prev, { name: '' }])}
-                className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors">
+                className="flex items-center justify-center gap-1.5 text-sm text-muted hover:text-ink transition-colors border border-dashed border-border rounded-btn py-6 hover:border-ink">
                 <Plus size={13} /> Add product
               </button>
             </div>
@@ -195,40 +193,34 @@ export default function BrandProfileEditor({ brand }: { brand: Brand }) {
             </div>
           </div>
           {open.personas && (
-            <div className="space-y-4 mt-3">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
               {personas.map((p, i) => (
-                <div key={i} className="bg-cream rounded-btn p-4 relative">
+                <div key={i} className="bg-cream rounded-btn p-4 relative group">
                   <button onClick={() => setPersonas(prev => prev.filter((_, j) => j !== i))}
-                    className="absolute top-3 right-3 text-muted hover:text-danger transition-colors">
+                    className="absolute top-3 right-3 text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
                   </button>
                   <div className="space-y-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input className={inputCls} value={p.name} placeholder="Persona name (e.g. Weekend Wino)"
+                    <div className="flex gap-2">
+                      <input className={inputCls + ' !bg-paper font-semibold'} value={p.name} placeholder="Persona name"
                         onChange={e => updatePersona(i, 'name', e.target.value)} />
-                      <input className={inputCls} value={p.age_range || ''} placeholder="Age range (e.g. 25-35)"
+                      <input className={inputCls + ' !bg-paper !w-24 flex-shrink-0'} value={p.age_range || ''} placeholder="Age"
                         onChange={e => updatePersona(i, 'age_range', e.target.value)} />
                     </div>
-                    <textarea className={inputCls + ' resize-none'} rows={2} value={p.description}
+                    <textarea className={inputCls + ' !bg-paper resize-none'} rows={2} value={p.description}
                       placeholder="Who are they? What do they care about?"
                       onChange={e => updatePersona(i, 'description', e.target.value)} />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <input className={inputCls} value={p.pain_points?.join(', ') || ''}
-                          placeholder="Pain points (comma-separated)"
-                          onChange={e => updatePersona(i, 'pain_points', e.target.value)} />
-                      </div>
-                      <div>
-                        <input className={inputCls} value={p.channels?.join(', ') || ''}
-                          placeholder="Channels (Instagram, Email, TikTok)"
-                          onChange={e => updatePersona(i, 'channels', e.target.value)} />
-                      </div>
-                    </div>
+                    <input className={inputCls + ' !bg-paper'} value={p.pain_points?.join(', ') || ''}
+                      placeholder="Pain points (comma-separated)"
+                      onChange={e => updatePersona(i, 'pain_points', e.target.value)} />
+                    <input className={inputCls + ' !bg-paper'} value={p.channels?.join(', ') || ''}
+                      placeholder="Channels (Instagram, Email, TikTok)"
+                      onChange={e => updatePersona(i, 'channels', e.target.value)} />
                   </div>
                 </div>
               ))}
               <button onClick={() => setPersonas(prev => [...prev, { name: '', description: '' }])}
-                className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors">
+                className="flex items-center justify-center gap-1.5 text-sm text-muted hover:text-ink transition-colors border border-dashed border-border rounded-btn py-8 hover:border-ink">
                 <Plus size={13} /> Add persona
               </button>
             </div>
