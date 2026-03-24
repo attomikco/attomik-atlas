@@ -67,18 +67,18 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
             assets={templates} accept=".html,.htm" hint=".html file" />
           <div className="bg-paper border border-border rounded-card p-5">
             <div className="label mb-3">Color palette</div>
-            <div className="flex gap-5">
+            <div className="space-y-2.5">
               {[
                 { label: 'Primary',   value: brand.primary_color },
                 { label: 'Secondary', value: brand.secondary_color },
                 { label: 'Accent',    value: brand.accent_color },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-btn border border-border flex-shrink-0"
+                  <div className="w-7 h-7 rounded-btn border border-border flex-shrink-0"
                     style={{ background: value || '#f2f2f2' }} />
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-[10px] text-muted uppercase tracking-label">{label}</div>
-                    <div className="text-sm font-mono font-medium">{value || '—'}</div>
+                    <div className="text-xs font-mono font-medium truncate">{value || '—'}</div>
                   </div>
                 </div>
               ))}
