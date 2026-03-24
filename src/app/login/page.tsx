@@ -10,20 +10,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [authenticating, setAuthenticating] = useState(false)
   const [error, setError] = useState('')
+  const [debug, setDebug] = useState('')
   const supabase = createClient()
   const router = useRouter()
 
   // Handle implicit flow — token arrives as URL fragment (#access_token=...)
   useEffect(() => {
+    const fullUrl = window.location.href
     const hash = window.location.hash
+    const search = window.location.search
+
+    // Capture debug info
+    setDebug(`URL: ${fullUrl}\nHash: ${hash || '(none)'}\nSearch: ${search || '(none)'}`)
+
     if (!hash.includes('access_token')) {
       // Check for error in hash
       if (hash) {
         const params = new URLSearchParams(hash.replace('#', ''))
         const errorDesc = params.get('error_description')
+        const errorCode = params.get('error_code')
         if (errorDesc) {
-          setError(errorDesc.replace(/\+/g, ' '))
-          window.history.replaceState(null, '', '/login')
+          setError(`${errorCode || 'error'}: ${errorDesc.replace(/\+/g, ' ')}`)
         }
       }
       return
@@ -118,6 +125,12 @@ export default function LoginPage() {
             </form>
           )}
         </div>
+
+        {debug && (
+          <pre className="mt-4 p-3 bg-paper border border-border rounded-btn text-xs text-muted break-all whitespace-pre-wrap">
+            {debug}
+          </pre>
+        )}
       </div>
     </div>
   )
