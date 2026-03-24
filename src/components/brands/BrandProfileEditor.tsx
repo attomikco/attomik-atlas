@@ -20,7 +20,7 @@ export default function BrandProfileEditor({ brand }: { brand: Brand }) {
   const [open, setOpen] = useState<Record<string, boolean>>({
     core: true,
     competitors: false,
-    products: false,
+    products: true,
     personas: false,
   })
 
@@ -156,27 +156,30 @@ export default function BrandProfileEditor({ brand }: { brand: Brand }) {
             </div>
           </div>
           {open.products && (
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="mt-3 space-y-3">
               {products.map((p, i) => (
-                <div key={i} className="bg-cream rounded-btn p-3 relative group">
+                <div key={i} className="bg-cream rounded-btn p-4 relative group">
                   <button onClick={() => setProducts(prev => prev.filter((_, j) => j !== i))}
-                    className="absolute top-2.5 right-2.5 text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100">
+                    className="absolute top-3 right-3 text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
                   </button>
                   <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <input className={inputCls + ' !bg-paper font-semibold'} value={p.name} placeholder="Product name"
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input className={inputCls + ' !bg-paper font-semibold sm:col-span-1'} value={p.name} placeholder="Product name"
                         onChange={e => updateProduct(i, 'name', e.target.value)} />
-                      <input className={inputCls + ' !bg-paper !w-32 flex-shrink-0'} value={p.price_range || ''} placeholder="Price"
+                      <input className={inputCls + ' !bg-paper'} value={p.price_range || ''} placeholder="Price range"
                         onChange={e => updateProduct(i, 'price_range', e.target.value)} />
+                      <input className={inputCls + ' !bg-paper'} value={p.url || ''} placeholder="URL"
+                        onChange={e => updateProduct(i, 'url', e.target.value)} />
                     </div>
-                    <input className={inputCls + ' !bg-paper'} value={p.description || ''} placeholder="Brief description"
+                    <textarea className={inputCls + ' !bg-paper resize-none'} rows={3} value={p.description || ''}
+                      placeholder="Full product description — features, key selling points, what makes it unique, ingredients/materials, sizing, etc."
                       onChange={e => updateProduct(i, 'description', e.target.value)} />
                   </div>
                 </div>
               ))}
               <button onClick={() => setProducts(prev => [...prev, { name: '' }])}
-                className="flex items-center justify-center gap-1.5 text-sm text-muted hover:text-ink transition-colors border border-dashed border-border rounded-btn py-6 hover:border-ink">
+                className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors pt-1">
                 <Plus size={13} /> Add product
               </button>
             </div>
