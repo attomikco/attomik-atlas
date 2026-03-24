@@ -1,58 +1,50 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [password, setPassword] = useState('')
+  const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const router = useRouter()
-
-  useEffect(() => {
-    const supabase = createClient()
-
-    // Handle hash fragment tokens from magic link redirect
-    const hash = window.location.hash
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1))
-      const errorDesc = params.get('error_description')
-      if (errorDesc) {
-        setError(errorDesc.replace(/\+/g, ' '))
-        return
-      }
-    }
-
-    // Check if user is already authenticated (e.g. from magic link)
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        router.push('/')
-      }
-    })
-  }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setMessage('')
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-      },
-    })
 
-    if (error) {
-      setError(error.message)
-      setLoading(false)
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        setMessage('Account created! You can now sign in.')
+        setIsSignUp(false)
+      }
     } else {
-      setSent(true)
-      setLoading(false)
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push('/')
+      }
     }
+
+    setLoading(false)
   }
 
   return (
@@ -64,38 +56,50 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-paper border border-border rounded-card p-8">
-          {sent ? (
-            <div className="text-center">
-              <h2 className="text-lg font-bold mb-2">Check your email</h2>
-              <p className="text-muted text-sm">
-                We sent a magic link to <strong>{email}</strong>. Click it to sign in.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <label className="label block mb-2">Email address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
-                className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-ink transition-colors"
-              />
+          <form onSubmit={handleSubmit}>
+            <label className="label block mb-2">Email address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+              required
+              className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-ink transition-colors"
+            />
 
-              {error && (
-                <p className="text-danger text-sm mt-2">{error}</p>
-              )}
+            <label className="label block mb-2 mt-4">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              minLength={6}
+              className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-ink transition-colors"
+            />
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-4 bg-ink text-accent font-semibold rounded-btn px-4 py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {loading ? 'Sending...' : 'Send magic link'}
-              </button>
-            </form>
-          )}
+            {error && (
+              <p className="text-danger text-sm mt-2">{error}</p>
+            )}
+            {message && (
+              <p className="text-success text-sm mt-2">{message}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-4 bg-ink text-accent font-semibold rounded-btn px-4 py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {loading ? 'Please wait...' : isSignUp ? 'Create account' : 'Sign in'}
+            </button>
+          </form>
+
+          <button
+            onClick={() => { setIsSignUp(!isSignUp); setError(''); setMessage('') }}
+            className="w-full mt-3 text-muted text-sm hover:text-ink transition-colors"
+          >
+            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+          </button>
         </div>
       </div>
     </div>
