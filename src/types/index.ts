@@ -3,6 +3,37 @@ export type CampaignType = 'email' | 'ad_copy' | 'social' | 'seo' | 'dtc_brief'
 export type CampaignStatus = 'draft' | 'in_review' | 'approved' | 'scheduled' | 'sent' | 'archived'
 export type AssetType = 'guidelines' | 'html_template' | 'logo' | 'other'
 
+export interface Competitor {
+  name: string
+  website?: string
+  notes?: string
+}
+
+export interface Product {
+  name: string
+  description?: string
+  price_range?: string
+  url?: string
+}
+
+export interface CustomerPersona {
+  name: string
+  age_range?: string
+  description: string
+  pain_points?: string[]
+  channels?: string[]
+}
+
+export interface BrandVoiceExample {
+  id: string
+  created_at: string
+  brand_id: string
+  category: 'good' | 'bad'
+  label: string | null
+  content: string
+  notes: string | null
+}
+
 export interface Brand {
   id: string
   created_at: string
@@ -24,6 +55,12 @@ export interface Brand {
   client_name: string | null
   client_email: string | null
   notes: string | null
+  mission: string | null
+  vision: string | null
+  values: string[] | null
+  competitors: Competitor[] | null
+  products: Product[] | null
+  customer_personas: CustomerPersona[] | null
 }
 
 export interface BrandAsset {
@@ -36,6 +73,7 @@ export interface BrandAsset {
   mime_type: string | null
   size_bytes: number | null
   notes: string | null
+  parsed_text: string | null
 }
 
 export interface Campaign {
@@ -95,6 +133,7 @@ export type Database = {
     Tables: {
       brands: { Row: Brand; Insert: Omit<Brand, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Brand>; Relationships: Rel[] }
       brand_assets: { Row: BrandAsset; Insert: Omit<BrandAsset, 'id' | 'created_at'>; Update: Partial<BrandAsset>; Relationships: Rel[] }
+      brand_voice_examples: { Row: BrandVoiceExample; Insert: Omit<BrandVoiceExample, 'id' | 'created_at'>; Update: Partial<BrandVoiceExample>; Relationships: Rel[] }
       campaigns: { Row: Campaign; Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Campaign>; Relationships: Rel[] }
       generated_content: { Row: GeneratedContent; Insert: Omit<GeneratedContent, 'id' | 'created_at'>; Update: Partial<GeneratedContent>; Relationships: Rel[] }
       email_sends: { Row: EmailSend; Insert: Omit<EmailSend, 'id' | 'created_at'>; Update: Partial<EmailSend>; Relationships: Rel[] }

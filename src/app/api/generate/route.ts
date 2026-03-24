@@ -9,8 +9,10 @@ export async function POST(req: NextRequest) {
   const { data: brand } = await supabase.from('brands').select('*').eq('id', brandId).single()
   if (!brand) return new Response('Brand not found', { status: 404 })
 
-  const { data: assets } = await supabase.from('brand_assets')
-    .select('*').eq('brand_id', brandId).eq('type', 'guidelines').limit(1)
+  const [{ data: assets }, { data: voiceExamples }] = await Promise.all([
+    supabase.from('brand_assets').select('*').eq('brand_id', brandId).eq('type', 'guidelines').limit(1),
+    supabase.from('brand_voice_examples').select('*').eq('brand_id', brandId),
+  ])
   const guidelineAsset = assets?.[0] ?? null
 
   const toolLabel: Record<string, string> = {
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
       : '',
   ].filter(Boolean).join('\n')
 
-  const stream = await streamGeneration({ brand, guidelineAsset, userPrompt })
+  const stream = await streamGeneration({ brand, guidelineAsset, voiceExamples: voiceExamples ?? undefined, userPrompt })
 
   const encoder = new TextEncoder()
   const readable = new ReadableStream({

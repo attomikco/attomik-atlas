@@ -28,7 +28,14 @@ create table brands (
   avoid_words text[],
   client_name text,
   client_email text,
-  notes text
+  notes text,
+  -- Structured brand profile
+  mission text,
+  vision text,
+  values text[],
+  competitors jsonb default '[]',
+  products jsonb default '[]',
+  customer_personas jsonb default '[]'
 );
 
 -- ============================================
@@ -43,6 +50,20 @@ create table brand_assets (
   storage_path text not null,
   mime_type text,
   size_bytes bigint,
+  notes text,
+  parsed_text text
+);
+
+-- ============================================
+-- BRAND VOICE EXAMPLES
+-- ============================================
+create table brand_voice_examples (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  brand_id uuid references brands(id) on delete cascade,
+  category text not null check (category in ('good', 'bad')),
+  label text,
+  content text not null,
   notes text
 );
 
@@ -109,12 +130,14 @@ create table email_sends (
 -- ============================================
 alter table brands enable row level security;
 alter table brand_assets enable row level security;
+alter table brand_voice_examples enable row level security;
 alter table campaigns enable row level security;
 alter table generated_content enable row level security;
 alter table email_sends enable row level security;
 
 create policy "authenticated_all" on brands for all to authenticated using (true);
 create policy "authenticated_all" on brand_assets for all to authenticated using (true);
+create policy "authenticated_all" on brand_voice_examples for all to authenticated using (true);
 create policy "authenticated_all" on campaigns for all to authenticated using (true);
 create policy "authenticated_all" on generated_content for all to authenticated using (true);
 create policy "authenticated_all" on email_sends for all to authenticated using (true);

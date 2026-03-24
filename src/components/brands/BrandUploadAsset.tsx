@@ -15,6 +15,7 @@ export default function BrandUploadAsset({ brandId, label, type, assets, accept,
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [parsing, setParsing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -25,9 +26,22 @@ export default function BrandUploadAsset({ brandId, label, type, assets, accept,
     const path = `${brandId}/${type}/${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage.from('brand-assets').upload(path, file)
     if (uploadError) { setError(uploadError.message); setUploading(false); return }
-    await supabase.from('brand_assets').insert({ brand_id: brandId, type, file_name: file.name, storage_path: path, mime_type: file.type, size_bytes: file.size })
+    const { data: assetData } = await supabase.from('brand_assets').insert({ brand_id: brandId, type, file_name: file.name, storage_path: path, mime_type: file.type, size_bytes: file.size }).select().single()
     setUploading(false)
     router.refresh()
+    // Auto-parse PDFs
+    if (assetData && file.type === 'application/pdf') {
+      setParsing(assetData.id)
+      try {
+        await fetch('/api/brands/parse-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assetId: assetData.id }),
+        })
+      } catch { /* parsing is best-effort */ }
+      setParsing(null)
+      router.refresh()
+    }
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -48,9 +62,18 @@ export default function BrandUploadAsset({ brandId, label, type, assets, accept,
                 <FileText size={13} className="text-muted flex-shrink-0" />
                 <span className="text-sm truncate">{asset.file_name}</span>
               </div>
-              <button onClick={() => handleDelete(asset)} className="text-muted hover:text-danger transition-colors ml-2 flex-shrink-0">
-                <Trash2 size={13} />
-              </button>
+              <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                {asset.parsed_text ? (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#e6fff5] text-[#007a48]">Parsed</span>
+                ) : parsing === asset.id ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-cream text-muted">
+                    <Loader2 size={10} className="animate-spin" /> Parsing
+                  </span>
+                ) : null}
+                <button onClick={() => handleDelete(asset)} className="text-muted hover:text-danger transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

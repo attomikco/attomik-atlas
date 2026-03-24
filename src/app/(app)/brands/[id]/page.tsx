@@ -3,15 +3,18 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Sparkles, Mail } from 'lucide-react'
 import BrandVoiceEditor from '@/components/brands/BrandVoiceEditor'
+import BrandProfileEditor from '@/components/brands/BrandProfileEditor'
+import BrandVoiceExamples from '@/components/brands/BrandVoiceExamples'
 import BrandUploadAsset from '@/components/brands/BrandUploadAsset'
 
 export default async function BrandPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const [{ data: brand }, { data: assets }, { data: campaigns }] = await Promise.all([
+  const [{ data: brand }, { data: assets }, { data: campaigns }, { data: voiceExamples }] = await Promise.all([
     supabase.from('brands').select('*').eq('id', id).single(),
     supabase.from('brand_assets').select('*').eq('brand_id', id).order('created_at'),
     supabase.from('campaigns').select('*').eq('brand_id', id).order('created_at', { ascending: false }).limit(10),
+    supabase.from('brand_voice_examples').select('*').eq('brand_id', id).order('created_at'),
   ])
   if (!brand) notFound()
 
@@ -19,7 +22,7 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
   const templates  = assets?.filter(a => a.type === 'html_template') ?? []
 
   return (
-    <div className="p-4 md:p-10 max-w-5xl">
+    <div className="p-4 md:p-10 max-w-6xl">
       <Link href="/brands" className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors mb-6">
         <ArrowLeft size={14} /> All brands
       </Link>
@@ -52,64 +55,68 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-5">
+      {/* Voice & Identity + Assets */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
           <BrandVoiceEditor brand={brand} />
-
-          {/* Colors */}
-          <div className="bg-paper border border-border rounded-card p-6">
-            <div className="label mb-4">Color palette</div>
-            <div className="flex gap-6">
-              {[
-                { label: 'Primary',   value: brand.primary_color },
-                { label: 'Secondary', value: brand.secondary_color },
-                { label: 'Accent',    value: brand.accent_color },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-btn border border-border"
-                    style={{ background: value || '#f2f2f2' }} />
-                  <div>
-                    <div className="text-xs text-muted">{label}</div>
-                    <div className="text-sm font-mono font-medium">{value || '—'}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Campaigns */}
-          <div className="bg-paper border border-border rounded-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="label">Campaigns</div>
-              <Link href={`/campaigns/new?brand=${brand.id}`}
-                className="text-sm font-semibold text-muted hover:text-ink transition-colors">+ New</Link>
-            </div>
-            {campaigns && campaigns.length > 0 ? (
-              <div className="space-y-0 divide-y divide-border">
-                {campaigns.map((c) => (
-                  <Link key={c.id} href={`/campaigns/${c.id}`}
-                    className="flex items-center justify-between py-3 hover:opacity-70 transition-opacity">
-                    <div>
-                      <div className="font-semibold text-sm">{c.name}</div>
-                      <div className="text-muted text-xs mt-0.5">{c.type}</div>
-                    </div>
-                    <span className={`badge status-${c.status}`}>{c.status}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted text-sm">No campaigns yet.</p>
-            )}
-          </div>
         </div>
-
-        {/* Right — uploads */}
         <div className="space-y-4">
           <BrandUploadAsset brandId={brand.id} label="Brand guidelines" type="guidelines"
             assets={guidelines} accept=".pdf,.doc,.docx" hint="PDF or Word doc" />
           <BrandUploadAsset brandId={brand.id} label="HTML email template" type="html_template"
             assets={templates} accept=".html,.htm" hint=".html file" />
+          {/* Color palette */}
+          <div className="bg-paper border border-border rounded-card p-5">
+            <div className="label mb-3">Color palette</div>
+            <div className="flex gap-4">
+              {[
+                { label: 'Primary',   value: brand.primary_color },
+                { label: 'Secondary', value: brand.secondary_color },
+                { label: 'Accent',    value: brand.accent_color },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-btn border border-border flex-shrink-0"
+                    style={{ background: value || '#f2f2f2' }} />
+                  <div>
+                    <div className="text-[10px] text-muted">{label}</div>
+                    <div className="text-xs font-mono font-medium">{value || '—'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Brand Profile + Voice Examples */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <BrandProfileEditor brand={brand} />
+        <BrandVoiceExamples brandId={brand.id} examples={voiceExamples ?? []} />
+      </div>
+
+      {/* Campaigns */}
+      <div className="bg-paper border border-border rounded-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="label">Campaigns</div>
+          <Link href={`/campaigns/new?brand=${brand.id}`}
+            className="text-sm font-semibold text-muted hover:text-ink transition-colors">+ New</Link>
+        </div>
+        {campaigns && campaigns.length > 0 ? (
+          <div className="space-y-0 divide-y divide-border">
+            {campaigns.map((c) => (
+              <Link key={c.id} href={`/campaigns/${c.id}`}
+                className="flex items-center justify-between py-3 hover:opacity-70 transition-opacity">
+                <div>
+                  <div className="font-semibold text-sm">{c.name}</div>
+                  <div className="text-muted text-xs mt-0.5">{c.type}</div>
+                </div>
+                <span className={`badge status-${c.status}`}>{c.status}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted text-sm">No campaigns yet.</p>
+        )}
       </div>
     </div>
   )
