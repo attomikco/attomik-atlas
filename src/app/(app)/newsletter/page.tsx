@@ -8,17 +8,17 @@ export default async function NewsletterPage({
 }) {
   const supabase = await createClient()
 
-  const { data: brands } = await supabase
-    .from('brands')
-    .select('id, name, primary_color, tone_keywords, brand_voice, target_audience')
-    .eq('status', 'active')
-    .order('name')
-
-  // For each brand, check if they have an HTML template uploaded
-  const { data: templates } = await supabase
-    .from('brand_assets')
-    .select('brand_id, id, file_name, storage_path')
-    .eq('type', 'html_template')
+  const [{ data: brands }, { data: templates }] = await Promise.all([
+    supabase
+      .from('brands')
+      .select('id, name, primary_color, tone_keywords, brand_voice, target_audience')
+      .eq('status', 'active')
+      .order('name'),
+    supabase
+      .from('brand_assets')
+      .select('brand_id, id, file_name, storage_path')
+      .eq('type', 'html_template'),
+  ])
 
   const templateMap: Record<string, { id: string; file_name: string; storage_path: string }> = {}
   templates?.forEach(t => { templateMap[t.brand_id] = t })
