@@ -2,13 +2,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Users, Mail, Sparkles, Settings, Target, FileCode, Menu, X } from 'lucide-react'
+import { LayoutGrid, Users, Mail, Sparkles, Settings, Target, FileCode, Palette, Menu, X } from 'lucide-react'
 
 const NAV = [
   { href: '/',           label: 'Overview',    icon: LayoutGrid },
   { href: '/brands',    label: 'Brands',      icon: Users },
   { href: '/campaigns', label: 'Campaigns',   icon: Mail },
   { href: '/ads',       label: 'FB Ads',      icon: Target },
+  { href: '/creatives', label: 'Creatives',   icon: Palette },
   { href: '/newsletter',label: 'Newsletter',  icon: FileCode },
   { href: '/generate',  label: 'Generate',    icon: Sparkles },
 ]
