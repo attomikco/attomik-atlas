@@ -10,7 +10,7 @@ export default async function CreativesPage({
   const supabase = await createClient()
   const { data: brands } = await supabase
     .from('brands')
-    .select('id, name, slug, primary_color, secondary_color, accent_color, font_primary, font_secondary, font_heading, font_body')
+    .select('*')
     .eq('status', 'active')
     .order('name')
 
