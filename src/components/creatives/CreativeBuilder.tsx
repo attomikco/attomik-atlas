@@ -89,6 +89,28 @@ export default function CreativeBuilder({
   const template = TEMPLATES.find(t => t.id === templateId)!
   const TemplateComponent = template.component
 
+  // Load brand fonts from Google Fonts when brand changes
+  useEffect(() => {
+    const fonts = [brand?.font_primary, brand?.font_secondary].filter(Boolean) as string[]
+    if (fonts.length === 0) return
+    const families = fonts.map(f => f.replace(/ /g, '+')).join('&family=')
+    const id = 'brand-fonts-link'
+    let link = document.getElementById(id) as HTMLLinkElement | null
+    if (!link) {
+      link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      document.head.appendChild(link)
+    }
+    link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`
+  }, [brand?.font_primary, brand?.font_secondary])
+
+  // Auto-select brand fonts when brand changes
+  useEffect(() => {
+    setHeadlineFont(brand?.font_primary || '')
+    setBodyFont(brand?.font_secondary || brand?.font_primary || '')
+  }, [brandId])
+
   // Load brand images + recent copy when brand changes
   useEffect(() => {
     if (!brandId) return

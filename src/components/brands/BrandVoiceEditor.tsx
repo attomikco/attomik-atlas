@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Brand } from '@/types'
 import { Check, Loader2 } from 'lucide-react'
@@ -22,6 +22,22 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     font_primary:    brand.font_primary || '',
     font_secondary:  brand.font_secondary || '',
   })
+
+  // Load Google Fonts for preview
+  useEffect(() => {
+    const fonts = [form.font_primary, form.font_secondary].filter(Boolean)
+    if (fonts.length === 0) return
+    const families = fonts.map(f => f.replace(/ /g, '+')).join('&family=')
+    const id = 'brand-fonts-link'
+    let link = document.getElementById(id) as HTMLLinkElement | null
+    if (!link) {
+      link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      document.head.appendChild(link)
+    }
+    link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`
+  }, [form.font_primary, form.font_secondary])
 
   async function save() {
     setSaving(true)
