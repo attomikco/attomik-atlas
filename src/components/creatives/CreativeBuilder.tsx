@@ -89,6 +89,7 @@ export default function CreativeBuilder({
   const [copySource, setCopySource] = useState<'manual' | 'generated'>('manual')
   const [generating, setGenerating] = useState(false)
   const [batchGenerating, setBatchGenerating] = useState(false)
+  const [batchCount, setBatchCount] = useState(5)
   const batchAbortRef = useRef<AbortController | null>(null)
   type Variation = { headline: string; body: string; cta: string; imageId: string | null; templateId: string }
   const [variations, setVariations] = useState<Variation[]>([])
@@ -238,7 +239,7 @@ Nothing else.`,
     const templateIds = TEMPLATES.map(t => t.id)
     const results: typeof variations = []
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < batchCount; i++) {
       if (abort.signal.aborted) break
       try {
         const res = await fetch('/api/generate', {
@@ -561,15 +562,26 @@ Nothing else.`,
                 {batchGenerating ? (
                   <button onClick={stopBatch}
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill bg-ink text-paper hover:opacity-80 transition-opacity">
-                    Stop ({variations.length}/10)
+                    Stop ({variations.length}/{batchCount})
                   </button>
                 ) : (
-                  <button onClick={generateBatch} disabled={images.length === 0}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill transition-opacity hover:opacity-80 disabled:opacity-40"
-                    style={{ background: '#00ff97', color: '#000' }}>
-                    <Sparkles size={12} />
-                    Generate 10
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {[3, 5, 10].map(n => (
+                      <button key={n} onClick={() => { setBatchCount(n); }}
+                        className="text-[11px] font-semibold w-6 h-6 rounded-full border transition-all"
+                        style={batchCount === n
+                          ? { background: '#000', color: '#00ff97', borderColor: '#000' }
+                          : { borderColor: '#e0e0e0', color: '#999' }}>
+                        {n}
+                      </button>
+                    ))}
+                    <button onClick={generateBatch} disabled={images.length === 0}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill transition-opacity hover:opacity-80 disabled:opacity-40 ml-1"
+                      style={{ background: '#00ff97', color: '#000' }}>
+                      <Sparkles size={12} />
+                      Generate
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -648,7 +660,7 @@ Nothing else.`,
           {/* Variations strip */}
           {variations.length > 0 && (
             <div className="bg-paper border border-border rounded-card p-4">
-              <div className="label mb-3">Generated ({variations.length}/10)</div>
+              <div className="label mb-3">Generated ({variations.length})</div>
               <div className="grid grid-cols-5 gap-2">
                 {variations.map((v, i) => {
                   const vImg = images.find(img => img.id === v.imageId)
