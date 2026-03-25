@@ -88,6 +88,9 @@ export default function CreativeBuilder({
   const [textBannerColor, setTextBannerColor] = useState<string>('#000000')
   const [copySource, setCopySource] = useState<'manual' | 'generated'>('manual')
   const [generating, setGenerating] = useState(false)
+  const [batchGenerating, setBatchGenerating] = useState(false)
+  const [variations, setVariations] = useState<{ headline: string; body: string; cta: string; imageId: string | null; templateId: string }[]>([])
+  const [activeVariation, setActiveVariation] = useState<number | null>(null)
 
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -213,6 +216,82 @@ Nothing else.`,
       console.error('Generate failed:', err)
     }
     setGenerating(false)
+  }
+
+  async function generateBatch() {
+    if (!brandId || batchGenerating || images.length === 0) return
+    setBatchGenerating(true)
+    setVariations([])
+    setActiveVariation(null)
+
+    const templateIds = TEMPLATES.map(t => t.id)
+    const results: typeof variations = []
+
+    for (let i = 0; i < 10; i++) {
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            brandId,
+            tool: 'ad_copy',
+            tone: 'on-brand',
+            platform: 'creative',
+            subtype: 'image ad',
+            brief: `Generate exactly one unique short headline (under 8 words) and one body line (under 20 words) for a visual ad creative. Variation ${i + 1} of 10 — make each one distinct. Format as:
+HEADLINE: <headline text>
+BODY: <body text>
+CTA: <cta text>
+Nothing else.`,
+          }),
+        })
+        let full = ''
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            const chunk = decoder.decode(value)
+            for (const line of chunk.split('\n')) {
+              if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                try { full += JSON.parse(line.slice(6)).delta?.text || '' } catch {}
+              }
+            }
+          }
+        }
+        const hm = full.match(/HEADLINE:\s*(.+)/i)
+        const bm = full.match(/BODY:\s*(.+)/i)
+        const cm = full.match(/CTA:\s*(.+)/i)
+        results.push({
+          headline: hm?.[1]?.trim() || 'Headline',
+          body: bm?.[1]?.trim() || 'Body text',
+          cta: cm?.[1]?.trim() || 'Shop Now',
+          imageId: images[i % images.length]?.id || null,
+          templateId: templateIds[i % templateIds.length],
+        })
+        setVariations([...results])
+      } catch {
+        results.push({
+          headline: 'Headline', body: 'Body text', cta: 'Shop Now',
+          imageId: images[i % images.length]?.id || null,
+          templateId: templateIds[i % templateIds.length],
+        })
+        setVariations([...results])
+      }
+    }
+    setBatchGenerating(false)
+  }
+
+  function loadVariation(i: number) {
+    const v = variations[i]
+    if (!v) return
+    setHeadline(v.headline)
+    setBodyText(v.body)
+    setCtaText(v.cta)
+    setSelectedImageId(v.imageId)
+    setTemplateId(v.templateId)
+    setActiveVariation(i)
   }
 
   const selectedImage = images.find(i => i.id === selectedImageId)
@@ -433,11 +512,19 @@ Nothing else.`,
 
       {/* RIGHT PANEL — Sticky preview */}
       <div className="lg:col-span-7">
-        <div className="lg:sticky lg:top-4">
+        <div className="lg:sticky lg:top-4 space-y-4">
           <div className="bg-paper border border-border rounded-card p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="label">Preview</div>
-              <span className="text-xs text-muted">{template.label} &middot; {size.w}&times;{size.h}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">{template.label} &middot; {size.w}&times;{size.h}</span>
+                <button onClick={generateBatch} disabled={batchGenerating || images.length === 0}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill transition-opacity hover:opacity-80 disabled:opacity-40"
+                  style={{ background: '#00ff97', color: '#000' }}>
+                  {batchGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                  {batchGenerating ? 'Generating...' : 'Generate 10'}
+                </button>
+              </div>
             </div>
             <div className="flex items-start justify-center" ref={previewRef}>
               <div
@@ -475,6 +562,55 @@ Nothing else.`,
               </div>
             </div>
           </div>
+
+          {/* Variations strip */}
+          {variations.length > 0 && (
+            <div className="bg-paper border border-border rounded-card p-4">
+              <div className="label mb-3">Variations ({variations.length}/10)</div>
+              <div className="grid grid-cols-5 gap-2">
+                {variations.map((v, i) => {
+                  const vImg = images.find(img => img.id === v.imageId)
+                  const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
+                  const VTemplate = TEMPLATES.find(t => t.id === v.templateId)!.component
+                  const thumbScale = 100 / size.w
+                  return (
+                    <button key={i} onClick={() => loadVariation(i)}
+                      className="rounded-[4px] overflow-hidden border-2 transition-all hover:opacity-90"
+                      style={{ borderColor: activeVariation === i ? '#00ff97' : '#e0e0e0', aspectRatio: `${size.w}/${size.h}` }}>
+                      <div style={{ width: size.w, height: size.h, transform: `scale(${thumbScale})`, transformOrigin: 'top left' }}>
+                        <VTemplate
+                          imageUrl={vImgUrl}
+                          headline={v.headline}
+                          bodyText={v.body}
+                          ctaText={v.cta}
+                          brandColor={brandColor}
+                          width={size.w}
+                          height={size.h}
+                          textPosition={textPosition}
+                          showCta={showCta}
+                          headlineColor={headlineColor}
+                          bodyColor={bodyColor}
+                          headlineFont={headlineFont}
+                          headlineWeight={headlineWeight}
+                          headlineTransform={headlineTransform}
+                          bodyFont={bodyFont}
+                          bodyWeight={bodyWeight}
+                          bodyTransform={bodyTransform}
+                          bgColor={bgColor}
+                          headlineSizeMul={headlineSizeMul}
+                          bodySizeMul={bodySizeMul}
+                          showOverlay={showOverlay}
+                          overlayOpacity={overlayOpacity / 100}
+                          textBanner={textBanner}
+                          textBannerColor={textBannerColor}
+                        />
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
