@@ -17,8 +17,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     primary_color:   brand.primary_color || '',
     secondary_color: brand.secondary_color || '',
     accent_color:    brand.accent_color || '',
-    client_name:     brand.client_name || '',
-    client_email:    brand.client_email || '',
+    logo_url:        brand.logo_url || '',
   })
 
   async function save() {
@@ -32,8 +31,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
       primary_color:   form.primary_color || null,
       secondary_color: form.secondary_color || null,
       accent_color:    form.accent_color || null,
-      client_name:     form.client_name || null,
-      client_email:    form.client_email || null,
+      logo_url:        form.logo_url || null,
     }).eq('id', brand.id)
     setSaving(false)
     setSaved(true)
@@ -104,18 +102,15 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="label block mb-1.5">Client name</label>
-            <input className={inputCls} value={form.client_name}
-              onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))}
-              placeholder="Jane Smith" />
-          </div>
-          <div>
-            <label className="label block mb-1.5">Client email</label>
-            <input className={inputCls} value={form.client_email}
-              onChange={e => setForm(f => ({ ...f, client_email: e.target.value }))}
-              placeholder="jane@brand.com" />
+        <div>
+          <label className="label block mb-1.5">Logo URL</label>
+          <div className="flex items-center gap-3">
+            {form.logo_url && (
+              <img src={form.logo_url} alt="Logo preview" className="w-10 h-10 rounded-btn border border-border object-contain flex-shrink-0" />
+            )}
+            <input className={inputCls} value={form.logo_url}
+              onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
+              placeholder="https://brand.com/logo.png" />
           </div>
         </div>
       </div>

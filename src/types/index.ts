@@ -52,8 +52,7 @@ export interface Brand {
   target_audience: string | null
   tone_keywords: string[] | null
   avoid_words: string[] | null
-  client_name: string | null
-  client_email: string | null
+  logo_url: string | null
   notes: string | null
   mission: string | null
   vision: string | null

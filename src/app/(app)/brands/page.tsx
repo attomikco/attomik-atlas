@@ -29,8 +29,13 @@ export default async function BrandsPage() {
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-btn border border-border flex-shrink-0"
-                  style={{ background: brand.primary_color || '#f2f2f2' }} />
+                {brand.logo_url ? (
+                  <img src={brand.logo_url} alt={brand.name}
+                    className="w-10 h-10 rounded-btn border border-border flex-shrink-0 object-contain" />
+                ) : (
+                  <div className="w-10 h-10 rounded-btn border border-border flex-shrink-0"
+                    style={{ background: brand.primary_color || '#f2f2f2' }} />
+                )}
                 <div>
                   <div className="font-bold text-base">{brand.name}</div>
                   <div className="text-muted text-sm">{brand.industry || 'DTC'}</div>

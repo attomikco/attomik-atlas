@@ -26,8 +26,7 @@ create table brands (
   target_audience text,
   tone_keywords text[],
   avoid_words text[],
-  client_name text,
-  client_email text,
+  logo_url text,
   notes text,
   -- Structured brand profile
   mission text,
