@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { BrandImage, FontStyle } from '@/types'
-import { ChevronDown, ImageIcon, Check, Eye, EyeOff } from 'lucide-react'
+import { ChevronDown, ImageIcon, Check, Eye, EyeOff, Sparkles, Loader2 } from 'lucide-react'
 import { TextPosition } from './templates/types'
 import OverlayTemplate from './templates/OverlayTemplate'
 import SplitTemplate from './templates/SplitTemplate'
@@ -87,6 +87,7 @@ export default function CreativeBuilder({
   const [textBanner, setTextBanner] = useState<'none' | 'top' | 'bottom'>('none')
   const [textBannerColor, setTextBannerColor] = useState<string>('#000000')
   const [copySource, setCopySource] = useState<'manual' | 'generated'>('manual')
+  const [generating, setGenerating] = useState(false)
 
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -156,6 +157,57 @@ export default function CreativeBuilder({
 
   function getPublicUrl(storagePath: string) {
     return supabase.storage.from('brand-images').getPublicUrl(storagePath).data.publicUrl
+  }
+
+  async function generateCopy() {
+    if (!brandId || generating) return
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandId,
+          tool: 'ad_copy',
+          tone: 'on-brand',
+          platform: 'creative',
+          subtype: 'image ad',
+          brief: `Generate exactly one short headline (under 8 words) and one body line (under 20 words) for a visual ad creative. Format as:
+HEADLINE: <headline text>
+BODY: <body text>
+CTA: <cta text>
+Nothing else.`,
+        }),
+      })
+      let full = ''
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value)
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+              try {
+                const parsed = JSON.parse(line.slice(6))
+                full += parsed.delta?.text || ''
+              } catch {}
+            }
+          }
+        }
+      }
+      // Parse structured response
+      const headlineMatch = full.match(/HEADLINE:\s*(.+)/i)
+      const bodyMatch = full.match(/BODY:\s*(.+)/i)
+      const ctaMatch = full.match(/CTA:\s*(.+)/i)
+      if (headlineMatch) setHeadline(headlineMatch[1].trim())
+      if (bodyMatch) setBodyText(bodyMatch[1].trim())
+      if (ctaMatch) setCtaText(ctaMatch[1].trim())
+    } catch (err) {
+      console.error('Generate failed:', err)
+    }
+    setGenerating(false)
   }
 
   const selectedImage = images.find(i => i.id === selectedImageId)
@@ -244,36 +296,12 @@ export default function CreativeBuilder({
         <div className="bg-paper border border-border rounded-card p-4 space-y-2.5">
           <div className="flex items-center gap-2 mb-1">
             <label className="label">Copy</label>
-            <div className="flex gap-1 ml-auto">
-              {(['manual', 'generated'] as const).map(src => (
-                <button key={src} onClick={() => setCopySource(src)} {...pillCls(copySource === src)}>
-                  {src === 'manual' ? 'Manual' : 'Generated'}
-                </button>
-              ))}
-            </div>
+            <button onClick={generateCopy} disabled={generating}
+              className="ml-auto flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill bg-black text-accent hover:opacity-80 transition-opacity disabled:opacity-50">
+              {generating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {generating ? 'Generating...' : 'AI Generate'}
+            </button>
           </div>
-
-          {copySource === 'generated' && recentCopy.length > 0 && (
-            <div className="max-h-[100px] overflow-y-auto space-y-1 mb-1">
-              {recentCopy.map(c => (
-                <button key={c.id}
-                  onClick={() => {
-                    const lines = c.content.split('\n').filter(Boolean)
-                    if (lines.length >= 2) {
-                      setHeadline(lines[0].slice(0, 60))
-                      setBodyText(lines.slice(1).join(' ').slice(0, 200))
-                    } else {
-                      setHeadline(c.content.slice(0, 60))
-                      setBodyText('')
-                    }
-                  }}
-                  className="w-full text-left bg-cream hover:bg-[#e8e8e8] rounded-btn px-2.5 py-1.5 transition-colors">
-                  <div className="text-[10px] text-muted uppercase tracking-wide">{c.type}</div>
-                  <div className="text-xs line-clamp-1">{c.content}</div>
-                </button>
-              ))}
-            </div>
-          )}
 
           <input className={inputCls} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Headline" />
           <textarea className={inputCls + ' resize-none'} rows={2} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Body text" />
