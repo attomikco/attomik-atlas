@@ -72,7 +72,7 @@ export default function CreativeBuilder({
   const [ctaText, setCtaText] = useState('Shop Now')
   const [textPosition, setTextPosition] = useState<TextPosition>('bottom-left')
   const [showCta, setShowCta] = useState(true)
-  const [headlineColor, setHeadlineColor] = useState<string>('#ffffff')
+  const [headlineColor, setHeadlineColor] = useState<string>(brands[0]?.primary_color || '#ffffff')
   const [bodyColor, setBodyColor] = useState<string>('#ffffff')
   const [headlineFont, setHeadlineFont] = useState<string>('')
   const [bodyFont, setBodyFont] = useState<string>('')
@@ -146,6 +146,7 @@ export default function CreativeBuilder({
     setBodyWeight(b?.weight || bParts[1] || '400')
     setBodyTransform(b?.transform || bParts[2] || 'none')
 
+    setHeadlineColor(brand?.primary_color || '#ffffff')
     setBgColor(brand?.primary_color || '#000000')
     setTextBannerColor(brand?.primary_color || '#000000')
   }, [brandId])
