@@ -37,10 +37,16 @@ const TEMPLATES = [
 ] as const
 
 const SIZES = [
-  { id: 'feed',      label: 'Feed 1:1',        w: 1080, h: 1080 },
-  { id: 'stories',   label: 'Stories 9:16',     w: 1080, h: 1920 },
-  { id: 'landscape', label: 'Landscape 1.91:1', w: 1200, h: 628 },
-  { id: 'square45',  label: 'Square 4:5',       w: 1080, h: 1350 },
+  { id: 'feed',      label: '1:1',        w: 1080, h: 1080 },
+  { id: 'stories',   label: '9:16',       w: 1080, h: 1920 },
+  { id: 'landscape', label: '1.91:1',     w: 1200, h: 628 },
+  { id: 'square45',  label: '4:5',        w: 1080, h: 1350 },
+]
+
+const POSITIONS: { pos: TextPosition; i: number }[] = [
+  { pos: 'top-left', i: 0 }, { pos: 'top-center', i: 1 }, { pos: 'top-right', i: 2 },
+  { pos: 'center', i: 4 },
+  { pos: 'bottom-left', i: 6 }, { pos: 'bottom-center', i: 7 }, { pos: 'bottom-right', i: 8 },
 ]
 
 export default function CreativeBuilder({
@@ -140,86 +146,102 @@ export default function CreativeBuilder({
   const imageUrl = selectedImage ? getPublicUrl(selectedImage.storage_path) : null
 
   // Scale preview to fit container
-  const maxPreviewW = 520
+  const maxPreviewW = 480
   const scale = Math.min(maxPreviewW / size.w, 1)
   const previewW = size.w * scale
   const previewH = size.h * scale
 
-  const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
+  const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
+  const pillCls = (active: boolean) => ({
+    className: "text-xs px-2.5 py-1 rounded-pill border transition-all duration-150 font-semibold",
+    style: active
+      ? { background: '#000', color: '#00ff97', borderColor: '#000' } as const
+      : { borderColor: '#e0e0e0', color: '#666' } as const,
+  })
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
       {/* LEFT PANEL — Controls */}
-      <div className="lg:col-span-2 space-y-5">
-        {/* Brand selector */}
-        <div>
-          <label className="label block mb-1.5">Brand</label>
-          <div className="relative">
-            <select
-              value={brandId}
-              onChange={e => setBrandId(e.target.value)}
-              className={inputCls + ' pr-8 appearance-none'}
-            >
-              {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+      <div className="lg:col-span-5 space-y-4">
+
+        {/* Row 1: Brand + Template + Size */}
+        <div className="bg-paper border border-border rounded-card p-4 space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="label block mb-1">Brand</label>
+              <div className="relative">
+                <select value={brandId} onChange={e => setBrandId(e.target.value)}
+                  className={inputCls + ' pr-8 appearance-none'}>
+                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-end gap-4">
+            <div>
+              <label className="label block mb-1">Template</label>
+              <div className="flex flex-wrap gap-1">
+                {TEMPLATES.map(t => (
+                  <button key={t.id} onClick={() => setTemplateId(t.id)} {...pillCls(templateId === t.id)}>{t.label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="label block mb-1">Size</label>
+              <div className="flex gap-1">
+                {SIZES.map(s => (
+                  <button key={s.id} onClick={() => setSizeId(s.id)} {...pillCls(sizeId === s.id)}>{s.label}</button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Image picker */}
-        <div>
+        {/* Row 2: Image picker */}
+        <div className="bg-paper border border-border rounded-card p-4">
           <label className="label block mb-1.5">Image</label>
           {images.length > 0 ? (
-            <div className="grid grid-cols-4 gap-1.5 max-h-[200px] overflow-y-auto rounded-btn border border-border p-1.5 bg-cream">
+            <div className="grid grid-cols-5 gap-1.5 max-h-[120px] overflow-y-auto">
               {images.map(img => (
-                <button
-                  key={img.id}
+                <button key={img.id}
                   onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
                   className="relative aspect-square rounded-[4px] overflow-hidden border-2 transition-all"
-                  style={{ borderColor: img.id === selectedImageId ? brandColor : 'transparent' }}
-                >
+                  style={{ borderColor: img.id === selectedImageId ? brandColor : 'transparent' }}>
                   <img src={getPublicUrl(img.storage_path)} alt={img.file_name} className="w-full h-full object-cover" />
                   {img.id === selectedImageId && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <Check size={16} className="text-white" />
+                      <Check size={14} className="text-white" />
                     </div>
                   )}
                 </button>
               ))}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-sm text-muted border border-dashed border-border rounded-btn px-3 py-4 justify-center">
-              <ImageIcon size={14} />
-              No images uploaded for this brand
+            <div className="flex items-center gap-2 text-xs text-muted border border-dashed border-border rounded-btn px-3 py-3 justify-center">
+              <ImageIcon size={13} /> No images for this brand
             </div>
           )}
         </div>
 
-        {/* Copy source */}
-        <div>
-          <label className="label block mb-1.5">Copy source</label>
-          <div className="flex gap-1.5 mb-3">
-            {(['manual', 'generated'] as const).map(src => (
-              <button
-                key={src}
-                onClick={() => setCopySource(src)}
-                className="text-xs px-2.5 py-1 rounded-pill border transition-all duration-150 font-semibold"
-                style={copySource === src
-                  ? { background: '#000', color: '#00ff97', borderColor: '#000' }
-                  : { borderColor: '#e0e0e0', color: '#666' }}
-              >
-                {src === 'manual' ? 'Write manually' : 'From generated'}
-              </button>
-            ))}
+        {/* Row 3: Copy */}
+        <div className="bg-paper border border-border rounded-card p-4 space-y-2.5">
+          <div className="flex items-center gap-2 mb-1">
+            <label className="label">Copy</label>
+            <div className="flex gap-1 ml-auto">
+              {(['manual', 'generated'] as const).map(src => (
+                <button key={src} onClick={() => setCopySource(src)} {...pillCls(copySource === src)}>
+                  {src === 'manual' ? 'Manual' : 'Generated'}
+                </button>
+              ))}
+            </div>
           </div>
 
           {copySource === 'generated' && recentCopy.length > 0 && (
-            <div className="max-h-[180px] overflow-y-auto space-y-1.5 mb-3">
+            <div className="max-h-[100px] overflow-y-auto space-y-1 mb-1">
               {recentCopy.map(c => (
-                <button
-                  key={c.id}
+                <button key={c.id}
                   onClick={() => {
-                    // Parse content — try to pull headline and body from it
                     const lines = c.content.split('\n').filter(Boolean)
                     if (lines.length >= 2) {
                       setHeadline(lines[0].slice(0, 60))
@@ -229,272 +251,146 @@ export default function CreativeBuilder({
                       setBodyText('')
                     }
                   }}
-                  className="w-full text-left bg-cream hover:bg-[#e8e8e8] rounded-btn px-3 py-2 transition-colors"
-                >
-                  <div className="text-[10px] text-muted uppercase tracking-wide mb-0.5">{c.type}</div>
-                  <div className="text-xs line-clamp-2">{c.content}</div>
+                  className="w-full text-left bg-cream hover:bg-[#e8e8e8] rounded-btn px-2.5 py-1.5 transition-colors">
+                  <div className="text-[10px] text-muted uppercase tracking-wide">{c.type}</div>
+                  <div className="text-xs line-clamp-1">{c.content}</div>
                 </button>
               ))}
             </div>
           )}
-          {copySource === 'generated' && recentCopy.length === 0 && (
-            <p className="text-xs text-muted mb-3">No generated copy yet for this brand.</p>
-          )}
-        </div>
 
-        {/* Text fields */}
-        <div>
-          <label className="label block mb-1.5">Headline</label>
-          <input className={inputCls} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Main headline" />
-        </div>
-        <div>
-          <label className="label block mb-1.5">Body text</label>
-          <textarea className={inputCls + ' resize-none'} rows={2} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Supporting copy" />
-        </div>
-
-        {/* CTA with toggle */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="label">CTA button</label>
-            <button
-              onClick={() => setShowCta(!showCta)}
-              className="flex items-center gap-1 text-xs text-muted hover:text-ink transition-colors"
-            >
+          <input className={inputCls} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Headline" />
+          <textarea className={inputCls + ' resize-none'} rows={2} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Body text" />
+          <div className="flex items-center gap-2">
+            <input className={inputCls + (showCta ? '' : ' opacity-40')} value={ctaText}
+              onChange={e => setCtaText(e.target.value)} placeholder="CTA text" disabled={!showCta} />
+            <button onClick={() => setShowCta(!showCta)}
+              className="flex items-center gap-1 text-xs text-muted hover:text-ink transition-colors flex-shrink-0 px-2">
               {showCta ? <Eye size={12} /> : <EyeOff size={12} />}
-              {showCta ? 'Visible' : 'Hidden'}
             </button>
           </div>
-          {showCta && (
-            <input className={inputCls} value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="Shop Now" />
-          )}
         </div>
 
-        {/* Text position */}
-        <div>
-          <label className="label block mb-1.5">Text position</label>
-          <div className="grid grid-cols-3 gap-1 w-[140px]">
-            {(['top-left', 'top-center', 'top-right', 'center', 'center', 'center', 'bottom-left', 'bottom-center', 'bottom-right'] as TextPosition[]).map((pos, i) => {
-              // center row: only the middle cell is "center"
-              if ((i === 3 || i === 5)) return <div key={i} />
-              return (
-                <button
-                  key={pos + i}
-                  onClick={() => setTextPosition(pos)}
-                  className="w-full aspect-square rounded-[4px] border transition-all"
-                  style={textPosition === pos
-                    ? { background: '#000', borderColor: '#000' }
-                    : { background: '#f2f2f2', borderColor: '#e0e0e0' }}
-                  title={pos}
-                />
-              )
-            })}
-          </div>
-        </div>
+        {/* Row 4: Style controls — compact grid */}
+        <div className="bg-paper border border-border rounded-card p-4 space-y-3">
+          <label className="label">Style</label>
 
-        {/* Font & color controls */}
-        <div>
-          <label className="label block mb-1.5">Fonts & colors</label>
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted uppercase tracking-wide w-16 flex-shrink-0">Headline</span>
-              <select
-                value={headlineFont}
-                onChange={e => setHeadlineFont(e.target.value)}
-                className={inputCls + ' !py-1.5 pr-6 appearance-none text-xs'}
-              >
-                <option value="">Default (Barlow)</option>
-                {brand?.font_primary && <option value={brand.font_primary}>{brand.font_primary}</option>}
-                {brand?.font_secondary && <option value={brand.font_secondary}>{brand.font_secondary}</option>}
-              </select>
-              <div className="flex gap-1 flex-shrink-0">
-                {brandColors.map(c => (
-                  <button
-                    key={'h-' + c.value}
-                    onClick={() => setHeadlineColor(c.value)}
-                    className="w-6 h-6 rounded-[4px] border-2 transition-all flex-shrink-0"
-                    style={{ background: c.value, borderColor: headlineColor === c.value ? '#000' : '#e0e0e0' }}
-                    title={c.label}
-                  />
-                ))}
+          {/* Text position + Overlay side by side */}
+          <div className="flex gap-5">
+            <div>
+              <span className="text-[10px] text-muted uppercase tracking-wide block mb-1">Position</span>
+              <div className="grid grid-cols-3 gap-0.5 w-[72px]">
+                {Array.from({ length: 9 }).map((_, i) => {
+                  const match = POSITIONS.find(p => p.i === i)
+                  if (!match) return <div key={i} className="w-6 h-6" />
+                  return (
+                    <button key={i} onClick={() => setTextPosition(match.pos)}
+                      className="w-6 h-6 rounded-[3px] border transition-all"
+                      style={textPosition === match.pos
+                        ? { background: '#000', borderColor: '#000' }
+                        : { background: '#f2f2f2', borderColor: '#e0e0e0' }}
+                      title={match.pos} />
+                  )
+                })}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted uppercase tracking-wide w-16 flex-shrink-0">Body</span>
-              <select
-                value={bodyFont}
-                onChange={e => setBodyFont(e.target.value)}
-                className={inputCls + ' !py-1.5 pr-6 appearance-none text-xs'}
-              >
-                <option value="">Default (Barlow)</option>
-                {brand?.font_primary && <option value={brand.font_primary}>{brand.font_primary}</option>}
-                {brand?.font_secondary && <option value={brand.font_secondary}>{brand.font_secondary}</option>}
-              </select>
-              <div className="flex gap-1 flex-shrink-0">
-                {brandColors.map(c => (
-                  <button
-                    key={'b-' + c.value}
-                    onClick={() => setBodyColor(c.value)}
-                    className="w-6 h-6 rounded-[4px] border-2 transition-all flex-shrink-0"
-                    style={{ background: c.value, borderColor: bodyColor === c.value ? '#000' : '#e0e0e0' }}
-                    title={c.label}
-                  />
-                ))}
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted uppercase tracking-wide">Overlay</span>
+                <button onClick={() => setShowOverlay(!showOverlay)}
+                  className="flex items-center gap-1 text-xs text-muted hover:text-ink transition-colors">
+                  {showOverlay ? <Eye size={11} /> : <EyeOff size={11} />}
+                  {showOverlay ? 'On' : 'Off'}
+                </button>
+              </div>
+              {showOverlay && (
+                <div className="flex items-center gap-2">
+                  <input type="range" min={0} max={100} step={5} value={overlayOpacity}
+                    onChange={e => setOverlayOpacity(parseInt(e.target.value))}
+                    className="flex-1 accent-[#00ff97]" />
+                  <span className="text-[11px] font-mono text-muted w-8 text-right">{overlayOpacity}%</span>
+                </div>
+              )}
+              <div>
+                <span className="text-[10px] text-muted uppercase tracking-wide block mb-1">Background</span>
+                <div className="flex gap-1">
+                  {brandColors.map(c => (
+                    <button key={'bg-' + c.value} onClick={() => setBgColor(c.value)}
+                      className="w-5 h-5 rounded-[3px] border-2 transition-all flex-shrink-0"
+                      style={{ background: c.value, borderColor: bgColor === c.value ? '#000' : '#e0e0e0' }}
+                      title={c.label} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Background color */}
-        <div>
-          <label className="label block mb-1.5">Background color</label>
-          <p className="text-[10px] text-muted mb-2">For text panels in Split, Testimonial, etc.</p>
-          <div className="flex gap-1.5">
-            {brandColors.map(c => (
-              <button
-                key={'bg-' + c.value}
-                onClick={() => setBgColor(c.value)}
-                className="w-7 h-7 rounded-[4px] border-2 transition-all flex-shrink-0"
-                style={{ background: c.value, borderColor: bgColor === c.value ? '#000' : '#e0e0e0' }}
-                title={c.label}
-              />
+          {/* Font & color rows */}
+          <div className="space-y-2">
+            {[
+              { label: 'H', font: headlineFont, setFont: setHeadlineFont, color: headlineColor, setColor: setHeadlineColor, sizeMul: headlineSizeMul, setSizeMul: setHeadlineSizeMul },
+              { label: 'B', font: bodyFont, setFont: setBodyFont, color: bodyColor, setColor: setBodyColor, sizeMul: bodySizeMul, setSizeMul: setBodySizeMul },
+            ].map(row => (
+              <div key={row.label} className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">{row.label}</span>
+                <select value={row.font} onChange={e => row.setFont(e.target.value)}
+                  className="text-xs border border-border rounded-btn px-2 py-1 bg-cream focus:outline-none focus:border-accent w-24 flex-shrink-0 appearance-none">
+                  <option value="">Barlow</option>
+                  {brand?.font_primary && <option value={brand.font_primary}>{brand.font_primary}</option>}
+                  {brand?.font_secondary && <option value={brand.font_secondary}>{brand.font_secondary}</option>}
+                </select>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  {brandColors.map(c => (
+                    <button key={row.label + c.value} onClick={() => row.setColor(c.value)}
+                      className="w-5 h-5 rounded-[3px] border-2 transition-all"
+                      style={{ background: c.value, borderColor: row.color === c.value ? '#000' : '#e0e0e0' }} />
+                  ))}
+                </div>
+                <input type="range" min={0.5} max={2} step={0.1} value={row.sizeMul}
+                  onChange={e => row.setSizeMul(parseFloat(e.target.value))}
+                  className="flex-1 accent-[#00ff97] min-w-0" />
+                <span className="text-[10px] font-mono text-muted w-7 text-right flex-shrink-0">{Math.round(row.sizeMul * 100)}%</span>
+              </div>
             ))}
           </div>
-        </div>
-
-        {/* Image overlay */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="label">Image overlay</label>
-            <button
-              onClick={() => setShowOverlay(!showOverlay)}
-              className="flex items-center gap-1 text-xs text-muted hover:text-ink transition-colors"
-            >
-              {showOverlay ? <Eye size={12} /> : <EyeOff size={12} />}
-              {showOverlay ? 'On' : 'Off'}
-            </button>
-          </div>
-          {showOverlay && (
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={overlayOpacity}
-                onChange={e => setOverlayOpacity(parseInt(e.target.value))}
-                className="flex-1 accent-[#00ff97]"
-              />
-              <span className="text-xs font-mono text-muted w-10 text-right">{overlayOpacity}%</span>
-            </div>
-          )}
-        </div>
-
-        {/* Font sizes */}
-        <div>
-          <label className="label block mb-1.5">Font sizes</label>
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-muted uppercase tracking-wide w-16 flex-shrink-0">Headline</span>
-              <input
-                type="range"
-                min={0.5}
-                max={2}
-                step={0.1}
-                value={headlineSizeMul}
-                onChange={e => setHeadlineSizeMul(parseFloat(e.target.value))}
-                className="flex-1 accent-[#00ff97]"
-              />
-              <span className="text-xs font-mono text-muted w-10 text-right">{Math.round(headlineSizeMul * 100)}%</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-muted uppercase tracking-wide w-16 flex-shrink-0">Body</span>
-              <input
-                type="range"
-                min={0.5}
-                max={2}
-                step={0.1}
-                value={bodySizeMul}
-                onChange={e => setBodySizeMul(parseFloat(e.target.value))}
-                className="flex-1 accent-[#00ff97]"
-              />
-              <span className="text-xs font-mono text-muted w-10 text-right">{Math.round(bodySizeMul * 100)}%</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Template selector */}
-        <div>
-          <label className="label block mb-1.5">Template</label>
-          <div className="flex flex-wrap gap-1.5">
-            {TEMPLATES.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setTemplateId(t.id)}
-                className="text-xs px-2.5 py-1 rounded-pill border transition-all duration-150 font-semibold"
-                style={templateId === t.id
-                  ? { background: '#000', color: '#00ff97', borderColor: '#000' }
-                  : { borderColor: '#e0e0e0', color: '#666' }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Size selector */}
-        <div>
-          <label className="label block mb-1.5">Platform size</label>
-          <div className="flex flex-wrap gap-1.5">
-            {SIZES.map(s => (
-              <button
-                key={s.id}
-                onClick={() => setSizeId(s.id)}
-                className="text-xs px-2.5 py-1 rounded-pill border transition-all duration-150 font-semibold"
-                style={sizeId === s.id
-                  ? { background: '#000', color: '#00ff97', borderColor: '#000' }
-                  : { borderColor: '#e0e0e0', color: '#666' }}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] text-muted mt-1.5">{size.w} &times; {size.h}px</p>
         </div>
       </div>
 
-      {/* RIGHT PANEL — Live preview */}
-      <div className="lg:col-span-3">
-        <div className="bg-paper border border-border rounded-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="label">Preview</div>
-            <span className="text-xs text-muted">{template.label} &middot; {size.label}</span>
-          </div>
-          <div className="flex items-start justify-center" ref={previewRef}>
-            <div
-              className="rounded-btn overflow-hidden border border-border shadow-sm"
-              style={{ width: previewW, height: previewH }}
-            >
-              <div style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-                <TemplateComponent
-                  imageUrl={imageUrl}
-                  headline={headline}
-                  bodyText={bodyText}
-                  ctaText={ctaText}
-                  brandColor={brandColor}
-                  width={size.w}
-                  height={size.h}
-                  textPosition={textPosition}
-                  showCta={showCta}
-                  headlineColor={headlineColor}
-                  bodyColor={bodyColor}
-                  headlineFont={headlineFont}
-                  bodyFont={bodyFont}
-                  bgColor={bgColor}
-                  headlineSizeMul={headlineSizeMul}
-                  bodySizeMul={bodySizeMul}
-                  showOverlay={showOverlay}
-                  overlayOpacity={overlayOpacity / 100}
-                />
+      {/* RIGHT PANEL — Sticky preview */}
+      <div className="lg:col-span-7">
+        <div className="lg:sticky lg:top-4">
+          <div className="bg-paper border border-border rounded-card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="label">Preview</div>
+              <span className="text-xs text-muted">{template.label} &middot; {size.w}&times;{size.h}</span>
+            </div>
+            <div className="flex items-start justify-center" ref={previewRef}>
+              <div
+                className="rounded-btn overflow-hidden border border-border shadow-sm"
+                style={{ width: previewW, height: previewH }}
+              >
+                <div style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                  <TemplateComponent
+                    imageUrl={imageUrl}
+                    headline={headline}
+                    bodyText={bodyText}
+                    ctaText={ctaText}
+                    brandColor={brandColor}
+                    width={size.w}
+                    height={size.h}
+                    textPosition={textPosition}
+                    showCta={showCta}
+                    headlineColor={headlineColor}
+                    bodyColor={bodyColor}
+                    headlineFont={headlineFont}
+                    bodyFont={bodyFont}
+                    bgColor={bgColor}
+                    headlineSizeMul={headlineSizeMul}
+                    bodySizeMul={bodySizeMul}
+                    showOverlay={showOverlay}
+                    overlayOpacity={overlayOpacity / 100}
+                  />
+                </div>
               </div>
             </div>
           </div>
