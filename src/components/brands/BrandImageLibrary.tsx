@@ -15,12 +15,30 @@ function getOrientation(w: number | null, h: number | null): string | null {
   return 'square'
 }
 
+function buildFileName(slug: string, orientation: string | null, seq: number, ext: string) {
+  const orient = orientation || 'img'
+  const num = String(seq).padStart(3, '0')
+  return `${slug}_${orient}_${num}.${ext}`
+}
+
+function nextSeqForOrientation(images: BrandImage[], orientation: string | null) {
+  const orient = orientation || 'img'
+  const pattern = new RegExp(`_${orient}_(\\d{3})\\.`)
+  let max = 0
+  for (const img of images) {
+    const m = img.file_name.match(pattern)
+    if (m) max = Math.max(max, parseInt(m[1], 10))
+  }
+  return max + 1
+}
+
 interface Props {
   brandId: string
+  brandSlug: string
   images: BrandImage[]
 }
 
-export default function BrandImageLibrary({ brandId, images }: Props) {
+export default function BrandImageLibrary({ brandId, brandSlug, images }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -34,20 +52,13 @@ export default function BrandImageLibrary({ brandId, images }: Props) {
     setUploading(true)
     setError(null)
 
+    // Track uploaded images so sequence numbers increment within the same batch
+    const uploaded: BrandImage[] = [...images]
+
     for (const file of Array.from(files)) {
-      const ext = file.name.split('.').pop()
-      const path = `${brandId}/images/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
 
-      const { error: uploadError } = await supabase.storage
-        .from('brand-images')
-        .upload(path, file)
-
-      if (uploadError) {
-        setError(uploadError.message)
-        continue
-      }
-
-      // Read image dimensions
+      // Detect dimensions first so we can derive orientation for the name
       let width: number | null = null
       let height: number | null = null
       try {
@@ -56,10 +67,32 @@ export default function BrandImageLibrary({ brandId, images }: Props) {
         height = dims.height
       } catch { /* dimensions are optional */ }
 
+      const orientation = getOrientation(width, height)
+      const seq = nextSeqForOrientation(uploaded, orientation)
+      const fileName = buildFileName(brandSlug, orientation, seq, ext)
+      const storagePath = `${brandId}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('brand-images')
+        .upload(storagePath, file)
+
+      if (uploadError) {
+        setError(uploadError.message)
+        continue
+      }
+
+      const newImage: BrandImage = {
+        id: '', created_at: '', brand_id: brandId,
+        file_name: fileName, storage_path: storagePath,
+        mime_type: file.type, size_bytes: file.size,
+        tag: 'other', alt_text: null, width, height,
+      }
+      uploaded.push(newImage)
+
       await supabase.from('brand_images').insert({
         brand_id: brandId,
-        file_name: file.name,
-        storage_path: path,
+        file_name: fileName,
+        storage_path: storagePath,
         mime_type: file.type,
         size_bytes: file.size,
         tag: 'other' as ImageTag,

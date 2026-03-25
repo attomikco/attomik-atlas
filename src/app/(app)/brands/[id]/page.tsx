@@ -94,7 +94,7 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Row 3: Image library (full width) */}
-        <BrandImageLibrary brandId={brand.id} images={brandImages ?? []} />
+        <BrandImageLibrary brandId={brand.id} brandSlug={brand.slug} images={brandImages ?? []} />
 
         {/* Row 4: Brand profile (full width) */}
         <BrandProfileEditor brand={brand} />
