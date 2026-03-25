@@ -19,6 +19,8 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     secondary_color: brand.secondary_color || '',
     accent_color:    brand.accent_color || '',
     logo_url:        brand.logo_url || '',
+    font_primary:    brand.font_primary || '',
+    font_secondary:  brand.font_secondary || '',
   })
 
   async function save() {
@@ -34,6 +36,8 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
       secondary_color: form.secondary_color || null,
       accent_color:    form.accent_color || null,
       logo_url:        form.logo_url || null,
+      font_primary:    form.font_primary || null,
+      font_secondary:  form.font_secondary || null,
     }).eq('id', brand.id)
     setSaving(false)
     if (err) {
@@ -107,6 +111,26 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
               </div>
             </div>
           ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="label block mb-1.5">Primary font</label>
+            <input className={inputCls} value={form.font_primary}
+              onChange={e => setForm(f => ({ ...f, font_primary: e.target.value }))}
+              placeholder="Barlow" />
+            {form.font_primary && (
+              <p className="text-xs mt-1" style={{ fontFamily: form.font_primary }}>Preview: The quick brown fox</p>
+            )}
+          </div>
+          <div>
+            <label className="label block mb-1.5">Secondary font</label>
+            <input className={inputCls} value={form.font_secondary}
+              onChange={e => setForm(f => ({ ...f, font_secondary: e.target.value }))}
+              placeholder="Georgia" />
+            {form.font_secondary && (
+              <p className="text-xs mt-1" style={{ fontFamily: form.font_secondary }}>Preview: The quick brown fox</p>
+            )}
+          </div>
         </div>
         <div>
           <label className="label block mb-1.5">Logo URL</label>
