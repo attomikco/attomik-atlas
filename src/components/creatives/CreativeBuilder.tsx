@@ -150,14 +150,16 @@ export default function CreativeBuilder({
   // Load brand images + recent copy when brand changes
   useEffect(() => {
     if (!brandId) return
-    setSelectedImageId(null)
-
     supabase
       .from('brand_images')
       .select('*')
       .eq('brand_id', brandId)
       .order('created_at')
-      .then(({ data }) => setImages(data ?? []))
+      .then(({ data }) => {
+        const imgs = data ?? []
+        setImages(imgs)
+        setSelectedImageId(imgs[0]?.id ?? null)
+      })
 
     supabase
       .from('generated_content')
