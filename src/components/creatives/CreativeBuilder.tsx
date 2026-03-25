@@ -106,9 +106,9 @@ export default function CreativeBuilder({
 
   // Load brand fonts from Google Fonts when brand changes
   useEffect(() => {
-    const fonts = [brand?.font_primary, brand?.font_secondary].filter(Boolean) as string[]
+    const fonts = [brand?.font_primary, brand?.font_secondary].filter(Boolean).map(f => f!.split('|')[0]) as string[]
     if (fonts.length === 0) return
-    const families = fonts.map(f => f.replace(/ /g, '+')).join('&family=')
+    const families = Array.from(new Set(fonts)).map(f => f.replace(/ /g, '+')).join('&family=')
     const id = 'brand-fonts-link'
     let link = document.getElementById(id) as HTMLLinkElement | null
     if (!link) {
@@ -122,14 +122,19 @@ export default function CreativeBuilder({
 
   // Auto-select brand fonts when brand changes
   useEffect(() => {
+    // Try JSONB first, then parse from pipe-delimited text columns
     const h = brand?.font_heading
+    const hParts = (brand?.font_primary || '').split('|')
+    setHeadlineFont(h?.family || hParts[0] || '')
+    setHeadlineWeight(h?.weight || hParts[1] || '700')
+    setHeadlineTransform(h?.transform || hParts[2] || 'none')
+
     const b = brand?.font_body
-    setHeadlineFont(h?.family || brand?.font_primary || '')
-    setHeadlineWeight(h?.weight || '700')
-    setHeadlineTransform(h?.transform || 'none')
-    setBodyFont(b?.family || brand?.font_secondary || brand?.font_primary || '')
-    setBodyWeight(b?.weight || '400')
-    setBodyTransform(b?.transform || 'none')
+    const bParts = (brand?.font_secondary || '').split('|')
+    setBodyFont(b?.family || bParts[0] || '')
+    setBodyWeight(b?.weight || bParts[1] || '400')
+    setBodyTransform(b?.transform || bParts[2] || 'none')
+
     setBgColor(brand?.primary_color || '#000000')
     setTextBannerColor(brand?.primary_color || '#000000')
   }, [brandId])
@@ -404,8 +409,10 @@ Nothing else.`,
                 <select value={row.font} onChange={e => row.setFont(e.target.value)}
                   className="text-xs border border-border rounded-btn px-2 py-1 bg-cream focus:outline-none focus:border-accent w-24 flex-shrink-0 appearance-none">
                   <option value="">Barlow</option>
-                  {brand?.font_primary && <option value={brand.font_primary}>{brand.font_primary}</option>}
-                  {brand?.font_secondary && <option value={brand.font_secondary}>{brand.font_secondary}</option>}
+                  {brand?.font_primary && <option value={brand.font_primary.split('|')[0]}>{brand.font_primary.split('|')[0]}</option>}
+                  {brand?.font_secondary && brand.font_secondary.split('|')[0] !== brand.font_primary?.split('|')[0] && (
+                    <option value={brand.font_secondary.split('|')[0]}>{brand.font_secondary.split('|')[0]}</option>
+                  )}
                 </select>
                 <div className="flex gap-0.5 flex-shrink-0">
                   {brandColors.map(c => (

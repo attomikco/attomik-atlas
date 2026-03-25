@@ -22,12 +22,16 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     font_primary:    brand.font_primary || '',
     font_secondary:  brand.font_secondary || '',
   })
-  const [fontHeading, setFontHeading] = useState<FontStyle>(
-    brand.font_heading || { family: brand.font_primary || '', weight: '700', transform: 'none' }
-  )
-  const [fontBody, setFontBody] = useState<FontStyle>(
-    brand.font_body || { family: brand.font_secondary || '', weight: '400', transform: 'none' }
-  )
+  const [fontHeading, setFontHeading] = useState<FontStyle>(() => {
+    if (brand.font_heading) return brand.font_heading
+    const parts = (brand.font_primary || '').split('|')
+    return { family: parts[0] || '', weight: parts[1] || '700', transform: (parts[2] as FontStyle['transform']) || 'none' }
+  })
+  const [fontBody, setFontBody] = useState<FontStyle>(() => {
+    if (brand.font_body) return brand.font_body
+    const parts = (brand.font_secondary || '').split('|')
+    return { family: parts[0] || '', weight: parts[1] || '400', transform: (parts[2] as FontStyle['transform']) || 'none' }
+  })
 
   // Load Google Fonts for preview
   useEffect(() => {
@@ -59,8 +63,8 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
       primary_color:   form.primary_color || null,
       secondary_color: form.secondary_color || null,
       accent_color:    form.accent_color || null,
-      font_primary:    fontHeading.family || null,
-      font_secondary:  fontBody.family || null,
+      font_primary:    fontHeading.family ? `${fontHeading.family}|${fontHeading.weight}|${fontHeading.transform}` : null,
+      font_secondary:  fontBody.family ? `${fontBody.family}|${fontBody.weight}|${fontBody.transform}` : null,
     }).eq('id', brand.id)
 
     if (err) {
