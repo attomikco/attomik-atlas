@@ -54,6 +54,23 @@ create table brand_assets (
 );
 
 -- ============================================
+-- BRAND IMAGES (visual asset library)
+-- ============================================
+create table brand_images (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  brand_id uuid references brands(id) on delete cascade,
+  file_name text not null,
+  storage_path text not null,
+  mime_type text,
+  size_bytes bigint,
+  tag text default 'other' check (tag in ('product', 'lifestyle', 'ugc', 'background', 'seasonal', 'other')),
+  alt_text text,
+  width integer,
+  height integer
+);
+
+-- ============================================
 -- BRAND VOICE EXAMPLES
 -- ============================================
 create table brand_voice_examples (
@@ -129,6 +146,7 @@ create table email_sends (
 -- ============================================
 alter table brands enable row level security;
 alter table brand_assets enable row level security;
+alter table brand_images enable row level security;
 alter table brand_voice_examples enable row level security;
 alter table campaigns enable row level security;
 alter table generated_content enable row level security;
@@ -136,6 +154,7 @@ alter table email_sends enable row level security;
 
 create policy "authenticated_all" on brands for all to authenticated using (true);
 create policy "authenticated_all" on brand_assets for all to authenticated using (true);
+create policy "authenticated_all" on brand_images for all to authenticated using (true);
 create policy "authenticated_all" on brand_voice_examples for all to authenticated using (true);
 create policy "authenticated_all" on campaigns for all to authenticated using (true);
 create policy "authenticated_all" on generated_content for all to authenticated using (true);

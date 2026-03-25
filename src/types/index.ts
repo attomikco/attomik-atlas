@@ -2,6 +2,7 @@ export type BrandStatus = 'active' | 'paused' | 'offboarded'
 export type CampaignType = 'email' | 'ad_copy' | 'social' | 'seo' | 'dtc_brief'
 export type CampaignStatus = 'draft' | 'in_review' | 'approved' | 'scheduled' | 'sent' | 'archived'
 export type AssetType = 'guidelines' | 'html_template' | 'logo' | 'other'
+export type ImageTag = 'product' | 'lifestyle' | 'ugc' | 'background' | 'seasonal' | 'other'
 
 export interface Competitor {
   name: string
@@ -75,6 +76,20 @@ export interface BrandAsset {
   parsed_text: string | null
 }
 
+export interface BrandImage {
+  id: string
+  created_at: string
+  brand_id: string
+  file_name: string
+  storage_path: string
+  mime_type: string | null
+  size_bytes: number | null
+  tag: ImageTag
+  alt_text: string | null
+  width: number | null
+  height: number | null
+}
+
 export interface Campaign {
   id: string
   created_at: string
@@ -132,6 +147,7 @@ export type Database = {
     Tables: {
       brands: { Row: Brand; Insert: Omit<Brand, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Brand>; Relationships: Rel[] }
       brand_assets: { Row: BrandAsset; Insert: Omit<BrandAsset, 'id' | 'created_at'>; Update: Partial<BrandAsset>; Relationships: Rel[] }
+      brand_images: { Row: BrandImage; Insert: Omit<BrandImage, 'id' | 'created_at'>; Update: Partial<BrandImage>; Relationships: Rel[] }
       brand_voice_examples: { Row: BrandVoiceExample; Insert: Omit<BrandVoiceExample, 'id' | 'created_at'>; Update: Partial<BrandVoiceExample>; Relationships: Rel[] }
       campaigns: { Row: Campaign; Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Campaign>; Relationships: Rel[] }
       generated_content: { Row: GeneratedContent; Insert: Omit<GeneratedContent, 'id' | 'created_at'>; Update: Partial<GeneratedContent>; Relationships: Rel[] }

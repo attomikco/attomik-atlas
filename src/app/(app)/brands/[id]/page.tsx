@@ -6,15 +6,17 @@ import BrandVoiceEditor from '@/components/brands/BrandVoiceEditor'
 import BrandProfileEditor from '@/components/brands/BrandProfileEditor'
 import BrandVoiceExamples from '@/components/brands/BrandVoiceExamples'
 import BrandUploadAsset from '@/components/brands/BrandUploadAsset'
+import BrandImageLibrary from '@/components/brands/BrandImageLibrary'
 
 export default async function BrandPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const [{ data: brand }, { data: assets }, { data: campaigns }, { data: voiceExamples }] = await Promise.all([
+  const [{ data: brand }, { data: assets }, { data: campaigns }, { data: voiceExamples }, { data: brandImages }] = await Promise.all([
     supabase.from('brands').select('*').eq('id', id).single(),
     supabase.from('brand_assets').select('*').eq('brand_id', id).order('created_at'),
     supabase.from('campaigns').select('*').eq('brand_id', id).order('created_at', { ascending: false }).limit(10),
     supabase.from('brand_voice_examples').select('*').eq('brand_id', id).order('created_at'),
+    supabase.from('brand_images').select('*').eq('brand_id', id).order('created_at'),
   ])
   if (!brand) notFound()
 
@@ -91,7 +93,10 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* Row 3: Brand profile (full width) */}
+        {/* Row 3: Image library (full width) */}
+        <BrandImageLibrary brandId={brand.id} images={brandImages ?? []} />
+
+        {/* Row 4: Brand profile (full width) */}
         <BrandProfileEditor brand={brand} />
 
         {/* Row 4: Voice examples (full width) */}
