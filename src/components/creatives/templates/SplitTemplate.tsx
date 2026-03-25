@@ -12,7 +12,7 @@ export default function SplitTemplate({ imageUrl, headline, bodyText, ctaText, b
           <div className="absolute inset-0 bg-[#e0e0e0]" />
         )}
       </div>
-      <div className="flex flex-col" style={{ width: '40%', padding: '6%', justifyContent: pos.justifyContent, textAlign: pos.textAlign, background: bgColor }}>
+      <div className="flex flex-col" style={{ width: '40%', padding: '6%', justifyContent: 'center', textAlign: pos.textAlign, background: bgColor }}>
         {headline && (
           <div className="leading-tight mb-[6%]" style={{ fontSize: width * 0.04 * headlineSizeMul, color: headlineColor, fontFamily: headlineFont || undefined, fontWeight: parseInt(headlineWeight), textTransform: headlineTransform as any }}>
             {headline}

@@ -89,6 +89,7 @@ export default function CreativeBuilder({
   const [copySource, setCopySource] = useState<'manual' | 'generated'>('manual')
   const [generating, setGenerating] = useState(false)
   const [batchGenerating, setBatchGenerating] = useState(false)
+  const batchAbortRef = useRef<AbortController | null>(null)
   const [variations, setVariations] = useState<{ headline: string; body: string; cta: string; imageId: string | null; templateId: string }[]>([])
   const [activeVariation, setActiveVariation] = useState<number | null>(null)
 
@@ -218,8 +219,15 @@ Nothing else.`,
     setGenerating(false)
   }
 
+  function stopBatch() {
+    batchAbortRef.current?.abort()
+    setBatchGenerating(false)
+  }
+
   async function generateBatch() {
     if (!brandId || batchGenerating || images.length === 0) return
+    const abort = new AbortController()
+    batchAbortRef.current = abort
     setBatchGenerating(true)
     setVariations([])
     setActiveVariation(null)
@@ -228,10 +236,12 @@ Nothing else.`,
     const results: typeof variations = []
 
     for (let i = 0; i < 10; i++) {
+      if (abort.signal.aborted) break
       try {
         const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: abort.signal,
           body: JSON.stringify({
             brandId,
             tool: 'ad_copy',
@@ -267,14 +277,14 @@ Nothing else.`,
           headline: hm?.[1]?.trim() || 'Headline',
           body: bm?.[1]?.trim() || 'Body text',
           cta: cm?.[1]?.trim() || 'Shop Now',
-          imageId: images[i % images.length]?.id || null,
+          imageId: images[Math.floor(Math.random() * images.length)]?.id || null,
           templateId: templateIds[i % templateIds.length],
         })
         setVariations([...results])
       } catch {
         results.push({
           headline: 'Headline', body: 'Body text', cta: 'Shop Now',
-          imageId: images[i % images.length]?.id || null,
+          imageId: images[Math.floor(Math.random() * images.length)]?.id || null,
           templateId: templateIds[i % templateIds.length],
         })
         setVariations([...results])
@@ -518,12 +528,19 @@ Nothing else.`,
               <div className="label">Preview</div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-muted">{template.label} &middot; {size.w}&times;{size.h}</span>
-                <button onClick={generateBatch} disabled={batchGenerating || images.length === 0}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill transition-opacity hover:opacity-80 disabled:opacity-40"
-                  style={{ background: '#00ff97', color: '#000' }}>
-                  {batchGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  {batchGenerating ? 'Generating...' : 'Generate 10'}
-                </button>
+                {batchGenerating ? (
+                  <button onClick={stopBatch}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill bg-ink text-paper hover:opacity-80 transition-opacity">
+                    Stop ({variations.length}/10)
+                  </button>
+                ) : (
+                  <button onClick={generateBatch} disabled={images.length === 0}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{ background: '#00ff97', color: '#000' }}>
+                    <Sparkles size={12} />
+                    Generate 10
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex items-start justify-center" ref={previewRef}>

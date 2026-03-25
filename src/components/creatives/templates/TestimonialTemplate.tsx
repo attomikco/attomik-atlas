@@ -13,7 +13,7 @@ export default function TestimonialTemplate({ imageUrl, headline, bodyText, ctaT
           <div className="absolute inset-0 bg-[#e0e0e0]" />
         )}
       </div>
-      <div className="flex-1 flex flex-col" style={{ padding: '5%', justifyContent: pos.justifyContent, textAlign: pos.textAlign, background: bgColor }}>
+      <div className="flex-1 flex flex-col items-center" style={{ padding: '5%', justifyContent: 'center', textAlign: 'center', background: bgColor }}>
         {bodyText && (
           <div className="italic leading-snug mb-[3%]" style={{ fontSize: width * 0.036 * bodySizeMul, color: bodyColor, fontWeight: parseInt(bodyWeight), textTransform: bodyTransform as any }}>
             &ldquo;{bodyText}&rdquo;
