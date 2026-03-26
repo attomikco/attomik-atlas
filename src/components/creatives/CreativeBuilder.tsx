@@ -100,7 +100,14 @@ export default function CreativeBuilder({
   const [batchGenerating, setBatchGenerating] = useState(false)
   const [batchCount, setBatchCount] = useState(5)
   const batchAbortRef = useRef<AbortController | null>(null)
-  type Variation = { headline: string; body: string; cta: string; imageId: string | null; templateId: string }
+  type StyleSnapshot = {
+    headlineColor: string; bodyColor: string; headlineFont: string; headlineWeight: string
+    headlineTransform: string; bodyFont: string; bodyWeight: string; bodyTransform: string
+    bgColor: string; headlineSizeMul: number; bodySizeMul: number; showOverlay: boolean
+    overlayOpacity: number; textBanner: 'none' | 'top' | 'bottom'; textBannerColor: string
+    textPosition: TextPosition; showCta: boolean
+  }
+  type Variation = { headline: string; body: string; cta: string; imageId: string | null; templateId: string; style: StyleSnapshot }
   const [variations, setVariations] = useState<Variation[]>([])
   const [activeVariation, setActiveVariation] = useState<number | null>(null)
   const [savedDrafts, setSavedDrafts] = useState<Variation[]>([])
@@ -166,6 +173,20 @@ export default function CreativeBuilder({
     return supabase.storage.from('brand-images').getPublicUrl(storagePath).data.publicUrl
   }
 
+  function captureStyle(): StyleSnapshot {
+    return { headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta }
+  }
+
+  function applyStyle(s: StyleSnapshot) {
+    setHeadlineColor(s.headlineColor); setBodyColor(s.bodyColor)
+    setHeadlineFont(s.headlineFont); setHeadlineWeight(s.headlineWeight); setHeadlineTransform(s.headlineTransform)
+    setBodyFont(s.bodyFont); setBodyWeight(s.bodyWeight); setBodyTransform(s.bodyTransform)
+    setBgColor(s.bgColor); setHeadlineSizeMul(s.headlineSizeMul); setBodySizeMul(s.bodySizeMul)
+    setShowOverlay(s.showOverlay); setOverlayOpacity(s.overlayOpacity)
+    setTextBanner(s.textBanner); setTextBannerColor(s.textBannerColor)
+    setTextPosition(s.textPosition); setShowCta(s.showCta)
+  }
+
   // ── AI Generate ────────────────────────────────────────────────────
   async function generateCopy() {
     if (!brandId || generating) return
@@ -208,10 +229,10 @@ export default function CreativeBuilder({
         const reader = res.body?.getReader(); const decoder = new TextDecoder()
         if (reader) { while (true) { const { done, value } = await reader.read(); if (done) break; const chunk = decoder.decode(value); for (const line of chunk.split('\n')) { if (line.startsWith('data: ') && line !== 'data: [DONE]') { try { full += JSON.parse(line.slice(6)).delta?.text || '' } catch {} } } } }
         const hm = full.match(/HEADLINE:\s*(.+)/i); const bm = full.match(/BODY:\s*(.+)/i); const cm = full.match(/CTA:\s*(.+)/i)
-        results.push({ headline: hm?.[1]?.trim() || 'Headline', body: bm?.[1]?.trim() || 'Body text', cta: cm?.[1]?.trim() || 'Shop Now', imageId: images[Math.floor(Math.random() * images.length)]?.id || null, templateId: templateIds[i % templateIds.length] })
+        results.push({ headline: hm?.[1]?.trim() || 'Headline', body: bm?.[1]?.trim() || 'Body text', cta: cm?.[1]?.trim() || 'Shop Now', imageId: images[Math.floor(Math.random() * images.length)]?.id || null, templateId: templateIds[i % templateIds.length], style: captureStyle() })
         setVariations([...results])
       } catch {
-        results.push({ headline: 'Headline', body: 'Body text', cta: 'Shop Now', imageId: images[Math.floor(Math.random() * images.length)]?.id || null, templateId: templateIds[i % templateIds.length] })
+        results.push({ headline: 'Headline', body: 'Body text', cta: 'Shop Now', imageId: images[Math.floor(Math.random() * images.length)]?.id || null, templateId: templateIds[i % templateIds.length], style: captureStyle() })
         setVariations([...results])
       }
     }
@@ -219,9 +240,9 @@ export default function CreativeBuilder({
   }
 
   // ── Variation / Draft helpers ──────────────────────────────────────
-  function loadVariation(i: number) { const v = variations[i]; if (!v) return; setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta); setSelectedImageId(v.imageId); setTemplateId(v.templateId); setActiveVariation(i); setActiveDraft(null) }
+  function loadVariation(i: number) { const v = variations[i]; if (!v) return; setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta); setSelectedImageId(v.imageId); setTemplateId(v.templateId); applyStyle(v.style); setActiveVariation(i); setActiveDraft(null) }
   function saveVariationAsDraft(i: number) { const v = variations[i]; if (!v) return; if (savedDrafts.some(d => d.headline === v.headline && d.imageId === v.imageId)) return; setSavedDrafts(prev => [...prev, v]) }
-  function loadDraft(i: number) { const d = savedDrafts[i]; if (!d) return; setHeadline(d.headline); setBodyText(d.body); setCtaText(d.cta); setSelectedImageId(d.imageId); setTemplateId(d.templateId); setActiveDraft(i); setActiveVariation(null) }
+  function loadDraft(i: number) { const d = savedDrafts[i]; if (!d) return; setHeadline(d.headline); setBodyText(d.body); setCtaText(d.cta); setSelectedImageId(d.imageId); setTemplateId(d.templateId); applyStyle(d.style); setActiveDraft(i); setActiveVariation(null) }
   function removeDraft(i: number) { setSavedDrafts(prev => prev.filter((_, j) => j !== i)); if (activeDraft === i) setActiveDraft(null); else if (activeDraft !== null && activeDraft > i) setActiveDraft(activeDraft - 1) }
 
   // ── Export ─────────────────────────────────────────────────────────
@@ -294,14 +315,36 @@ export default function CreativeBuilder({
       : { borderColor: '#e0e0e0', color: '#666' } as const,
   })
 
-  // Shared template props for thumbnails
-  const thumbProps = (overrides: Partial<Variation> & { imageUrl: string | null }) => ({
-    ...templateProps,
-    headline: overrides.headline ?? headline,
-    bodyText: overrides.body ?? bodyText,
-    ctaText: overrides.cta ?? ctaText,
-    imageUrl: overrides.imageUrl,
-    width: size.w, height: size.h,
+  // Template props for a thumbnail — uses the variation's own saved style
+  const thumbProps = (v: Variation, imgUrl: string | null) => ({
+    imageUrl: imgUrl,
+    headline: v.headline,
+    bodyText: v.body,
+    ctaText: v.cta,
+    brandColor,
+    brandName: brand?.name || '',
+    width: size.w,
+    height: size.h,
+    ctaColor,
+    ctaFontColor,
+    // Style from the variation's snapshot
+    headlineColor: v.style.headlineColor,
+    bodyColor: v.style.bodyColor,
+    headlineFont: v.style.headlineFont,
+    headlineWeight: v.style.headlineWeight,
+    headlineTransform: v.style.headlineTransform,
+    bodyFont: v.style.bodyFont,
+    bodyWeight: v.style.bodyWeight,
+    bodyTransform: v.style.bodyTransform,
+    bgColor: v.style.bgColor,
+    headlineSizeMul: v.style.headlineSizeMul,
+    bodySizeMul: v.style.bodySizeMul,
+    showOverlay: v.style.showOverlay,
+    overlayOpacity: v.style.overlayOpacity / 100,
+    textBanner: v.style.textBanner,
+    textBannerColor: v.style.textBannerColor,
+    textPosition: v.style.textPosition,
+    showCta: v.style.showCta,
   })
 
   // ── Render ─────────────────────────────────────────────────────────
@@ -424,7 +467,7 @@ export default function CreativeBuilder({
                         className="w-full rounded-[4px] overflow-hidden border-2 transition-all hover:opacity-90"
                         style={{ borderColor: activeVariation === i ? '#00ff97' : '#e0e0e0', aspectRatio: `${size.w}/${size.h}` }}>
                         <div style={{ width: size.w, height: size.h, transform: `scale(${ts})`, transformOrigin: 'top left' }}>
-                          <VTemplate {...thumbProps({ ...v, imageUrl: vImgUrl })} />
+                          <VTemplate {...thumbProps(v, vImgUrl)} />
                         </div>
                       </button>
                       <button onClick={() => saveVariationAsDraft(i)}
@@ -455,7 +498,7 @@ export default function CreativeBuilder({
                         className="w-full rounded-[4px] overflow-hidden border-2 transition-all hover:opacity-90"
                         style={{ borderColor: activeDraft === i ? '#00ff97' : '#e0e0e0', aspectRatio: `${size.w}/${size.h}` }}>
                         <div style={{ width: size.w, height: size.h, transform: `scale(${ts})`, transformOrigin: 'top left' }}>
-                          <DTemplate {...thumbProps({ ...d, imageUrl: dImgUrl })} />
+                          <DTemplate {...thumbProps(d, dImgUrl)} />
                         </div>
                       </button>
                       <button onClick={() => removeDraft(i)}
