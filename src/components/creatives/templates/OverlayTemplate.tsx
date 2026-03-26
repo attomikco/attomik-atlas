@@ -44,7 +44,7 @@ export default function OverlayTemplate({
         ...(isTop ? { top: 0 } : { bottom: 0 }),
         height: Math.round(height * GRADIENT_HEIGHT),
         background: isTop
-          ? 'linear-gradient(to top, transparent 0%, rgba(0,0,0,0.72) 55%, rgba(0,0,0,0.3) 80%, transparent 100%)'
+          ? 'linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.3) 45%, transparent 65%)'
           : 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.3) 45%, transparent 65%)',
         pointerEvents: 'none',
       }
