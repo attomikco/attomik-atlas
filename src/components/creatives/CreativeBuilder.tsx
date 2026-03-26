@@ -316,10 +316,10 @@ export default function CreativeBuilder({
   }
 
   // ── Preview scaling ────────────────────────────────────────────────
-  const maxPreviewW = 600
-  const scale = maxPreviewW / size.w
+  const maxPreviewH = 420
+  const scale = maxPreviewH / size.h
   const previewW = Math.round(size.w * scale)
-  const previewH = Math.round(size.h * scale)
+  const previewH = maxPreviewH
 
   // ── Styles ─────────────────────────────────────────────────────────
   const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
