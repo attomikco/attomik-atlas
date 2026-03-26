@@ -1,15 +1,15 @@
 import { TemplateProps, ff, px } from './types'
 
-const IMAGE_RATIO     = 0.65
+const IMAGE_RATIO     = 0.50
 const PANEL_PAD_H     = 56
 const PANEL_PAD_V     = 32
-const QUOTE_SIZE      = 30
-const NAME_SIZE       = 20
-const HANDLE_SIZE     = 15
-const STAR_SIZE       = 22
-const CTA_SIZE        = 22
-const CTA_PAD_V       = 14
-const CTA_PAD_H       = 36
+const QUOTE_SIZE      = 38
+const NAME_SIZE       = 24
+const HANDLE_SIZE     = 18
+const STAR_SIZE       = 26
+const CTA_SIZE        = 24
+const CTA_PAD_V       = 16
+const CTA_PAD_H       = 40
 
 export default function TestimonialTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,

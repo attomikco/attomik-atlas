@@ -28,7 +28,7 @@ export default function OverlayTemplate({
   return (
     <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont), background: bgColor }}>
       {imageUrl ? (
-        <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: textPosition.startsWith('bottom') ? 'center top' : 'center center' }} />
       ) : (
         <div style={{ position: 'absolute', inset: 0, background: bgColor || '#1a1a1a' }} />
       )}
@@ -77,7 +77,8 @@ export default function OverlayTemplate({
             <div style={{
               width: px(DIVIDER_W, width), height: px(DIVIDER_H, width),
               background: headlineColor, borderRadius: 2,
-              margin: `${px(GAP_HEADLINE_DIVIDER, width)}px 0 ${px(GAP_DIVIDER_BODY, width)}px`,
+              margin: `${px(GAP_HEADLINE_DIVIDER, width)}px ${pos.textAlign === 'center' ? 'auto' : '0'} ${px(GAP_DIVIDER_BODY, width)}px`,
+              ...(pos.textAlign === 'center' ? {} : pos.textAlign === 'right' ? { marginLeft: 'auto' } : {}),
             }} />
           )}
 
