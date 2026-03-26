@@ -19,7 +19,7 @@ export default function OverlayTemplate({
   showCta, headlineFont, headlineWeight, headlineTransform, headlineColor,
   bodyFont, bodyWeight, bodyTransform, bodyColor, headlineSizeMul, bodySizeMul,
   ctaColor, ctaFontColor, bgColor, textPosition,
-  showOverlay, overlayOpacity, textBanner, textBannerColor,
+  showOverlay, overlayOpacity, textBanner, textBannerColor, imagePosition,
 }: TemplateProps) {
   const p = px(EDGE_PAD, width)
   const pos = positionStyles(textPosition)
@@ -28,7 +28,7 @@ export default function OverlayTemplate({
   return (
     <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont), background: bgColor }}>
       {imageUrl ? (
-        <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: textPosition.startsWith('bottom') ? 'center top' : 'center center' }} />
+        <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}` }} />
       ) : (
         <div style={{ position: 'absolute', inset: 0, background: bgColor || '#1a1a1a' }} />
       )}

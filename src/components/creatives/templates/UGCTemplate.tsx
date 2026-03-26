@@ -15,7 +15,7 @@ export default function CardTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform, headlineColor,
   bodyFont, bodyWeight, bodyTransform, bodyColor, headlineSizeMul, bodySizeMul,
-  ctaColor, ctaFontColor, bgColor,
+  ctaColor, ctaFontColor, bgColor, imagePosition,
 }: TemplateProps) {
   const imgH = Math.round(height * IMAGE_RATIO)
   const padH = px(PANEL_PAD_H, width)
@@ -26,7 +26,7 @@ export default function CardTemplate({
       {/* Image */}
       <div style={{ position: 'relative', height: imgH, flexShrink: 0 }}>
         {imageUrl ? (
-          <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}` }} />
         ) : (
           <div style={{ position: 'absolute', inset: 0, background: '#e0e0e0' }} />
         )}

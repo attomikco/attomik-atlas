@@ -16,7 +16,7 @@ export default function StatTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   headlineFont, headlineWeight, headlineTransform,
   bodyFont, bodyWeight, bodyTransform, headlineSizeMul, bodySizeMul,
-  headlineColor, bodyColor, bgColor, showOverlay, overlayOpacity,
+  headlineColor, bodyColor, bgColor, showOverlay, overlayOpacity, imagePosition,
 }: TemplateProps) {
   const p = px(EDGE_PAD, width)
   const statColor = (headlineColor === '#ffffff' || headlineColor === '#fff') ? brandColor : headlineColor
@@ -24,7 +24,7 @@ export default function StatTemplate({
   return (
     <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont), background: bgColor }}>
       {imageUrl ? (
-        <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}` }} />
       ) : (
         <div style={{ position: 'absolute', inset: 0, background: bgColor || '#1a1a1a' }} />
       )}

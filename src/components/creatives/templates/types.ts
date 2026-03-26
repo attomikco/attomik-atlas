@@ -30,6 +30,7 @@ export interface TemplateProps {
   textBannerColor: string
   ctaColor: string
   ctaFontColor: string
+  imagePosition: string
 }
 
 /** Banner style for text bar at top or bottom */

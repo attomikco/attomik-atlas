@@ -17,7 +17,7 @@ export default function TestimonialTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform,
   bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul,
-  headlineColor, bodyColor, ctaColor, ctaFontColor,
+  headlineColor, bodyColor, ctaColor, ctaFontColor, imagePosition,
 }: TemplateProps) {
   const imgH = Math.round(height * IMAGE_RATIO)
   const padH = px(PANEL_PAD_H, width)
@@ -30,7 +30,7 @@ export default function TestimonialTemplate({
     <div style={{ display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', width, height, fontFamily: ff(bodyFont) }}>
       <div style={{ position: 'relative', height: imgH, flexShrink: 0 }}>
         {imageUrl ? (
-          <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+          <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}` }} />
         ) : (
           <div style={{ position: 'absolute', inset: 0, background: '#e0e0e0' }} />
         )}

@@ -18,7 +18,7 @@ export default function SplitTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform,
   bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul,
-  headlineColor, bodyColor, ctaColor, ctaFontColor, textPosition,
+  headlineColor, bodyColor, ctaColor, ctaFontColor, textPosition, imagePosition,
 }: TemplateProps) {
   const imgW = Math.round(width * IMAGE_RATIO)
   const panelW = width - imgW
@@ -29,7 +29,7 @@ export default function SplitTemplate({
     <div style={{ display: 'flex', overflow: 'hidden', width, height, fontFamily: ff(bodyFont) }}>
       <div style={{ position: 'relative', width: imgW, height: '100%', flexShrink: 0 }}>
         {imageUrl ? (
-          <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}` }} />
         ) : (
           <div style={{ position: 'absolute', inset: 0, background: '#e0e0e0' }} />
         )}

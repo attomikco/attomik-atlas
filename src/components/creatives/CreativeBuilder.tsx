@@ -103,6 +103,7 @@ export default function CreativeBuilder({
   const [bodySizeMul, setBodySizeMul] = useState(1)
   const [showOverlay, setShowOverlay] = useState(true)
   const [overlayOpacity, setOverlayOpacity] = useState(10)
+  const [imagePosition, setImagePosition] = useState<string>('center')
   const [textBanner, setTextBanner] = useState<'none' | 'top' | 'bottom'>('none')
   const [textBannerColor, setTextBannerColor] = useState<string>('#000000')
   const [generating, setGenerating] = useState(false)
@@ -114,7 +115,7 @@ export default function CreativeBuilder({
     headlineTransform: string; bodyFont: string; bodyWeight: string; bodyTransform: string
     bgColor: string; headlineSizeMul: number; bodySizeMul: number; showOverlay: boolean
     overlayOpacity: number; textBanner: 'none' | 'top' | 'bottom'; textBannerColor: string
-    textPosition: TextPosition; showCta: boolean
+    textPosition: TextPosition; showCta: boolean; imagePosition: string
   }
   type Variation = { headline: string; body: string; cta: string; imageId: string | null; templateId: string; style: StyleSnapshot }
   const [variations, setVariations] = useState<Variation[]>([])
@@ -203,7 +204,7 @@ export default function CreativeBuilder({
   useEffect(() => {
     if (!brandId) return
     supabase.from('brand_images').select('*').eq('brand_id', brandId).order('created_at')
-      .then(({ data }) => { const imgs = data ?? []; setImages(imgs); setSelectedImageId(imgs[0]?.id ?? null) })
+      .then(({ data }) => { const imgs = data ?? []; setImages(imgs); setSelectedImageId(imgs.length > 0 ? imgs[Math.floor(Math.random() * imgs.length)].id : null) })
     supabase.from('generated_content').select('id, content, type, created_at').eq('brand_id', brandId)
       .order('created_at', { ascending: false }).limit(20)
       .then(({ data }) => setRecentCopy((data as GeneratedCopy[]) ?? []))
@@ -214,7 +215,7 @@ export default function CreativeBuilder({
   }
 
   function captureStyle(): StyleSnapshot {
-    return { headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta }
+    return { headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta, imagePosition }
   }
 
   function applyStyle(s: StyleSnapshot) {
@@ -225,6 +226,7 @@ export default function CreativeBuilder({
     setShowOverlay(s.showOverlay); setOverlayOpacity(s.overlayOpacity)
     setTextBanner(s.textBanner); setTextBannerColor(s.textBannerColor)
     setTextPosition(s.textPosition); setShowCta(s.showCta)
+    setImagePosition(s.imagePosition || 'center')
   }
 
   // ── AI Generate ────────────────────────────────────────────────────
@@ -290,7 +292,7 @@ export default function CreativeBuilder({
     imageUrl, headline, bodyText, ctaText, brandColor, brandName: brand?.name || '',
     textPosition, showCta, headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform,
     bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul,
-    showOverlay, overlayOpacity: overlayOpacity / 100, textBanner, textBannerColor, ctaColor, ctaFontColor,
+    showOverlay, overlayOpacity: overlayOpacity / 100, textBanner, textBannerColor, ctaColor, ctaFontColor, imagePosition,
   }
 
   const renderAtFullSize = useCallback(async (w: number, h: number): Promise<string> => {
@@ -414,6 +416,7 @@ export default function CreativeBuilder({
     textBannerColor: v.style.textBannerColor,
     textPosition: v.style.textPosition,
     showCta: v.style.showCta,
+    imagePosition: v.style.imagePosition || 'center',
   })
 
   // ── Render ─────────────────────────────────────────────────────────
@@ -695,6 +698,21 @@ export default function CreativeBuilder({
                         title={match.pos} />
                     )
                   })}
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted uppercase tracking-wide block mb-1">Image</span>
+                <div className="grid grid-cols-3 gap-0.5 w-[72px]">
+                  {['top', 'center', 'bottom'].map(pos => (
+                    <button key={pos} onClick={() => setImagePosition(pos)}
+                      className="w-6 h-6 rounded-[3px] border transition-all text-[8px] font-bold"
+                      style={imagePosition === pos
+                        ? { background: '#000', borderColor: '#000', color: '#00ff97' }
+                        : { background: '#f2f2f2', borderColor: '#e0e0e0', color: '#999' }}
+                      title={pos}>
+                      {pos[0].toUpperCase()}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="flex-1 space-y-2">
