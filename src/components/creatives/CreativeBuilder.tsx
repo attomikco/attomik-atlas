@@ -334,13 +334,7 @@ export default function CreativeBuilder({
   async function exportPng() {
     setExporting(true)
     try {
-      const templateEl = previewRef.current?.querySelector('[data-template]') as HTMLElement | null
-      if (!templateEl) throw new Error('Template element not found')
-      // Remove scale transform so html2canvas captures at full size
-      const savedTransform = templateEl.style.transform
-      templateEl.style.transform = 'none'
-      const dataUrl = await captureElement(templateEl, size.w, size.h)
-      templateEl.style.transform = savedTransform
+      const dataUrl = await renderAndCapture(TemplateComponent, templateProps, size.w, size.h)
       const fileName = `${brandSlug}-${templateId}-${sizeId}-${Date.now()}.png`
       const link = document.createElement('a'); link.download = fileName; link.href = dataUrl; link.click()
       if (campaignId && brand) {
@@ -532,7 +526,7 @@ export default function CreativeBuilder({
             {/* Preview canvas + FB copy */}
             <div className="flex gap-5 items-start" ref={previewRef}>
               <div className="rounded-btn overflow-hidden border border-border shadow-sm flex-shrink-0" style={{ width: previewW, height: previewH }}>
-                <div data-template style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                <div style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
                   <TemplateComponent {...templateProps} width={size.w} height={size.h} />
                 </div>
               </div>
