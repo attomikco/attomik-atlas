@@ -10,7 +10,7 @@ const DIVIDER_H       = 3
 const GAP_LABEL_STAT  = 16
 const GAP_STAT_DIV    = 24
 const GAP_DIV_SUPPORT = 20
-const OVERLAY_OPACITY = 0.55
+const OVERLAY_OPACITY = 0.35
 
 export default function StatTemplate({
   imageUrl, headline, bodyText, brandColor, brandName, width, height,
