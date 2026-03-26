@@ -62,7 +62,6 @@ const TEMPLATES = [
 const SIZES = [
   { id: 'feed',      label: '1:1',        w: 1080, h: 1080 },
   { id: 'stories',   label: '9:16',       w: 1080, h: 1920 },
-  { id: 'landscape', label: '1.91:1',     w: 1200, h: 628 },
   { id: 'square45',  label: '4:5',        w: 1080, h: 1350 },
 ]
 
