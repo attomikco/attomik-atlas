@@ -1,7 +1,6 @@
 import { TemplateProps, ff, px, positionStyles } from './types'
 
 const IMAGE_RATIO     = 0.50
-const BAR_W           = 6
 const PANEL_PAD       = 56
 const BRAND_SIZE      = 16
 const HEADLINE_SIZE   = 76
@@ -22,8 +21,7 @@ export default function SplitTemplate({
   headlineColor, bodyColor, ctaColor, ctaFontColor, textPosition,
 }: TemplateProps) {
   const imgW = Math.round(width * IMAGE_RATIO)
-  const bar = px(BAR_W, width)
-  const panelW = width - imgW - bar
+  const panelW = width - imgW
   const pad = px(PANEL_PAD, width)
   const pos = positionStyles(textPosition)
 
@@ -37,7 +35,6 @@ export default function SplitTemplate({
         )}
       </div>
 
-      <div style={{ width: bar, background: brandColor, flexShrink: 0 }} />
 
       <div style={{
         width: panelW, display: 'flex', flexDirection: 'column' as const,
