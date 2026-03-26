@@ -458,11 +458,11 @@ Nothing else.`,
     setExportingAll(false)
   }
 
-  // Scale preview to fit container
-  const maxPreviewW = 480
-  const scale = Math.min(maxPreviewW / size.w, 1)
-  const previewW = size.w * scale
-  const previewH = size.h * scale
+  // Render template at actual dimensions, scale down to fit preview
+  const maxPreviewW = 540
+  const scale = maxPreviewW / size.w
+  const previewW = Math.round(size.w * scale)
+  const previewH = Math.round(size.h * scale)
 
   const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
   const pillCls = (active: boolean) => ({

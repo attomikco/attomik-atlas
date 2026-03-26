@@ -1,4 +1,4 @@
-import { TemplateProps, TEXT_SHADOW, ff } from './types'
+import { TemplateProps, TEXT_SHADOW, ff, px } from './types'
 
 export default function OverlayTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
@@ -6,7 +6,7 @@ export default function OverlayTemplate({
   bodyFont, bodyWeight, bodyTransform, headlineSizeMul, bodySizeMul,
   ctaColor, ctaFontColor,
 }: TemplateProps) {
-  const pad = Math.max(width * 0.04, 32)
+  const pad = px(60, width)
 
   return (
     <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont) }}>
@@ -14,77 +14,71 @@ export default function OverlayTemplate({
       {imageUrl ? (
         <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <div style={{ position: 'absolute', inset: 0, background: '#e0e0e0' }} />
+        <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a' }} />
       )}
 
-      {/* Bottom gradient — transparent → dark over bottom 45% */}
+      {/* Bottom-third gradient only — top stays clean */}
       <div style={{
         position: 'absolute', left: 0, right: 0, bottom: 0,
-        height: height * 0.45,
-        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.72) 100%)',
+        height: Math.round(height * 0.38),
+        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%)',
+        pointerEvents: 'none' as const,
       }} />
 
-      {/* Brand name — top left */}
-      <div style={{
-        position: 'absolute', top: pad, left: pad,
-        color: '#fff', fontSize: width * 0.018, fontWeight: 600,
-        letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-        opacity: 0.8, textShadow: TEXT_SHADOW,
-        fontFamily: ff(headlineFont),
-      }}>
-        {brandName}
-      </div>
-
-      {/* Text block — bottom left */}
+      {/* Text content — bottom left, sits in the gradient zone */}
       <div style={{
         position: 'absolute', bottom: pad, left: pad, right: pad,
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: pad * 0.5,
       }}>
-        <div style={{ maxWidth: '80%', minWidth: 0 }}>
-          {headline && (
-            <div style={{
-              fontSize: width * 0.036 * headlineSizeMul,
-              fontWeight: parseInt(headlineWeight) || 800,
-              letterSpacing: '-0.03em',
-              lineHeight: 1.15,
-              color: '#fff',
-              textShadow: TEXT_SHADOW,
-              fontFamily: ff(headlineFont),
-              textTransform: headlineTransform as any,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical' as const,
-              overflow: 'hidden',
-            }}>
-              {headline}
-            </div>
-          )}
-          {bodyText && (
-            <div style={{
-              fontSize: width * 0.016 * bodySizeMul,
-              fontWeight: parseInt(bodyWeight) || 400,
-              lineHeight: 1.5,
-              color: 'rgba(255,255,255,0.7)',
-              textShadow: TEXT_SHADOW,
-              fontFamily: ff(bodyFont),
-              textTransform: bodyTransform as any,
-              marginTop: width * 0.008,
-            }}>
-              {bodyText}
-            </div>
-          )}
-        </div>
+        {headline && (
+          <div style={{
+            fontSize: px(64, width) * headlineSizeMul,
+            fontWeight: parseInt(headlineWeight) || 800,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.1,
+            color: '#fff',
+            textShadow: TEXT_SHADOW,
+            fontFamily: ff(headlineFont),
+            textTransform: headlineTransform as any,
+            maxWidth: '80%',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical' as const,
+            overflow: 'hidden',
+          }}>
+            {headline}
+          </div>
+        )}
 
-        {/* CTA — bottom right */}
+        {bodyText && (
+          <div style={{
+            fontSize: px(28, width) * bodySizeMul,
+            fontWeight: parseInt(bodyWeight) || 400,
+            lineHeight: 1.5,
+            color: 'rgba(255,255,255,0.85)',
+            textShadow: TEXT_SHADOW,
+            fontFamily: ff(bodyFont),
+            textTransform: bodyTransform as any,
+            marginTop: px(12, width),
+            maxWidth: '75%',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical' as const,
+            overflow: 'hidden',
+          }}>
+            {bodyText}
+          </div>
+        )}
+
         {showCta && (
           <div style={{
-            flexShrink: 0,
+            display: 'inline-block',
+            marginTop: px(20, width),
             background: ctaColor || brandColor,
             color: ctaFontColor || '#000',
-            fontSize: width * 0.016 * bodySizeMul,
+            fontSize: px(24, width) * bodySizeMul,
             fontWeight: 700,
-            padding: `${width * 0.012}px ${width * 0.028}px`,
-            borderRadius: 6,
+            padding: `${px(16, width)}px ${px(40, width)}px`,
+            borderRadius: px(60, width),
             whiteSpace: 'nowrap' as const,
             fontFamily: ff(headlineFont),
           }}>

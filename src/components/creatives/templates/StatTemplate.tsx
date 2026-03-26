@@ -1,4 +1,4 @@
-import { TemplateProps, TEXT_SHADOW, ff } from './types'
+import { TemplateProps, TEXT_SHADOW, ff, px } from './types'
 
 export default function StatTemplate({
   imageUrl, headline, bodyText, brandColor, brandName, width, height,
@@ -6,8 +6,7 @@ export default function StatTemplate({
   bodyFont, bodyWeight, bodyTransform, headlineSizeMul, bodySizeMul,
   headlineColor,
 }: TemplateProps) {
-  const pad = Math.max(width * 0.04, 32)
-  // Use brand color for the big stat number, fall back to accent green
+  const pad = px(60, width)
   const statColor = (headlineColor === '#ffffff' || headlineColor === '#fff') ? brandColor : headlineColor
 
   return (
@@ -16,23 +15,36 @@ export default function StatTemplate({
       {imageUrl ? (
         <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <div style={{ position: 'absolute', inset: 0, background: '#e0e0e0' }} />
+        <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a' }} />
       )}
 
-      {/* Dark overlay */}
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+      {/* Heavier dark overlay so stat pops */}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
 
       {/* Centered content */}
       <div style={{
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' as const,
         alignItems: 'center', justifyContent: 'center', padding: pad, textAlign: 'center' as const,
       }}>
+        {/* Small label ABOVE the stat */}
+        <div style={{
+          fontSize: px(20, width) * bodySizeMul,
+          fontWeight: 600,
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase' as const,
+          color: 'rgba(255,255,255,0.7)',
+          fontFamily: ff(bodyFont),
+          marginBottom: px(12, width),
+        }}>
+          {bodyText || ''}
+        </div>
+
         {/* Big stat number */}
         {headline && (
           <div style={{
-            fontSize: width * 0.072 * headlineSizeMul,
+            fontSize: px(120, width) * headlineSizeMul,
             fontWeight: parseInt(headlineWeight) || 800,
-            letterSpacing: '-0.03em',
+            letterSpacing: '-0.04em',
             lineHeight: 1,
             color: statColor || brandColor,
             textShadow: TEXT_SHADOW,
@@ -43,31 +55,30 @@ export default function StatTemplate({
           </div>
         )}
 
-        {/* Stat label */}
-        {bodyText && (
-          <div style={{
-            fontSize: width * 0.017 * bodySizeMul,
-            fontWeight: 600,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase' as const,
-            lineHeight: 1.4,
-            color: '#fff',
-            textShadow: TEXT_SHADOW,
-            fontFamily: ff(bodyFont),
-            marginTop: width * 0.015,
-          }}>
-            {bodyText}
-          </div>
-        )}
+        {/* Supporting text BELOW stat */}
+        <div style={{
+          fontSize: px(24, width) * bodySizeMul,
+          fontWeight: 400,
+          lineHeight: 1.4,
+          color: 'rgba(255,255,255,0.8)',
+          fontFamily: ff(bodyFont),
+          marginTop: px(16, width),
+          maxWidth: '80%',
+          whiteSpace: 'nowrap' as const,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis' as const,
+        }}>
+          {bodyText || ''}
+        </div>
       </div>
 
       {/* Brand name — bottom center */}
       <div style={{
         position: 'absolute', bottom: pad, left: 0, right: 0,
         textAlign: 'center' as const,
-        fontSize: width * 0.012,
+        fontSize: px(16, width),
         fontWeight: 600,
-        letterSpacing: '0.08em',
+        letterSpacing: '0.1em',
         textTransform: 'uppercase' as const,
         color: 'rgba(255,255,255,0.5)',
         fontFamily: ff(headlineFont),
