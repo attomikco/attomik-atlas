@@ -565,19 +565,21 @@ export default function CreativeBuilder({
                   <Download size={11} /> Download all ({size.w}&times;{size.h})
                 </button>
               </div>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {variations.map((v, i) => {
                   const vImg = images.find(img => img.id === v.imageId)
                   const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
                   const VTemplate = TEMPLATES.find(t => t.id === v.templateId)!.component
-                  const ts = 80 / size.w
                   const isSaved = savedDrafts.some(d => d.headline === v.headline && d.imageId === v.imageId)
+                  const thumbW = 120
+                  const thumbScale = thumbW / size.w
+                  const thumbH = Math.round(size.h * thumbScale)
                   return (
                     <div key={i} className="relative group">
                       <button onClick={() => loadVariation(i)}
-                        className="w-full rounded-[4px] overflow-hidden border-2 transition-all hover:opacity-90"
-                        style={{ borderColor: activeVariation === i ? '#00ff97' : '#e0e0e0', aspectRatio: `${size.w}/${size.h}` }}>
-                        <div style={{ width: size.w, height: size.h, transform: `scale(${ts})`, transformOrigin: 'top left' }}>
+                        className="rounded-[3px] overflow-hidden transition-all hover:opacity-90"
+                        style={{ width: thumbW, height: thumbH, border: activeVariation === i ? '2px solid #00ff97' : '1px solid #e0e0e0', display: 'block' }}>
+                        <div style={{ width: size.w, height: size.h, transform: `scale(${thumbScale})`, transformOrigin: 'top left' }}>
                           <VTemplate {...thumbProps(v, vImgUrl)} />
                         </div>
                       </button>
@@ -597,18 +599,20 @@ export default function CreativeBuilder({
           {savedDrafts.length > 0 && (
             <div className="bg-paper border border-border rounded-card p-4 mt-4">
               <div className="label mb-3">Saved drafts ({savedDrafts.length})</div>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {savedDrafts.map((d, i) => {
                   const dImg = images.find(img => img.id === d.imageId)
                   const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
                   const DTemplate = TEMPLATES.find(t => t.id === d.templateId)!.component
-                  const ts = 80 / size.w
+                  const dThumbW = 120
+                  const dThumbScale = dThumbW / size.w
+                  const dThumbH = Math.round(size.h * dThumbScale)
                   return (
                     <div key={i} className="relative group">
                       <button onClick={() => loadDraft(i)}
-                        className="w-full rounded-[4px] overflow-hidden border-2 transition-all hover:opacity-90"
-                        style={{ borderColor: activeDraft === i ? '#00ff97' : '#e0e0e0', aspectRatio: `${size.w}/${size.h}` }}>
-                        <div style={{ width: size.w, height: size.h, transform: `scale(${ts})`, transformOrigin: 'top left' }}>
+                        className="rounded-[3px] overflow-hidden transition-all hover:opacity-90"
+                        style={{ width: dThumbW, height: dThumbH, border: activeDraft === i ? '2px solid #00ff97' : '1px solid #e0e0e0', display: 'block' }}>
+                        <div style={{ width: size.w, height: size.h, transform: `scale(${dThumbScale})`, transformOrigin: 'top left' }}>
                           <DTemplate {...thumbProps(d, dImgUrl)} />
                         </div>
                       </button>
