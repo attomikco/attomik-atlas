@@ -61,6 +61,9 @@ export interface Brand {
   font_heading: FontStyle | null
   font_body: FontStyle | null
   custom_fonts_css: string | null
+  default_headline: string | null
+  default_body_text: string | null
+  default_cta: string | null
   brand_voice: string | null
   target_audience: string | null
   tone_keywords: string[] | null

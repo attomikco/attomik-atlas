@@ -27,6 +27,11 @@ interface Brand {
   font_heading: FontStyle | null
   font_body: FontStyle | null
   custom_fonts_css: string | null
+  brand_voice: string | null
+  target_audience: string | null
+  default_headline: string | null
+  default_body_text: string | null
+  default_cta: string | null
 }
 
 interface GeneratedCopy {
@@ -71,18 +76,18 @@ export default function CreativeBuilder({
   const supabase = createClient()
 
   // ── State ──────────────────────────────────────────────────────────
+  const initBrand = brands.find(b => b.id === (defaultBrandId || brands[0]?.id))
   const [brandId, setBrandId] = useState(defaultBrandId || brands[0]?.id || '')
   const [images, setImages] = useState<BrandImage[]>([])
   const [recentCopy, setRecentCopy] = useState<GeneratedCopy[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [templateId, setTemplateId] = useState<string>('overlay')
   const [sizeId, setSizeId] = useState<string>('feed')
-  const [headline, setHeadline] = useState('Your headline here')
-  const [bodyText, setBodyText] = useState('Body text goes here')
-  const [ctaText, setCtaText] = useState('Shop Now')
+  const [headline, setHeadline] = useState(initBrand?.default_headline || `Discover ${initBrand?.name || 'Our Brand'}`)
+  const [bodyText, setBodyText] = useState(initBrand?.default_body_text || `Premium quality crafted for ${initBrand?.target_audience || 'you'}`)
+  const [ctaText, setCtaText] = useState(initBrand?.default_cta || 'Shop Now')
   const [textPosition, setTextPosition] = useState<TextPosition>('bottom-left')
   const [showCta, setShowCta] = useState(true)
-  const initBrand = brands.find(b => b.id === (defaultBrandId || brands[0]?.id))
   const [headlineColor, setHeadlineColor] = useState<string>(initBrand?.heading_color || initBrand?.primary_color || '#ffffff')
   const [bodyColor, setBodyColor] = useState<string>(initBrand?.body_color || '#ffffff')
   const initHParts = (initBrand?.font_primary || '').split('|')
@@ -190,6 +195,9 @@ export default function CreativeBuilder({
     setBodyColor(nb?.body_color || '#ffffff')
     setBgColor(nb?.primary_color || '#000000')
     setTextBannerColor(nb?.primary_color || '#000000')
+    setHeadline(nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`)
+    setBodyText(nb?.default_body_text || `Premium quality crafted for ${nb?.target_audience || 'you'}`)
+    setCtaText(nb?.default_cta || 'Shop Now')
   }, [brandId, brands])
 
   useEffect(() => {
@@ -595,7 +603,15 @@ export default function CreativeBuilder({
 
           {/* Copy */}
           <div className="bg-paper border border-border rounded-card p-4 space-y-2.5">
-            <label className="label block">Copy</label>
+            <div className="flex items-center justify-between">
+              <label className="label">Copy</label>
+              <button onClick={async () => {
+                await supabase.from('brands').update({ default_headline: headline, default_body_text: bodyText, default_cta: ctaText }).eq('id', brandId)
+                setExportToast('Saved as default'); setTimeout(() => setExportToast(null), 1500)
+              }} className="text-[10px] text-muted hover:text-ink transition-colors font-semibold uppercase tracking-wide">
+                Save as default
+              </button>
+            </div>
             <input className={inputCls} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Headline" />
             <textarea className={inputCls + ' resize-none'} rows={2} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Body text" />
             <div className="flex items-center gap-2">
