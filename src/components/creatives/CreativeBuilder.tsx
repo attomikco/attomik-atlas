@@ -440,15 +440,15 @@ export default function CreativeBuilder({
   })
 
   // Template props for a thumbnail — uses the variation's own saved style
-  const thumbProps = (v: Variation, imgUrl: string | null) => ({
+  const thumbProps = (v: Variation, imgUrl: string | null, w?: number, h?: number) => ({
     imageUrl: imgUrl,
     headline: v.headline,
     bodyText: v.body,
     ctaText: v.cta,
     brandColor,
     brandName: brand?.name || '',
-    width: size.w,
-    height: size.h,
+    width: w ?? size.w,
+    height: h ?? size.h,
     ctaColor,
     ctaFontColor,
     // Style from the variation's snapshot
@@ -661,7 +661,7 @@ export default function CreativeBuilder({
                       const dImg = images.find(img => img.id === d.imageId)
                       const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
                       const dSize = SIZES.find(s => s.id === d.sizeId) || size
-                      const props = thumbProps(d, dImgUrl)
+                      const props = thumbProps(d, dImgUrl, dSize.w, dSize.h)
                       const dataUrl = await renderAndCapture(DComp, props, dSize.w, dSize.h)
                       zip.file(`${brandSlug}-${d.templateId}-${d.sizeId}-${i + 1}.png`, dataUrl.split(',')[1], { base64: true })
                     }
@@ -691,7 +691,7 @@ export default function CreativeBuilder({
                         className="rounded-[3px] overflow-hidden transition-all hover:opacity-90"
                         style={{ width: dThumbW, height: fixedH, border: activeDraft === i ? '2px solid #4ade80' : '1px solid #e0e0e0', display: 'block' }}>
                         <div style={{ width: dSize.w, height: dSize.h, transform: `scale(${dThumbScale})`, transformOrigin: 'top left' }}>
-                          <DTemplate {...thumbProps(d, dImgUrl)} />
+                          <DTemplate {...thumbProps(d, dImgUrl, dSize.w, dSize.h)} />
                         </div>
                       </button>
                       <span className="absolute bottom-0.5 left-0.5 text-[9px] font-bold bg-black/60 text-white px-1 rounded">{dSizeLabel}</span>
