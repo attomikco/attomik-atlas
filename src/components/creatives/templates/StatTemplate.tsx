@@ -1,4 +1,4 @@
-import { TemplateProps, ff, px } from './types'
+import { TemplateProps, ff, px, positionStyles } from './types'
 
 const STAT_SIZE       = 160
 const LABEL_SIZE      = 24
@@ -16,9 +16,10 @@ export default function StatTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   headlineFont, headlineWeight, headlineTransform,
   bodyFont, bodyWeight, bodyTransform, headlineSizeMul, bodySizeMul,
-  headlineColor, bodyColor, bgColor, showOverlay, overlayOpacity, imagePosition,
+  headlineColor, bodyColor, bgColor, showOverlay, overlayOpacity, imagePosition, textPosition,
 }: TemplateProps) {
   const p = px(EDGE_PAD, width)
+  const pos = positionStyles(textPosition)
   const statColor = (headlineColor === '#ffffff' || headlineColor === '#fff') ? brandColor : headlineColor
 
   return (
@@ -33,7 +34,8 @@ export default function StatTemplate({
 
       <div style={{
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' as const,
-        alignItems: 'center', justifyContent: 'center', padding: p, textAlign: 'center' as const,
+        alignItems: pos.alignItems === 'flex-end' ? 'flex-end' : pos.alignItems === 'center' ? 'center' : 'flex-start',
+        justifyContent: pos.justifyContent, padding: p, textAlign: pos.textAlign,
       }}>
         {ctaText && (
           <div style={{

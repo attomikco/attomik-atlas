@@ -35,8 +35,9 @@ export default function CardTemplate({
       {/* Text panel */}
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column' as const,
-        justifyContent: 'center',
+        alignItems: 'center', justifyContent: 'center',
         background: bgColor || '#ffffff', padding: `${padV}px ${padH}px`,
+        textAlign: 'center' as const,
       }}>
         {headline && (
           <div style={{
@@ -68,7 +69,7 @@ export default function CardTemplate({
 
         {showCta && (
           <div style={{
-            marginTop: px(GAP_BODY_CTA, width), display: 'inline-block', alignSelf: 'flex-start',
+            marginTop: px(GAP_BODY_CTA, width), display: 'inline-block',
             background: ctaColor || brandColor, color: ctaFontColor || '#000',
             fontSize: px(CTA_SIZE, width) * bodySizeMul, fontWeight: 700,
             padding: `${px(CTA_PAD_V, width)}px ${px(CTA_PAD_H, width)}px`,
