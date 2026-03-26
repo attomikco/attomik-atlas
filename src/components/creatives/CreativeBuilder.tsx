@@ -682,14 +682,14 @@ export default function CreativeBuilder({
                   const DTemplate = TEMPLATES.find(t => t.id === d.templateId)!.component
                   const dSize = SIZES.find(s => s.id === d.sizeId) || size
                   const dSizeLabel = SIZES.find(s => s.id === d.sizeId)?.label || d.sizeId
-                  const dThumbW = 120
-                  const dThumbScale = dThumbW / dSize.w
-                  const dThumbH = Math.round(dSize.h * dThumbScale)
+                  const fixedH = 120
+                  const dThumbScale = fixedH / dSize.h
+                  const dThumbW = Math.round(dSize.w * dThumbScale)
                   return (
-                    <div key={i} className="relative group">
+                    <div key={i} className="relative group" style={{ height: fixedH }}>
                       <button onClick={() => loadDraft(i)}
                         className="rounded-[3px] overflow-hidden transition-all hover:opacity-90"
-                        style={{ width: dThumbW, height: dThumbH, border: activeDraft === i ? '2px solid #4ade80' : '1px solid #e0e0e0', display: 'block' }}>
+                        style={{ width: dThumbW, height: fixedH, border: activeDraft === i ? '2px solid #4ade80' : '1px solid #e0e0e0', display: 'block' }}>
                         <div style={{ width: dSize.w, height: dSize.h, transform: `scale(${dThumbScale})`, transformOrigin: 'top left' }}>
                           <DTemplate {...thumbProps(d, dImgUrl)} />
                         </div>
