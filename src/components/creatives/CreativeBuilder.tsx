@@ -470,54 +470,48 @@ export default function CreativeBuilder({
     <div className="space-y-4">
 
       {/* ═══ TOP TOOLBAR ═══ */}
-      <div className="bg-paper border border-border rounded-card px-4 py-3 flex flex-wrap items-center gap-3">
-        {/* Brand */}
-        <div className="relative">
-          <select value={brandId} onChange={e => setBrandId(e.target.value)}
-            className="text-sm font-semibold border border-border rounded-btn pl-3 pr-7 py-1.5 bg-cream appearance-none focus:outline-none focus:border-accent">
-            {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+      <div className="bg-paper border border-border rounded-card px-4 py-3 space-y-2.5">
+        {/* Row 1: Brand + Actions */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <select value={brandId} onChange={e => setBrandId(e.target.value)}
+              className="text-sm font-semibold border border-border rounded-btn pl-3 pr-7 py-1.5 bg-cream appearance-none focus:outline-none focus:border-accent">
+              {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+          </div>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <button onClick={generateCopy} disabled={generating}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill bg-ink text-accent hover:opacity-80 transition-opacity disabled:opacity-50">
+              {generating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {generating ? 'Writing...' : 'AI Copy'}
+            </button>
+            <button onClick={exportPng} disabled={exporting || exportingAll}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill border border-border hover:border-ink transition-all disabled:opacity-40">
+              {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              PNG
+            </button>
+            <button onClick={exportAllSizes} disabled={exporting || exportingAll}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill hover:opacity-80 transition-all disabled:opacity-40"
+              style={{ background: '#000', color: '#00ff97' }}>
+              {exportingAll ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              All sizes
+            </button>
+          </div>
         </div>
-
-        <span className="w-px h-5 bg-border" />
-
-        {/* Template pills */}
-        <div className="flex flex-wrap gap-1">
-          {TEMPLATES.map(t => (
-            <button key={t.id} onClick={() => { setTemplateId(t.id); if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) } }} {...pill(templateId === t.id)}>{t.label}</button>
-          ))}
-        </div>
-
-        <span className="w-px h-5 bg-border" />
-
-        {/* Size pills */}
-        <div className="flex gap-1">
-          {SIZES.map(s => (
-            <button key={s.id} onClick={() => setSizeId(s.id)} {...pill(sizeId === s.id)}>{s.label}</button>
-          ))}
-        </div>
-
-        {/* Right side: AI + Export */}
-        <div className="flex items-center gap-2 ml-auto">
-          <button onClick={generateCopy} disabled={generating}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill bg-ink text-accent hover:opacity-80 transition-opacity disabled:opacity-50">
-            {generating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-            {generating ? 'Writing...' : 'AI Copy'}
-          </button>
-
-          <button onClick={exportPng} disabled={exporting || exportingAll}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill border border-border hover:border-ink transition-all disabled:opacity-40">
-            {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-            PNG
-          </button>
-
-          <button onClick={exportAllSizes} disabled={exporting || exportingAll}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill hover:opacity-80 transition-all disabled:opacity-40"
-            style={{ background: '#000', color: '#00ff97' }}>
-            {exportingAll ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-            All sizes
-          </button>
+        {/* Row 2: Templates + Sizes */}
+        <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-1">
+            {TEMPLATES.map(t => (
+              <button key={t.id} onClick={() => { setTemplateId(t.id); if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) } }} {...pill(templateId === t.id)}>{t.label}</button>
+            ))}
+          </div>
+          <span className="w-px h-5 bg-border flex-shrink-0" />
+          <div className="flex gap-1">
+            {SIZES.map(s => (
+              <button key={s.id} onClick={() => setSizeId(s.id)} {...pill(sizeId === s.id)}>{s.label}</button>
+            ))}
+          </div>
         </div>
       </div>
 
