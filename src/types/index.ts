@@ -60,6 +60,7 @@ export interface Brand {
   font_secondary: string | null
   font_heading: FontStyle | null
   font_body: FontStyle | null
+  custom_fonts_css: string | null
   brand_voice: string | null
   target_audience: string | null
   tone_keywords: string[] | null

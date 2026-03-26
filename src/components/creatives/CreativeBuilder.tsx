@@ -26,6 +26,7 @@ interface Brand {
   font_secondary: string | null
   font_heading: FontStyle | null
   font_body: FontStyle | null
+  custom_fonts_css: string | null
 }
 
 interface GeneratedCopy {
@@ -144,24 +145,35 @@ export default function CreativeBuilder({
   // ── Effects ────────────────────────────────────────────────────────
   useEffect(() => {
     const fonts = [brand?.font_primary, brand?.font_secondary].filter(Boolean).map(f => f!.split('|')[0]) as string[]
-    if (fonts.length === 0) return
-    const families = Array.from(new Set(fonts)).map(f => f.replace(/ /g, '+')).join('&family=')
-    const id = 'brand-fonts-link'
-    let link = document.getElementById(id) as HTMLLinkElement | null
-    if (!link) { link = document.createElement('link'); link.id = id; link.rel = 'stylesheet'; document.head.appendChild(link) }
-    link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`
-  }, [brand?.font_primary, brand?.font_secondary])
+    if (fonts.length > 0) {
+      const families = Array.from(new Set(fonts)).map(f => f.replace(/ /g, '+')).join('&family=')
+      const id = 'brand-fonts-link'
+      let link = document.getElementById(id) as HTMLLinkElement | null
+      if (!link) { link = document.createElement('link'); link.id = id; link.rel = 'stylesheet'; document.head.appendChild(link) }
+      link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`
+    }
+    // Inject custom @font-face CSS if present
+    const styleId = 'brand-custom-fonts'
+    let style = document.getElementById(styleId) as HTMLStyleElement | null
+    if (brand?.custom_fonts_css) {
+      if (!style) { style = document.createElement('style'); style.id = styleId; document.head.appendChild(style) }
+      style.textContent = brand.custom_fonts_css
+    } else if (style) {
+      style.remove()
+    }
+  }, [brand?.font_primary, brand?.font_secondary, brand?.custom_fonts_css])
 
   useEffect(() => {
-    const h = brand?.font_heading; const hParts = (brand?.font_primary || '').split('|')
+    const nb = brands.find(b => b.id === brandId)
+    const h = nb?.font_heading; const hParts = (nb?.font_primary || '').split('|')
     setHeadlineFont(h?.family || hParts[0] || ''); setHeadlineWeight(h?.weight || hParts[1] || '700'); setHeadlineTransform(h?.transform || hParts[2] || 'none')
-    const b = brand?.font_body; const bParts = (brand?.font_secondary || '').split('|')
-    setBodyFont(b?.family || bParts[0] || ''); setBodyWeight(b?.weight || bParts[1] || '400'); setBodyTransform(b?.transform || bParts[2] || 'none')
-    setHeadlineColor(brand?.heading_color || brand?.primary_color || '#ffffff')
-    setBodyColor(brand?.body_color || '#ffffff')
-    setBgColor(brand?.primary_color || '#000000')
-    setTextBannerColor(brand?.primary_color || '#000000')
-  }, [brandId])
+    const bo = nb?.font_body; const bParts = (nb?.font_secondary || '').split('|')
+    setBodyFont(bo?.family || bParts[0] || ''); setBodyWeight(bo?.weight || bParts[1] || '400'); setBodyTransform(bo?.transform || bParts[2] || 'none')
+    setHeadlineColor(nb?.heading_color || nb?.primary_color || '#ffffff')
+    setBodyColor(nb?.body_color || '#ffffff')
+    setBgColor(nb?.primary_color || '#000000')
+    setTextBannerColor(nb?.primary_color || '#000000')
+  }, [brandId, brands])
 
   useEffect(() => {
     if (!brandId) return

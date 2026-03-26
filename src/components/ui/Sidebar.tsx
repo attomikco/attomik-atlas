@@ -16,7 +16,7 @@ const NAV = [
 
 function SidebarLogo() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3162 909" style={{ height: 24 }}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3162 909" style={{ height: 38, display: 'block' }}>
       <g transform="scale(8.11041548093341) translate(10, 10)">
         <g transform="matrix(1.0466,0,0,1.0466,-6.28,-6.28)" fill="#ffffff">
           <g transform="translate(0,-952.36218)">
@@ -74,9 +74,9 @@ export default function Sidebar() {
         `}
       >
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '28px 24px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
           <SidebarLogo />
-          <button onClick={() => setOpen(false)} className="md:hidden text-white/40 hover:text-white p-1 -mr-1">
+          <button onClick={() => setOpen(false)} className="md:hidden text-white/40 hover:text-white p-1" style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)' }}>
             <X size={18} />
           </button>
         </div>

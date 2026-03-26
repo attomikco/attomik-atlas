@@ -35,6 +35,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     const parts = (brand.font_secondary || '').split('|')
     return { family: parts[0] || '', weight: parts[1] || '400', transform: (parts[2] as FontStyle['transform']) || 'none' }
   })
+  const [customFontsCss, setCustomFontsCss] = useState(brand.custom_fonts_css || '')
 
   // Load Google Fonts for preview
   useEffect(() => {
@@ -50,7 +51,16 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
       document.head.appendChild(link)
     }
     link.href = `https://fonts.googleapis.com/css2?family=${families}:wght@400;500;600;700;800;900&display=swap`
-  }, [fontHeading.family, fontBody.family])
+    // Inject custom @font-face CSS if present
+    const styleId = 'brand-custom-fonts'
+    let style = document.getElementById(styleId) as HTMLStyleElement | null
+    if (customFontsCss) {
+      if (!style) { style = document.createElement('style'); style.id = styleId; document.head.appendChild(style) }
+      style.textContent = customFontsCss
+    } else if (style) {
+      style.remove()
+    }
+  }, [fontHeading.family, fontBody.family, customFontsCss])
 
   async function save() {
     setSaving(true)
@@ -84,6 +94,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
       body_color:        form.body_color || null,
       font_heading:      fontHeading.family ? fontHeading : null,
       font_body:         fontBody.family ? fontBody : null,
+      custom_fonts_css:  customFontsCss || null,
     }).eq('id', brand.id)
 
     if (err2) {
@@ -210,6 +221,13 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
             )}
           </div>
         ))}
+        <div>
+          <label className="label block mb-1.5">Custom fonts CSS</label>
+          <textarea className={inputCls + ' resize-none font-mono text-xs'} rows={4} value={customFontsCss}
+            onChange={e => setCustomFontsCss(e.target.value)}
+            placeholder={'@font-face {\n  font-family: "MyFont";\n  src: url("https://...") format("opentype");\n}'} />
+          <p className="text-[10px] text-muted mt-1">Paste @font-face rules for non-Google fonts. Use the font-family name in heading/body font above.</p>
+        </div>
         <div>
           <label className="label block mb-1.5">Logo URL</label>
           <div className="flex items-center gap-3">
