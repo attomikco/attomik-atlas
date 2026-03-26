@@ -1,4 +1,4 @@
-import { TemplateProps, TEXT_SHADOW, ff, px } from './types'
+import { TemplateProps, ff, px } from './types'
 
 // ── Easy-to-edit design tokens (all values at 1080px reference) ──────
 const EDGE_PAD        = 48
@@ -46,7 +46,6 @@ export default function UGCTemplate({
           <div style={{
             fontSize: px(BRAND_NAME_SIZE, width),
             fontWeight: 600, color: '#fff',
-            textShadow: TEXT_SHADOW,
             fontFamily: ff(headlineFont),
           }}>
             {brandName}
@@ -55,7 +54,6 @@ export default function UGCTemplate({
             fontSize: px(SPONSORED_SIZE, width),
             fontWeight: 400,
             color: 'rgba(255,255,255,0.55)',
-            textShadow: TEXT_SHADOW,
           }}>
             Sponsored
           </div>
@@ -70,7 +68,6 @@ export default function UGCTemplate({
             fontWeight: parseInt(headlineWeight) || 700,
             lineHeight: 1.2,
             color: '#fff',
-            textShadow: TEXT_SHADOW,
             fontFamily: ff(headlineFont),
             textTransform: headlineTransform as any,
             display: '-webkit-box',
@@ -87,7 +84,6 @@ export default function UGCTemplate({
             fontWeight: parseInt(bodyWeight) || 400,
             lineHeight: 1.45,
             color: 'rgba(255,255,255,0.75)',
-            textShadow: TEXT_SHADOW,
             fontFamily: ff(bodyFont),
             textTransform: bodyTransform as any,
             marginTop: px(8, width),

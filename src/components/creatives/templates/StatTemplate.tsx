@@ -1,4 +1,4 @@
-import { TemplateProps, TEXT_SHADOW, ff, px } from './types'
+import { TemplateProps, ff, px } from './types'
 
 // ── Easy-to-edit design tokens (all values at 1080px reference) ──────
 const STAT_SIZE       = 160      // massive stat number
@@ -62,7 +62,6 @@ export default function StatTemplate({
             letterSpacing: '-0.04em',
             lineHeight: 1,
             color: statColor || brandColor,
-            textShadow: TEXT_SHADOW,
             fontFamily: ff(headlineFont),
             textTransform: headlineTransform as any,
           }}>

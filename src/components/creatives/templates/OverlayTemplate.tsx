@@ -1,4 +1,4 @@
-import { TemplateProps, TEXT_SHADOW, ff, px } from './types'
+import { TemplateProps, ff, px } from './types'
 
 // ── Easy-to-edit design tokens (all values at 1080px reference) ──────
 const HEADLINE_SIZE   = 82       // big, bold, editorial
@@ -49,7 +49,6 @@ export default function OverlayTemplate({
             letterSpacing: '-0.03em',
             lineHeight: 1.08,
             color: '#fff',
-            textShadow: TEXT_SHADOW,
             fontFamily: ff(headlineFont),
             textTransform: headlineTransform as any,
             maxWidth: '85%',
@@ -77,7 +76,6 @@ export default function OverlayTemplate({
             fontWeight: parseInt(bodyWeight) || 400,
             lineHeight: 1.5,
             color: 'rgba(255,255,255,0.85)',
-            textShadow: TEXT_SHADOW,
             fontFamily: ff(bodyFont),
             textTransform: bodyTransform as any,
             maxWidth: '80%',
