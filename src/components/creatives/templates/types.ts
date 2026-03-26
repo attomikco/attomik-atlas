@@ -32,6 +32,25 @@ export interface TemplateProps {
   ctaFontColor: string
 }
 
+/** Banner style for text bar at top or bottom */
+export function bannerStyle(banner: 'none' | 'top' | 'bottom', bannerColor: string, height: number): React.CSSProperties | null {
+  if (banner === 'none') return null
+  return {
+    position: 'absolute' as const,
+    left: 0, right: 0,
+    [banner]: 0,
+    height: height * 0.22,
+    background: bannerColor,
+  }
+}
+
+/** CSS alignment helpers derived from TextPosition */
+export function positionStyles(pos: TextPosition) {
+  const v = pos.startsWith('top') ? 'flex-start' : pos.startsWith('bottom') ? 'flex-end' : 'center'
+  const h = pos.endsWith('left') ? 'flex-start' : pos.endsWith('right') ? 'flex-end' : 'center'
+  return { justifyContent: v, alignItems: h, textAlign: (h === 'center' ? 'center' : h === 'flex-end' ? 'right' : 'left') as 'left' | 'center' | 'right' }
+}
+
 /** Text shadow for text sitting over images */
 export const TEXT_SHADOW = '0 2px 8px rgba(0,0,0,0.6)'
 
