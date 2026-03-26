@@ -350,7 +350,9 @@ export default function CreativeBuilder({
   async function renderAndCapture(Component: any, props: any, w: number, h: number): Promise<string> {
     const container = exportRef.current
     if (!container) throw new Error('Export container not available')
-    container.style.width = `${w}px`; container.style.height = `${h}px`; container.innerHTML = ''
+    // Make visible for html2canvas to capture
+    container.style.cssText = `position:fixed;top:0;left:0;width:${w}px;height:${h}px;z-index:9999;`
+    container.innerHTML = ''
     const { createRoot } = await import('react-dom/client')
     const wrapper = document.createElement('div'); wrapper.style.width = `${w}px`; wrapper.style.height = `${h}px`
     container.appendChild(wrapper)
@@ -363,6 +365,8 @@ export default function CreativeBuilder({
     const dataUrl = await captureElement(container, w, h)
     root.unmount()
     container.innerHTML = ''
+    // Hide again
+    container.style.cssText = 'position:absolute;top:-9999px;left:-9999px;pointer-events:none;'
     return dataUrl
   }
 
@@ -917,7 +921,7 @@ export default function CreativeBuilder({
       </div>
 
       {/* Hidden export container */}
-      <div ref={exportRef} aria-hidden style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }} />
+      <div ref={exportRef} aria-hidden style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }} />
 
       {/* Toast */}
       {exportToast && (

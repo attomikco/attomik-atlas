@@ -70,7 +70,7 @@ export default function SplitTemplate({
 
         {bodyText && (
           <div style={{
-            fontSize: autoSize(px(BODY_SIZE, width), bodyText, 60) * bodySizeMul,
+            fontSize: autoSize(px(BODY_SIZE, width), bodyText, 80) * bodySizeMul,
             fontWeight: parseInt(bodyWeight) || 400, lineHeight: 1.55,
             color: bodyColor, fontFamily: ff(bodyFont),
             textTransform: bodyTransform as any,
