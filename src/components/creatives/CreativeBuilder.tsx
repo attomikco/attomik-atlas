@@ -37,6 +37,7 @@ interface Brand {
   default_headline: string | null
   default_body_text: string | null
   default_cta: string | null
+  logo_url: string | null
 }
 
 interface GeneratedCopy {
