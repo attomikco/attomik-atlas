@@ -60,7 +60,7 @@ export default function OverlayTemplate({
               fontSize: px(HEADLINE_SIZE, width) * headlineSizeMul,
               fontWeight: parseInt(headlineWeight) || 800,
               letterSpacing: '-0.03em',
-              lineHeight: 1.08,
+              lineHeight: 1.15,
               color: headlineColor,
               fontFamily: ff(headlineFont),
               textTransform: headlineTransform as any,

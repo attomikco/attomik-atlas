@@ -53,11 +53,10 @@ export default function SplitTemplate({
           <div style={{
             fontSize: px(HEADLINE_SIZE, width) * headlineSizeMul,
             fontWeight: parseInt(headlineWeight) || 800,
-            letterSpacing: '-0.03em', lineHeight: 1.05,
+            letterSpacing: '-0.03em', lineHeight: 1.15,
             color: headlineColor, fontFamily: ff(headlineFont),
             textTransform: headlineTransform as any,
             marginTop: px(GAP_BRAND_HEAD, width),
-            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
             {headline}
           </div>
