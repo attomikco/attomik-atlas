@@ -1,4 +1,4 @@
-import { TemplateProps, ff, px, bannerStyle, positionStyles } from './types'
+import { TemplateProps, ff, px, autoSize, bannerStyle, positionStyles } from './types'
 
 const HEADLINE_SIZE   = 82
 const BODY_SIZE       = 32
@@ -38,11 +38,14 @@ export default function OverlayTemplate({
         <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${overlayOpacity})` }} />
       )}
 
-      {/* Bottom gradient */}
+      {/* Gradient — follows text position */}
       <div style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0,
+        position: 'absolute', left: 0, right: 0,
+        ...(textPosition.startsWith('top') ? { top: 0 } : { bottom: 0 }),
         height: Math.round(height * GRADIENT_HEIGHT),
-        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.82) 100%)',
+        background: textPosition.startsWith('top')
+          ? 'linear-gradient(to top, transparent 0%, rgba(0,0,0,0.82) 100%)'
+          : 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.82) 100%)',
         pointerEvents: 'none' as const,
       }} />
 
@@ -58,17 +61,13 @@ export default function OverlayTemplate({
         <div style={{ textAlign: pos.textAlign, maxWidth: '85%', alignSelf: pos.alignItems === 'flex-end' ? 'flex-end' : pos.alignItems === 'center' ? 'center' : 'flex-start' }}>
           {headline && (
             <div style={{
-              fontSize: px(HEADLINE_SIZE, width) * headlineSizeMul,
+              fontSize: autoSize(px(HEADLINE_SIZE, width), headline) * headlineSizeMul,
               fontWeight: parseInt(headlineWeight) || 800,
               letterSpacing: '-0.03em',
               lineHeight: 1.15,
               color: headlineColor,
               fontFamily: ff(headlineFont),
               textTransform: headlineTransform as any,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical' as const,
-              overflow: 'hidden',
             }}>
               {headline}
             </div>
@@ -85,16 +84,12 @@ export default function OverlayTemplate({
 
           {bodyText && (
             <div style={{
-              fontSize: px(BODY_SIZE, width) * bodySizeMul,
+              fontSize: autoSize(px(BODY_SIZE, width), bodyText, 60) * bodySizeMul,
               fontWeight: parseInt(bodyWeight) || 400,
               lineHeight: 1.5,
               color: bodyColor,
               fontFamily: ff(bodyFont),
               textTransform: bodyTransform as any,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical' as const,
-              overflow: 'hidden',
             }}>
               {bodyText}
             </div>

@@ -1,4 +1,4 @@
-import { TemplateProps, ff, px } from './types'
+import { TemplateProps, ff, px, autoSize } from './types'
 
 const IMAGE_RATIO     = 0.58
 const PANEL_PAD_H     = 48
@@ -41,13 +41,11 @@ export default function CardTemplate({
       }}>
         {headline && (
           <div style={{
-            fontSize: px(HEADLINE_SIZE, width) * headlineSizeMul,
+            fontSize: autoSize(px(HEADLINE_SIZE, width), headline) * headlineSizeMul,
             fontWeight: parseInt(headlineWeight) || 700,
             letterSpacing: '-0.02em', lineHeight: 1.15,
             color: headlineColor, fontFamily: ff(headlineFont),
             textTransform: headlineTransform as any,
-            display: '-webkit-box', WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
             {headline}
           </div>
@@ -55,13 +53,11 @@ export default function CardTemplate({
 
         {bodyText && (
           <div style={{
-            fontSize: px(BODY_SIZE, width) * bodySizeMul,
+            fontSize: autoSize(px(BODY_SIZE, width), bodyText, 60) * bodySizeMul,
             fontWeight: parseInt(bodyWeight) || 400,
             lineHeight: 1.5, color: bodyColor,
             fontFamily: ff(bodyFont), textTransform: bodyTransform as any,
             marginTop: px(GAP_HEAD_BODY, width),
-            display: '-webkit-box', WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
             {bodyText}
           </div>

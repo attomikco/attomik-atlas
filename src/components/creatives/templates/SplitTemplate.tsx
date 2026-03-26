@@ -1,4 +1,4 @@
-import { TemplateProps, ff, px, positionStyles } from './types'
+import { TemplateProps, ff, px, autoSize, positionStyles } from './types'
 
 const IMAGE_RATIO     = 0.50
 const PANEL_PAD       = 56
@@ -51,7 +51,7 @@ export default function SplitTemplate({
 
         {headline && (
           <div style={{
-            fontSize: px(HEADLINE_SIZE, width) * headlineSizeMul,
+            fontSize: autoSize(px(HEADLINE_SIZE, width), headline) * headlineSizeMul,
             fontWeight: parseInt(headlineWeight) || 800,
             letterSpacing: '-0.03em', lineHeight: 1.15,
             color: headlineColor, fontFamily: ff(headlineFont),
@@ -70,11 +70,10 @@ export default function SplitTemplate({
 
         {bodyText && (
           <div style={{
-            fontSize: px(BODY_SIZE, width) * bodySizeMul,
+            fontSize: autoSize(px(BODY_SIZE, width), bodyText, 60) * bodySizeMul,
             fontWeight: parseInt(bodyWeight) || 400, lineHeight: 1.55,
             color: bodyColor, fontFamily: ff(bodyFont),
             textTransform: bodyTransform as any,
-            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
             {bodyText}
           </div>

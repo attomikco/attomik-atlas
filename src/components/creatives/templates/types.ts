@@ -68,3 +68,10 @@ export function ff(font: string | undefined) {
 export function px(val: number, width: number) {
   return Math.round(val * (width / 1080))
 }
+
+/** Auto-scale font size based on text length. Short text stays big, long text shrinks. */
+export function autoSize(basePx: number, text: string, maxChars = 30) {
+  const len = text.length
+  if (len <= maxChars) return basePx
+  return Math.max(basePx * 0.45, basePx * (maxChars / len))
+}

@@ -1,4 +1,4 @@
-import { TemplateProps, ff, px, positionStyles } from './types'
+import { TemplateProps, ff, px, autoSize, positionStyles } from './types'
 
 const STAT_SIZE       = 160
 const LABEL_SIZE      = 24
@@ -35,7 +35,9 @@ export default function StatTemplate({
       <div style={{
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' as const,
         alignItems: pos.alignItems === 'flex-end' ? 'flex-end' : pos.alignItems === 'center' ? 'center' : 'flex-start',
-        justifyContent: pos.justifyContent, padding: p, textAlign: pos.textAlign,
+        justifyContent: pos.justifyContent,
+        padding: `${textPosition.startsWith('top') && height / width > 1.4 ? p * 3 : p}px ${p}px ${p}px`,
+        textAlign: pos.textAlign,
       }}>
         {ctaText && (() => {
           const callouts = ctaText.split(/[|,]/).map(s => s.trim()).filter(Boolean)
@@ -83,11 +85,9 @@ export default function StatTemplate({
 
         {bodyText && (
           <div style={{
-            fontSize: px(SUPPORT_SIZE, width) * bodySizeMul, fontWeight: 400,
+            fontSize: autoSize(px(SUPPORT_SIZE, width), bodyText, 50) * bodySizeMul, fontWeight: 400,
             lineHeight: 1.4, color: 'rgba(255,255,255,0.8)', fontFamily: ff(bodyFont),
             textTransform: bodyTransform as any, maxWidth: '80%',
-            display: '-webkit-box', WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
             {bodyText}
           </div>

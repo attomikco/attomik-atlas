@@ -1,4 +1,4 @@
-import { TemplateProps, ff, px } from './types'
+import { TemplateProps, ff, px, autoSize } from './types'
 
 const NAMES = ['Alex S.', 'Jordan M.', 'Taylor R.', 'Morgan K.', 'Casey L.', 'Riley P.', 'Jamie W.', 'Quinn D.', 'Avery T.', 'Skyler B.']
 
@@ -50,11 +50,10 @@ export default function TestimonialTemplate({
 
         {bodyText && (
           <div style={{
-            fontSize: px(QUOTE_SIZE, width) * bodySizeMul, fontWeight: parseInt(headlineWeight) || 700,
+            fontSize: autoSize(px(QUOTE_SIZE, width), bodyText, 50) * bodySizeMul, fontWeight: parseInt(headlineWeight) || 700,
             fontStyle: 'italic', lineHeight: 1.4, color: headlineColor,
             fontFamily: ff(headlineFont), textTransform: headlineTransform as any,
-            maxWidth: '90%', display: '-webkit-box', WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+            maxWidth: '90%',
           }}>
             &ldquo;{bodyText}&rdquo;
           </div>
