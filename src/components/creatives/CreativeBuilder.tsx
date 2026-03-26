@@ -287,6 +287,15 @@ export default function CreativeBuilder({
   function loadDraft(i: number) { const d = savedDrafts[i]; if (!d) return; setHeadline(d.headline); setBodyText(d.body); setCtaText(d.cta); setSelectedImageId(d.imageId); setTemplateId(d.templateId); applyStyle(d.style); setActiveDraft(i); setActiveVariation(null) }
   function removeDraft(i: number) { setSavedDrafts(prev => prev.filter((_, j) => j !== i)); if (activeDraft === i) setActiveDraft(null); else if (activeDraft !== null && activeDraft > i) setActiveDraft(activeDraft - 1) }
 
+  // ── Auto-sync edits back to active variation ──────────────────────
+  useEffect(() => {
+    if (activeVariation === null) return
+    setVariations(prev => prev.map((v, i) => i === activeVariation
+      ? { ...v, headline, body: bodyText, cta: ctaText, imageId: selectedImageId, templateId, style: captureStyle() }
+      : v
+    ))
+  }, [headline, bodyText, ctaText, selectedImageId, templateId, headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta, imagePosition])
+
   // ── Export ─────────────────────────────────────────────────────────
   const templateProps = {
     imageUrl, headline, bodyText, ctaText, brandColor, brandName: brand?.name || '',
@@ -556,7 +565,7 @@ export default function CreativeBuilder({
                   <Download size={11} /> Download all ({size.w}&times;{size.h})
                 </button>
               </div>
-              <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {variations.map((v, i) => {
                   const vImg = images.find(img => img.id === v.imageId)
                   const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
@@ -588,7 +597,7 @@ export default function CreativeBuilder({
           {savedDrafts.length > 0 && (
             <div className="bg-paper border border-border rounded-card p-4 mt-4">
               <div className="label mb-3">Saved drafts ({savedDrafts.length})</div>
-              <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {savedDrafts.map((d, i) => {
                   const dImg = images.find(img => img.id === d.imageId)
                   const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
