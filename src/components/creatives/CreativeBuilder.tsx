@@ -123,6 +123,23 @@ export default function CreativeBuilder({
   const previewRef = useRef<HTMLDivElement>(null)
   const exportRef = useRef<HTMLDivElement>(null)
 
+  // ── Helpers ───────────────────────────────────────────────────────
+  function isLightColor(hex: string) {
+    const c = hex.replace('#', '')
+    if (c.length < 6) return false
+    const r = parseInt(c.substring(0, 2), 16)
+    const g = parseInt(c.substring(2, 4), 16)
+    const b = parseInt(c.substring(4, 6), 16)
+    return (r * 299 + g * 587 + b * 114) / 1000 > 150
+  }
+
+  function updateBgColor(color: string) {
+    setBgColor(color)
+    const light = isLightColor(color)
+    setHeadlineColor(light ? '#000000' : '#ffffff')
+    setBodyColor(light ? '#1a1a1a' : '#ffffff')
+  }
+
   // ── Derived ────────────────────────────────────────────────────────
   const brand = brands.find(b => b.id === brandId)
   const brandColor = brand?.primary_color || '#00ff97'
@@ -615,7 +632,7 @@ export default function CreativeBuilder({
                   <span className="text-[10px] text-muted uppercase tracking-wide block mb-1">Background</span>
                   <div className="flex gap-1">
                     {brandColors.map(c => (
-                      <button key={'bg-' + c.value} onClick={() => setBgColor(c.value)}
+                      <button key={'bg-' + c.value} onClick={() => updateBgColor(c.value)}
                         className="w-5 h-5 rounded-[3px] border-2 transition-all flex-shrink-0"
                         style={{ background: c.value, borderColor: bgColor === c.value ? '#000' : '#e0e0e0' }}
                         title={c.label} />
