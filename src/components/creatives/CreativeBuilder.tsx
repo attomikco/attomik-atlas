@@ -217,14 +217,22 @@ export default function CreativeBuilder({
     setHeadlineFont(h?.family || hParts[0] || ''); setHeadlineWeight(h?.weight || hParts[1] || '700'); setHeadlineTransform(h?.transform || hParts[2] || 'none')
     const bo = nb?.font_body; const bParts = (nb?.font_secondary || '').split('|')
     setBodyFont(bo?.family || bParts[0] || ''); setBodyWeight(bo?.weight || bParts[1] || '400'); setBodyTransform(bo?.transform || bParts[2] || 'none')
-    setHeadlineColor(nb?.heading_color || nb?.primary_color || '#ffffff')
-    setBodyColor(nb?.body_color || '#ffffff')
-    setBgColor(nb?.primary_color || '#000000')
-    setTextBannerColor(nb?.primary_color || '#000000')
+    const nbBg = nb?.primary_color || '#000000'
+    const light = isLightColor(nbBg)
+    setHeadlineColor(nb?.heading_color || (light ? '#000000' : '#ffffff'))
+    setBodyColor(nb?.body_color || (light ? '#1a1a1a' : '#ffffff'))
+    setBgColor(nbBg)
+    setTextBannerColor(nbBg)
     setHeadline(nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`)
     const audience = nb?.target_audience?.split(/[;,]/)[0]?.trim() || 'you'
     setBodyText(nb?.default_body_text || `Premium quality crafted for ${audience}`)
     setCtaText(nb?.default_cta || 'Shop Now')
+    // Reset style to defaults on brand switch
+    setHeadlineSizeMul(1); setBodySizeMul(1)
+    setShowOverlay(true); setOverlayOpacity(10)
+    setTextBanner('none'); setTextPosition('bottom-left')
+    setImagePosition('center')
+    setActiveVariation(null); setActiveDraft(null)
   }, [brandId, brands])
 
   useEffect(() => {
