@@ -14,12 +14,27 @@ const TYPES = [
   { value: 'dtc_brief', label: 'DTC strategy brief' },
 ]
 
+const ALL_CATALOG = '__all__'
+
 interface Brand {
   id: string
   name: string
   primary_color: string | null
   products: Product[] | null
   target_audience: string | null
+}
+
+function formatProduct(p: Product) {
+  return `${p.name}${p.price_range ? ` ($${p.price_range})` : ''}${p.description ? ` — ${p.description}` : ''}`
+}
+
+function buildOffer(brand: Brand | undefined, productSelection: string) {
+  if (!brand?.products?.length) return ''
+  if (productSelection === ALL_CATALOG) {
+    return brand.products.map(formatProduct).join('\n')
+  }
+  const p = brand.products.find(pr => pr.name === productSelection)
+  return p ? formatProduct(p) : ''
 }
 
 export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Brand[]; defaultBrandId?: string }) {
@@ -29,8 +44,6 @@ export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Br
   const [error, setError] = useState<string | null>(null)
 
   const initialBrand = brands.find(b => b.id === (defaultBrandId || brands[0]?.id))
-  const productSummary = (brand: Brand | undefined) =>
-    brand?.products?.map(p => `${p.name}${p.price_range ? ` (${p.price_range})` : ''}${p.description ? ` — ${p.description}` : ''}`).join('\n') || ''
 
   const [form, setForm] = useState({
     brand_id: defaultBrandId || brands[0]?.id || '',
@@ -39,9 +52,13 @@ export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Br
     angle: '',
     goal: '',
     key_message: '',
-    offer: productSummary(initialBrand),
+    offer: '',
     audience_notes: initialBrand?.target_audience || '',
   })
+  const [productSelection, setProductSelection] = useState(ALL_CATALOG)
+
+  const brand = brands.find(b => b.id === form.brand_id)
+  const products = brand?.products ?? []
 
   function set(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }))
@@ -49,12 +66,18 @@ export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Br
 
   function onBrandChange(brandId: string) {
     const b = brands.find(br => br.id === brandId)
+    setProductSelection(ALL_CATALOG)
     setForm(f => ({
       ...f,
       brand_id: brandId,
-      offer: f.offer || productSummary(b),
-      audience_notes: f.audience_notes || b?.target_audience || '',
+      offer: buildOffer(b, ALL_CATALOG),
+      audience_notes: b?.target_audience || '',
     }))
+  }
+
+  function onProductChange(val: string) {
+    setProductSelection(val)
+    setForm(f => ({ ...f, offer: buildOffer(brand, val) }))
   }
 
   const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
@@ -125,12 +148,29 @@ export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Br
         </div>
       )}
 
-      {/* Brief fields */}
+      {/* Product selector */}
       <div>
-        <label className="label block mb-1.5">Offer / product</label>
+        <label className="label block mb-1.5">Product focus</label>
+        {products.length > 0 ? (
+          <div className="relative">
+            <select value={productSelection} onChange={e => onProductChange(e.target.value)} className={inputCls + ' pr-8 appearance-none'}>
+              <option value={ALL_CATALOG}>All catalog ({products.length} products)</option>
+              {products.map(p => (
+                <option key={p.name} value={p.name}>{p.name}{p.price_range ? ` — $${p.price_range}` : ''}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+          </div>
+        ) : (
+          <p className="text-xs text-muted">No products set up for this brand. Add them in brand details.</p>
+        )}
+      </div>
+
+      {/* Offer — auto-filled from product selection, editable */}
+      <div>
+        <label className="label block mb-1.5">Offer details</label>
         <textarea className={inputCls + ' resize-none'} rows={3} value={form.offer} onChange={e => set('offer', e.target.value)}
-          placeholder="What are you selling?" />
-        <p className="text-xs text-muted mt-1">Pre-filled from brand products. Edit as needed.</p>
+          placeholder="Auto-filled from product selection. Add pricing, discounts, or promo details." />
       </div>
 
       <div>
@@ -149,7 +189,6 @@ export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Br
         <label className="label block mb-1.5">Audience notes</label>
         <textarea className={inputCls + ' resize-none'} rows={2} value={form.audience_notes} onChange={e => set('audience_notes', e.target.value)}
           placeholder="Who is this for?" />
-        <p className="text-xs text-muted mt-1">Pre-filled from brand target audience.</p>
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
