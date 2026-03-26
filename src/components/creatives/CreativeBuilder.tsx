@@ -129,7 +129,7 @@ export default function CreativeBuilder({
   const previewRef = useRef<HTMLDivElement>(null)
   const exportRef = useRef<HTMLDivElement>(null)
 
-  // ── Helpers ───────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────
   function isLightColor(hex: string) {
     const c = hex.replace('#', '')
     if (c.length < 6) return false
