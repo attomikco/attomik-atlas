@@ -33,7 +33,7 @@ export default function OverlayTemplate({
     ? {
         position: 'absolute', left: 0, right: 0,
         top: '25%', height: '50%',
-        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 30%, rgba(0,0,0,0.75) 70%, transparent 100%)',
+        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.45) 70%, transparent 100%)',
         pointerEvents: 'none',
       }
     : {
