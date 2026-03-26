@@ -36,6 +36,11 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     return { family: parts[0] || '', weight: parts[1] || '400', transform: (parts[2] as FontStyle['transform']) || 'none' }
   })
   const [customFontsCss, setCustomFontsCss] = useState(brand.custom_fonts_css || '')
+  const [defaultCopy, setDefaultCopy] = useState({
+    default_headline: brand.default_headline || '',
+    default_body_text: brand.default_body_text || '',
+    default_cta: brand.default_cta || '',
+  })
 
   // Load Google Fonts for preview
   useEffect(() => {
@@ -95,6 +100,9 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
       font_heading:      fontHeading.family ? fontHeading : null,
       font_body:         fontBody.family ? fontBody : null,
       custom_fonts_css:  customFontsCss || null,
+      default_headline:  defaultCopy.default_headline || null,
+      default_body_text: defaultCopy.default_body_text || null,
+      default_cta:       defaultCopy.default_cta || null,
     }).eq('id', brand.id)
 
     if (err2) {
@@ -238,6 +246,21 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
               onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
               placeholder="https://brand.com/logo.png" />
           </div>
+        </div>
+        <div>
+          <label className="label block mb-2">Default creative copy</label>
+          <div className="space-y-2">
+            <input className={inputCls} value={defaultCopy.default_headline}
+              onChange={e => setDefaultCopy(f => ({ ...f, default_headline: e.target.value }))}
+              placeholder="Default headline — e.g. Discover Your Brand" />
+            <textarea className={inputCls + ' resize-none'} rows={2} value={defaultCopy.default_body_text}
+              onChange={e => setDefaultCopy(f => ({ ...f, default_body_text: e.target.value }))}
+              placeholder="Default body text — e.g. Premium quality crafted for you" />
+            <input className={inputCls} value={defaultCopy.default_cta}
+              onChange={e => setDefaultCopy(f => ({ ...f, default_cta: e.target.value }))}
+              placeholder="Default CTA — e.g. Shop Now" />
+          </div>
+          <p className="text-[10px] text-muted mt-1">Pre-fills the creative builder when this brand is selected.</p>
         </div>
       </div>
       {error && <p className="text-sm text-danger mt-4">{error}</p>}
