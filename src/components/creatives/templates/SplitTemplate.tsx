@@ -8,11 +8,8 @@ const HEADLINE_SIZE   = 76
 const BODY_SIZE       = 30
 const CTA_SIZE        = 26
 const CTA_PAD         = 22
-const DIVIDER_W       = 48
-const DIVIDER_H       = 3
 const GAP_BRAND_HEAD  = 20
-const GAP_HEAD_DIV    = 24
-const GAP_DIV_BODY    = 20
+const GAP_HEAD_BODY   = 24
 const GAP_BODY_CTA    = 28
 
 export default function SplitTemplate({
@@ -66,18 +63,13 @@ export default function SplitTemplate({
           </div>
         )}
 
-        <div style={{
-          width: px(DIVIDER_W, width), height: px(DIVIDER_H, width),
-          background: headlineColor, borderRadius: 2,
-          margin: `${px(GAP_HEAD_DIV, width)}px 0 ${px(GAP_DIV_BODY, width)}px`,
-        }} />
-
         {bodyText && (
           <div style={{
             fontSize: px(BODY_SIZE, width) * bodySizeMul,
             fontWeight: parseInt(bodyWeight) || 400, lineHeight: 1.55,
             color: bodyColor, fontFamily: ff(bodyFont),
             textTransform: bodyTransform as any,
+            marginTop: px(GAP_HEAD_BODY, width),
             display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
             {bodyText}
