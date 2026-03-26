@@ -1,13 +1,42 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Campaign } from '@/types'
-import { Check, Loader2 } from 'lucide-react'
+import { Brand, Campaign, Product } from '@/types'
+import { Check, Loader2, ChevronDown } from 'lucide-react'
 
-export default function BriefTab({ campaign }: { campaign: Campaign }) {
+const ALL_CATALOG = '__all__'
+
+function formatProduct(p: Product) {
+  return `${p.name}${p.price_range ? ` ($${p.price_range})` : ''}${p.description ? ` — ${p.description}` : ''}`
+}
+
+function buildOffer(products: Product[], selection: string) {
+  if (!products.length) return ''
+  if (selection === ALL_CATALOG) return products.map(formatProduct).join('\n')
+  const p = products.find(pr => pr.name === selection)
+  return p ? formatProduct(p) : ''
+}
+
+export default function BriefTab({ campaign, brand }: { campaign: Campaign; brand: Brand }) {
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const products = brand.products ?? []
+
+  // Try to match existing offer to a product for the dropdown
+  const initialSelection = () => {
+    if (!campaign.offer || !products.length) return ALL_CATALOG
+    const match = products.find(p => campaign.offer?.includes(p.name))
+    if (match) {
+      // Check if it's just one product or all
+      const allOffer = products.map(formatProduct).join('\n')
+      if (campaign.offer === allOffer) return ALL_CATALOG
+      return match.name
+    }
+    return ALL_CATALOG
+  }
+
+  const [productSelection, setProductSelection] = useState(initialSelection)
   const [form, setForm] = useState({
     name: campaign.name || '',
     angle: campaign.angle || '',
@@ -19,6 +48,11 @@ export default function BriefTab({ campaign }: { campaign: Campaign }) {
 
   const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
   const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
+
+  function onProductChange(val: string) {
+    setProductSelection(val)
+    setForm(f => ({ ...f, offer: buildOffer(products, val) }))
+  }
 
   async function save() {
     setSaving(true)
@@ -61,10 +95,28 @@ export default function BriefTab({ campaign }: { campaign: Campaign }) {
           </div>
         )}
 
+        {/* Product selector */}
         <div>
-          <label className="label block mb-1.5">Offer / product</label>
-          <textarea className={inputCls + ' resize-none'} rows={2} value={form.offer}
-            onChange={e => set('offer', e.target.value)} placeholder="What are you selling?" />
+          <label className="label block mb-1.5">Product focus</label>
+          {products.length > 0 ? (
+            <div className="relative">
+              <select value={productSelection} onChange={e => onProductChange(e.target.value)} className={inputCls + ' pr-8 appearance-none'}>
+                <option value={ALL_CATALOG}>All catalog ({products.length} products)</option>
+                {products.map(p => (
+                  <option key={p.name} value={p.name}>{p.name}{p.price_range ? ` — $${p.price_range}` : ''}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            </div>
+          ) : (
+            <p className="text-xs text-muted">No products set up for this brand.</p>
+          )}
+        </div>
+
+        <div>
+          <label className="label block mb-1.5">Offer details</label>
+          <textarea className={inputCls + ' resize-none'} rows={3} value={form.offer}
+            onChange={e => set('offer', e.target.value)} placeholder="Auto-filled from product selection. Add pricing, discounts, or promo details." />
         </div>
 
         <div>
