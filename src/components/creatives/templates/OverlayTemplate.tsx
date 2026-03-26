@@ -52,7 +52,8 @@ export default function OverlayTemplate({
       {/* Text block — positioned by textPosition */}
       <div style={{
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' as const,
-        justifyContent: pos.justifyContent, padding: p,
+        justifyContent: pos.justifyContent,
+        padding: `${textPosition.startsWith('top') && height / width > 1.4 ? p * 3 : p}px ${p}px ${p}px`,
       }}>
         <div style={{ textAlign: pos.textAlign, maxWidth: '85%', alignSelf: pos.alignItems === 'flex-end' ? 'flex-end' : pos.alignItems === 'center' ? 'center' : 'flex-start' }}>
           {headline && (
