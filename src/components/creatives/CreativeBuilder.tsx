@@ -532,7 +532,7 @@ export default function CreativeBuilder({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* ── LEFT: Preview ── */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-7">
           <div className="bg-paper border border-border rounded-card p-4">
             {/* Preview label */}
             <div className="flex items-center justify-between mb-3">
@@ -668,7 +668,7 @@ export default function CreativeBuilder({
         </div>
 
         {/* ── RIGHT SIDEBAR: Images + Copy + Style ── */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="lg:col-span-5 space-y-4">
 
           {/* Images */}
           <div className="bg-paper border border-border rounded-card p-4">
