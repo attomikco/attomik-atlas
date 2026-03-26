@@ -13,10 +13,10 @@ const GAP_DIV_SUPPORT = 20
 const OVERLAY_OPACITY = 0.30
 
 export default function StatTemplate({
-  imageUrl, headline, bodyText, brandColor, brandName, width, height,
+  imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   headlineFont, headlineWeight, headlineTransform,
   bodyFont, bodyWeight, bodyTransform, headlineSizeMul, bodySizeMul,
-  headlineColor, bgColor, showOverlay, overlayOpacity,
+  headlineColor, bodyColor, bgColor, showOverlay, overlayOpacity,
 }: TemplateProps) {
   const p = px(EDGE_PAD, width)
   const statColor = (headlineColor === '#ffffff' || headlineColor === '#fff') ? brandColor : headlineColor
@@ -35,14 +35,14 @@ export default function StatTemplate({
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' as const,
         alignItems: 'center', justifyContent: 'center', padding: p, textAlign: 'center' as const,
       }}>
-        {bodyText && (
+        {ctaText && (
           <div style={{
             fontSize: px(LABEL_SIZE, width) * bodySizeMul, fontWeight: 600,
             letterSpacing: '0.15em', textTransform: 'uppercase' as const,
             color: 'rgba(255,255,255,0.7)', fontFamily: ff(bodyFont),
             marginBottom: px(GAP_LABEL_STAT, width),
           }}>
-            {bodyText}
+            {ctaText}
           </div>
         )}
 
@@ -69,6 +69,8 @@ export default function StatTemplate({
             fontSize: px(SUPPORT_SIZE, width) * bodySizeMul, fontWeight: 400,
             lineHeight: 1.4, color: 'rgba(255,255,255,0.8)', fontFamily: ff(bodyFont),
             textTransform: bodyTransform as any, maxWidth: '80%',
+            display: '-webkit-box', WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
             {bodyText}
           </div>
