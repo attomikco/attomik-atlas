@@ -81,15 +81,18 @@ export default function CreativeBuilder({
   const [ctaText, setCtaText] = useState('Shop Now')
   const [textPosition, setTextPosition] = useState<TextPosition>('bottom-left')
   const [showCta, setShowCta] = useState(true)
-  const [headlineColor, setHeadlineColor] = useState<string>(brands[0]?.heading_color || brands[0]?.primary_color || '#ffffff')
-  const [bodyColor, setBodyColor] = useState<string>(brands[0]?.body_color || '#ffffff')
-  const [headlineFont, setHeadlineFont] = useState<string>('')
-  const [bodyFont, setBodyFont] = useState<string>('')
-  const [headlineWeight, setHeadlineWeight] = useState<string>('700')
-  const [headlineTransform, setHeadlineTransform] = useState<string>('none')
-  const [bodyWeight, setBodyWeight] = useState<string>('400')
-  const [bodyTransform, setBodyTransform] = useState<string>('none')
-  const [bgColor, setBgColor] = useState<string>(brands[0]?.primary_color || '#000000')
+  const initBrand = brands.find(b => b.id === (defaultBrandId || brands[0]?.id))
+  const [headlineColor, setHeadlineColor] = useState<string>(initBrand?.heading_color || initBrand?.primary_color || '#ffffff')
+  const [bodyColor, setBodyColor] = useState<string>(initBrand?.body_color || '#ffffff')
+  const initHParts = (initBrand?.font_primary || '').split('|')
+  const initBParts = (initBrand?.font_secondary || '').split('|')
+  const [headlineFont, setHeadlineFont] = useState<string>(initBrand?.font_heading?.family || initHParts[0] || '')
+  const [bodyFont, setBodyFont] = useState<string>(initBrand?.font_body?.family || initBParts[0] || '')
+  const [headlineWeight, setHeadlineWeight] = useState<string>(initBrand?.font_heading?.weight || initHParts[1] || '700')
+  const [headlineTransform, setHeadlineTransform] = useState<string>(initBrand?.font_heading?.transform || initHParts[2] || 'none')
+  const [bodyWeight, setBodyWeight] = useState<string>(initBrand?.font_body?.weight || initBParts[1] || '400')
+  const [bodyTransform, setBodyTransform] = useState<string>(initBrand?.font_body?.transform || initBParts[2] || 'none')
+  const [bgColor, setBgColor] = useState<string>(initBrand?.primary_color || '#000000')
   const [headlineSizeMul, setHeadlineSizeMul] = useState(1)
   const [bodySizeMul, setBodySizeMul] = useState(1)
   const [showOverlay, setShowOverlay] = useState(false)
@@ -559,7 +562,22 @@ export default function CreativeBuilder({
 
           {/* Style */}
           <div className="bg-paper border border-border rounded-card p-4 space-y-3">
-            <label className="label block">Style</label>
+            <div className="flex items-center justify-between">
+              <label className="label">Style</label>
+              <button onClick={() => {
+                const h = brand?.font_heading; const hP = (brand?.font_primary || '').split('|')
+                const b = brand?.font_body; const bP = (brand?.font_secondary || '').split('|')
+                setHeadlineColor(brand?.heading_color || brand?.primary_color || '#ffffff')
+                setBodyColor(brand?.body_color || '#ffffff')
+                setHeadlineFont(h?.family || hP[0] || ''); setHeadlineWeight(h?.weight || hP[1] || '700'); setHeadlineTransform(h?.transform || hP[2] || 'none')
+                setBodyFont(b?.family || bP[0] || ''); setBodyWeight(b?.weight || bP[1] || '400'); setBodyTransform(b?.transform || bP[2] || 'none')
+                setBgColor(brand?.primary_color || '#000000'); setHeadlineSizeMul(1); setBodySizeMul(1)
+                setShowOverlay(false); setOverlayOpacity(50); setTextBanner('none')
+              }}
+                className="text-[10px] text-muted hover:text-ink transition-colors font-semibold uppercase tracking-wide">
+                Reset to brand
+              </button>
+            </div>
 
             {/* Text position grid + Background */}
             <div className="flex gap-4">
