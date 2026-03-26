@@ -139,9 +139,10 @@ export default function CreativeBuilder({
     textPosition: TextPosition; showCta: boolean; imagePosition: string
   }
   type Variation = { headline: string; body: string; cta: string; imageId: string | null; templateId: string; style: StyleSnapshot }
+  type Draft = Variation & { sizeId: string }
   const [variations, setVariations] = useState<Variation[]>([])
   const [activeVariation, setActiveVariation] = useState<number | null>(null)
-  const [savedDrafts, setSavedDrafts] = useState<Variation[]>([])
+  const [savedDrafts, setSavedDrafts] = useState<Draft[]>([])
   const [activeDraft, setActiveDraft] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportingAll, setExportingAll] = useState(false)
@@ -316,8 +317,11 @@ export default function CreativeBuilder({
 
   // ── Variation / Draft helpers ──────────────────────────────────────
   function loadVariation(i: number) { const v = variations[i]; if (!v) return; setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta); setSelectedImageId(v.imageId); setTemplateId(v.templateId); applyStyle(v.style); setActiveVariation(i); setActiveDraft(null) }
-  function saveVariationAsDraft(i: number) { const v = variations[i]; if (!v) return; if (savedDrafts.some(d => d.headline === v.headline && d.imageId === v.imageId)) return; setSavedDrafts(prev => [...prev, v]) }
-  function loadDraft(i: number) { const d = savedDrafts[i]; if (!d) return; setHeadline(d.headline); setBodyText(d.body); setCtaText(d.cta); setSelectedImageId(d.imageId); setTemplateId(d.templateId); applyStyle(d.style); setActiveDraft(i); setActiveVariation(null) }
+  function saveVariationAsDraft(i: number) { const v = variations[i]; if (!v) return; setSavedDrafts(prev => [...prev, { ...v, sizeId }]) }
+  function saveCurrentAsDraft() {
+    setSavedDrafts(prev => [...prev, { headline, body: bodyText, cta: ctaText, imageId: selectedImageId, templateId, style: captureStyle(), sizeId }])
+  }
+  function loadDraft(i: number) { const d = savedDrafts[i]; if (!d) return; setHeadline(d.headline); setBodyText(d.body); setCtaText(d.cta); setSelectedImageId(d.imageId); setTemplateId(d.templateId); setSizeId(d.sizeId); applyStyle(d.style); setActiveDraft(i); setActiveVariation(null) }
   function removeDraft(i: number) { setSavedDrafts(prev => prev.filter((_, j) => j !== i)); if (activeDraft === i) setActiveDraft(null); else if (activeDraft !== null && activeDraft > i) setActiveDraft(activeDraft - 1) }
 
   // ── Auto-sync edits back to active variation ──────────────────────
@@ -536,7 +540,14 @@ export default function CreativeBuilder({
           <div className="bg-paper border border-border rounded-card p-4">
             {/* Preview label */}
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-muted">{template.label} &middot; {size.w}&times;{size.h}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">{template.label} &middot; {size.w}&times;{size.h}</span>
+                <button onClick={saveCurrentAsDraft}
+                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill transition-all hover:opacity-80"
+                  style={{ background: '#111', color: '#4ade80' }}>
+                  <Bookmark size={11} /> Save
+                </button>
+              </div>
               {/* Batch generate */}
               <div className="flex items-center gap-1.5">
                 {batchGenerating ? (
@@ -637,24 +648,53 @@ export default function CreativeBuilder({
           {/* ── Saved drafts ── */}
           {savedDrafts.length > 0 && (
             <div className="bg-paper border border-border rounded-card p-4 mt-4">
-              <div className="label mb-3">Saved drafts ({savedDrafts.length})</div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="label">Saved ({savedDrafts.length})</div>
+                <button onClick={async () => {
+                  if (savedDrafts.length === 0) return
+                  setExportingAll(true)
+                  try {
+                    const zip = new JSZip()
+                    for (let i = 0; i < savedDrafts.length; i++) {
+                      const d = savedDrafts[i]
+                      const DComp = TEMPLATES.find(t => t.id === d.templateId)!.component
+                      const dImg = images.find(img => img.id === d.imageId)
+                      const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
+                      const dSize = SIZES.find(s => s.id === d.sizeId) || size
+                      const props = thumbProps(d, dImgUrl)
+                      const dataUrl = await renderAndCapture(DComp, props, dSize.w, dSize.h)
+                      zip.file(`${brandSlug}-${d.templateId}-${d.sizeId}-${i + 1}.png`, dataUrl.split(',')[1], { base64: true })
+                    }
+                    const blob = await zip.generateAsync({ type: 'blob' }); const link = document.createElement('a')
+                    link.download = `${brandSlug}-drafts-${Date.now()}.zip`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)
+                    setExportToast(`Downloaded ${savedDrafts.length} drafts`); setTimeout(() => setExportToast(null), 3000)
+                  } catch (err) { console.error('Export drafts failed:', err) }
+                  setExportingAll(false)
+                }} disabled={exportingAll}
+                  className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted hover:text-ink transition-colors disabled:opacity-40">
+                  <Download size={11} /> Download all
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {savedDrafts.map((d, i) => {
                   const dImg = images.find(img => img.id === d.imageId)
                   const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
                   const DTemplate = TEMPLATES.find(t => t.id === d.templateId)!.component
+                  const dSize = SIZES.find(s => s.id === d.sizeId) || size
+                  const dSizeLabel = SIZES.find(s => s.id === d.sizeId)?.label || d.sizeId
                   const dThumbW = 120
-                  const dThumbScale = dThumbW / size.w
-                  const dThumbH = Math.round(size.h * dThumbScale)
+                  const dThumbScale = dThumbW / dSize.w
+                  const dThumbH = Math.round(dSize.h * dThumbScale)
                   return (
                     <div key={i} className="relative group">
                       <button onClick={() => loadDraft(i)}
                         className="rounded-[3px] overflow-hidden transition-all hover:opacity-90"
-                        style={{ width: dThumbW, height: dThumbH, border: activeDraft === i ? '2px solid #00ff97' : '1px solid #e0e0e0', display: 'block' }}>
-                        <div style={{ width: size.w, height: size.h, transform: `scale(${dThumbScale})`, transformOrigin: 'top left' }}>
+                        style={{ width: dThumbW, height: dThumbH, border: activeDraft === i ? '2px solid #4ade80' : '1px solid #e0e0e0', display: 'block' }}>
+                        <div style={{ width: dSize.w, height: dSize.h, transform: `scale(${dThumbScale})`, transformOrigin: 'top left' }}>
                           <DTemplate {...thumbProps(d, dImgUrl)} />
                         </div>
                       </button>
+                      <span className="absolute bottom-0.5 left-0.5 text-[9px] font-bold bg-black/60 text-white px-1 rounded">{dSizeLabel}</span>
                       <button onClick={() => removeDraft(i)}
                         className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger">
                         <X size={8} />
