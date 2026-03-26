@@ -76,7 +76,7 @@ export default function OverlayTemplate({
           {headline && bodyText && (
             <div style={{
               width: px(DIVIDER_W, width), height: px(DIVIDER_H, width),
-              background: brandColor, borderRadius: 2,
+              background: headlineColor, borderRadius: 2,
               margin: `${px(GAP_HEADLINE_DIVIDER, width)}px 0 ${px(GAP_DIVIDER_BODY, width)}px`,
             }} />
           )}
