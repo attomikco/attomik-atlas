@@ -4,15 +4,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Upload } from 'lucide-react'
 
-const TYPES = [
-  { value: 'funnel', label: 'Funnel — creative + ad copy + landing brief' },
-  { value: 'ad_copy', label: 'Ad copy' },
-  { value: 'email', label: 'Email' },
-  { value: 'social', label: 'Social' },
-  { value: 'seo', label: 'SEO' },
-  { value: 'dtc_brief', label: 'DTC strategy brief' },
-]
-
 const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
 
 export default function OnboardingWizard() {
@@ -40,9 +31,7 @@ export default function OnboardingWizard() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Step 3
-  const [campaignType, setCampaignType] = useState('funnel')
   const [campaignName, setCampaignName] = useState('')
-  const [angle, setAngle] = useState('')
 
   function validate(): boolean {
     const errs: Record<string, string> = {}
@@ -55,6 +44,7 @@ export default function OnboardingWizard() {
 
   function next() {
     if (!validate()) return
+    if (step === 1 && !campaignName) setCampaignName(`${brandName.trim()} — Launch Campaign`)
     setStep(s => Math.min(s + 1, 2))
   }
 
@@ -116,8 +106,7 @@ export default function OnboardingWizard() {
     const { data: campaign, error: campErr } = await supabase.from('campaigns').insert({
       brand_id: brand.id,
       name: campaignName.trim(),
-      type: campaignType,
-      angle: angle.trim() || null,
+      type: 'funnel',
       status: 'draft',
     }).select('id').single()
 
@@ -201,24 +190,14 @@ export default function OnboardingWizard() {
       ),
     },
     {
-      title: 'Your first campaign',
-      subtitle: 'Let\'s create your first campaign to start generating content.',
+      title: 'Almost there',
+      subtitle: 'We\'ll generate your full funnel automatically — ad copy, landing page brief, and creatives.',
       content: (
         <div className="space-y-4">
-          <div>
-            <label className="text-xs font-semibold block mb-1">Campaign type</label>
-            <select className={inputCls + ' appearance-none'} value={campaignType} onChange={e => setCampaignType(e.target.value)}>
-              {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
           <div>
             <label className="text-xs font-semibold block mb-1">Campaign name *</label>
             <input className={inputCls} value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="e.g. Spring Launch — Premium Taste" />
             {errors.campaignName && <p className="text-danger text-xs mt-1">{errors.campaignName}</p>}
-          </div>
-          <div>
-            <label className="text-xs font-semibold block mb-1">Angle / hook</label>
-            <textarea className={inputCls + ' resize-none'} rows={3} value={angle} onChange={e => setAngle(e.target.value)} placeholder="What's the angle or offer? e.g. Limited-time 20% off for new customers" />
           </div>
           {errors.submit && <p className="text-danger text-sm">{errors.submit}</p>}
         </div>
@@ -269,7 +248,7 @@ export default function OnboardingWizard() {
               className="flex items-center gap-2 text-sm font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: '#00ff97', color: '#000' }}>
               {saving && <Loader2 size={14} className="animate-spin" />}
-              {saving ? savingLabel : 'Create & launch →'}
+              {saving ? savingLabel : 'Launch my funnel →'}
             </button>
           )}
         </div>
