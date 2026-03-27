@@ -110,7 +110,7 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     // Reset style to defaults on brand switch
     setHeadlineSizeMul(1); setBodySizeMul(1)
     setShowOverlay(false); setOverlayOpacity(10)
-    setTextBanner('none'); setTextPosition('bottom-left')
+    setTextBanner('none'); setTextPosition('center')
     setImagePosition('center')
     // CTA: prefer btn_primary > accent > primary
     setCtaColor(nb?.btn_primary || nb?.accent_color || nb?.primary_color || '#00ff97')
