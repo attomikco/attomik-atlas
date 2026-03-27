@@ -26,7 +26,7 @@ export default function CardTemplate({
       {/* Image */}
       <div style={{ position: 'relative', height: imgH, flexShrink: 0 }}>
         {imageUrl ? (
-          <img crossOrigin="anonymous" src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}` }} />
+          <img crossOrigin="anonymous" src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'bottom'}` }} />
         ) : (
           <div style={{ position: 'absolute', inset: 0, background: '#e0e0e0' }} />
         )}
