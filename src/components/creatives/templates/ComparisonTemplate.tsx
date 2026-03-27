@@ -66,14 +66,24 @@ export default function ComparisonTemplate({
         '#cc3333',
         '#333',
       )}
+      <div style={{ width: panelW, height, position: 'relative', overflow: 'hidden' }}>
+        {imageUrl && (
+          <>
+            <img crossOrigin="anonymous" src={imageUrl} alt="" style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}`, opacity: 0.15,
+            }} />
+          </>
+        )}
       {panel(
-        bgColor || brandColor || '#000',
+        imageUrl ? 'transparent' : (bgColor || brandColor || '#000'),
         `The ${brandName} Way`,
         newItems.length > 0 ? newItems : ['All natural', 'Zero sugar', 'Feel great tomorrow'],
         '\u2713',
         '#33cc66',
         headlineColor || '#fff',
       )}
+      </div>
     </div>
   )
 }

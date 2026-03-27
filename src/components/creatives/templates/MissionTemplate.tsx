@@ -1,6 +1,6 @@
 import { TemplateProps, ff, px, autoSize } from './types'
 
-const HEADLINE_SIZE = 80
+const HEADLINE_SIZE = 128
 const SUBTITLE_SIZE = 30
 const EDGE_PAD = 80
 const PRODUCT_SIZE = 0.22
