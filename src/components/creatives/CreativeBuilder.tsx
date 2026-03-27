@@ -118,8 +118,6 @@ export default function CreativeBuilder({
     seen.add(value.toLowerCase())
     allColors.push({ label, value })
   }
-  addColor('White', '#ffffff')
-  addColor('Black', '#000000')
   // Backgrounds
   addColor('Base bg', brand?.bg_base)
   addColor('Dark bg', brand?.bg_dark)
