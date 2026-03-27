@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import PlatformAdPreview from './PlatformAdPreview'
 import OverlayTemplate from '@/components/creatives/templates/OverlayTemplate'
 import GenerationModal, { ModalStep } from '@/components/ui/GenerationModal'
+import CreativeReel from './CreativeReel'
 
 interface AdVariation {
   primary_text: string
@@ -66,6 +67,7 @@ export default function PreviewClient({
   const [adVariation, setAdVariation] = useState<AdVariation | null>(existingAdVariation)
   const [landingBrief, setLandingBrief] = useState<LandingBrief | null>(existingLandingBrief)
   const [showModal, setShowModal] = useState(!hasContent)
+  const [showReel, setShowReel] = useState(false)
   const [modalSteps, setModalSteps] = useState<ModalStep[]>([
     { id: 'ad-copy', label: 'Ad copy', status: hasContent ? 'done' : 'pending' },
     { id: 'landing', label: 'Landing page brief', status: hasContent ? 'done' : 'pending' },
@@ -206,8 +208,17 @@ export default function PreviewClient({
         isOpen={showModal}
         steps={modalSteps}
         brandName={brand.name}
-        onClose={() => setShowModal(false)}
+        onClose={() => { setShowModal(false); if (adVariation) setShowReel(true) }}
       />
+
+      {showReel && adVariation && (
+        <CreativeReel
+          brand={brand}
+          adVariation={adVariation}
+          imageUrl={brandImageUrl}
+          onComplete={() => setShowReel(false)}
+        />
+      )}
 
       {/* Top nav bar */}
       <div className="border-b border-border bg-paper sticky top-0 z-40">
