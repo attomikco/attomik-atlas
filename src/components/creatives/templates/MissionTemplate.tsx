@@ -70,13 +70,17 @@ export default function MissionTemplate({
         )}
       </div>
 
-      {/* Product image bottom-right */}
+      {/* Product image bottom-right — always square */}
       {productImageUrl && (
-        <img crossOrigin="anonymous" src={productImageUrl} alt="" style={{
+        <div style={{
           position: 'absolute', bottom: p, right: p,
           width: prodSize, height: prodSize,
-          objectFit: 'contain',
-        }} />
+          borderRadius: px(8, width), overflow: 'hidden',
+        }}>
+          <img crossOrigin="anonymous" src={productImageUrl} alt="" style={{
+            width: '100%', height: '100%', objectFit: 'cover',
+          }} />
+        </div>
       )}
 
       {/* Brand name watermark */}
