@@ -87,7 +87,7 @@ export default function GridTemplate({
               background: ctaColor || brandColor, color: ctaFontColor || '#000',
               fontSize: px(CTA_SIZE, width), fontWeight: 700,
               padding: `${px(CTA_PAD_V, width)}px ${px(CTA_PAD_H, width)}px`,
-              borderRadius: 6, fontFamily: ff(headlineFont),
+              borderRadius: 6, fontFamily: ff(headlineFont), lineHeight: 1,
             }}>
               {ctaText || 'Shop Now'}
             </div>

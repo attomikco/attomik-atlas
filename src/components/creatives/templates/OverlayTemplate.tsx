@@ -123,18 +123,18 @@ export default function OverlayTemplate({
 
           {showCta && (
             <div style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              display: 'inline-block',
               marginTop: px(GAP_BODY_CTA, width),
               background: ctaColor || brandColor,
               color: ctaFontColor || '#000',
               fontSize: px(CTA_SIZE, width) * bodySizeMul,
               fontWeight: 700,
-              height: Math.round(px(CTA_SIZE, width) * bodySizeMul * 2.4),
-              paddingLeft: px(CTA_PAD_H, width), paddingRight: px(CTA_PAD_H, width),
+              padding: `${px(CTA_PAD_V, width)}px ${px(CTA_PAD_H, width)}px`,
               borderRadius: CTA_RADIUS,
               whiteSpace: 'nowrap' as const,
               fontFamily: ff(headlineFont),
               lineHeight: 1,
+              textAlign: 'center' as const,
             }}>
               {ctaText || 'Shop Now'}
             </div>

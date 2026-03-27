@@ -85,7 +85,7 @@ export default function SplitTemplate({
             background: ctaColor || brandColor, color: ctaFontColor || '#000',
             fontSize: px(CTA_SIZE, width) * bodySizeMul, fontWeight: 700,
             padding: `${px(CTA_PAD, width)}px ${px(CTA_PAD * 2, width)}px`,
-            borderRadius: 6, fontFamily: ff(headlineFont),
+            borderRadius: 6, fontFamily: ff(headlineFont), lineHeight: 1,
           }}>
             {ctaText || 'Shop Now'}
           </div>
