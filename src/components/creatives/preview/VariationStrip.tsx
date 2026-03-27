@@ -40,7 +40,7 @@ export default function VariationStrip({
           const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
           const VTemplate = TEMPLATES.find(t => t.id === v.templateId)!.component
           const isSaved = savedDrafts.some(d => d.headline === v.headline && d.imageId === v.imageId)
-          const thumbW = 100
+          const thumbW = 80
           const thumbScale = thumbW / size.w
           const thumbH = Math.round(size.h * thumbScale)
           return (
