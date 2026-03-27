@@ -317,7 +317,8 @@ export default function OnboardingWizard() {
           {/* Product picker — shown when products detected and not in manual mode */}
           {detectedProducts.length > 0 && !showManualProduct ? (
             <>
-              <div className="label mb-1">Select your hero product</div>
+              <div className="label mb-0.5">Tap to select your hero product</div>
+              <p className="text-xs text-muted mb-3">We found {detectedProducts.length} products. Pick the one you want to market first.</p>
               <div className="grid grid-cols-2 gap-3">
                 {detectedProducts.map((p, idx) => (
                   <button key={idx} onClick={() => selectProduct(idx)}
@@ -331,7 +332,12 @@ export default function OnboardingWizard() {
                       </div>
                     )}
                     <div className="font-semibold text-sm truncate">{p.name}</div>
-                    {p.price && <div className="text-xs text-muted">${p.price}</div>}
+                    <div className="flex items-center justify-between mt-0.5">
+                      {p.price && <span className="text-xs text-muted">${p.price}</span>}
+                      <span className="text-[10px] font-semibold" style={{ color: selectedProductIdx === idx ? '#00cc6a' : '#ccc' }}>
+                        {selectedProductIdx === idx ? '✓ Selected' : 'Tap to select'}
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>
