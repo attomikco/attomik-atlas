@@ -59,7 +59,7 @@ export default function OverlayTemplate({
   return (
     <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont), background: bgColor, WebkitFontSmoothing: 'antialiased' as any }}>
       {imageUrl ? (
-        <img crossOrigin="anonymous" src={imageUrl} alt="" style={{
+        <img crossOrigin="anonymous" src={imageUrl} alt="" onError={(e) => console.error('[Template] Image failed:', e.currentTarget.src)} style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
           objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}`,
         }} />

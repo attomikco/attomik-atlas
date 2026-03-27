@@ -99,17 +99,22 @@ export default function PreviewClient({
 
   // Fetch brand images by tag
   useEffect(() => {
-    function buildUrl(storagePath: string) {
-      return supabase.storage.from('brand-images').getPublicUrl(storagePath).data.publicUrl
+    function buildImageUrl(storagePath: string) {
+      // Strip leading bucket name if accidentally included
+      const cleanPath = storagePath.replace(/^brand-images\//, '')
+      const { data } = supabase.storage.from('brand-images').getPublicUrl(cleanPath)
+      console.log('[Preview] buildImageUrl:', { storagePath, cleanPath, url: data.publicUrl })
+      return data.publicUrl
     }
     function loadImages(images: BrandImage[]) {
+      console.log('[Preview] brand images:', images.map(i => ({ id: i.id, tag: i.tag, storage_path: i.storage_path })))
       const products = images.filter(i => i.tag === 'product')
       const lifestyle = images.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
-      if (products.length > 0) setProductImageUrl(buildUrl(products[0].storage_path))
-      else if (images.length > 0) setProductImageUrl(buildUrl(images[0].storage_path))
-      if (lifestyle.length > 0) setLifestyleImageUrl(buildUrl(lifestyle[0].storage_path))
-      else if (products.length > 0) setLifestyleImageUrl(buildUrl(products[0].storage_path))
-      else if (images.length > 0) setLifestyleImageUrl(buildUrl(images[0].storage_path))
+      if (products.length > 0) setProductImageUrl(buildImageUrl(products[0].storage_path))
+      else if (images.length > 0) setProductImageUrl(buildImageUrl(images[0].storage_path))
+      if (lifestyle.length > 0) setLifestyleImageUrl(buildImageUrl(lifestyle[0].storage_path))
+      else if (products.length > 0) setLifestyleImageUrl(buildImageUrl(products[0].storage_path))
+      else if (images.length > 0) setLifestyleImageUrl(buildImageUrl(images[0].storage_path))
     }
     if (brandImages.length > 0) {
       loadImages(brandImages)

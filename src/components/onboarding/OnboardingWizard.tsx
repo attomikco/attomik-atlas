@@ -148,6 +148,7 @@ export default function OnboardingWizard() {
         const ext = file.name.split('.').pop() || 'jpg'
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
         const storagePath = `${brand.id}/${fileName}`
+        console.log('[Upload] Storing path:', storagePath)
         const { error: uploadErr } = await supabase.storage.from('brand-images').upload(storagePath, file, { contentType: file.type })
         if (!uploadErr) {
           await supabase.from('brand_images').insert({
