@@ -94,12 +94,15 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setHeadlineFont(h?.family || hParts[0] || ''); setHeadlineWeight(h?.weight || hParts[1] || '700'); setHeadlineTransform(h?.transform || hParts[2] || 'none')
     const bo = nb?.font_body; const bParts = (nb?.font_secondary || '').split('|')
     setBodyFont(bo?.family || bParts[0] || ''); setBodyWeight(bo?.weight || bParts[1] || '400'); setBodyTransform(bo?.transform || bParts[2] || 'none')
-    const nbBg = nb?.primary_color || '#000000'
+    // Background: prefer bg_dark > bg_base > primary_color
+    const nbBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || '#000000'
     const light = isLightColor(nbBg)
-    setHeadlineColor(nb?.heading_color || (light ? '#000000' : '#ffffff'))
-    setBodyColor(nb?.body_color || (light ? '#1a1a1a' : '#ffffff'))
+    // Text: prefer new system > legacy > auto-detect
+    setHeadlineColor(nb?.text_on_dark || nb?.heading_color || (light ? '#000000' : '#ffffff'))
+    setBodyColor(nb?.text_on_dark || nb?.body_color || (light ? '#1a1a1a' : '#ffffff'))
     setBgColor(nbBg)
-    setTextBannerColor(nbBg)
+    setTextBannerColor(nb?.bg_accent || nb?.bg_secondary || nbBg)
+    // Copy
     setHeadline(nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`)
     const audience = nb?.target_audience?.split(/[;,]/)[0]?.trim() || 'you'
     setBodyText(nb?.default_body_text || `Premium quality crafted for ${audience}`)
@@ -109,8 +112,9 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setShowOverlay(false); setOverlayOpacity(10)
     setTextBanner('none'); setTextPosition('bottom-left')
     setImagePosition('center')
-    setCtaColor(nb?.accent_color || nb?.primary_color || '#00ff97')
-    setCtaFontColor(nb?.accent_font_color || '#000000')
+    // CTA: prefer btn_primary > accent > primary
+    setCtaColor(nb?.btn_primary || nb?.accent_color || nb?.primary_color || '#00ff97')
+    setCtaFontColor(nb?.btn_primary_text || nb?.accent_font_color || '#000000')
     setActiveVariation(null); setActiveDraft(null)
   }, [brandId, brands])
 

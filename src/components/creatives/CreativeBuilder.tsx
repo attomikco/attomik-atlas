@@ -90,6 +90,17 @@ export default function CreativeBuilder({
   function updateBgColor(color: string) {
     setBgColor(color)
     const light = isLightColor(color)
+    // Use brand's text-on-bg colors if the bg matches a known brand bg
+    if (brand?.bg_base && color.toLowerCase() === brand.bg_base.toLowerCase() && brand.text_on_base) {
+      setHeadlineColor(brand.text_on_base); setBodyColor(brand.text_on_base); return
+    }
+    if (brand?.bg_dark && color.toLowerCase() === brand.bg_dark.toLowerCase() && brand.text_on_dark) {
+      setHeadlineColor(brand.text_on_dark); setBodyColor(brand.text_on_dark); return
+    }
+    if (brand?.bg_accent && color.toLowerCase() === brand.bg_accent.toLowerCase() && brand.text_on_accent) {
+      setHeadlineColor(brand.text_on_accent); setBodyColor(brand.text_on_accent); return
+    }
+    // Fallback: auto-detect
     setHeadlineColor(light ? '#000000' : '#ffffff')
     setBodyColor(light ? '#1a1a1a' : '#ffffff')
   }
