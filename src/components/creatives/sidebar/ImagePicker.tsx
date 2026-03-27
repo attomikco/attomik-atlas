@@ -1,5 +1,4 @@
 'use client'
-import Image from 'next/image'
 import { Check, ImageIcon } from 'lucide-react'
 import type { BrandImage } from '@/types'
 
@@ -22,15 +21,7 @@ export default function ImagePicker({ images, selectedImageId, setSelectedImageI
               onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
               className="relative aspect-square rounded-[4px] overflow-hidden border-2 transition-all"
               style={{ borderColor: img.id === selectedImageId ? brandColor : 'transparent' }}>
-              <Image
-                src={getPublicUrl(img.storage_path)}
-                alt={img.file_name}
-                width={120}
-                height={120}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                unoptimized={false}
-              />
+              <img src={getPublicUrl(img.storage_path)} alt={img.file_name} className="w-full h-full object-cover" loading="lazy" />
               {img.id === selectedImageId && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <Check size={14} className="text-white" />
