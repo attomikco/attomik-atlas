@@ -124,7 +124,7 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
   }
 
   return (
-    <div className="bg-paper border border-border rounded-card p-6">
+    <div className="card bg-paper border border-border rounded-card p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="label">Image library</div>
         <span className="text-xs text-muted">{images.length} image{images.length !== 1 ? 's' : ''}</span>

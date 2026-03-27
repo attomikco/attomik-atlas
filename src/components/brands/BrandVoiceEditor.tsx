@@ -141,11 +141,11 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
   const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
 
   return (
-    <div className="bg-paper border border-border rounded-card p-6">
+    <div className="card bg-paper border border-border rounded-card p-6">
       <div className="flex items-center justify-between mb-5">
         <div className="label">Brand voice & identity</div>
         <button onClick={save} disabled={saving}
-          className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-btn transition-colors disabled:opacity-50"
+          className={`btn ${saving || saved ? 'btn-primary' : 'btn-dark'} flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-btn transition-colors disabled:opacity-50`}
           style={{ background: saving || saved ? '#e6fff5' : '#000', color: saving || saved ? '#007a48' : '#00ff97' }}
         >
           {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : null}

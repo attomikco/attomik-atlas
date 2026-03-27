@@ -16,7 +16,7 @@ const NAV = [
 
 function SidebarLogo() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3162 909" style={{ height: 38, display: 'block' }}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3162 909" className="logo-sidebar">
       <g transform="scale(8.11041548093341) translate(10, 10)">
         <g transform="matrix(1.0466,0,0,1.0466,-6.28,-6.28)" fill="#ffffff">
           <g transform="translate(0,-952.36218)">
@@ -38,20 +38,20 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false)
 
   // Close sidebar on route change
-  useEffect(() => { setOpen(false) }, [path])
+  useEffect(() => { setOpen(false); document.body.classList.remove('sidebar-open') }, [path])
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden'
     else document.body.style.overflow = ''
-    return () => { document.body.style.overflow = '' }
+    return () => { document.body.style.overflow = ''; document.body.classList.remove('sidebar-open') }
   }, [open])
 
   return (
     <>
       {/* Mobile topbar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center h-14 px-4 bg-ink border-b border-white/10">
-        <button onClick={() => setOpen(true)} className="text-white p-1 -ml-1">
+        <button onClick={() => { setOpen(true); document.body.classList.toggle('sidebar-open') }} className="mobile-menu-btn text-white p-1 -ml-1">
           <Menu size={20} />
         </button>
         <div className="ml-3">
@@ -61,7 +61,7 @@ export default function Sidebar() {
 
       {/* Mobile overlay */}
       {open && (
-        <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setOpen(false)} />
+        <div className="sidebar-overlay md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => { setOpen(false); document.body.classList.remove('sidebar-open') }} />
       )}
 
       {/* Sidebar */}
@@ -76,7 +76,7 @@ export default function Sidebar() {
         {/* Logo */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '28px 24px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
           <SidebarLogo />
-          <button onClick={() => setOpen(false)} className="md:hidden text-white/40 hover:text-white p-1" style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)' }}>
+          <button onClick={() => { setOpen(false); document.body.classList.remove('sidebar-open') }} className="md:hidden text-white/40 hover:text-white p-1" style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)' }}>
             <X size={18} />
           </button>
         </div>

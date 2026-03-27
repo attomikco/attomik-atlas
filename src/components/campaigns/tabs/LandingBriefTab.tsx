@@ -62,7 +62,7 @@ export default function LandingBriefTab({
     setTimeout(() => setCopiedAll(false), 2000)
   }
 
-  const sectionCls = "bg-paper border border-border rounded-card p-5"
+  const sectionCls = "card bg-paper border border-border rounded-card p-5"
   const labelCls = "text-xs font-bold uppercase tracking-wide text-muted mb-2"
   const headCls = "text-lg font-bold mb-1"
   const bodyCls = "text-sm text-muted leading-relaxed"
@@ -85,8 +85,8 @@ export default function LandingBriefTab({
               </button>
             )}
             <button onClick={generate} disabled={loading}
-              className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: '#00ff97', color: '#000' }}>
+              className="btn btn-primary flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
+            >
               {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               {loading ? 'Generating...' : brief ? 'Regenerate' : 'Generate brief'}
             </button>
@@ -175,7 +175,7 @@ export default function LandingBriefTab({
           </div>
 
           {/* Final CTA */}
-          <div className={sectionCls} style={{ background: '#000', color: '#fff', borderColor: '#000' }}>
+          <div className={sectionCls + ' card-dark'} style={{ background: '#000', color: '#fff', borderColor: '#000' }}>
             <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#00ff97' }}>Final CTA</div>
             <div className="text-lg font-extrabold mb-1">{brief.final_cta.headline}</div>
             <div className="text-sm opacity-70 mb-3">{brief.final_cta.body}</div>

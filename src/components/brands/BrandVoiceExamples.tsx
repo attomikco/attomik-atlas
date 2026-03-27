@@ -52,7 +52,7 @@ export default function BrandVoiceExamples({ brandId, examples }: Props) {
   const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
 
   return (
-    <div className="bg-paper border border-border rounded-card p-6">
+    <div className="card bg-paper border border-border rounded-card p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="label">Voice examples</div>
         <button onClick={() => { setAdding(!adding); setNewExample(prev => ({ ...prev, category: tab })) }}
@@ -94,8 +94,8 @@ export default function BrandVoiceExamples({ brandId, examples }: Props) {
             placeholder="Why is this good/bad? (optional)" />
           <div className="flex gap-2">
             <button onClick={handleAdd} disabled={saving || !newExample.content.trim()}
-              className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-btn transition-colors disabled:opacity-50"
-              style={{ background: '#000', color: '#00ff97' }}>
+              className="btn btn-dark flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-btn transition-colors disabled:opacity-50"
+            >
               {saving ? <Loader2 size={13} className="animate-spin" /> : null}
               Save example
             </button>

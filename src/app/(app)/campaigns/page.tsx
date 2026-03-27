@@ -17,14 +17,13 @@ export default async function CampaignsPage() {
           <p className="text-muted mt-1">{campaigns?.length ?? 0} total</p>
         </div>
         <Link href="/campaigns/new"
-          className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90"
-          style={{ background: '#00ff97', color: '#000' }}
+          className="btn btn-primary flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90"
         >
           <Plus size={15} /> New campaign
         </Link>
       </div>
 
-      <div className="attomik-table-wrap"><div className="attomik-table bg-paper">
+      <div className="table-wrapper"><div className="table-scroll bg-paper">
         <table className="w-full">
           <thead>
             <tr>
@@ -43,7 +42,7 @@ export default async function CampaignsPage() {
                 </td>
                 <td><span className="text-muted capitalize">{c.type.replace('_', ' ')}</span></td>
                 <td><span className={`badge status-${c.status}`}>{c.status}</span></td>
-                <td className="text-muted font-mono text-xs">
+                <td className="td-mono text-muted font-mono text-xs">
                   {c.scheduled_at ? new Date(c.scheduled_at).toLocaleDateString() : '—'}
                 </td>
                 <td><Link href={`/campaigns/${c.id}`} className="text-muted hover:text-ink transition-colors text-sm">View →</Link></td>

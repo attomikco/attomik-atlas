@@ -13,7 +13,7 @@ export default function FirstRunBanner() {
   if (!visible) return null
 
   return (
-    <div className="bg-ink rounded-card p-6 mb-6 relative" style={{ color: '#fff' }}>
+    <div className="card card-dark bg-ink rounded-card p-6 mb-6 relative" style={{ color: '#fff' }}>
       <button onClick={() => setVisible(false)}
         className="absolute top-4 right-4 transition-colors"
         style={{ color: 'rgba(255,255,255,0.3)' }}
@@ -29,7 +29,7 @@ export default function FirstRunBanner() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ background: '#00ff97', color: '#000' }}>Ad Copy</span>
+          <span className="badge badge-live rounded-full px-3 py-1 text-xs font-bold" style={{ background: '#00ff97', color: '#000' }}>Ad Copy</span>
           <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)' }}>Landing Brief</span>
           <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)' }}>Creatives</span>
         </div>

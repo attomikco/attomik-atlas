@@ -60,10 +60,10 @@ export default function AdCopyTab({
 
   function VariationCard({ v, i, prefix }: { v: AdVariation; i: number; prefix: string }) {
     return (
-      <div className="bg-paper border border-border rounded-card p-5">
+      <div className="card bg-paper border border-border rounded-card p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+            <span className="avatar avatar-sm w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
               style={{ background: '#000', color: '#00ff97' }}>{i + 1}</span>
             <span className="font-bold text-sm">Variation {i + 1}</span>
           </div>
@@ -101,20 +101,20 @@ export default function AdCopyTab({
   return (
     <div className="space-y-5">
       {/* Generate button */}
-      <div className="bg-paper border border-border rounded-card p-5">
+      <div className="card bg-paper border border-border rounded-card p-5">
         <div className="flex items-center justify-between">
           <div>
             <div className="label">Facebook ad copy</div>
             <p className="text-xs text-muted mt-1">Generate 3 variations using the campaign brief.</p>
           </div>
           <button onClick={generate} disabled={loading}
-            className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{ background: '#00ff97', color: '#000' }}>
+            className="btn btn-primary flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
             {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
             {loading ? 'Generating...' : 'Generate 3 variations'}
           </button>
         </div>
-        {error && <p className="text-sm text-danger mt-3">{error}</p>}
+        {error && <p className="form-error text-sm text-danger mt-3">{error}</p>}
       </div>
 
       {/* Loading state */}

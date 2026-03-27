@@ -209,8 +209,7 @@ export default function NewsletterClient({
         <button
           onClick={generate}
           disabled={loading || !brandId || !brief}
-          className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
-          style={{ background: '#00ff97', color: '#000' }}
+          className="btn btn-primary w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           {loading
             ? <><Loader2 size={15} className="animate-spin" /> Writing email...</>
@@ -219,7 +218,7 @@ export default function NewsletterClient({
         </button>
 
         {error && (
-          <div className="flex items-center gap-2 text-sm text-danger bg-danger-light rounded-btn px-3 py-2">
+          <div className="alert alert-error flex items-center gap-2 text-sm text-danger bg-danger-light rounded-btn px-3 py-2">
             <AlertCircle size={14} />
             {error}
           </div>
@@ -282,12 +281,12 @@ export default function NewsletterClient({
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-border">
+            <div className="tabs flex border-b border-border">
               {(['preview', 'html'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className="px-5 py-3 text-sm font-semibold transition-colors border-b-2"
+                  className={`tab-btn px-5 py-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === tab ? 'active' : ''}`}
                   style={activeTab === tab
                     ? { borderBottomColor: '#00ff97', color: '#000' }
                     : { borderBottomColor: 'transparent', color: '#666' }}

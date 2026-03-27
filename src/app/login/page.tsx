@@ -93,7 +93,7 @@ export default function LoginPage() {
           <p className="text-muted text-sm mt-1">Marketing OS</p>
         </div>
 
-        <div className="bg-paper border border-border rounded-card p-8">
+        <div className="card bg-paper border border-border rounded-card p-8">
           {authenticating ? (
             <div className="text-center py-4">
               <p className="text-muted text-sm">Signing you in...</p>
@@ -113,7 +113,7 @@ export default function LoginPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              <label className="label block mb-2">Email address</label>
+              <label className="form-label label block mb-2">Email address</label>
               <input
                 type="email"
                 value={email}
@@ -130,7 +130,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-4 bg-ink text-accent font-semibold rounded-btn px-4 py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="btn btn-dark w-full mt-4 bg-ink text-accent font-semibold rounded-btn px-4 py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? 'Sending...' : 'Send magic link'}
               </button>

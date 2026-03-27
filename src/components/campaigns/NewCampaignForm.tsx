@@ -108,7 +108,7 @@ export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Br
   }
 
   return (
-    <div className="bg-paper border border-border rounded-card p-6 space-y-5">
+    <div className="card bg-paper border border-border rounded-card p-6 space-y-5">
       {/* Brand + Type row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -194,8 +194,8 @@ export default function NewCampaignForm({ brands, defaultBrandId }: { brands: Br
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <button onClick={submit} disabled={saving || !form.brand_id || !form.name}
-        className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
-        style={{ background: '#00ff97', color: '#000' }}>
+        className="btn btn-primary w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
+      >
         {saving ? <><Loader2 size={15} className="animate-spin" /> Creating...</> : 'Create campaign'}
       </button>
     </div>

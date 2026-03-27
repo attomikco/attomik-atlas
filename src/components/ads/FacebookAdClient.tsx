@@ -233,8 +233,7 @@ export default function FacebookAdClient({
         <button
           onClick={generate}
           disabled={loading || !brandId || !offer}
-          className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
-          style={{ background: '#00ff97', color: '#000' }}
+          className="btn btn-primary w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           {loading
             ? <><Loader2 size={15} className="animate-spin" /> Generating...</>
@@ -243,7 +242,7 @@ export default function FacebookAdClient({
         </button>
 
         {error && (
-          <div className="flex items-center gap-2 text-sm text-danger bg-danger-light rounded-btn px-3 py-2">
+          <div className="alert alert-error flex items-center gap-2 text-sm text-danger bg-danger-light rounded-btn px-3 py-2">
             <AlertCircle size={14} />
             {error}
           </div>
@@ -277,7 +276,7 @@ export default function FacebookAdClient({
         {variations.length > 0 && (
           <div className="space-y-5">
             {variations.map((v, i) => (
-              <div key={i} className="bg-paper border border-border rounded-card p-6">
+              <div key={i} className="card bg-paper border border-border rounded-card p-6">
                 {/* Variation header */}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">

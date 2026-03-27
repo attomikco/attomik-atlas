@@ -52,7 +52,7 @@ export default function BrandUploadAsset({ brandId, label, type, assets, accept,
   }
 
   return (
-    <div className="bg-paper border border-border rounded-card p-5">
+    <div className="card bg-paper border border-border rounded-card p-5">
       <div className="label mb-3">{label}</div>
       {assets.length > 0 && (
         <div className="space-y-2 mb-3">

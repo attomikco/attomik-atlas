@@ -49,13 +49,12 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="flex gap-2">
           <Link href={`/generate?brand=${brand.id}`}
-            className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90"
-            style={{ background: '#00ff97', color: '#000' }}
+            className="btn btn-primary flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-opacity hover:opacity-90"
           >
             <Sparkles size={14} /> Generate
           </Link>
           <Link href={`/campaigns/new?brand=${brand.id}`}
-            className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn bg-ink text-paper hover:bg-ink/80 transition-colors"
+            className="btn btn-dark flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn bg-ink text-paper hover:bg-ink/80 transition-colors"
           >
             <Mail size={14} /> New campaign
           </Link>
@@ -73,7 +72,7 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
             assets={guidelines} accept=".pdf,.doc,.docx" hint="PDF or Word doc" />
           <BrandUploadAsset brandId={brand.id} label="HTML email template" type="html_template"
             assets={templates} accept=".html,.htm" hint=".html file" />
-          <div className="bg-paper border border-border rounded-card p-5">
+          <div className="card bg-paper border border-border rounded-card p-5">
             <div className="label mb-3">Color palette</div>
             <div className="space-y-2.5">
               {[
@@ -104,7 +103,7 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
         <BrandVoiceExamples brandId={brand.id} examples={voiceExamples ?? []} />
 
         {/* Row 5: Campaigns (full width) */}
-        <div className="bg-paper border border-border rounded-card p-6">
+        <div className="card bg-paper border border-border rounded-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="label">Campaigns</div>
             <Link href={`/campaigns/new?brand=${brand.id}`}

@@ -90,10 +90,10 @@ export default function CampaignDetail({
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex gap-1 mb-6">
+      <div className="tabs flex gap-1 mb-6">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className="text-sm px-4 py-2 rounded-btn border transition-all font-semibold"
+            className={`tab-btn text-sm px-4 py-2 rounded-btn border transition-all font-semibold ${tab === t.id ? 'active' : ''}`}
             style={tab === t.id
               ? { background: '#000', color: '#00ff97', borderColor: '#000' }
               : { borderColor: '#e0e0e0', color: '#666' }}>

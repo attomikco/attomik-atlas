@@ -38,7 +38,7 @@ export default async function HomePage() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
         {stats.map(({ label, value, icon: Icon, href }) => (
           <Link key={label} href={href}
-            className="bg-paper border border-border rounded-card p-6 hover:border-ink transition-all duration-150 group"
+            className="card card-interactive bg-paper border border-border rounded-card p-6 hover:border-ink transition-all duration-150 group"
           >
             <div className="flex items-center justify-between mb-4">
               <Icon size={16} className="text-muted" />
@@ -55,20 +55,20 @@ export default async function HomePage() {
         <div className="label mb-3">Quick actions</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <Link href="/brands/new"
-            className="bg-paper border border-border rounded-card p-5 hover:border-ink transition-all duration-150"
+            className="card card-interactive bg-paper border border-border rounded-card p-5 hover:border-ink transition-all duration-150"
           >
             <div className="font-semibold mb-1">Add brand</div>
             <div className="text-muted text-sm">Set up a new client</div>
           </Link>
           <Link href="/campaigns/new"
-            className="bg-paper border border-border rounded-card p-5 hover:border-ink transition-all duration-150"
+            className="card card-interactive bg-paper border border-border rounded-card p-5 hover:border-ink transition-all duration-150"
           >
             <div className="font-semibold mb-1">New campaign</div>
             <div className="text-muted text-sm">Email, social, SEO, ad copy</div>
           </Link>
           <Link href="/generate"
             style={{ background: '#00ff97', border: '1px solid #00ff97' }}
-            className="rounded-card p-5 hover:opacity-90 transition-opacity"
+            className="card card-accent rounded-card p-5 hover:opacity-90 transition-opacity"
           >
             <div className="font-bold mb-1">Generate content</div>
             <div className="text-sm" style={{ color: 'rgba(0,0,0,0.6)' }}>AI-powered, brand-aware</div>
@@ -83,7 +83,7 @@ export default async function HomePage() {
             <div className="label">Recent campaigns</div>
             <Link href="/campaigns" className="text-sm text-muted hover:text-ink transition-colors">View all →</Link>
           </div>
-          <div className="attomik-table-wrap"><div className="attomik-table bg-paper">
+          <div className="table-wrapper"><div className="table-scroll bg-paper">
             <table className="w-full">
               <thead>
                 <tr>

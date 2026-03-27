@@ -14,8 +14,7 @@ export default async function BrandsPage() {
           <p className="text-muted mt-1">{brands?.length ?? 0} clients</p>
         </div>
         <Link href="/brands/new"
-          className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-colors duration-150"
-          style={{ background: '#00ff97', color: '#000' }}
+          className="btn btn-primary flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-btn transition-colors duration-150"
         >
           <Plus size={15} />
           Add brand
@@ -25,7 +24,7 @@ export default async function BrandsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {brands?.map((brand) => (
           <Link key={brand.id} href={`/brands/${brand.id}`}
-            className="bg-paper border border-border rounded-card p-6 hover:border-ink transition-all duration-150 group"
+            className="card card-interactive bg-paper border border-border rounded-card p-6 hover:border-ink transition-all duration-150 group"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">

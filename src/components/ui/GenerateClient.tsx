@@ -91,7 +91,7 @@ export default function GenerateClient({ brands, defaultBrandId }: { brands: Bra
           <div className="grid grid-cols-2 gap-2">
             {TOOLS.map(t => (
               <button key={t.id} onClick={() => { setTool(t.id); setPlatform(''); setSubtype('') }}
-                className="text-sm px-3 py-2 rounded-btn border transition-all duration-150 text-left font-medium"
+                className={`toggle-btn text-sm px-3 py-2 rounded-btn border transition-all duration-150 text-left font-medium ${tool === t.id ? 'active' : ''}`}
                 style={tool === t.id
                   ? { background: '#000', color: '#00ff97', borderColor: '#000' }
                   : { background: 'white', color: '#666', borderColor: '#e0e0e0' }}
@@ -154,8 +154,7 @@ export default function GenerateClient({ brands, defaultBrandId }: { brands: Bra
         </div>
 
         <button onClick={generate} disabled={loading || !brandId || !brief}
-          className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
-          style={{ background: '#00ff97', color: '#000' }}
+          className="btn btn-primary w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           <Sparkles size={15} />
           {loading ? 'Generating...' : 'Generate'}
@@ -164,7 +163,7 @@ export default function GenerateClient({ brands, defaultBrandId }: { brands: Bra
 
       {/* Output */}
       <div className="lg:col-span-3">
-        <div className="bg-paper border border-border rounded-card flex flex-col" style={{ minHeight: 480 }}>
+        <div className="card bg-paper border border-border rounded-card flex flex-col" style={{ minHeight: 480 }}>
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
             <span className="label">Output</span>
             {output && (
