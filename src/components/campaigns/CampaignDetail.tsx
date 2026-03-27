@@ -54,7 +54,7 @@ export default function CampaignDetail({
   useEffect(() => {
     if (!autoGenerate || !isFunnel) return
 
-    // Start ad copy
+    // Start ad copy first
     updateStep('ad-copy', 'loading')
     fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' })
       .then(res => res.json())
@@ -69,9 +69,10 @@ export default function CampaignDetail({
       })
       .catch(() => updateStep('ad-copy', 'error'))
 
-    // Start landing brief
-    updateStep('landing', 'loading')
-    fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' })
+    // Start landing brief — stagger visual by 2s but fire in parallel
+    const landingPromise = fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' })
+    setTimeout(() => updateStep('landing', 'loading'), 2000)
+    landingPromise
       .then(res => res.json())
       .then(data => {
         console.log('[AutoGenerate] Landing brief response:', data)
