@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Upload } from 'lucide-react'
+import { Loader2, Upload, ArrowLeft } from 'lucide-react'
 
 const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
 
@@ -215,6 +215,10 @@ export default function OnboardingWizard() {
   ) : (
     // STATE B: Review detected brand
     <div key="review" className="space-y-4" style={{ animation: 'fadeInUp 0.2s ease-out' }}>
+      <button onClick={() => { setDetected(false); setDetectedName(null) }}
+        className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors mb-2">
+        <ArrowLeft size={14} /> Back to website detection
+      </button>
       {detectedName ? (
         <p className="text-xs font-medium mb-4" style={{ color: '#00cc6a' }}>✦ Found {detectedName}. Review and continue.</p>
       ) : (

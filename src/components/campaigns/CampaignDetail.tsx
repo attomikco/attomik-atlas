@@ -6,6 +6,7 @@ import CreativeTab from './tabs/CreativeTab'
 import AdCopyTab from './tabs/AdCopyTab'
 import LandingBriefTab from './tabs/LandingBriefTab'
 import FunnelPreview from './FunnelPreview'
+import GenerationModal, { ModalStep } from '@/components/ui/GenerationModal'
 
 const FUNNEL_TABS = [
   { id: 'brief', label: 'Brief' },
@@ -31,63 +32,86 @@ export default function CampaignDetail({
 }) {
   const [tab, setTab] = useState('brief')
   const [showPreview, setShowPreview] = useState(!!autoGenerate)
+  const [showModal, setShowModal] = useState(!!autoGenerate)
   const [freshAdVariation, setFreshAdVariation] = useState<{ primary_text: string; headline: string; description: string } | null>(null)
   const [freshLandingBrief, setFreshLandingBrief] = useState<any>(null)
+  const [modalSteps, setModalSteps] = useState<ModalStep[]>([
+    { id: 'ad-copy', label: 'Ad copy', status: 'pending' },
+    { id: 'landing', label: 'Landing page brief', status: 'pending' },
+    { id: 'creative', label: 'Creative', status: 'pending' },
+  ])
   const isFunnel = campaign.type === 'funnel'
   const tabs = isFunnel ? FUNNEL_TABS : [{ id: 'brief', label: 'Brief' }]
 
   const adCopyContent = generatedContent.filter(c => c.type === 'fb_ad')
   const landingContent = generatedContent.filter(c => c.type === 'landing_brief')
 
+  function updateStep(id: string, status: ModalStep['status']) {
+    setModalSteps(prev => prev.map(s => s.id === id ? { ...s, status } : s))
+  }
+
   // Auto-generate on mount for new funnel campaigns
   useEffect(() => {
     if (!autoGenerate || !isFunnel) return
 
-    // Generate ad copy
+    // Start ad copy
+    updateStep('ad-copy', 'loading')
     fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' })
       .then(res => res.json())
       .then(data => {
         console.log('[AutoGenerate] Ad copy response:', data)
         if (data?.variations?.[0]) {
           setFreshAdVariation(data.variations[0])
-        } else if (data?.content) {
-          // Try to parse from content string
-          try {
-            const parsed = JSON.parse(data.content)
-            if (parsed?.variations?.[0]) setFreshAdVariation(parsed.variations[0])
-          } catch {}
+          updateStep('ad-copy', 'done')
+        } else {
+          updateStep('ad-copy', 'error')
         }
       })
-      .catch(() => {})
+      .catch(() => updateStep('ad-copy', 'error'))
 
-    // Generate landing brief
+    // Start landing brief
+    updateStep('landing', 'loading')
     fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' })
       .then(res => res.json())
       .then(data => {
         console.log('[AutoGenerate] Landing brief response:', data)
-        // API returns the brief object directly: { hero, problem, solution, ... }
         if (data?.hero) {
           setFreshLandingBrief(data)
-        } else if (data?.sections) {
-          setFreshLandingBrief(data.sections)
-        } else if (data?.content) {
-          try {
-            const parsed = JSON.parse(data.content)
-            setFreshLandingBrief(parsed?.hero ? parsed : parsed?.sections || parsed)
-          } catch {}
+          updateStep('landing', 'done')
+        } else {
+          updateStep('landing', 'error')
         }
       })
-      .catch(() => {})
+      .catch(() => updateStep('landing', 'error'))
   }, [])
+
+  // Mark creative as done once both others finish
+  useEffect(() => {
+    const adDone = modalSteps.find(s => s.id === 'ad-copy')?.status === 'done'
+    const landDone = modalSteps.find(s => s.id === 'landing')?.status === 'done'
+    const creativePending = modalSteps.find(s => s.id === 'creative')?.status !== 'done'
+    if (adDone && landDone && creativePending) {
+      updateStep('creative', 'loading')
+      setTimeout(() => updateStep('creative', 'done'), 1500)
+    }
+  }, [modalSteps])
 
   if (showPreview && isFunnel) {
     return (
-      <FunnelPreview
-        adVariation={freshAdVariation}
-        landingBrief={freshLandingBrief}
-        brand={brand}
-        onDismiss={() => { setShowPreview(false); setTab('ad-copy') }}
-      />
+      <>
+        <GenerationModal
+          isOpen={showModal}
+          steps={modalSteps}
+          brandName={brand.name}
+          onClose={() => setShowModal(false)}
+        />
+        <FunnelPreview
+          adVariation={freshAdVariation}
+          landingBrief={freshLandingBrief}
+          brand={brand}
+          onDismiss={() => { setShowPreview(false); setTab('ad-copy') }}
+        />
+      </>
     )
   }
 
