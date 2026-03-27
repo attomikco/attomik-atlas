@@ -207,6 +207,59 @@ export default function CreativeBuilder({
 
   function stopBatch() { batchAbortRef.current?.abort(); setBatchGenerating(false) }
 
+  // Per-template optimal defaults for batch generation
+  function styleForTemplate(tid: string): StyleSnapshot {
+    const base = captureStyle()
+    const nb = brand
+    const nbBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || '#000000'
+    const light = isLightColor(nbBg)
+    const hColor = nb?.text_on_dark || nb?.heading_color || (light ? '#000000' : '#ffffff')
+    const bColor = nb?.text_on_dark || nb?.body_color || (light ? '#1a1a1a' : '#ffffff')
+
+    const defaults: Partial<StyleSnapshot> = {
+      headlineColor: hColor, bodyColor: bColor,
+      headlineFont: base.headlineFont, bodyFont: base.bodyFont,
+      headlineWeight: base.headlineWeight, bodyWeight: base.bodyWeight,
+      headlineTransform: base.headlineTransform, bodyTransform: base.bodyTransform,
+      headlineSizeMul: 1, bodySizeMul: 1,
+      textBanner: 'none', textBannerColor: nbBg,
+    }
+
+    switch (tid) {
+      case 'overlay':
+        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: '#000', showCta: true }
+      case 'stat':
+        return { ...base, ...defaults, textPosition: 'center', showOverlay: true, overlayOpacity: 30, imagePosition: 'center', bgColor: '#000', showCta: true }
+      case 'split':
+        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: nbBg, showCta: true }
+      case 'testimonial':
+        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: nbBg, showCta: true }
+      case 'ugc': // Card
+        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: nbBg, showCta: true }
+      case 'grid':
+        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: nbBg, showCta: true }
+      default:
+        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: nbBg, showCta: true }
+    }
+  }
+
+  function pickImageForTemplate(tid: string): string | null {
+    if (images.length === 0) return null
+    const portraits = images.filter(img => img.width && img.height && img.height > img.width)
+    const landscapes = images.filter(img => img.width && img.height && img.width > img.height)
+    const randomFrom = (arr: typeof images) => arr[Math.floor(Math.random() * arr.length)]?.id || null
+
+    switch (tid) {
+      case 'split':
+        return portraits.length > 0 ? randomFrom(portraits) : randomFrom(images)
+      case 'ugc':
+      case 'testimonial':
+        return landscapes.length > 0 ? randomFrom(landscapes) : randomFrom(images)
+      default:
+        return randomFrom(images)
+    }
+  }
+
   async function generateBatch() {
     if (!brandId || batchGenerating || images.length === 0) return
     const abort = new AbortController(); batchAbortRef.current = abort
@@ -214,22 +267,23 @@ export default function CreativeBuilder({
     const templateIds = TEMPLATES.map(t => t.id); const results: Variation[] = []
     for (let i = 0; i < batchCount; i++) {
       if (abort.signal.aborted) break
+      const tid = templateIds[i % templateIds.length]
       try {
         const res = await fetch('/api/generate', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: abort.signal,
           body: JSON.stringify({
             brandId, tool: 'ad_copy', tone: 'on-brand', platform: 'creative', subtype: 'image ad',
-            brief: `Generate exactly one unique short headline (under 8 words) and one body line (under 20 words) for a visual ad creative. Variation ${i + 1} of 10 — make each one distinct.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <headline text>\nBODY: <body text>\nCTA: <cta text>\nNothing else.`,
+            brief: `Generate exactly one unique short headline (under 8 words) and one body line (under 20 words) for a visual ad creative. Variation ${i + 1} of ${batchCount} — make each one distinct.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <headline text>\nBODY: <body text>\nCTA: <cta text>\nNothing else.`,
           }),
         })
         let full = ''
         const reader = res.body?.getReader(); const decoder = new TextDecoder()
         if (reader) { while (true) { const { done, value } = await reader.read(); if (done) break; const chunk = decoder.decode(value); for (const line of chunk.split('\n')) { if (line.startsWith('data: ') && line !== 'data: [DONE]') { try { full += JSON.parse(line.slice(6)).delta?.text || '' } catch {} } } } }
         const hm = full.match(/HEADLINE:\s*(.+)/i); const bm = full.match(/BODY:\s*(.+)/i); const cm = full.match(/CTA:\s*(.+)/i)
-        results.push({ headline: hm?.[1]?.trim() || 'Headline', body: bm?.[1]?.trim() || 'Body text', cta: cm?.[1]?.trim() || 'Shop Now', imageId: images[Math.floor(Math.random() * images.length)]?.id || null, templateId: templateIds[i % templateIds.length], style: captureStyle() })
+        results.push({ headline: hm?.[1]?.trim() || 'Headline', body: bm?.[1]?.trim() || 'Body text', cta: cm?.[1]?.trim() || 'Shop Now', imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) })
         setVariations([...results])
       } catch {
-        results.push({ headline: 'Headline', body: 'Body text', cta: 'Shop Now', imageId: images[Math.floor(Math.random() * images.length)]?.id || null, templateId: templateIds[i % templateIds.length], style: captureStyle() })
+        results.push({ headline: 'Headline', body: 'Body text', cta: 'Shop Now', imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) })
         setVariations([...results])
       }
     }
