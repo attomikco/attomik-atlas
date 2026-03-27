@@ -97,8 +97,8 @@ export default function CreativeBuilder({
   // ── Derived ────────────────────────────────────────────────────────
   const brand = brands.find(b => b.id === brandId)
   const brandColor = brand?.primary_color || '#00ff97'
-  const ctaColor = brand?.accent_color || brandColor
-  const ctaFontColor = brand?.accent_font_color || '#000000'
+  const [ctaColor, setCtaColor] = useState(brand?.accent_color || brandColor)
+  const [ctaFontColor, setCtaFontColor] = useState(brand?.accent_font_color || '#000000')
   const brandColors = [
     { label: 'White', value: '#ffffff' },
     { label: 'Black', value: '#000000' },
@@ -127,6 +127,7 @@ export default function CreativeBuilder({
     setHeadlineSizeMul, setBodySizeMul,
     setShowOverlay, setOverlayOpacity, setTextBanner, setTextPosition, setImagePosition,
     setActiveVariation, setActiveDraft,
+    setCtaColor, setCtaFontColor,
   })
 
   function getPublicUrl(storagePath: string) {
@@ -508,6 +509,10 @@ export default function CreativeBuilder({
             setShowOverlay2={setShowOverlay}
             setOverlayOpacity2={setOverlayOpacity}
             setTextBanner2={setTextBanner}
+            ctaColor={ctaColor}
+            setCtaColor={setCtaColor}
+            ctaFontColor={ctaFontColor}
+            setCtaFontColor={setCtaFontColor}
           />
         </div>
       </div>

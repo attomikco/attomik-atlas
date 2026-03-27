@@ -46,6 +46,8 @@ interface UseBrandSyncOptions {
   setImagePosition: (v: string) => void
   setActiveVariation: (v: number | null) => void
   setActiveDraft: (v: number | null) => void
+  setCtaColor: (v: string) => void
+  setCtaFontColor: (v: string) => void
 }
 
 export function useBrandSync(opts: UseBrandSyncOptions) {
@@ -59,6 +61,7 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setHeadlineSizeMul, setBodySizeMul,
     setShowOverlay, setOverlayOpacity, setTextBanner, setTextPosition, setImagePosition,
     setActiveVariation, setActiveDraft,
+    setCtaColor, setCtaFontColor,
   } = opts
 
   const brand = brands.find(b => b.id === brandId)
@@ -106,6 +109,8 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setShowOverlay(false); setOverlayOpacity(10)
     setTextBanner('none'); setTextPosition('bottom-left')
     setImagePosition('center')
+    setCtaColor(nb?.accent_color || nb?.primary_color || '#00ff97')
+    setCtaFontColor(nb?.accent_font_color || '#000000')
     setActiveVariation(null); setActiveDraft(null)
   }, [brandId, brands])
 

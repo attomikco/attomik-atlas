@@ -48,6 +48,10 @@ interface StylePanelProps {
   setShowOverlay2: (v: boolean) => void
   setOverlayOpacity2: (v: number) => void
   setTextBanner2: (v: 'none' | 'top' | 'bottom') => void
+  ctaColor: string
+  setCtaColor: (v: string) => void
+  ctaFontColor: string
+  setCtaFontColor: (v: string) => void
 }
 
 export default function StylePanel({
@@ -57,6 +61,7 @@ export default function StylePanel({
   headlineFont, setHeadlineFont, headlineColor, setHeadlineColor, headlineSizeMul, setHeadlineSizeMul,
   bodyFont, setBodyFont, bodyColor, setBodyColor, bodySizeMul, setBodySizeMul,
   brandColors, pill, onReset,
+  ctaColor, setCtaColor, ctaFontColor, setCtaFontColor,
 }: StylePanelProps) {
   return (
     <div className="bg-paper border border-border rounded-card p-4 space-y-3">
@@ -186,6 +191,27 @@ export default function StylePanel({
             <span className="text-[10px] font-mono text-muted w-7 text-right flex-shrink-0">{Math.round(row.sizeMul * 100)}%</span>
           </div>
         ))}
+
+        {/* CTA colors */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">CTA</span>
+          <span className="text-[9px] text-muted flex-shrink-0 w-24">bg</span>
+          <div className="flex gap-0.5 flex-shrink-0">
+            {brandColors.map(c => (
+              <button key={'cta-' + c.value} onClick={() => setCtaColor(c.value)}
+                className="w-5 h-5 rounded-[3px] border-2 transition-all"
+                style={{ background: c.value, borderColor: ctaColor === c.value ? '#000' : '#e0e0e0' }} />
+            ))}
+          </div>
+          <span className="text-[9px] text-muted flex-shrink-0 ml-1">text</span>
+          <div className="flex gap-0.5 flex-shrink-0">
+            {brandColors.map(c => (
+              <button key={'ctaf-' + c.value} onClick={() => setCtaFontColor(c.value)}
+                className="w-5 h-5 rounded-[3px] border-2 transition-all"
+                style={{ background: c.value, borderColor: ctaFontColor === c.value ? '#000' : '#e0e0e0' }} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
