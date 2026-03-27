@@ -102,7 +102,7 @@ export default function PreviewClient({
   const brandImageUrl = productImageUrl // backward compat
 
   // Brand font
-  const brandAccent = brand.primary_color || '#000'
+  const brandAccent = brand.primary_color || '#1a1a1a'
   const fh = brand.font_heading
   const fontFamily = fh?.family || brand.font_primary?.split('|')[0] || ''
 
