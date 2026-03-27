@@ -5,6 +5,7 @@ import BriefTab from './tabs/BriefTab'
 import CreativeTab from './tabs/CreativeTab'
 import AdCopyTab from './tabs/AdCopyTab'
 import LandingBriefTab from './tabs/LandingBriefTab'
+import FunnelPreview from './FunnelPreview'
 
 const FUNNEL_TABS = [
   { id: 'brief', label: 'Brief' },
@@ -29,7 +30,9 @@ export default function CampaignDetail({
   autoGenerate?: boolean
 }) {
   const [tab, setTab] = useState('brief')
-  const [generating, setGenerating] = useState(false)
+  const [showPreview, setShowPreview] = useState(!!autoGenerate)
+  const [freshAdVariation, setFreshAdVariation] = useState<{ primary_text: string; headline: string; description: string } | null>(null)
+  const [freshLandingBrief, setFreshLandingBrief] = useState<any>(null)
   const isFunnel = campaign.type === 'funnel'
   const tabs = isFunnel ? FUNNEL_TABS : [{ id: 'brief', label: 'Brief' }]
 
@@ -39,32 +42,53 @@ export default function CampaignDetail({
   // Auto-generate on mount for new funnel campaigns
   useEffect(() => {
     if (!autoGenerate || !isFunnel) return
-    setTab('ad-copy')
-    setGenerating(true)
 
-    Promise.all([
-      fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' }).catch(() => null),
-      fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' }).catch(() => null),
-    ]).finally(() => {
-      setGenerating(false)
-    })
+    // Generate ad copy
+    fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.variations?.[0]) {
+          setFreshAdVariation(data.variations[0])
+        } else if (data?.content) {
+          // Try to parse from content string
+          try {
+            const parsed = JSON.parse(data.content)
+            if (parsed?.variations?.[0]) setFreshAdVariation(parsed.variations[0])
+          } catch {}
+        }
+      })
+      .catch(() => {})
+
+    // Generate landing brief
+    fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.sections) {
+          setFreshLandingBrief(data.sections)
+        } else if (data?.content) {
+          try {
+            const parsed = JSON.parse(data.content)
+            if (parsed?.sections) setFreshLandingBrief(parsed.sections)
+            else setFreshLandingBrief(parsed)
+          } catch {}
+        }
+      })
+      .catch(() => {})
   }, [])
+
+  if (showPreview && isFunnel) {
+    return (
+      <FunnelPreview
+        adVariation={freshAdVariation}
+        landingBrief={freshLandingBrief}
+        brand={brand}
+        onDismiss={() => { setShowPreview(false); setTab('ad-copy') }}
+      />
+    )
+  }
 
   return (
     <div>
-      {/* Generating banner */}
-      {generating && (
-        <div className="bg-ink text-white rounded-card p-4 mb-4 flex items-center gap-3">
-          <span style={{ color: '#00ff97' }}>✦</span>
-          <span className="font-semibold">Generating your full funnel</span>
-          <span className="flex gap-1 ml-1">
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#00ff97', animationDelay: '0s' }} />
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#00ff97', animationDelay: '0.2s' }} />
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#00ff97', animationDelay: '0.4s' }} />
-          </span>
-        </div>
-      )}
-
       {/* Tab bar */}
       <div className="flex gap-1 mb-6">
         {tabs.map(t => (
