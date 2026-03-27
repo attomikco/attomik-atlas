@@ -142,8 +142,8 @@ export default function OnboardingWizard() {
             {errors.productName && <p className="text-danger text-xs mt-1">{errors.productName}</p>}
           </div>
           <div>
-            <label className="text-xs font-semibold block mb-1">Price range</label>
-            <input className={inputCls} value={priceRange} onChange={e => setPriceRange(e.target.value)} placeholder="$24–$48" />
+            <label className="text-xs font-semibold block mb-1">Single unit price</label>
+            <input className={inputCls} value={priceRange} onChange={e => setPriceRange(e.target.value)} placeholder="$24" />
           </div>
           <div>
             <label className="text-xs font-semibold block mb-1">One-line description</label>
