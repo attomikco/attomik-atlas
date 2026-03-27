@@ -1,100 +1,108 @@
 import { TemplateProps, ff, px, autoSize } from './types'
 
-const LABEL_SIZE = 28
-const ITEM_SIZE = 26
-const ICON_SIZE = 30
-const EDGE_PAD = 48
-const GAP = 24
+const LABEL_SIZE = 32
+const ITEM_SIZE = 28
+const ICON_SIZE = 32
+const EDGE_PAD = 56
+const GAP = 28
+const VS_SIZE = 48
 
 export default function ComparisonTemplate({
   headline, brandColor, brandName, width, height,
   headlineFont, headlineWeight, headlineColor,
   bodyFont, bodyWeight, bodyColor, headlineSizeMul, bodySizeMul,
-  bgColor, oldWayItems, newWayItems, brandLogoUrl, imageUrl, imagePosition,
+  bgColor, oldWayItems, newWayItems, imageUrl, imagePosition,
 }: TemplateProps) {
   const panelW = width / 2
   const p = px(EDGE_PAD, width)
   const gap = px(GAP, width)
-  const oldItems = oldWayItems?.slice(0, 3) || []
-  const newItems = newWayItems?.slice(0, 3) || []
+  const oldItems = oldWayItems?.length ? oldWayItems : ['Artificial ingredients', 'Sugary mixers', 'Next-day regret']
+  const newItems = newWayItems?.length ? newWayItems : ['All natural', 'Zero sugar', 'Feel great tomorrow']
+  const accent = bgColor || brandColor || '#00ff97'
 
   return (
-    <div style={{ display: 'flex', overflow: 'hidden', width, height, fontFamily: ff(bodyFont) }}>
-      {/* Left: The Old Way */}
-      <div style={{
-        width: panelW, height, background: '#e8e8e8',
-        display: 'flex', flexDirection: 'column' as const,
-        padding: `${p * 1.5}px ${p}px ${p}px`,
-      }}>
-        <div style={{
-          fontSize: px(LABEL_SIZE, width) * headlineSizeMul, fontWeight: 800,
-          letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-          color: '#333', fontFamily: ff(headlineFont),
-          marginBottom: gap * 1.5,
-        }}>
-          The Old Way
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: gap * 1.2 }}>
-          {(oldItems.length > 0 ? oldItems : ['Artificial ingredients', 'Sugary mixers', 'Next-day regret']).map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: px(14, width) }}>
-              <span style={{ fontSize: px(ICON_SIZE, width), lineHeight: 1, color: '#cc3333', flexShrink: 0, fontWeight: 700 }}>
-                &#x2717;
-              </span>
-              <span style={{
-                fontSize: autoSize(px(ITEM_SIZE, width), item, 40) * bodySizeMul,
-                fontWeight: parseInt(bodyWeight) || 400, lineHeight: 1.35, color: '#333',
-              }}>
-                {item || '\u00A0'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont) }}>
+      {/* Full bleed image */}
+      {imageUrl ? (
+        <img crossOrigin="anonymous" src={imageUrl} alt="" style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}`,
+        }} />
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a' }} />
+      )}
 
-      {/* Right: The Brand Way — image bg with overlay */}
-      <div style={{ width: panelW, height, position: 'relative', overflow: 'hidden' }}>
-        {/* Image or solid bg */}
-        {imageUrl ? (
-          <>
-            <img crossOrigin="anonymous" src={imageUrl} alt="" style={{
-              position: 'absolute', inset: 0, width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}`,
-            }} />
-            <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,0.55)` }} />
-          </>
-        ) : (
-          <div style={{ position: 'absolute', inset: 0, background: bgColor || brandColor || '#000' }} />
-        )}
-
-        {/* Text content */}
+      {/* Two overlay columns */}
+      <div style={{ position: 'relative', display: 'flex', width, height }}>
+        {/* Left: Old Way — dark red tint */}
         <div style={{
-          position: 'relative', zIndex: 1, height: '100%',
+          width: panelW, height, background: 'rgba(0,0,0,0.75)',
           display: 'flex', flexDirection: 'column' as const,
           padding: `${p * 1.5}px ${p}px ${p}px`,
         }}>
           <div style={{
             fontSize: px(LABEL_SIZE, width) * headlineSizeMul, fontWeight: 800,
-            letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-            color: headlineColor || '#fff', fontFamily: ff(headlineFont),
-            marginBottom: gap * 1.5,
+            letterSpacing: '0.06em', textTransform: 'uppercase' as const,
+            color: '#ff6b6b', fontFamily: ff(headlineFont),
+            marginBottom: gap,
           }}>
-            The {brandName} Way
+            The Old Way
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: gap * 1.2 }}>
-            {(newItems.length > 0 ? newItems : ['All natural', 'Zero sugar', 'Feel great tomorrow']).map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: px(14, width) }}>
-                <span style={{ fontSize: px(ICON_SIZE, width), lineHeight: 1, color: '#4ade80', flexShrink: 0, fontWeight: 700 }}>
-                  &#x2713;
-                </span>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: gap }}>
+            {oldItems.map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: px(14, width) }}>
                 <span style={{
-                  fontSize: autoSize(px(ITEM_SIZE, width), item, 40) * bodySizeMul,
-                  fontWeight: parseInt(bodyWeight) || 400, lineHeight: 1.35, color: '#fff',
-                }}>
-                  {item || '\u00A0'}
-                </span>
+                  fontSize: px(ICON_SIZE, width), lineHeight: 1, color: '#ff6b6b', flexShrink: 0, fontWeight: 700,
+                }}>&#x2717;</span>
+                <span style={{
+                  fontSize: autoSize(px(ITEM_SIZE, width), item, 35) * bodySizeMul,
+                  fontWeight: parseInt(bodyWeight) || 400, lineHeight: 1.35, color: 'rgba(255,255,255,0.8)',
+                }}>{item}</span>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Right: Brand Way — brand color tint */}
+        <div style={{
+          width: panelW, height, background: `${accent}dd`,
+          display: 'flex', flexDirection: 'column' as const,
+          padding: `${p * 1.5}px ${p}px ${p}px`,
+        }}>
+          <div style={{
+            fontSize: px(LABEL_SIZE, width) * headlineSizeMul, fontWeight: 800,
+            letterSpacing: '0.06em', textTransform: 'uppercase' as const,
+            color: '#fff', fontFamily: ff(headlineFont),
+            marginBottom: gap,
+          }}>
+            The {brandName} Way
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: gap }}>
+            {newItems.map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: px(14, width) }}>
+                <span style={{
+                  fontSize: px(ICON_SIZE, width), lineHeight: 1, color: '#fff', flexShrink: 0, fontWeight: 700,
+                }}>&#x2713;</span>
+                <span style={{
+                  fontSize: autoSize(px(ITEM_SIZE, width), item, 35) * bodySizeMul,
+                  fontWeight: parseInt(bodyWeight) || 400, lineHeight: 1.35, color: '#fff',
+                }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* VS badge center */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          width: px(VS_SIZE * 1.6, width), height: px(VS_SIZE * 1.6, width),
+          borderRadius: '50%', background: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: px(VS_SIZE * 0.5, width), fontWeight: 900, color: '#000',
+          fontFamily: ff(headlineFont), letterSpacing: '-0.02em',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        }}>
+          VS
         </div>
       </div>
     </div>
