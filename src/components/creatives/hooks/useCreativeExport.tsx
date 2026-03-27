@@ -42,41 +42,39 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
   const supabase = createClient()
   const exportRef = useRef<HTMLDivElement>(null)
 
-  const captureElement = useCallback(async (el: HTMLElement, w: number, h: number): Promise<string> => {
-    const canvas = await html2canvas(el, {
-      width: w, height: h, scale: 2,
-      useCORS: true, allowTaint: true, logging: false,
-    })
-    // Resize 2x canvas down to target size for crisp output
+  const renderAndCapture = useCallback(async (Component: any, props: any, w: number, h: number): Promise<string> => {
+    const container = exportRef.current
+    if (!container) throw new Error('Export container not available')
+    // Render at 2x native size for crisp text
+    const s = 2
+    const rw = w * s, rh = h * s
+    container.style.cssText = `position:fixed;top:0;left:0;width:${rw}px;height:${rh}px;z-index:9999;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;`
+    container.innerHTML = ''
+    const { createRoot } = await import('react-dom/client')
+    const wrapper = document.createElement('div'); wrapper.style.cssText = `width:${rw}px;height:${rh}px;overflow:hidden;`
+    container.appendChild(wrapper)
+    const root = createRoot(wrapper)
+    // Pass 2x dimensions so template renders text/layout at 2x
+    root.render(<Component {...props} width={rw} height={rh} />)
+    await new Promise(r => setTimeout(r, 600))
+    const imgs = container.querySelectorAll('img')
+    await Promise.all(Array.from(imgs).map(img => img.complete && img.naturalWidth > 0 ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r })))
+    await new Promise(r => setTimeout(r, 300))
+    // Capture at 1:1 (already 2x size)
+    const canvas = await html2canvas(container, { width: rw, height: rh, scale: 1, useCORS: true, allowTaint: true, logging: false })
+    // Downscale to target size
     const out = document.createElement('canvas')
     out.width = w; out.height = h
     const ctx = out.getContext('2d')!
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(canvas, 0, 0, w, h)
-    return out.toDataURL('image/png')
-  }, [])
-
-  const renderAndCapture = useCallback(async (Component: any, props: any, w: number, h: number): Promise<string> => {
-    const container = exportRef.current
-    if (!container) throw new Error('Export container not available')
-    container.style.cssText = `position:fixed;top:0;left:0;width:${w}px;height:${h}px;z-index:9999;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-smoothing:antialiased;`
-    container.innerHTML = ''
-    const { createRoot } = await import('react-dom/client')
-    const wrapper = document.createElement('div'); wrapper.style.cssText = `width:${w}px;height:${h}px;overflow:hidden;`
-    container.appendChild(wrapper)
-    const root = createRoot(wrapper)
-    root.render(<Component {...props} width={w} height={h} />)
-    await new Promise(r => setTimeout(r, 500))
-    const imgs = container.querySelectorAll('img')
-    await Promise.all(Array.from(imgs).map(img => img.complete && img.naturalWidth > 0 ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r })))
-    await new Promise(r => setTimeout(r, 200))
-    const dataUrl = await captureElement(container, w, h)
+    const dataUrl = out.toDataURL('image/png')
     root.unmount()
     container.innerHTML = ''
     container.style.cssText = 'position:absolute;top:-9999px;left:-9999px;pointer-events:none;'
     return dataUrl
-  }, [captureElement])
+  }, [])
 
   const exportPng = useCallback(async () => {
     setExporting(true)
