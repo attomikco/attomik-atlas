@@ -317,16 +317,26 @@ export default function CreativeBuilder({
         const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
         const defB = nb?.default_body_text || 'Premium quality crafted for you'
         const defC = nb?.default_cta || 'Shop Now'
-        results.push({ headline: hm?.[1]?.trim() || defH, body: bm?.[1]?.trim() || defB, cta: cm?.[1]?.trim() || defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid), fbPrimaryText: fp?.[1]?.trim() || '', fbHeadline: fh?.[1]?.trim() || '', fbDescription: fd?.[1]?.trim() || '' })
+        const v = { headline: hm?.[1]?.trim() || defH, body: bm?.[1]?.trim() || defB, cta: cm?.[1]?.trim() || defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid), fbPrimaryText: fp?.[1]?.trim() || '', fbHeadline: fh?.[1]?.trim() || '', fbDescription: fd?.[1]?.trim() || '' }
+        results.push(v)
         setVariations([...results])
+        // Load latest into preview
+        setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta)
+        setSelectedImageId(v.imageId); setTemplateId(v.templateId); applyStyle(v.style)
+        setFbPrimaryText(v.fbPrimaryText || ''); setFbHeadline(v.fbHeadline || ''); setFbDescription(v.fbDescription || '')
+        setActiveVariation(results.length - 1)
       } catch (err) {
         console.error(`[Batch ${i+1}] Failed:`, err)
         const nb = brand
         const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
         const defB = nb?.default_body_text || 'Premium quality crafted for you'
         const defC = nb?.default_cta || 'Shop Now'
-        results.push({ headline: defH, body: defB, cta: defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) })
+        const v = { headline: defH, body: defB, cta: defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) }
+        results.push(v)
         setVariations([...results])
+        setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta)
+        setSelectedImageId(v.imageId); setTemplateId(v.templateId); applyStyle(v.style)
+        setActiveVariation(results.length - 1)
       }
     }
     setBatchGenerating(false)
