@@ -465,11 +465,11 @@ export default function CreativeBuilder({
         ))}
       </div>
 
-      {/* MAIN AREA: Preview + Controls (7 cols) + Generated (5 cols) */}
+      {/* MAIN AREA: Preview (left) + Controls (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-        {/* LEFT: Preview + Images + Copy + Style */}
-        <div className="lg:col-span-7 space-y-4">
+        {/* LEFT: Preview */}
+        <div className="lg:col-span-5 space-y-4">
           <PreviewCanvas
             templateLabel={template.label}
             size={size}
@@ -497,6 +497,10 @@ export default function CreativeBuilder({
             exportingAll={exportingAll}
           />
 
+        </div>
+
+        {/* RIGHT: Images + Copy + Style */}
+        <div className="lg:col-span-7 space-y-4">
           <ImagePicker
             images={images}
             selectedImageId={selectedImageId}
@@ -618,9 +622,10 @@ export default function CreativeBuilder({
             setCtaFontColor={setCtaFontColor}
           />
         </div>
+      </div>
 
-        {/* RIGHT: Generated + Saved */}
-        <div className="lg:col-span-5 space-y-4">
+      {/* BOTTOM: Generated + Saved — full width */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <VariationStrip
             variations={variations}
             activeVariation={activeVariation}
@@ -648,7 +653,6 @@ export default function CreativeBuilder({
             exportAllDrafts={exportAllDrafts}
             exportingAll={exportingAll}
           />
-        </div>
       </div>
 
       {/* Hidden export container */}
