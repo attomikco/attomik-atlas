@@ -305,10 +305,20 @@ export default function CreativeBuilder({
         const reader = res.body?.getReader(); const decoder = new TextDecoder()
         if (reader) { while (true) { const { done, value } = await reader.read(); if (done) break; const chunk = decoder.decode(value); for (const line of chunk.split('\n')) { if (line.startsWith('data: ') && line !== 'data: [DONE]') { try { full += JSON.parse(line.slice(6)).delta?.text || '' } catch {} } } } }
         const hm = full.match(/HEADLINE:\s*(.+)/i); const bm = full.match(/BODY:\s*(.+)/i); const cm = full.match(/CTA:\s*(.+)/i)
-        results.push({ headline: hm?.[1]?.trim() || 'Headline', body: bm?.[1]?.trim() || 'Body text', cta: cm?.[1]?.trim() || 'Shop Now', imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) })
+        console.log(`[Batch ${i+1}] AI response:`, full.substring(0, 200), { headline: hm?.[1], body: bm?.[1], cta: cm?.[1] })
+        const nb = brand
+        const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
+        const defB = nb?.default_body_text || 'Premium quality crafted for you'
+        const defC = nb?.default_cta || 'Shop Now'
+        results.push({ headline: hm?.[1]?.trim() || defH, body: bm?.[1]?.trim() || defB, cta: cm?.[1]?.trim() || defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) })
         setVariations([...results])
-      } catch {
-        results.push({ headline: 'Headline', body: 'Body text', cta: 'Shop Now', imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) })
+      } catch (err) {
+        console.error(`[Batch ${i+1}] Failed:`, err)
+        const nb = brand
+        const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
+        const defB = nb?.default_body_text || 'Premium quality crafted for you'
+        const defC = nb?.default_cta || 'Shop Now'
+        results.push({ headline: defH, body: defB, cta: defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) })
         setVariations([...results])
       }
     }

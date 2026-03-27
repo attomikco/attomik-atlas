@@ -15,7 +15,7 @@ export default async function CreativesPage({
     .order('name')
 
   return (
-    <div className="p-4 md:p-10 max-w-6xl">
+    <div className="p-4 md:p-10 max-w-[1600px]">
       <div className="mb-8">
         <h1>Creatives</h1>
         <p className="text-muted mt-1">
