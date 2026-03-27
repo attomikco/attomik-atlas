@@ -93,7 +93,7 @@ export default function OnboardingWizard() {
   function validate(): boolean {
     const errs: Record<string, string> = {}
     if (step === 0 && !brandName.trim()) errs.brandName = 'Brand name is required'
-    if (step === 1 && !productName.trim()) errs.productName = 'Product name is required'
+    if (step === 1 && !productName.trim() && selectedProductIdx === null) errs.productName = 'Select or add a product'
     if (step === 2 && !campaignName.trim()) errs.campaignName = 'Campaign name is required'
     setErrors(errs)
     return Object.keys(errs).length === 0
