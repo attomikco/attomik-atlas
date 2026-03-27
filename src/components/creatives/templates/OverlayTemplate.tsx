@@ -57,7 +57,7 @@ export default function OverlayTemplate({
   const padBottom = isBottom || isCenter ? (showCta ? pb : pb * 1.3) : p
 
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont), background: bgColor }}>
+    <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont), background: bgColor, WebkitFontSmoothing: 'antialiased' as any }}>
       {imageUrl ? (
         <img crossOrigin="anonymous" src={imageUrl} alt="" style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
@@ -123,22 +123,18 @@ export default function OverlayTemplate({
 
           {showCta && (
             <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: 'inline-block',
               marginTop: px(GAP_BODY_CTA, width),
               background: ctaColor || brandColor,
               color: ctaFontColor || '#000',
               fontSize: px(CTA_SIZE, width) * bodySizeMul,
               fontWeight: 700,
-              height: px(CTA_SIZE + CTA_PAD_V * 2, width) * bodySizeMul,
-              paddingLeft: px(CTA_PAD_H, width),
-              paddingRight: px(CTA_PAD_H, width),
+              padding: `${px(CTA_PAD_V, width)}px ${px(CTA_PAD_H, width)}px`,
               borderRadius: CTA_RADIUS,
               whiteSpace: 'nowrap' as const,
               fontFamily: ff(headlineFont),
-              lineHeight: 1,
-              boxSizing: 'border-box' as const,
+              lineHeight: 1.2,
+              WebkitFontSmoothing: 'antialiased' as any,
             }}>
               {ctaText || 'Shop Now'}
             </div>

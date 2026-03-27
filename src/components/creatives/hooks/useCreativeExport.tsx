@@ -44,16 +44,23 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
 
   const captureElement = useCallback(async (el: HTMLElement, w: number, h: number): Promise<string> => {
     const canvas = await html2canvas(el, {
-      width: w, height: h, scale: 1,
+      width: w, height: h, scale: 2,
       useCORS: true, allowTaint: true, logging: false,
     })
-    return canvas.toDataURL('image/png')
+    // Resize 2x canvas down to target size for crisp output
+    const out = document.createElement('canvas')
+    out.width = w; out.height = h
+    const ctx = out.getContext('2d')!
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(canvas, 0, 0, w, h)
+    return out.toDataURL('image/png')
   }, [])
 
   const renderAndCapture = useCallback(async (Component: any, props: any, w: number, h: number): Promise<string> => {
     const container = exportRef.current
     if (!container) throw new Error('Export container not available')
-    container.style.cssText = `position:fixed;top:0;left:0;width:${w}px;height:${h}px;z-index:9999;overflow:hidden;`
+    container.style.cssText = `position:fixed;top:0;left:0;width:${w}px;height:${h}px;z-index:9999;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-smoothing:antialiased;`
     container.innerHTML = ''
     const { createRoot } = await import('react-dom/client')
     const wrapper = document.createElement('div'); wrapper.style.cssText = `width:${w}px;height:${h}px;overflow:hidden;`
