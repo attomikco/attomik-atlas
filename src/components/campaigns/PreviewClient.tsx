@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Pencil, Plus } from 'lucide-react'
@@ -151,11 +151,13 @@ export default function PreviewClient({
   }, [])
 
   // Mark creative done once ad-copy and landing are done
+  const creativeTriggered = useRef(false)
   useEffect(() => {
+    if (creativeTriggered.current) return
     const adDone = modalSteps.find(s => s.id === 'ad-copy')?.status === 'done'
     const landDone = modalSteps.find(s => s.id === 'landing')?.status === 'done'
-    const creativePending = modalSteps.find(s => s.id === 'creative')?.status !== 'done'
-    if (adDone && landDone && creativePending) {
+    if (adDone && landDone) {
+      creativeTriggered.current = true
       setModalSteps(prev => prev.map(s => s.id === 'creative' ? { ...s, status: 'loading' } : s))
       setTimeout(() => {
         setModalSteps(prev => prev.map(s => s.id === 'creative' ? { ...s, status: 'done' } : s))
