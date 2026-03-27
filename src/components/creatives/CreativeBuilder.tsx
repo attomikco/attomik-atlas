@@ -546,6 +546,54 @@ export default function CreativeBuilder({
             exportingAll={exportingAll}
           />
 
+          <StylePanel
+            templateId={templateId}
+            brand={brand}
+            textPosition={textPosition}
+            setTextPosition={setTextPosition}
+            imagePosition={imagePosition}
+            setImagePosition={setImagePosition}
+            bgColor={bgColor}
+            updateBgColor={updateBgColor}
+            showOverlay={showOverlay}
+            setShowOverlay={setShowOverlay}
+            overlayOpacity={overlayOpacity}
+            setOverlayOpacity={setOverlayOpacity}
+            textBanner={textBanner}
+            setTextBanner={setTextBanner}
+            textBannerColor={textBannerColor}
+            setTextBannerColor={setTextBannerColor}
+            headlineFont={headlineFont}
+            setHeadlineFont={setHeadlineFont}
+            headlineColor={headlineColor}
+            setHeadlineColor={setHeadlineColor}
+            headlineSizeMul={headlineSizeMul}
+            setHeadlineSizeMul={setHeadlineSizeMul}
+            bodyFont={bodyFont}
+            setBodyFont={setBodyFont}
+            bodyColor={bodyColor}
+            setBodyColor={setBodyColor}
+            bodySizeMul={bodySizeMul}
+            setBodySizeMul={setBodySizeMul}
+            brandColors={brandColors}
+            pill={pill}
+            onReset={handleStyleReset}
+            setHeadlineWeight={setHeadlineWeight}
+            setHeadlineTransform={setHeadlineTransform}
+            setBodyFont2={setBodyFont}
+            setBodyWeight={setBodyWeight}
+            setBodyTransform={setBodyTransform}
+            setBgColor={setBgColor}
+            setHeadlineSizeMul2={setHeadlineSizeMul}
+            setBodySizeMul2={setBodySizeMul}
+            setShowOverlay2={setShowOverlay}
+            setOverlayOpacity2={setOverlayOpacity}
+            setTextBanner2={setTextBanner}
+            ctaColor={ctaColor}
+            setCtaColor={setCtaColor}
+            ctaFontColor={ctaFontColor}
+            setCtaFontColor={setCtaFontColor}
+          />
         </div>
 
         {/* RIGHT SIDEBAR */}
@@ -622,54 +670,6 @@ export default function CreativeBuilder({
             />
           )}
 
-          <StylePanel
-            templateId={templateId}
-            brand={brand}
-            textPosition={textPosition}
-            setTextPosition={setTextPosition}
-            imagePosition={imagePosition}
-            setImagePosition={setImagePosition}
-            bgColor={bgColor}
-            updateBgColor={updateBgColor}
-            showOverlay={showOverlay}
-            setShowOverlay={setShowOverlay}
-            overlayOpacity={overlayOpacity}
-            setOverlayOpacity={setOverlayOpacity}
-            textBanner={textBanner}
-            setTextBanner={setTextBanner}
-            textBannerColor={textBannerColor}
-            setTextBannerColor={setTextBannerColor}
-            headlineFont={headlineFont}
-            setHeadlineFont={setHeadlineFont}
-            headlineColor={headlineColor}
-            setHeadlineColor={setHeadlineColor}
-            headlineSizeMul={headlineSizeMul}
-            setHeadlineSizeMul={setHeadlineSizeMul}
-            bodyFont={bodyFont}
-            setBodyFont={setBodyFont}
-            bodyColor={bodyColor}
-            setBodyColor={setBodyColor}
-            bodySizeMul={bodySizeMul}
-            setBodySizeMul={setBodySizeMul}
-            brandColors={brandColors}
-            pill={pill}
-            onReset={handleStyleReset}
-            setHeadlineWeight={setHeadlineWeight}
-            setHeadlineTransform={setHeadlineTransform}
-            setBodyFont2={setBodyFont}
-            setBodyWeight={setBodyWeight}
-            setBodyTransform={setBodyTransform}
-            setBgColor={setBgColor}
-            setHeadlineSizeMul2={setHeadlineSizeMul}
-            setBodySizeMul2={setBodySizeMul}
-            setShowOverlay2={setShowOverlay}
-            setOverlayOpacity2={setOverlayOpacity}
-            setTextBanner2={setTextBanner}
-            ctaColor={ctaColor}
-            setCtaColor={setCtaColor}
-            ctaFontColor={ctaFontColor}
-            setCtaFontColor={setCtaFontColor}
-          />
         </div>
       </div>
 
