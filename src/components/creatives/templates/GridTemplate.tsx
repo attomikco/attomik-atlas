@@ -3,7 +3,7 @@ import { TemplateProps, ff, px, autoSize } from './types'
 const PAD = 48
 const GAP = 8
 const HEADLINE_SIZE = 104
-const BODY_SIZE = 48
+const BODY_SIZE = 62
 const CTA_SIZE = 24
 const CTA_PAD_V = 14
 const CTA_PAD_H = 36

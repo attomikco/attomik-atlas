@@ -102,7 +102,7 @@ export default function InfographicTemplate({
           position: 'absolute', bottom: px(20, width), left: 0, right: 0,
           textAlign: 'center', fontSize: px(16, width),
           fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
-          color: bodyColor, opacity: 0.3, fontFamily: ff(headlineFont),
+          color: bodyColor, fontFamily: ff(headlineFont),
         }}>
           {brandName}
         </div>

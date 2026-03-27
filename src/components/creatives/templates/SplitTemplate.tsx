@@ -44,7 +44,7 @@ export default function SplitTemplate({
       }}>
         <div style={{
           fontSize: px(BRAND_SIZE, width), fontWeight: 700, letterSpacing: '0.1em',
-          textTransform: 'uppercase' as const, color: bodyColor, opacity: 0.7, fontFamily: ff(headlineFont),
+          textTransform: 'uppercase' as const, color: bodyColor, fontFamily: ff(headlineFont),
         }}>
           {brandName}
         </div>

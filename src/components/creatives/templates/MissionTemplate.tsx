@@ -85,7 +85,7 @@ export default function MissionTemplate({
           position: 'absolute', bottom: px(24, width), left: 0, right: 0,
           textAlign: 'center', fontSize: px(16, width),
           fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
-          color: bodyColor || 'rgba(255,255,255,0.4)', opacity: 0.4, fontFamily: ff(headlineFont),
+          color: bodyColor || '#ffffff', fontFamily: ff(headlineFont),
         }}>
           {brandName}
         </div>

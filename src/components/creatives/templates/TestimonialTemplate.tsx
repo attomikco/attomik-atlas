@@ -68,7 +68,7 @@ export default function TestimonialTemplate({
             }}>
               {reviewerName}
             </div>
-            <div style={{ fontSize: px(HANDLE_SIZE, width), fontWeight: 400, color: bodyColor, opacity: 0.6, fontFamily: ff(bodyFont), marginTop: 3 }}>
+            <div style={{ fontSize: px(HANDLE_SIZE, width), fontWeight: 400, color: bodyColor, fontFamily: ff(bodyFont), marginTop: 3 }}>
               Verified buyer
             </div>
           </div>
