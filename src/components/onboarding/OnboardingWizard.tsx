@@ -454,7 +454,7 @@ export default function OnboardingWizard() {
 
       {/* Logo above card */}
       <div className="flex justify-center mb-8">
-        <AttomikLogo height={24} color="#ffffff" />
+        <AttomikLogo height={38} color="#ffffff" />
       </div>
 
       <div className="max-w-lg w-full bg-paper rounded-card p-8 mx-4 max-h-[90vh] overflow-y-auto">
