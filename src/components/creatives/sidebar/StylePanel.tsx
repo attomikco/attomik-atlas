@@ -219,11 +219,11 @@ export default function StylePanel({
             </div>
           ))}
 
-          {/* CTA colors */}
+          {/* CTA / accent colors */}
           {f.cta && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">CTA</span>
-              <span className="text-[9px] text-muted flex-shrink-0 w-24">bg</span>
+              <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">{templateId === 'testimonial' ? '★' : 'CTA'}</span>
+              <span className="text-[9px] text-muted flex-shrink-0 w-24">{templateId === 'testimonial' ? 'stars' : 'bg'}</span>
               <div className="flex gap-0.5 flex-shrink-0">
                 {brandColors.map(c => (
                   <button key={'cta-' + c.value} onClick={() => setCtaColor(c.value)}
