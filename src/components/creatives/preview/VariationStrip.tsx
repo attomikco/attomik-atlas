@@ -34,20 +34,18 @@ export default function VariationStrip({
           <Download size={11} /> Download all ({size.w}&times;{size.h})
         </button>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
         {variations.map((v, i) => {
           const vImg = images.find(img => img.id === v.imageId)
           const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
           const VTemplate = TEMPLATES.find(t => t.id === v.templateId)!.component
           const isSaved = savedDrafts.some(d => d.headline === v.headline && d.imageId === v.imageId)
-          const thumbW = 80
-          const thumbScale = thumbW / size.w
-          const thumbH = Math.round(size.h * thumbScale)
+          const thumbScale = 0.08
           return (
-            <div key={i} className="relative group">
+            <div key={i} className="relative group" style={{ aspectRatio: `${size.w}/${size.h}` }}>
               <button onClick={() => loadVariation(i)}
-                className="rounded-[3px] overflow-hidden transition-all hover:opacity-90"
-                style={{ width: thumbW, height: thumbH, border: activeVariation === i ? '2px solid #00ff97' : '1px solid #e0e0e0', display: 'block' }}>
+                className="w-full h-full rounded-[3px] overflow-hidden transition-all hover:opacity-90"
+                style={{ border: activeVariation === i ? '2px solid #4ade80' : '1px solid #e0e0e0', display: 'block' }}>
                 <div style={{ width: size.w, height: size.h, transform: `scale(${thumbScale})`, transformOrigin: 'top left' }}>
                   <VTemplate {...thumbProps(v, vImgUrl) as any} />
                 </div>
