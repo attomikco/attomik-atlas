@@ -99,13 +99,39 @@ export default function CreativeBuilder({
   const brandColor = brand?.primary_color || '#00ff97'
   const [ctaColor, setCtaColor] = useState(brand?.accent_color || brandColor)
   const [ctaFontColor, setCtaFontColor] = useState(brand?.accent_font_color || '#000000')
-  const brandColors = [
-    { label: 'White', value: '#ffffff' },
-    { label: 'Black', value: '#000000' },
-    ...(brand?.primary_color ? [{ label: 'Primary', value: brand.primary_color }] : []),
-    ...(brand?.secondary_color ? [{ label: 'Secondary', value: brand.secondary_color }] : []),
-    ...(brand?.accent_color ? [{ label: 'Accent', value: brand.accent_color }] : []),
-  ]
+  // Build color palette from all brand colors (deduped)
+  const allColors: { label: string; value: string }[] = []
+  const seen = new Set<string>()
+  const addColor = (label: string, value: string | null | undefined) => {
+    if (!value || seen.has(value.toLowerCase())) return
+    seen.add(value.toLowerCase())
+    allColors.push({ label, value })
+  }
+  addColor('White', '#ffffff')
+  addColor('Black', '#000000')
+  // Backgrounds
+  addColor('Base bg', brand?.bg_base)
+  addColor('Dark bg', brand?.bg_dark)
+  addColor('Secondary bg', brand?.bg_secondary)
+  addColor('Accent bg', brand?.bg_accent)
+  // Legacy / core
+  addColor('Primary', brand?.primary_color)
+  addColor('Secondary', brand?.secondary_color)
+  addColor('Accent', brand?.accent_color)
+  // Text
+  addColor('Text on base', brand?.text_on_base)
+  addColor('Text on dark', brand?.text_on_dark)
+  addColor('Text on accent', brand?.text_on_accent)
+  addColor('Heading', brand?.heading_color)
+  addColor('Body', brand?.body_color)
+  // Buttons
+  addColor('Btn primary', brand?.btn_primary)
+  addColor('Btn primary text', brand?.btn_primary_text)
+  addColor('Btn secondary', brand?.btn_secondary)
+  addColor('Btn secondary text', brand?.btn_secondary_text)
+  addColor('Btn tertiary', brand?.btn_tertiary)
+  addColor('Btn tertiary text', brand?.btn_tertiary_text)
+  const brandColors = allColors
   const size = SIZES.find(s => s.id === sizeId)!
   const template = TEMPLATES.find(t => t.id === templateId)!
   const TemplateComponent = template.component

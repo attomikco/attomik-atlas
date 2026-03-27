@@ -21,6 +21,20 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     accent_font_color: brand.accent_font_color || '',
     heading_color:   brand.heading_color || '',
     body_color:      brand.body_color || '',
+    // Extended colors
+    bg_base:         brand.bg_base || '',
+    bg_dark:         brand.bg_dark || '',
+    bg_secondary:    brand.bg_secondary || '',
+    bg_accent:       brand.bg_accent || '',
+    text_on_base:    brand.text_on_base || '',
+    text_on_dark:    brand.text_on_dark || '',
+    text_on_accent:  brand.text_on_accent || '',
+    btn_primary:     brand.btn_primary || '',
+    btn_primary_text: brand.btn_primary_text || '',
+    btn_secondary:   brand.btn_secondary || '',
+    btn_secondary_text: brand.btn_secondary_text || '',
+    btn_tertiary:    brand.btn_tertiary || '',
+    btn_tertiary_text: brand.btn_tertiary_text || '',
     logo_url:        brand.logo_url || '',
     font_primary:    brand.font_primary || '',
     font_secondary:  brand.font_secondary || '',
@@ -103,6 +117,20 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
       default_headline:  defaultCopy.default_headline || null,
       default_body_text: defaultCopy.default_body_text || null,
       default_cta:       defaultCopy.default_cta || null,
+      // Extended colors
+      bg_base:           form.bg_base || null,
+      bg_dark:           form.bg_dark || null,
+      bg_secondary:      form.bg_secondary || null,
+      bg_accent:         form.bg_accent || null,
+      text_on_base:      form.text_on_base || null,
+      text_on_dark:      form.text_on_dark || null,
+      text_on_accent:    form.text_on_accent || null,
+      btn_primary:       form.btn_primary || null,
+      btn_primary_text:  form.btn_primary_text || null,
+      btn_secondary:     form.btn_secondary || null,
+      btn_secondary_text: form.btn_secondary_text || null,
+      btn_tertiary:      form.btn_tertiary || null,
+      btn_tertiary_text: form.btn_tertiary_text || null,
     }).eq('id', brand.id)
 
     if (err2) {
@@ -164,32 +192,57 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
               placeholder="cheap, discount, basic" />
           </div>
         </div>
-        <div>
-          <label className="label block mb-2">Brand colors</label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {([
+        <div className="space-y-4">
+          {([
+            { title: 'Backgrounds', items: [
+              { key: 'bg_base' as const, label: 'Base', hint: 'Light/default background' },
+              { key: 'bg_dark' as const, label: 'Dark', hint: 'Dark background' },
+              { key: 'bg_secondary' as const, label: 'Secondary', hint: 'Alternate sections' },
+              { key: 'bg_accent' as const, label: 'Accent', hint: 'Highlight areas' },
+            ]},
+            { title: 'Text', items: [
+              { key: 'heading_color' as const, label: 'Heading', hint: 'Title / headline' },
+              { key: 'body_color' as const, label: 'Body', hint: 'Paragraph text' },
+              { key: 'text_on_base' as const, label: 'On base bg', hint: 'Text on light bg' },
+              { key: 'text_on_dark' as const, label: 'On dark bg', hint: 'Text on dark bg' },
+              { key: 'text_on_accent' as const, label: 'On accent bg', hint: 'Text on accent bg' },
+            ]},
+            { title: 'Buttons / Actions', items: [
+              { key: 'btn_primary' as const, label: 'Primary', hint: 'Main CTA bg' },
+              { key: 'btn_primary_text' as const, label: 'Primary text', hint: 'Text on primary CTA' },
+              { key: 'btn_secondary' as const, label: 'Secondary', hint: 'Alt CTA bg' },
+              { key: 'btn_secondary_text' as const, label: 'Secondary text', hint: 'Text on alt CTA' },
+              { key: 'btn_tertiary' as const, label: 'Tertiary', hint: 'Accent CTA bg' },
+              { key: 'btn_tertiary_text' as const, label: 'Tertiary text', hint: 'Text on accent CTA' },
+            ]},
+            { title: 'Legacy', items: [
               { key: 'primary_color' as const, label: 'Primary', hint: 'Main brand color' },
               { key: 'secondary_color' as const, label: 'Secondary', hint: 'Supporting color' },
-              { key: 'accent_color' as const, label: 'Accent / CTA bg', hint: 'Buttons & highlights' },
-              { key: 'accent_font_color' as const, label: 'CTA text color', hint: 'Text on CTA buttons' },
-              { key: 'heading_color' as const, label: 'Heading text', hint: 'Title / headline color' },
-              { key: 'body_color' as const, label: 'Body text', hint: 'Paragraph / body color' },
-            ]).map(({ key, label, hint }) => (
-              <div key={key} className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-btn border border-border flex-shrink-0"
-                  style={{ background: form[key] || '#f2f2f2' }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-semibold">{label}</span>
-                    <span className="text-[10px] text-muted">{hint}</span>
+              { key: 'accent_color' as const, label: 'Accent', hint: 'Highlights' },
+              { key: 'accent_font_color' as const, label: 'Accent text', hint: 'Text on accent' },
+            ]},
+          ]).map(section => (
+            <div key={section.title}>
+              <label className="label block mb-2">{section.title}</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {section.items.map(({ key, label, hint }) => (
+                  <div key={key} className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-btn border border-border flex-shrink-0"
+                      style={{ background: form[key] || '#f2f2f2' }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-semibold">{label}</span>
+                        <span className="text-[10px] text-muted">{hint}</span>
+                      </div>
+                      <input className={inputCls + ' font-mono !py-1.5 mt-0.5'} value={form[key]}
+                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                        placeholder="#000000" />
+                    </div>
                   </div>
-                  <input className={inputCls + ' font-mono !py-1.5 mt-0.5'} value={form[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    placeholder="#000000" />
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
         {[
           { label: 'Heading font', font: fontHeading, setFont: setFontHeading },

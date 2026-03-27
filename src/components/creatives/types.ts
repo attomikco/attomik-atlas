@@ -11,6 +11,19 @@ export interface Brand {
   accent_font_color: string | null
   heading_color: string | null
   body_color: string | null
+  bg_base: string | null
+  bg_dark: string | null
+  bg_secondary: string | null
+  bg_accent: string | null
+  text_on_base: string | null
+  text_on_dark: string | null
+  text_on_accent: string | null
+  btn_primary: string | null
+  btn_primary_text: string | null
+  btn_secondary: string | null
+  btn_secondary_text: string | null
+  btn_tertiary: string | null
+  btn_tertiary_text: string | null
   font_primary: string | null
   font_secondary: string | null
   font_heading: FontStyle | null
