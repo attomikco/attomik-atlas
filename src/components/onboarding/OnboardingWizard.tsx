@@ -252,10 +252,10 @@ export default function OnboardingWizard() {
             <div className="flex gap-2">
               <div className="flex gap-1">
                 {([
-                  { label: 'Aa', value: 'capitalize' as const },
-                  { label: 'AA', value: 'uppercase' as const },
-                  { label: 'aa', value: 'lowercase' as const },
-                  { label: 'Ab', value: 'none' as const },
+                  { label: 'Normal', value: 'none' as const },
+                  { label: 'ALL CAPS', value: 'uppercase' as const },
+                  { label: 'all lower', value: 'lowercase' as const },
+                  { label: 'Title Case', value: 'capitalize' as const },
                 ]).map(t => (
                   <button key={t.value} onClick={() => setFontTransform(t.value)}
                     className="px-3 py-1.5 text-xs font-medium border rounded-btn transition-all"
