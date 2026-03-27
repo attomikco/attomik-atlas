@@ -377,7 +377,12 @@ export default function CreativeBuilder({
       <div className="flex flex-wrap gap-1.5">
         {TEMPLATES.map(t => (
           <button key={t.id}
-            onClick={() => { setTemplateId(t.id); if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) } }}
+            onClick={() => {
+              setTemplateId(t.id)
+              if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) }
+              if (t.id === 'ugc') { setImagePosition('bottom') }
+              if (t.id === 'testimonial') { setImagePosition('bottom') }
+            }}
             className="text-sm px-4 py-2 rounded-card border transition-all duration-150 font-semibold cursor-pointer"
             style={templateId === t.id
               ? { background: '#111', color: '#4ade80', border: '1px solid #111' }
