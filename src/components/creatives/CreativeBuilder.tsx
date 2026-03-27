@@ -465,10 +465,39 @@ export default function CreativeBuilder({
         ))}
       </div>
 
-      {/* MAIN AREA */}
+      {/* GENERATED + SAVED — full width */}
+      <VariationStrip
+        variations={variations}
+        activeVariation={activeVariation}
+        loadVariation={loadVariation}
+        saveVariationAsDraft={saveVariationAsDraft}
+        savedDrafts={savedDrafts}
+        size={size}
+        images={images}
+        getPublicUrl={getPublicUrl}
+        thumbProps={thumbProps}
+        exportAllVariations={exportAllVariations}
+        exportingAll={exportingAll}
+        sizeId={sizeId}
+      />
+
+      <DraftStrip
+        savedDrafts={savedDrafts}
+        activeDraft={activeDraft}
+        loadDraft={loadDraft}
+        removeDraft={removeDraft}
+        size={size}
+        images={images}
+        getPublicUrl={getPublicUrl}
+        thumbProps={thumbProps}
+        exportAllDrafts={exportAllDrafts}
+        exportingAll={exportingAll}
+      />
+
+      {/* MAIN AREA: Preview (left) + Controls (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-        {/* LEFT: Preview + Variations + Drafts */}
+        {/* LEFT: Preview */}
         <div className="lg:col-span-7 space-y-4">
           <PreviewCanvas
             templateLabel={template.label}
@@ -497,33 +526,6 @@ export default function CreativeBuilder({
             exportingAll={exportingAll}
           />
 
-          <VariationStrip
-            variations={variations}
-            activeVariation={activeVariation}
-            loadVariation={loadVariation}
-            saveVariationAsDraft={saveVariationAsDraft}
-            savedDrafts={savedDrafts}
-            size={size}
-            images={images}
-            getPublicUrl={getPublicUrl}
-            thumbProps={thumbProps}
-            exportAllVariations={exportAllVariations}
-            exportingAll={exportingAll}
-            sizeId={sizeId}
-          />
-
-          <DraftStrip
-            savedDrafts={savedDrafts}
-            activeDraft={activeDraft}
-            loadDraft={loadDraft}
-            removeDraft={removeDraft}
-            size={size}
-            images={images}
-            getPublicUrl={getPublicUrl}
-            thumbProps={thumbProps}
-            exportAllDrafts={exportAllDrafts}
-            exportingAll={exportingAll}
-          />
         </div>
 
         {/* RIGHT SIDEBAR */}
