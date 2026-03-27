@@ -207,39 +207,56 @@ export default function CreativeBuilder({
 
   function stopBatch() { batchAbortRef.current?.abort(); setBatchGenerating(false) }
 
-  // Per-template optimal defaults for batch generation
+  // Per-template optimal defaults for batch generation — clean slate, no current editor leaking
   function styleForTemplate(tid: string): StyleSnapshot {
-    const base = captureStyle()
     const nb = brand
-    const nbBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || '#000000'
-    const light = isLightColor(nbBg)
-    const hColor = nb?.text_on_dark || nb?.heading_color || (light ? '#000000' : '#ffffff')
-    const bColor = nb?.text_on_dark || nb?.body_color || (light ? '#1a1a1a' : '#ffffff')
+    // Fonts from brand
+    const h = nb?.font_heading; const hParts = (nb?.font_primary || '').split('|')
+    const bo = nb?.font_body; const bParts = (nb?.font_secondary || '').split('|')
+    const hFont = h?.family || hParts[0] || ''
+    const hWeight = h?.weight || hParts[1] || '700'
+    const hTransform = h?.transform || hParts[2] || 'none'
+    const bFont = bo?.family || bParts[0] || ''
+    const bWeight = bo?.weight || bParts[1] || '400'
+    const bTransform = bo?.transform || bParts[2] || 'none'
 
-    const defaults: Partial<StyleSnapshot> = {
-      headlineColor: hColor, bodyColor: bColor,
-      headlineFont: base.headlineFont, bodyFont: base.bodyFont,
-      headlineWeight: base.headlineWeight, bodyWeight: base.bodyWeight,
-      headlineTransform: base.headlineTransform, bodyTransform: base.bodyTransform,
+    // Colors for dark bg (overlay, stat)
+    const darkText = nb?.text_on_dark || nb?.heading_color || '#ffffff'
+    const darkBody = nb?.text_on_dark || nb?.body_color || '#ffffff'
+    // Colors for brand bg (split, card, testimonial, grid)
+    const brandBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || '#000000'
+    const lightBg = isLightColor(brandBg)
+    const bgText = lightBg ? (nb?.text_on_base || '#000000') : (nb?.text_on_dark || '#ffffff')
+    const bgBody = lightBg ? (nb?.text_on_base || '#1a1a1a') : (nb?.text_on_dark || '#ffffff')
+
+    const shared = {
+      headlineFont: hFont, headlineWeight: hWeight, headlineTransform: hTransform,
+      bodyFont: bFont, bodyWeight: bWeight, bodyTransform: bTransform,
       headlineSizeMul: 1, bodySizeMul: 1,
-      textBanner: 'none', textBannerColor: nbBg,
+      textBanner: 'none' as const, textBannerColor: brandBg,
     }
 
     switch (tid) {
       case 'overlay':
-        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: '#000', showCta: true }
+        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: '#000', showCta: true }
       case 'stat':
-        return { ...base, ...defaults, textPosition: 'center', showOverlay: true, overlayOpacity: 30, imagePosition: 'center', bgColor: '#000', showCta: true }
+        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: true, overlayOpacity: 30, imagePosition: 'center', bgColor: '#000', showCta: false }
       case 'split':
-        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: nbBg, showCta: true }
+        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: true }
       case 'testimonial':
-        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: nbBg, showCta: true }
+        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: brandBg, showCta: true }
       case 'ugc': // Card
-        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: nbBg, showCta: true }
+        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: brandBg, showCta: true }
       case 'grid':
-        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: nbBg, showCta: true }
+        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: true }
+      case 'mission':
+        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: true, overlayOpacity: 50, imagePosition: 'center', bgColor: '#000', showCta: false }
+      case 'infographic':
+        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: false }
+      case 'comparison':
+        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: false }
       default:
-        return { ...base, ...defaults, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: nbBg, showCta: true }
+        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: true }
     }
   }
 
