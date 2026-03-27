@@ -86,8 +86,8 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
     setError(null)
 
     try {
-      // Save core fields first (guaranteed to work)
-      const { error: err } = await supabase.from('brands').update({
+      // Step 1: Core fields only (original columns)
+      const { error: err1 } = await supabase.from('brands').update({
         brand_voice:     form.brand_voice || null,
         target_audience: form.target_audience || null,
         tone_keywords:   form.tone_keywords ? form.tone_keywords.split(',').map(s => s.trim()).filter(Boolean) : null,
@@ -96,23 +96,29 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
         primary_color:   form.primary_color || null,
         secondary_color: form.secondary_color || null,
         accent_color:    form.accent_color || null,
-        accent_font_color: form.accent_font_color || null,
-        heading_color:     form.heading_color || null,
-        body_color:        form.body_color || null,
         logo_url:        form.logo_url || null,
         font_primary:    fontHeading.family ? `${fontHeading.family}|${fontHeading.weight}|${fontHeading.transform}` : null,
         font_secondary:  fontBody.family ? `${fontBody.family}|${fontBody.weight}|${fontBody.transform}` : null,
-        font_heading:      fontHeading.family ? fontHeading : null,
-        font_body:         fontBody.family ? fontBody : null,
-        custom_fonts_css:  customFontsCss || null,
-        default_headline:  defaultCopy.default_headline || null,
-        default_body_text: defaultCopy.default_body_text || null,
-        default_cta:       defaultCopy.default_cta || null,
       }).eq('id', brand.id)
 
-      if (err) { setError(err.message); setSaving(false); return }
+      if (err1) { setError(`Core: ${err1.message}`); setSaving(false); return }
 
-      // Extended colors — separate call, non-blocking
+      // Step 2: Newer columns (may not exist)
+      supabase.from('brands').update({
+        accent_font_color: form.accent_font_color || null,
+        heading_color: form.heading_color || null,
+        body_color: form.body_color || null,
+        font_heading: fontHeading.family ? fontHeading : null,
+        font_body: fontBody.family ? fontBody : null,
+        custom_fonts_css: customFontsCss || null,
+        default_headline: defaultCopy.default_headline || null,
+        default_body_text: defaultCopy.default_body_text || null,
+        default_cta: defaultCopy.default_cta || null,
+      }).eq('id', brand.id).then(({ error }) => {
+        if (error) console.warn('Step 2 failed:', error.message)
+      })
+
+      // Step 3: Extended colors (may not exist)
       supabase.from('brands').update({
         bg_base: form.bg_base || null, bg_dark: form.bg_dark || null,
         bg_secondary: form.bg_secondary || null, bg_accent: form.bg_accent || null,
@@ -122,7 +128,7 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
         btn_secondary: form.btn_secondary || null, btn_secondary_text: form.btn_secondary_text || null,
         btn_tertiary: form.btn_tertiary || null, btn_tertiary_text: form.btn_tertiary_text || null,
       }).eq('id', brand.id).then(({ error }) => {
-        if (error) console.warn('Extended colors not saved:', error.message)
+        if (error) console.warn('Step 3 failed:', error.message)
       })
 
       setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
