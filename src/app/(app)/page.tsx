@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ArrowRight, Users, Mail, Sparkles } from 'lucide-react'
+import OnboardingWizard from '@/components/onboarding/OnboardingWizard'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -20,6 +21,10 @@ export default async function HomePage() {
     { label: 'Campaigns',        value: campaignCount ?? 0, icon: Mail,   href: '/campaigns' },
     { label: 'Generated pieces', value: contentCount ?? 0, icon: Sparkles, href: '/generate' },
   ]
+
+  if ((brandCount ?? 0) === 0) {
+    return <OnboardingWizard />
+  }
 
   return (
     <div className="p-4 md:p-10 max-w-5xl">
