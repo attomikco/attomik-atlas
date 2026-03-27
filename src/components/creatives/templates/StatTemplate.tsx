@@ -29,7 +29,9 @@ export default function StatTemplate({
         <div style={{ position: 'absolute', inset: 0, background: bgColor || '#1a1a1a' }} />
       )}
 
-      <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${showOverlay ? overlayOpacity : OVERLAY_OPACITY})` }} />
+      {showOverlay && (
+        <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${overlayOpacity})` }} />
+      )}
 
       <div style={{
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' as const,
