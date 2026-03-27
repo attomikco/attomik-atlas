@@ -1,8 +1,8 @@
 import { TemplateProps, ff, px, autoSize, positionStyles } from './types'
 
-const STAT_SIZE       = 160
+const STAT_SIZE       = 112
 const LABEL_SIZE      = 24
-const SUPPORT_SIZE    = 28
+const SUPPORT_SIZE    = 56
 const BRAND_SIZE      = 16
 const EDGE_PAD        = 64
 const DIVIDER_W       = 56
