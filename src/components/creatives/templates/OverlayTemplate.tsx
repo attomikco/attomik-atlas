@@ -29,7 +29,10 @@ export default function OverlayTemplate({
   const isCenter = textPosition === 'center'
   const isTop = textPosition.startsWith('top')
   const isBottom = textPosition.startsWith('bottom')
-  const isTall = height / width > 1.4
+  const ratio = height / width
+  const isTall = ratio > 1.4
+  // Bigger text on taller formats
+  const sizeBump = ratio > 1.4 ? 1.3 : ratio > 1.1 ? 1.3 : 1.1
 
   // Gradient: stronger at bottom for readability
   const gradientStyle: React.CSSProperties = isCenter
@@ -84,7 +87,7 @@ export default function OverlayTemplate({
         <div style={{ textAlign: pos.textAlign, maxWidth: '85%', alignSelf: pos.alignItems === 'flex-end' ? 'flex-end' : pos.alignItems === 'center' ? 'center' : 'flex-start' }}>
           {headline && (
             <div style={{
-              fontSize: autoSize(px(HEADLINE_SIZE, width), headline) * headlineSizeMul,
+              fontSize: autoSize(px(HEADLINE_SIZE, width), headline) * headlineSizeMul * sizeBump,
               fontWeight: parseInt(headlineWeight) || 800,
               letterSpacing: '-0.03em',
               lineHeight: 1.15,
@@ -107,7 +110,7 @@ export default function OverlayTemplate({
 
           {bodyText && (
             <div style={{
-              fontSize: autoSize(px(BODY_SIZE, width), bodyText, 80) * bodySizeMul,
+              fontSize: autoSize(px(BODY_SIZE, width), bodyText, 80) * bodySizeMul * sizeBump,
               fontWeight: parseInt(bodyWeight) || 400,
               lineHeight: 1.45,
               color: bodyColor,
