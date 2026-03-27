@@ -1,6 +1,6 @@
 'use client'
 import { useRef } from 'react'
-import { Bookmark, Sparkles } from 'lucide-react'
+import { Bookmark, Sparkles, Download, Loader2 } from 'lucide-react'
 import { ff } from '../templates/types'
 
 interface PreviewCanvasProps {
@@ -25,6 +25,11 @@ interface PreviewCanvasProps {
   variationsCount: number
   imagesCount: number
   setExportToast: (v: string | null) => void
+  // Export
+  exportPng: () => void
+  exportAllSizes: () => void
+  exporting: boolean
+  exportingAll: boolean
 }
 
 export default function PreviewCanvas({
@@ -33,6 +38,7 @@ export default function PreviewCanvas({
   saveCurrentAsDraft,
   batchGenerating, batchCount, setBatchCount, generateBatch, stopBatch, variationsCount, imagesCount,
   setExportToast,
+  exportPng, exportAllSizes, exporting, exportingAll,
 }: PreviewCanvasProps) {
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -46,6 +52,18 @@ export default function PreviewCanvas({
             className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill transition-all hover:opacity-80"
             style={{ background: '#111', color: '#4ade80' }}>
             <Bookmark size={11} /> Save
+          </button>
+          <button onClick={exportPng} disabled={exporting || exportingAll}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill hover:border-ink transition-all disabled:opacity-40"
+            style={{ border: '1px solid #ddd', color: '#333' }}>
+            {exporting ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+            PNG
+          </button>
+          <button onClick={exportAllSizes} disabled={exporting || exportingAll}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill hover:opacity-80 transition-all disabled:opacity-40"
+            style={{ background: '#111', color: '#4ade80' }}>
+            {exportingAll ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+            All sizes
           </button>
         </div>
         {/* Batch generate */}

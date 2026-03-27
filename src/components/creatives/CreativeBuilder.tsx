@@ -430,26 +430,6 @@ export default function CreativeBuilder({
             <button key={s.id} onClick={() => setSizeId(s.id)} {...pill(sizeId === s.id)}>{s.label}</button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <button onClick={generateCopy} disabled={generating}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill hover:opacity-80 transition-opacity disabled:opacity-50"
-            style={{ background: '#111', color: '#4ade80' }}>
-            {generating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-            {generating ? 'Writing...' : 'AI Copy'}
-          </button>
-          <button onClick={exportPng} disabled={exporting || exportingAll}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill hover:border-ink transition-all disabled:opacity-40"
-            style={{ border: '1px solid #ddd', color: '#333' }}>
-            {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-            PNG
-          </button>
-          <button onClick={exportAllSizes} disabled={exporting || exportingAll}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill hover:opacity-80 transition-all disabled:opacity-40"
-            style={{ background: '#111', color: '#4ade80' }}>
-            {exportingAll ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-            All sizes
-          </button>
-        </div>
       </div>
 
       {/* TEMPLATE SELECTOR — full width row, larger pills */}
@@ -511,6 +491,10 @@ export default function CreativeBuilder({
             variationsCount={variations.length}
             imagesCount={images.length}
             setExportToast={setExportToast}
+            exportPng={exportPng}
+            exportAllSizes={exportAllSizes}
+            exporting={exporting}
+            exportingAll={exportingAll}
           />
 
           <VariationStrip
@@ -564,6 +548,8 @@ export default function CreativeBuilder({
             brandId={brandId}
             setExportToast={setExportToast}
             inputCls={inputCls}
+            generateCopy={generateCopy}
+            generating={generating}
           />
 
           {/* Template-specific sidebars */}

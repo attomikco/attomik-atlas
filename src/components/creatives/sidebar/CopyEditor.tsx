@@ -1,5 +1,5 @@
 'use client'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Sparkles, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface CopyEditorProps {
@@ -14,11 +14,14 @@ interface CopyEditorProps {
   brandId: string
   setExportToast: (v: string | null) => void
   inputCls: string
+  generateCopy: () => void
+  generating: boolean
 }
 
 export default function CopyEditor({
   headline, setHeadline, bodyText, setBodyText, ctaText, setCtaText,
   showCta, setShowCta, brandId, setExportToast, inputCls,
+  generateCopy, generating,
 }: CopyEditorProps) {
   const supabase = createClient()
 
@@ -26,12 +29,20 @@ export default function CopyEditor({
     <div className="bg-paper border border-border rounded-card p-4 space-y-2.5">
       <div className="flex items-center justify-between">
         <label className="label">Copy</label>
-        <button onClick={async () => {
-          await supabase.from('brands').update({ default_headline: headline, default_body_text: bodyText, default_cta: ctaText }).eq('id', brandId)
-          setExportToast('Saved as default'); setTimeout(() => setExportToast(null), 1500)
-        }} className="text-[10px] text-muted hover:text-ink transition-colors font-semibold uppercase tracking-wide">
-          Save as default
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={generateCopy} disabled={generating}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-pill hover:opacity-80 transition-opacity disabled:opacity-50"
+            style={{ background: '#111', color: '#4ade80' }}>
+            {generating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            {generating ? 'Writing...' : 'AI Copy'}
+          </button>
+          <button onClick={async () => {
+            await supabase.from('brands').update({ default_headline: headline, default_body_text: bodyText, default_cta: ctaText }).eq('id', brandId)
+            setExportToast('Saved as default'); setTimeout(() => setExportToast(null), 1500)
+          }} className="text-[10px] text-muted hover:text-ink transition-colors font-semibold uppercase tracking-wide">
+            Save as default
+          </button>
+        </div>
       </div>
       <input className={inputCls} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Headline" />
       <textarea className={inputCls + ' resize-none'} rows={2} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Body text" />
