@@ -69,10 +69,22 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
 
   useEffect(() => {
     if (!isOpen || isDone || mode !== 'adcopy') return
-    const target = 'Built Different.'; let i = 0; setTypedText('')
-    const interval = setInterval(() => { i++; setTypedText(target.slice(0, i)); if (i >= target.length) { setTimeout(() => { i = 0; setTypedText('') }, 2000) } }, 60)
-    return () => clearInterval(interval)
-  }, [isOpen, isDone, mode])
+    const target = `Discover ${brandName}.`
+    let i = 0
+    let loopTimeout: ReturnType<typeof setTimeout>
+    let charInterval: ReturnType<typeof setInterval>
+    function startTyping() {
+      i = 0; setTypedText('')
+      charInterval = setInterval(() => {
+        i++; setTypedText(target.slice(0, i))
+        if (i >= target.length) { clearInterval(charInterval); loopTimeout = setTimeout(startTyping, 2000) }
+      }, 60)
+    }
+    startTyping()
+    return () => { clearInterval(charInterval); clearTimeout(loopTimeout); setTypedText('') }
+  }, [isOpen, isDone, mode, brandName])
+
+  useEffect(() => { if (!isOpen || isDone) setTypedText('') }, [isOpen, isDone])
 
   if (!isOpen) return null
 
@@ -115,7 +127,7 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
                 {i === 2 && (<>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: '#00ff97', marginBottom: 12 }}>VARIATION 1</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', minHeight: 28 }}>{typedText}<span style={{ animation: 'pulse 0.8s ease infinite' }}>|</span></div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 10, lineHeight: 1.5 }}>Most brands tell. We show. Experience the difference...</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 10, lineHeight: 1.5 }}>Premium quality crafted for people who value the best...</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#00ff97', marginTop: 12 }}>Shop Now →</div>
                 </>)}
               </div>
