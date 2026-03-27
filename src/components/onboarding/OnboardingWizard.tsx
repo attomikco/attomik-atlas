@@ -189,7 +189,7 @@ export default function OnboardingWizard() {
       return
     }
 
-    router.push(`/campaigns/${campaign.id}?new=1`)
+    router.push(`/campaigns/${campaign.id}/preview`)
   }
 
   // ── Step 1 content ──────────────────────────────────────────────

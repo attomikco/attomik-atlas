@@ -1,19 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Eye } from 'lucide-react'
 import CampaignDetail from '@/components/campaigns/CampaignDetail'
-import FirstRunBanner from '@/components/campaigns/FirstRunBanner'
 
 export default async function CampaignPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ new?: string }>
 }) {
   const { id } = await params
-  const { new: isNew } = await searchParams
   const supabase = await createClient()
 
   const [{ data: campaign }, { data: generatedContent }, { data: assets }, { data: brands }] = await Promise.all([
@@ -33,8 +29,6 @@ export default async function CampaignPage({
         <ArrowLeft size={14} /> All campaigns
       </Link>
 
-      {isNew === '1' && <FirstRunBanner />}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
@@ -47,6 +41,11 @@ export default async function CampaignPage({
           <h1 className="mt-2">{campaign.name}</h1>
           {campaign.angle && <p className="text-muted mt-1">{campaign.angle}</p>}
         </div>
+        <Link href={`/campaigns/${campaign.id}/preview`}
+          className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-btn transition-opacity hover:opacity-90 flex-shrink-0"
+          style={{ background: '#00ff97', color: '#000' }}>
+          <Eye size={14} /> Preview funnel
+        </Link>
       </div>
 
       <CampaignDetail
@@ -55,7 +54,6 @@ export default async function CampaignPage({
         brands={brands ?? []}
         generatedContent={generatedContent ?? []}
         campaignAssets={assets ?? []}
-        autoGenerate={isNew === '1'}
       />
     </div>
   )
