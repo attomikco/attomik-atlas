@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { decodeHtml } from '@/lib/decodeHtml'
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,14 +29,13 @@ export async function POST(req: NextRequest) {
     const ogSiteName = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)?.[1]
       || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i)?.[1]
     if (ogSiteName) {
-      name = ogSiteName.trim()
+      name = decodeHtml(ogSiteName)
     } else {
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]
       if (titleMatch) {
-        name = titleMatch
+        name = decodeHtml(titleMatch
           .replace(/\s*[\|–—\-]\s*(Home|Official Site|Welcome|Shop|Store|Online).*$/i, '')
-          .replace(/\s*[\|–—\-]\s*$/, '')
-          .trim()
+          .replace(/\s*[\|–—\-]\s*$/, ''))
       }
     }
 
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
           const prodData = await prodRes.json()
           if (Array.isArray(prodData?.products)) {
             products = prodData.products.slice(0, 6).map((p: any) => ({
-              name: p.title || '',
+              name: decodeHtml(p.title) || '',
               description: p.body_html ? p.body_html.replace(/<[^>]*>/g, ' ').trim().slice(0, 200) : null,
               price: p.variants?.[0]?.price || null,
               image: p.images?.[0]?.src || null,
