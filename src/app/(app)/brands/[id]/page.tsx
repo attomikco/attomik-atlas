@@ -33,13 +33,12 @@ export default async function BrandPage({ params }: { params: Promise<{ id: stri
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 md:mb-8">
         <div className="flex items-center gap-4">
-          {brand.logo_url ? (
-            <img src={brand.logo_url} alt={brand.name}
-              className="w-10 h-10 md:w-14 md:h-14 rounded-card border border-border flex-shrink-0 object-contain" />
-          ) : (
-            <div className="w-10 h-10 md:w-14 md:h-14 rounded-card border border-border flex-shrink-0"
-              style={{ background: brand.primary_color || '#f2f2f2' }} />
-          )}
+          <div className="w-10 h-10 md:w-14 md:h-14 rounded-card border border-border flex-shrink-0 flex items-center justify-center"
+            style={{ background: brand.primary_color || '#f2f2f2' }}>
+            {brand.logo_url && (
+              <img src={brand.logo_url} alt={brand.name} className="w-7 h-7 md:w-10 md:h-10 object-contain" />
+            )}
+          </div>
           <div>
             <h1>{brand.name}</h1>
             <div className="flex items-center gap-3 mt-1">
