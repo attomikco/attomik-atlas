@@ -1,8 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Upload } from 'lucide-react'
 
 const TYPES = [
   { value: 'funnel', label: 'Funnel — creative + ad copy + landing brief' },
@@ -20,6 +20,7 @@ export default function OnboardingWizard() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [savingLabel, setSavingLabel] = useState('Creating…')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Step 1
@@ -27,13 +28,16 @@ export default function OnboardingWizard() {
   const [website, setWebsite] = useState('')
   const [category, setCategory] = useState('')
   const [primaryColor, setPrimaryColor] = useState('#000000')
+  const [secondaryColor, setSecondaryColor] = useState('')
+  const [accentColor, setAccentColor] = useState('')
 
   // Step 2
   const [productName, setProductName] = useState('')
   const [priceRange, setPriceRange] = useState('')
   const [productDesc, setProductDesc] = useState('')
   const [targetAudience, setTargetAudience] = useState('')
-  const [toneKeywords, setToneKeywords] = useState('')
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // Step 3
   const [campaignType, setCampaignType] = useState('funnel')
@@ -62,6 +66,7 @@ export default function OnboardingWizard() {
   async function submit() {
     if (!validate()) return
     setSaving(true)
+    setSavingLabel('Creating brand…')
 
     const slug = brandName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 
@@ -72,8 +77,9 @@ export default function OnboardingWizard() {
       website: website.trim() || null,
       industry: category.trim() || null,
       primary_color: primaryColor || null,
+      secondary_color: secondaryColor.trim() || null,
+      accent_color: accentColor.trim() || null,
       target_audience: targetAudience.trim() || null,
-      tone_keywords: toneKeywords ? toneKeywords.split(',').map(s => s.trim()).filter(Boolean) : null,
       products: productName.trim() ? [{ name: productName.trim(), description: productDesc.trim() || null, price_range: priceRange.trim() || null }] : null,
       status: 'active',
     }).select('id').single()
@@ -84,7 +90,29 @@ export default function OnboardingWizard() {
       return
     }
 
-    // 2. Create campaign
+    // 2. Upload images
+    if (imageFiles.length > 0) {
+      setSavingLabel('Uploading images…')
+      for (const file of imageFiles) {
+        const ext = file.name.split('.').pop() || 'jpg'
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const storagePath = `${brand.id}/${fileName}`
+        const { error: uploadErr } = await supabase.storage.from('brand-images').upload(storagePath, file, { contentType: file.type })
+        if (!uploadErr) {
+          await supabase.from('brand_images').insert({
+            brand_id: brand.id,
+            file_name: file.name,
+            storage_path: storagePath,
+            tag: 'product',
+            mime_type: file.type,
+            size_bytes: file.size,
+          })
+        }
+      }
+    }
+
+    // 3. Create campaign
+    setSavingLabel('Creating campaign…')
     const { data: campaign, error: campErr } = await supabase.from('campaigns').insert({
       brand_id: brand.id,
       name: campaignName.trim(),
@@ -99,8 +127,18 @@ export default function OnboardingWizard() {
       return
     }
 
-    router.push(`/campaigns/${campaign.id}`)
+    router.push(`/campaigns/${campaign.id}?new=1`)
   }
+
+  const colorField = (label: string, value: string, onChange: (v: string) => void, placeholder: string) => (
+    <div>
+      <label className="text-xs font-semibold block mb-1">{label}</label>
+      <div className="flex items-center gap-3">
+        <div style={{ width: 36, height: 36, borderRadius: 6, background: value || '#f2f2f2', border: '1px solid #ddd', flexShrink: 0 }} />
+        <input className={inputCls + ' font-mono'} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      </div>
+    </div>
+  )
 
   const steps = [
     {
@@ -121,13 +159,9 @@ export default function OnboardingWizard() {
             <label className="text-xs font-semibold block mb-1">Product category</label>
             <input className={inputCls} value={category} onChange={e => setCategory(e.target.value)} placeholder="Coffee, Skincare, Wine…" />
           </div>
-          <div>
-            <label className="text-xs font-semibold block mb-1">Primary color</label>
-            <div className="flex items-center gap-3">
-              <div style={{ width: 36, height: 36, borderRadius: 6, background: primaryColor, border: '1px solid #ddd', flexShrink: 0 }} />
-              <input className={inputCls + ' font-mono'} value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} placeholder="#000000" />
-            </div>
-          </div>
+          {colorField('Primary color', primaryColor, setPrimaryColor, '#000000')}
+          {colorField('Secondary color', secondaryColor, setSecondaryColor, '#ffffff')}
+          {colorField('Accent color', accentColor, setAccentColor, '#00ff97')}
         </div>
       ),
     },
@@ -152,6 +186,16 @@ export default function OnboardingWizard() {
           <div>
             <label className="text-xs font-semibold block mb-1">Target audience</label>
             <textarea className={inputCls + ' resize-none'} rows={2} value={targetAudience} onChange={e => setTargetAudience(e.target.value)} placeholder="Women 28–45 who value premium quality and mindful living" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold block mb-1">Product images (optional)</label>
+            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+              onChange={e => setImageFiles(Array.from(e.target.files || []))} />
+            <button onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors border border-dashed border-border rounded-btn px-4 py-3 w-full justify-center">
+              <Upload size={14} />
+              {imageFiles.length > 0 ? `${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''} selected` : 'Choose images'}
+            </button>
           </div>
         </div>
       ),
@@ -186,7 +230,7 @@ export default function OnboardingWizard() {
 
   return (
     <div className="fixed inset-0 bg-ink z-50 flex items-center justify-center">
-      <div className="max-w-lg w-full bg-paper rounded-card p-8 mx-4">
+      <div className="max-w-lg w-full bg-paper rounded-card p-8 mx-4 max-h-[90vh] overflow-y-auto">
         {/* Step dots */}
         <div className="flex items-center justify-center gap-2 mb-6">
           {steps.map((_, i) => (
@@ -225,7 +269,7 @@ export default function OnboardingWizard() {
               className="flex items-center gap-2 text-sm font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: '#00ff97', color: '#000' }}>
               {saving && <Loader2 size={14} className="animate-spin" />}
-              {saving ? 'Creating…' : 'Create & launch →'}
+              {saving ? savingLabel : 'Create & launch →'}
             </button>
           )}
         </div>

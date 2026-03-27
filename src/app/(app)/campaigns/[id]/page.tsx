@@ -3,9 +3,17 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import CampaignDetail from '@/components/campaigns/CampaignDetail'
+import FirstRunBanner from '@/components/campaigns/FirstRunBanner'
 
-export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CampaignPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ new?: string }>
+}) {
   const { id } = await params
+  const { new: isNew } = await searchParams
   const supabase = await createClient()
 
   const [{ data: campaign }, { data: generatedContent }, { data: assets }, { data: brands }] = await Promise.all([
@@ -24,6 +32,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       <Link href="/campaigns" className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors mb-6">
         <ArrowLeft size={14} /> All campaigns
       </Link>
+
+      {isNew === '1' && <FirstRunBanner />}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
@@ -45,6 +55,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         brands={brands ?? []}
         generatedContent={generatedContent ?? []}
         campaignAssets={assets ?? []}
+        autoGenerate={isNew === '1'}
       />
     </div>
   )
