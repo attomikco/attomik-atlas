@@ -195,49 +195,57 @@ export default function StylePanel({
             { label: 'H', font: headlineFont, setFont: setHeadlineFont, color: headlineColor, setColor: setHeadlineColor, sizeMul: headlineSizeMul, setSizeMul: setHeadlineSizeMul },
             { label: 'B', font: bodyFont, setFont: setBodyFont, color: bodyColor, setColor: setBodyColor, sizeMul: bodySizeMul, setSizeMul: setBodySizeMul },
           ].map(row => (
-            <div key={row.label} className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">{row.label}</span>
-              <select value={row.font} onChange={e => row.setFont(e.target.value)}
-                className="text-xs border border-border rounded-btn px-2 py-1 bg-cream focus:outline-none focus:border-accent w-24 flex-shrink-0 appearance-none">
-                <option value="">Barlow</option>
-                {brand?.font_primary && <option value={brand.font_primary.split('|')[0]}>{brand.font_primary.split('|')[0]}</option>}
-                {brand?.font_secondary && brand.font_secondary.split('|')[0] !== brand.font_primary?.split('|')[0] && (
-                  <option value={brand.font_secondary.split('|')[0]}>{brand.font_secondary.split('|')[0]}</option>
-                )}
-              </select>
-              <div className="flex gap-0.5 flex-shrink-0">
-                {brandColors.map(c => (
-                  <button key={row.label + c.value} onClick={() => row.setColor(c.value)}
-                    className="w-5 h-5 rounded-[3px] border-2 transition-all"
-                    style={{ background: c.value, borderColor: row.color === c.value ? '#000' : '#e0e0e0' }} />
-                ))}
+            <div key={row.label} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">{row.label}</span>
+                <select value={row.font} onChange={e => row.setFont(e.target.value)}
+                  className="text-sm border border-border rounded-btn px-2 py-1.5 bg-cream focus:outline-none focus:border-accent flex-1 min-w-0 appearance-none">
+                  <option value="">Barlow</option>
+                  {brand?.font_primary && <option value={brand.font_primary.split('|')[0]}>{brand.font_primary.split('|')[0]}</option>}
+                  {brand?.font_secondary && brand.font_secondary.split('|')[0] !== brand.font_primary?.split('|')[0] && (
+                    <option value={brand.font_secondary.split('|')[0]}>{brand.font_secondary.split('|')[0]}</option>
+                  )}
+                </select>
               </div>
-              <input type="range" min={0.5} max={2} step={0.1} value={row.sizeMul}
-                onChange={e => row.setSizeMul(parseFloat(e.target.value))}
-                className="flex-1 accent-[#00ff97] min-w-0" />
-              <span className="text-[10px] font-mono text-muted w-7 text-right flex-shrink-0">{Math.round(row.sizeMul * 100)}%</span>
+              <div className="flex items-center gap-2 pl-6">
+                <div className="flex gap-1 flex-shrink-0">
+                  {brandColors.map(c => (
+                    <button key={row.label + c.value} onClick={() => row.setColor(c.value)}
+                      className="w-6 h-6 rounded-[4px] border-2 transition-all"
+                      style={{ background: c.value, borderColor: row.color === c.value ? '#000' : '#e0e0e0' }} />
+                  ))}
+                </div>
+                <input type="range" min={0.5} max={2} step={0.1} value={row.sizeMul}
+                  onChange={e => row.setSizeMul(parseFloat(e.target.value))}
+                  className="flex-1 accent-[#00ff97] min-w-0" />
+                <span className="text-[10px] font-mono text-muted w-7 text-right flex-shrink-0">{Math.round(row.sizeMul * 100)}%</span>
+              </div>
             </div>
           ))}
 
           {/* CTA / accent colors */}
           {f.cta && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">{templateId === 'testimonial' ? '★' : 'CTA'}</span>
-              <span className="text-[9px] text-muted flex-shrink-0 w-24">{templateId === 'testimonial' ? 'stars' : 'bg'}</span>
-              <div className="flex gap-0.5 flex-shrink-0">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-muted w-4 flex-shrink-0">{templateId === 'testimonial' ? '★' : 'CTA'}</span>
+                <span className="text-[10px] text-muted flex-shrink-0">{templateId === 'testimonial' ? 'stars' : 'background'}</span>
+              </div>
+              <div className="flex items-center gap-1 pl-6">
                 {brandColors.map(c => (
                   <button key={'cta-' + c.value} onClick={() => setCtaColor(c.value)}
-                    className="w-5 h-5 rounded-[3px] border-2 transition-all"
+                    className="w-6 h-6 rounded-[4px] border-2 transition-all"
                     style={{ background: c.value, borderColor: ctaColor === c.value ? '#000' : '#e0e0e0' }} />
                 ))}
               </div>
-              <span className="text-[9px] text-muted flex-shrink-0 ml-1">text</span>
-              <div className="flex gap-0.5 flex-shrink-0">
-                {brandColors.map(c => (
-                  <button key={'ctaf-' + c.value} onClick={() => setCtaFontColor(c.value)}
-                    className="w-5 h-5 rounded-[3px] border-2 transition-all"
-                    style={{ background: c.value, borderColor: ctaFontColor === c.value ? '#000' : '#e0e0e0' }} />
-                ))}
+              <div className="flex items-center gap-2 pl-6">
+                <span className="text-[10px] text-muted flex-shrink-0">text</span>
+                <div className="flex gap-1">
+                  {brandColors.map(c => (
+                    <button key={'ctaf-' + c.value} onClick={() => setCtaFontColor(c.value)}
+                      className="w-6 h-6 rounded-[4px] border-2 transition-all"
+                      style={{ background: c.value, borderColor: ctaFontColor === c.value ? '#000' : '#e0e0e0' }} />
+                  ))}
+                </div>
               </div>
             </div>
           )}

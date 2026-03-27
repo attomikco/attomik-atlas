@@ -47,7 +47,7 @@ export default function PreviewCanvas({
   const previewRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="bg-paper border border-border rounded-card p-4">
+    <div className="bg-paper border border-border rounded-card p-4 flex-1">
       {/* Preview label */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

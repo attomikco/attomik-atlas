@@ -512,10 +512,10 @@ export default function CreativeBuilder({
       />
 
       {/* MAIN AREA: Preview (left) + Controls (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:items-start">
 
-        {/* LEFT: Preview */}
-        <div className="lg:col-span-7 space-y-4">
+        {/* LEFT: Preview — stretches to match right column */}
+        <div className="lg:col-span-7 flex flex-col gap-4">
           <PreviewCanvas
             templateLabel={template.label}
             size={size}
