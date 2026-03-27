@@ -7,6 +7,10 @@ import { Brand, Campaign, GeneratedContent, BrandImage } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import PlatformAdPreview from './PlatformAdPreview'
 import OverlayTemplate from '@/components/creatives/templates/OverlayTemplate'
+import SplitTemplate from '@/components/creatives/templates/SplitTemplate'
+import StatTemplate from '@/components/creatives/templates/StatTemplate'
+import TestimonialTemplate from '@/components/creatives/templates/TestimonialTemplate'
+import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 import GenerationModal, { ModalStep } from '@/components/ui/GenerationModal'
 import CreativeReel from './CreativeReel'
 
@@ -74,8 +78,10 @@ export default function PreviewClient({
     { id: 'creative', label: 'Creative', status: hasContent ? 'done' : 'pending' },
   ])
 
-  // Brand image URL
-  const [brandImageUrl, setBrandImageUrl] = useState<string | null>(null)
+  // Brand image URLs
+  const [productImageUrl, setProductImageUrl] = useState<string | null>(null)
+  const [lifestyleImageUrl, setLifestyleImageUrl] = useState<string | null>(null)
+  const brandImageUrl = productImageUrl // backward compat
 
   // Brand font
   const brandAccent = brand.primary_color || '#000'
@@ -91,24 +97,25 @@ export default function PreviewClient({
     link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@400;500;600;700;800;900&display=swap`
   }, [fontFamily])
 
-  // Fetch first brand image
+  // Fetch brand images by tag
   useEffect(() => {
-    function getImageUrl(storagePath: string) {
+    function buildUrl(storagePath: string) {
       return supabase.storage.from('brand-images').getPublicUrl(storagePath).data.publicUrl
     }
+    function loadImages(images: BrandImage[]) {
+      const products = images.filter(i => i.tag === 'product')
+      const lifestyle = images.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
+      if (products.length > 0) setProductImageUrl(buildUrl(products[0].storage_path))
+      else if (images.length > 0) setProductImageUrl(buildUrl(images[0].storage_path))
+      if (lifestyle.length > 0) setLifestyleImageUrl(buildUrl(lifestyle[0].storage_path))
+      else if (products.length > 0) setLifestyleImageUrl(buildUrl(products[0].storage_path))
+      else if (images.length > 0) setLifestyleImageUrl(buildUrl(images[0].storage_path))
+    }
     if (brandImages.length > 0) {
-      const url = getImageUrl(brandImages[0].storage_path)
-      console.log('[Preview] Brand image URL:', url)
-      setBrandImageUrl(url)
+      loadImages(brandImages)
     } else {
-      supabase.from('brand_images').select('storage_path').eq('brand_id', brand.id).limit(1)
-        .then(({ data }) => {
-          if (data?.[0]) {
-            const url = getImageUrl(data[0].storage_path)
-            console.log('[Preview] Brand image URL (fetched):', url)
-            setBrandImageUrl(url)
-          }
-        })
+      supabase.from('brand_images').select('*').eq('brand_id', brand.id).order('created_at')
+        .then(({ data }) => { if (data?.length) loadImages(data as BrandImage[]) })
     }
   }, [brand.id, brandImages])
 
@@ -248,156 +255,174 @@ export default function PreviewClient({
           {campaign.angle && <p className="text-muted max-w-lg mx-auto">{campaign.angle}</p>}
         </div>
 
-        {/* Three-column funnel flow */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Ad Creative */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">1</span>
-              <span className="label">Ad Creative</span>
+        {/* ═══ SECTION 1: Ad Creatives ═══ */}
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">1</span>
+              <span className="font-bold text-xl">Ad Creatives</span>
             </div>
-            {adVariation && templateProps ? (
-              <PlatformAdPreview
-                brand={brand}
-                creative={{
-                  imageUrl: null,
-                  headline: adVariation.headline,
-                  primaryText: adVariation.primary_text,
-                  ctaText: landingBrief?.hero?.cta_text || 'Shop Now',
-                }}
-                TemplateComponent={OverlayTemplate}
-                templateProps={templateProps}
-              />
-            ) : (
-              <div className="bg-paper border border-border rounded-card p-6 space-y-4">
-                <div className={skeleton + ' h-8 w-2/3'} />
-                <div className={skeleton + ' h-48 w-full'} />
-                <div className={skeleton + ' h-4 w-full'} />
-                <div className={skeleton + ' h-4 w-3/4'} />
-                <p className="text-muted text-xs mt-2">Generating ad creative...</p>
-              </div>
-            )}
+            <Link href={`/campaigns/${campaign.id}`} className="text-sm text-muted hover:text-ink transition-colors">
+              Edit in creative builder →
+            </Link>
           </div>
 
-          {/* Card 2: Ad Copy */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">2</span>
-              <span className="label">Ad Copy</span>
+          {adVariation ? (() => {
+            const baseProps = {
+              headline: adVariation.headline,
+              bodyText: adVariation.primary_text.slice(0, 100),
+              ctaText: landingBrief?.hero?.cta_text || 'Shop Now',
+              brandColor: brandAccent,
+              brandName: brand.name,
+              headlineFont: fontFamily, headlineWeight: fh?.weight || '800',
+              headlineTransform: fh?.transform || 'none',
+              headlineColor: '#ffffff', bodyFont: fontFamily, bodyWeight: '400',
+              bodyTransform: 'none', bodyColor: 'rgba(255,255,255,0.85)',
+              headlineSizeMul: 1, bodySizeMul: 1,
+              showOverlay: true, overlayOpacity: 0.35,
+              textBanner: 'none' as const, textBannerColor: '#000',
+              showCta: true, ctaColor: brand.accent_color || brandAccent,
+              ctaFontColor: '#000', imagePosition: 'center',
+            }
+            const cards = [
+              { label: 'Facebook Feed', w: 1080, h: 1080, displayW: 280, Comp: OverlayTemplate, img: productImageUrl, pos: 'center' as const, tp: 'center' as const },
+              { label: 'Instagram 4:5', w: 1080, h: 1350, displayW: 236, Comp: SplitTemplate, img: productImageUrl, pos: 'center' as const, tp: 'center' as const },
+              { label: 'Social Proof', w: 1080, h: 1080, displayW: 280, Comp: TestimonialTemplate, img: lifestyleImageUrl || productImageUrl, pos: 'bottom' as const, tp: 'center' as const },
+              { label: 'Statement', w: 1080, h: 1080, displayW: 280, Comp: StatTemplate, img: productImageUrl, pos: 'center' as const, tp: 'center' as const },
+              { label: 'Instagram Story', w: 1080, h: 1920, displayW: 158, Comp: OverlayTemplate, img: productImageUrl, pos: 'center' as const, tp: 'bottom-left' as const },
+            ]
+            return (
+              <>
+                {/* Gallery */}
+                <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-10 px-4 md:px-10" style={{ scrollSnapType: 'x mandatory' }}>
+                  {cards.map((c, i) => {
+                    const scale = c.displayW / c.w
+                    const displayH = Math.round(c.h * scale)
+                    return (
+                      <div key={i} className="flex-shrink-0" style={{ scrollSnapAlign: 'center', width: c.displayW }}>
+                        <div className="text-xs text-muted mb-2">{c.label}</div>
+                        <div className="border border-border rounded-card overflow-hidden shadow-sm" style={{ width: c.displayW, height: displayH }}>
+                          <div style={{ width: c.w, height: c.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                            <c.Comp {...baseProps} width={c.w} height={c.h} imageUrl={c.img} bgColor={brandAccent} textPosition={c.tp} imagePosition={c.pos} />
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted mt-2 text-center">{c.Comp.name?.replace('Template', '') || 'Creative'}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* Platform mockup for hero creative */}
+                <div className="mt-8">
+                  <PlatformAdPreview
+                    brand={brand}
+                    creative={{ imageUrl: productImageUrl, headline: adVariation.headline, primaryText: adVariation.primary_text, ctaText: landingBrief?.hero?.cta_text || 'Shop Now' }}
+                    TemplateComponent={OverlayTemplate}
+                    templateProps={{ ...baseProps, width: 1080, height: 1080, imageUrl: productImageUrl, bgColor: productImageUrl ? '#000' : brandAccent, textPosition: 'center' as const }}
+                  />
+                </div>
+              </>
+            )
+          })() : (
+            <div className="flex gap-4 overflow-hidden">
+              {[1,2,3,4,5].map(i => <div key={i} className="flex-shrink-0 w-[280px]"><div className={skeleton + ' w-full aspect-square'} /></div>)}
             </div>
-            {adVariation ? (
-              <div className="border border-border rounded-card p-5 bg-paper space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">Headline</div>
-                  <div className="font-bold text-base" style={headingStyle}>{adVariation.headline}</div>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">Primary Text</div>
-                  <p className="text-sm leading-relaxed">{adVariation.primary_text}</p>
-                </div>
-                {adVariation.description && (
-                  <div>
-                    <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">Description</div>
-                    <p className="text-sm text-muted">{adVariation.description}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-paper border border-border rounded-card p-6 space-y-4">
-                <div className={skeleton + ' h-5 w-1/2'} />
-                <div className={skeleton + ' h-4 w-full'} />
-                <div className={skeleton + ' h-4 w-full'} />
-                <div className={skeleton + ' h-4 w-3/4'} />
-                <p className="text-muted text-xs mt-2">Generating ad copy...</p>
-              </div>
-            )}
-          </div>
-
-          {/* Card 3: Landing Page */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">3</span>
-              <span className="label">Landing Page</span>
-            </div>
-            {landingBrief ? (
-              <div className="border border-border rounded-card overflow-hidden" style={{ maxHeight: 480, overflowY: 'auto' }}>
-                {/* Hero */}
-                <div className="p-5 text-white" style={{
-                  background: brand.secondary_color
-                    ? `linear-gradient(135deg, ${brandAccent}, ${brand.secondary_color})`
-                    : brandAccent
-                }}>
-                  <div className="text-lg font-black" style={headingStyle}>{landingBrief.hero.headline}</div>
-                  <div className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{landingBrief.hero.subheadline}</div>
-                  <button className="text-xs font-bold mt-3 px-3 py-1.5 rounded-btn" style={{
-                    background: brand.accent_color || '#fff',
-                    color: '#000',
-                  }}>
-                    {landingBrief.hero.cta_text}
-                  </button>
-                </div>
-                {/* Benefits */}
-                {landingBrief.benefits?.length > 0 && (
-                  <div className="p-3 bg-paper border-b border-border">
-                    <div className="flex flex-wrap gap-1.5">
-                      {landingBrief.benefits.slice(0, 3).map((b, i) => (
-                        <span key={i} className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ border: `1px solid ${brandAccent}40`, color: brandAccent }}>{b.headline}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Social proof */}
-                {landingBrief.social_proof && (
-                  <div className="p-4 bg-cream">
-                    <div className="text-xl font-black" style={{ color: brandAccent }}>{landingBrief.social_proof.stat}</div>
-                    <p className="text-xs italic text-muted mt-1 leading-relaxed">
-                      {landingBrief.social_proof.testimonial?.length > 80
-                        ? landingBrief.social_proof.testimonial.slice(0, 80) + '...'
-                        : landingBrief.social_proof.testimonial}
-                    </p>
-                  </div>
-                )}
-                {/* Problem / Solution */}
-                <div className="p-3 bg-paper">
-                  {landingBrief.problem && (
-                    <div className="mb-2">
-                      <div className="font-semibold text-xs" style={headingStyle}>{landingBrief.problem.headline}</div>
-                      <div className="text-[10px] text-muted mt-0.5">{landingBrief.problem.body}</div>
-                    </div>
-                  )}
-                  {landingBrief.solution && (
-                    <div className="mb-2">
-                      <div className="font-semibold text-xs" style={headingStyle}>{landingBrief.solution.headline}</div>
-                      <div className="text-[10px] text-muted mt-0.5">{landingBrief.solution.body}</div>
-                    </div>
-                  )}
-                </div>
-                {/* Final CTA */}
-                <div className="p-4 text-white text-center" style={{
-                  background: brand.secondary_color
-                    ? `linear-gradient(135deg, ${brandAccent}, ${brand.secondary_color})`
-                    : brandAccent
-                }}>
-                  <div className="font-bold text-sm" style={headingStyle}>{landingBrief.final_cta.headline}</div>
-                  <button className="text-xs font-bold mt-2 px-3 py-1.5 rounded-btn" style={{ background: brand.accent_color || '#fff', color: '#000' }}>
-                    {landingBrief.final_cta.cta_text}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-paper border border-border rounded-card p-6 space-y-4">
-                <div className={skeleton + ' h-10 w-3/4'} />
-                <div className={skeleton + ' h-4 w-full'} />
-                <div className={skeleton + ' h-8 w-1/3'} />
-                <div className={skeleton + ' h-20 w-full'} />
-                <p className="text-muted text-xs mt-2">Generating landing brief...</p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Context banner */}
-        <div className="bg-ink rounded-card p-6 text-center" style={{ color: '#fff' }}>
+        {/* ═══ SECTION 2: Ad Copy ═══ */}
+        <div className="mt-12 pt-12 border-t border-border">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">2</span>
+              <span className="font-bold text-xl">Ad Copy</span>
+            </div>
+            <Link href={`/campaigns/${campaign.id}`} className="text-sm text-muted hover:text-ink transition-colors">
+              Edit copy →
+            </Link>
+          </div>
+          {adVariation ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[adVariation].map((v, i) => (
+                <div key={i} className="border border-border rounded-card p-5 bg-paper space-y-3">
+                  <div className="text-xs font-semibold text-muted uppercase tracking-wide">Variation {i + 1}</div>
+                  <div className="font-bold text-base" style={headingStyle}>{v.headline}</div>
+                  <p className="text-sm leading-relaxed">{v.primary_text}</p>
+                  {v.description && <p className="text-sm text-muted">{v.description}</p>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              {[1,2,3].map(i => <div key={i} className="bg-paper border border-border rounded-card p-5 space-y-3"><div className={skeleton + ' h-5 w-1/2'}/><div className={skeleton + ' h-4 w-full'}/><div className={skeleton + ' h-4 w-3/4'}/></div>)}
+            </div>
+          )}
+        </div>
+
+        {/* ═══ SECTION 3: Landing Page ═══ */}
+        <div className="mt-12 pt-12 border-t border-border">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">3</span>
+              <span className="font-bold text-xl">Landing Page</span>
+            </div>
+            <Link href={`/campaigns/${campaign.id}`} className="text-sm text-muted hover:text-ink transition-colors">
+              View full brief →
+            </Link>
+          </div>
+          {landingBrief ? (
+            <div className="max-w-3xl mx-auto border border-border rounded-card overflow-hidden">
+              <div className="p-8 text-white" style={{ background: brand.secondary_color ? `linear-gradient(135deg, ${brandAccent}, ${brand.secondary_color})` : brandAccent }}>
+                <div className="text-2xl font-black" style={headingStyle}>{landingBrief.hero.headline}</div>
+                <div className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.7)' }}>{landingBrief.hero.subheadline}</div>
+                <button className="text-sm font-bold mt-4 px-5 py-2 rounded-btn" style={{ background: brand.accent_color || '#fff', color: '#000' }}>{landingBrief.hero.cta_text}</button>
+              </div>
+              {landingBrief.benefits?.length > 0 && (
+                <div className="p-5 bg-paper border-b border-border">
+                  <div className="flex flex-wrap gap-2">
+                    {landingBrief.benefits.slice(0, 4).map((b, i) => (
+                      <span key={i} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ border: `1px solid ${brandAccent}40`, color: brandAccent }}>{b.headline}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {landingBrief.social_proof && (
+                <div className="p-6 bg-cream">
+                  <div className="text-3xl font-black" style={{ color: brandAccent }}>{landingBrief.social_proof.stat}</div>
+                  <p className="text-sm italic text-muted mt-2 leading-relaxed">{landingBrief.social_proof.testimonial}</p>
+                  <p className="text-xs text-muted mt-1">{landingBrief.social_proof.attribution}</p>
+                </div>
+              )}
+              <div className="p-6 bg-paper">
+                {landingBrief.problem && (
+                  <div className="mb-4">
+                    <div className="font-semibold text-sm" style={{ ...headingStyle, color: brandAccent }}>{landingBrief.problem.headline}</div>
+                    <div className="text-sm text-muted mt-1">{landingBrief.problem.body}</div>
+                  </div>
+                )}
+                {landingBrief.solution && (
+                  <div>
+                    <div className="font-semibold text-sm" style={{ ...headingStyle, color: brandAccent }}>{landingBrief.solution.headline}</div>
+                    <div className="text-sm text-muted mt-1">{landingBrief.solution.body}</div>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 text-white text-center" style={{ background: brand.secondary_color ? `linear-gradient(135deg, ${brandAccent}, ${brand.secondary_color})` : brandAccent }}>
+                <div className="font-bold text-lg" style={headingStyle}>{landingBrief.final_cta.headline}</div>
+                <button className="text-sm font-bold mt-3 px-5 py-2 rounded-btn" style={{ background: brand.accent_color || '#fff', color: '#000' }}>{landingBrief.final_cta.cta_text}</button>
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto bg-paper border border-border rounded-card p-8 space-y-4">
+              <div className={skeleton + ' h-12 w-3/4'} />
+              <div className={skeleton + ' h-4 w-full'} />
+              <div className={skeleton + ' h-32 w-full'} />
+              <p className="text-muted text-xs">Generating landing brief...</p>
+            </div>
+          )}
+        </div>
+
+        {/* ═══ Context banner ═══ */}
+        <div className="mt-12 bg-ink rounded-card p-6 md:p-8 text-center" style={{ color: '#fff' }}>
           <div className="font-bold text-lg mb-1">Make it yours</div>
           <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
             This entire funnel was built from your brand context. Customize the copy, upload images, and refine everything.

@@ -420,8 +420,14 @@ export default function OnboardingWizard() {
   const showNext = step > 0 || detected
 
   return (
-    <div className="fixed inset-0 bg-ink z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-ink z-50 flex flex-col items-center justify-center">
       <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+      {/* Logo above card */}
+      <div className="flex justify-center mb-8">
+        <span style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 13, letterSpacing: '0.15em', color: '#00ff97' }}>ATTOMIK</span>
+      </div>
+
       <div className="max-w-lg w-full bg-paper rounded-card p-8 mx-4 max-h-[90vh] overflow-y-auto">
         {/* Step dots */}
         <div className="flex items-center justify-center gap-2 mb-6">
@@ -435,8 +441,8 @@ export default function OnboardingWizard() {
           ))}
         </div>
 
-        <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>{current.title}</h2>
-        <p className="text-muted text-sm mb-6">{current.subtitle}</p>
+        <h2 className="text-center uppercase tracking-tight" style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 22, marginBottom: 4 }}>{current.title}</h2>
+        <p className="text-muted text-sm mb-6 text-center">{current.subtitle}</p>
 
         {current.content}
 
