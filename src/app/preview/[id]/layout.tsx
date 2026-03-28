@@ -15,10 +15,10 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
           </div>
           <div className="hidden md:flex items-center" style={{ gap: 40 }}>
             {['✦ Brand-aware copy', '✦ Multi-platform creatives', '✦ Conversion-optimized pages'].map(label => (
-              <span key={label} style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{label}</span>
+              <span key={label} style={{ color: '#00ff97', fontSize: 13 }}>{label}</span>
             ))}
           </div>
-          <button style={{ background: '#00ff97', color: '#000', fontSize: 15, fontWeight: 900, padding: '13px 28px', borderRadius: 999, letterSpacing: '0.01em' }}>
+          <button style={{ background: '#00ff97', color: '#000', fontSize: 15, fontWeight: 500, padding: '13px 28px', borderRadius: 999, letterSpacing: 'normal' }}>
             Get full access →
           </button>
         </div>
