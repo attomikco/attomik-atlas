@@ -135,12 +135,13 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
       opacity: isExiting ? 0 : 1, transition: 'opacity 500ms ease',
       ...externalStyle,
     }}>
-      {/* Logo — fixed at top */}
-      <div style={{ position: 'absolute', top: 40, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+      {/* Zone 1 — LOGO */}
+      <div style={{ position: 'absolute', top: 40, left: 0, right: 0, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
         <AttomikLogo height={36} color="#ffffff" />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 520, margin: '0 auto', paddingTop: 100 }}>
+      {/* Zone 2 — CENTER CONTENT */}
+      <div style={{ position: 'absolute', top: 100, bottom: 120, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
         {/* Progress dots */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 32 }}>
           {Array.from({ length: TOTAL }).map((_, i) => (
@@ -157,7 +158,6 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
           opacity: isVisible ? 1 : 0,
           transform: isVisible ? 'scale(1)' : 'scale(0.95)',
           transition: 'opacity 250ms ease, transform 250ms ease',
-          marginBottom: 32,
         }}>
           <div style={{ width: 300, height: 300, borderRadius: 12, overflow: 'hidden', boxShadow: '0 25px 80px rgba(0,0,0,0.5)', background: '#fff' }}>
             <div style={{ width: 1080, height: 1080, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
@@ -166,17 +166,19 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
           </div>
         </div>
 
-        {/* Phrase */}
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ color: '#fff', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 20, transition: 'opacity 300ms', opacity: isVisible ? 1 : 0, marginBottom: 4 }}>
-            {phrases[currentIndex]}
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginBottom: 12 }}>
-            Attomik — AI-powered funnel builder
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', transition: 'opacity 250ms', opacity: isVisible ? 1 : 0 }}>
-            {current.label}
-          </div>
+        {/* Template label */}
+        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', transition: 'opacity 250ms', opacity: isVisible ? 1 : 0, marginTop: 16 }}>
+          {current.label}
+        </div>
+      </div>
+
+      {/* Zone 3 — PHRASES */}
+      <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, height: 80, textAlign: 'center', padding: '0 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ color: '#fff', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 20, transition: 'opacity 300ms', opacity: isVisible ? 1 : 0, marginBottom: 4 }}>
+          {phrases[currentIndex]}
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+          Attomik — AI-powered funnel builder
         </div>
       </div>
     </div>

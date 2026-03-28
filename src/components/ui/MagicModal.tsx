@@ -150,16 +150,16 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
         @keyframes popIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
       `}</style>
 
-      {/* Logo — fixed at top */}
-      <div style={{ position: 'absolute', top: 40, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+      {/* Zone 1 — LOGO */}
+      <div style={{ position: 'absolute', top: 40, left: 0, right: 0, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
         <AttomikLogo height={36} color="#ffffff" />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 520, margin: '0 auto', paddingTop: 100 }}>
-
+      {/* Zone 2 — CENTER ANIMATION */}
+      <div style={{ position: 'absolute', top: 100, bottom: 120, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
         {/* SCAN: Radar */}
         {mode === 'scan' && !isDone && (
-          <div style={{ position: 'relative', width: 240, height: 240, marginBottom: 32 }}>
+          <div style={{ position: 'relative', width: 240, height: 240 }}>
             <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)' }} />
             <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.06)' }} />
             <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'conic-gradient(from 0deg, transparent 0deg, rgba(0,255,151,0.08) 20deg, rgba(0,255,151,0.35) 40deg, transparent 60deg)', animation: 'spin 3s linear infinite' }} />
@@ -171,16 +171,13 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
           </div>
         )}
         {mode === 'scan' && isDone && (
-          <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 32, animation: 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards' }}><CheckCircle size={40} color="#00ff97" /></div>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards' }}><CheckCircle size={40} color="#00ff97" /></div>
         )}
 
         {/* ADCOPY: Typewriter */}
         {mode === 'adcopy' && !isDone && (
-          <div style={{ position: 'relative', width: '100%', maxWidth: 400, height: 220, margin: '0 auto 40px' }}>
-            {[
-              { scale: 0.92, y: 16, opacity: 0.25 },
-              { scale: 0.96, y: 8, opacity: 0.45 },
-            ].map((card, i) => (
+          <div style={{ position: 'relative', width: '100%', maxWidth: 400, height: 220, margin: '0 auto' }}>
+            {[{ scale: 0.92, y: 16, opacity: 0.25 }, { scale: 0.96, y: 8, opacity: 0.45 }].map((card, i) => (
               <div key={i} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.02)', border: 'none', borderRadius: 20, transform: `translateY(${card.y}px) scale(${card.scale})`, opacity: card.opacity, transformOrigin: 'bottom center' }} />
             ))}
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))', border: 'none', borderRadius: 20, boxShadow: '0 24px 48px rgba(0,0,0,0.5)', padding: '20px 24px', textAlign: 'center' }}>
@@ -198,7 +195,7 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
           </div>
         )}
         {mode === 'adcopy' && isDone && (
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 96, fontWeight: 900, color: '#00ff97', lineHeight: 1, animation: 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards' }}>3</div>
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 8 }}>variations ready</div>
           </div>
@@ -206,27 +203,25 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
 
         {/* LANDING: Building blocks */}
         {mode === 'landing' && !isDone && (
-          <div style={{ width: 280, marginBottom: 40 }}>
+          <div style={{ width: 280, maxHeight: 280, overflowY: 'hidden' }}>
             {[{ label: 'HERO', h: 56 }, { label: 'PROBLEM', h: 32 }, { label: 'SOLUTION', h: 32 }, { label: 'BENEFITS', h: 40 }, { label: 'SOCIAL PROOF', h: 48 }, { label: 'CTA', h: 40 }].map((b, i) => {
               const isActive = currentBlock === i
-              const isVisible = visibleBlocks > i
+              const isVis = visibleBlocks > i
               return (
                 <div key={i} style={{
-                  height: b.h,
-                  background: isActive ? 'rgba(0,255,151,0.12)' : isVisible ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                  height: b.h, background: isActive ? 'rgba(0,255,151,0.12)' : isVis ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
                   border: isActive ? '1px solid rgba(0,255,151,0.3)' : '1px solid rgba(255,255,255,0.06)',
                   borderRadius: 8, marginBottom: 6, display: 'flex', alignItems: 'center', paddingLeft: 12,
-                  opacity: isVisible ? 1 : 0, transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
-                  transition: 'all 0.4s ease',
+                  opacity: isVis ? 1 : 0, transform: isVis ? 'translateY(0)' : 'translateY(8px)', transition: 'all 0.4s ease',
                 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: isActive ? '#00ff97' : isVisible ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)' }}>{b.label}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: isActive ? '#00ff97' : isVis ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)' }}>{b.label}</span>
                 </div>
               )
             })}
           </div>
         )}
         {mode === 'landing' && isDone && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginBottom: 32, width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
             <div style={{ width: 280, marginBottom: 16 }}>
               {[...Array(6)].map((_, i) => (
                 <div key={i} style={{ height: 32, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, marginBottom: 6, width: '100%' }} />
@@ -238,12 +233,11 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
             </div>
           </div>
         )}
-
       </div>
 
-      {/* Phrases — pinned to bottom */}
-      <div style={{ position: 'absolute', bottom: 48, left: 0, right: 0, textAlign: 'center', padding: '0 32px', pointerEvents: 'none' }}>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 28, color: '#fff', marginBottom: 10, transition: 'opacity 0.3s ease' }}>
+      {/* Zone 3 — PHRASES */}
+      <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, height: 80, textAlign: 'center', padding: '0 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 26, color: '#fff', marginBottom: 8, transition: 'opacity 0.3s ease' }}>
           {isDone ? copy.donePhrase : copy.phrases[phraseIndex]}
         </div>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>
