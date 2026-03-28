@@ -254,6 +254,7 @@ export default function PreviewClient({
         mode={magicModal?.mode || 'adcopy'}
         isDone={magicModal?.isDone || false}
         brandName={brand.name}
+        headline={adVariations[0]?.headline}
       />
 
       {showReel && adVariation && (

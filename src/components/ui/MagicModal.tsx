@@ -9,6 +9,7 @@ interface MagicModalProps {
   isDone: boolean
   brandName?: string
   onComplete?: () => void
+  headline?: string
 }
 
 const COPY = {
@@ -32,7 +33,7 @@ const COPY = {
   },
 }
 
-export default function MagicModal({ isOpen, mode, isDone, brandName = 'your brand', onComplete }: MagicModalProps) {
+export default function MagicModal({ isOpen, mode, isDone, brandName = 'your brand', onComplete, headline }: MagicModalProps) {
   const [phraseIndex, setPhraseIndex] = useState(0)
   const [visible, setVisible] = useState(false)
   const [scanText, setScanText] = useState('Scanning website...')
@@ -69,7 +70,7 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
 
   useEffect(() => {
     if (!isOpen || isDone || mode !== 'adcopy') return
-    const target = `Discover ${brandName}.`
+    const target = headline || `Discover ${brandName}.`
     let i = 0
     let loopTimeout: ReturnType<typeof setTimeout>
     let charInterval: ReturnType<typeof setInterval>
