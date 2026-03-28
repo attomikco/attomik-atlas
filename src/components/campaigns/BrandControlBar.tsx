@@ -52,7 +52,7 @@ export default function BrandControlBar({
         }}>
           {/* Colors */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Colors</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Colors</div>
             <div style={{ display: 'flex', gap: 16 }}>
               {[
                 { label: 'Primary', value: primaryColor, onChange: onPrimaryChange },
@@ -62,7 +62,7 @@ export default function BrandControlBar({
                 <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
                   <input type="color" value={value} onChange={e => onChange(e.target.value)} title={label}
                     style={{ width: 52, height: 52, borderRadius: 12, border: '2px solid #eee', cursor: 'pointer', padding: 3, background: 'none' }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#666', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
                 </div>
               ))}
             </div>
@@ -73,7 +73,7 @@ export default function BrandControlBar({
 
           {/* Font */}
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Font</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Font</div>
             <input
               value={fontFamily}
               onChange={e => onFontChange(e.target.value)}
@@ -90,7 +90,7 @@ export default function BrandControlBar({
               }}
             />
             {fontFamily && (
-              <div style={{ fontSize: 13, color: '#ccc', marginTop: 7, fontFamily, fontWeight: 600 }}>The quick brown fox jumps</div>
+              <div style={{ fontSize: 13, color: '#555', marginTop: 7, fontFamily, fontWeight: 600 }}>The quick brown fox jumps</div>
             )}
           </div>
 
@@ -112,7 +112,7 @@ export default function BrandControlBar({
         {/* Row 2: Images — full width */}
         {allImageUrls.length > 0 && (
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>Images ({allImageUrls.length})</span>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button onClick={() => onImageIndexChange((activeImageIndex - 1 + allImageUrls.length) % allImageUrls.length)}
@@ -136,7 +136,7 @@ export default function BrandControlBar({
                 </div>
               ))}
               {/* Add images button */}
-              <label style={{ width: 96, height: 96, borderRadius: 12, border: '2px dashed #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#bbb', fontSize: 11, fontWeight: 600, gap: 4, flexShrink: 0, transition: 'border-color 0.15s' }}
+              <label style={{ width: 96, height: 96, borderRadius: 12, border: '2px dashed #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600, gap: 4, flexShrink: 0, transition: 'border-color 0.15s' }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = '#999')}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = '#ddd')}>
                 <span style={{ fontSize: 24, lineHeight: 1 }}>+</span>
