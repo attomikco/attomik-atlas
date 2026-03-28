@@ -336,21 +336,6 @@ export default function PreviewClient({
       {/* Preview content — hidden until ready */}
       <div style={{ visibility: previewReady ? 'visible' : 'hidden', opacity: previewReady ? 1 : 0, transition: 'opacity 0.6s ease', background: 'var(--cream, #f8f7f4)' }}>
 
-      {/* Top nav bar */}
-      <div className="border-b border-border bg-paper sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 md:px-10 flex items-center justify-between h-14">
-          <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)}
-            className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors">
-            <ArrowLeft size={14} /> Back to campaign
-          </button>
-          <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)}
-            className="flex items-center gap-1.5 text-sm font-semibold hover:opacity-80 transition-opacity"
-            style={{ color: APP_ACCENT }}>
-            <Pencil size={13} /> Edit campaign
-          </button>
-        </div>
-      </div>
-
       {brand.status === 'draft' && (
         <div className="max-w-5xl mx-auto px-4 md:px-10 mt-4">
           <div style={{
