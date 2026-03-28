@@ -25,9 +25,44 @@ export default function FunnelReadyModal({ isOpen, brandName, onContinue, images
           <Sparkles size={28} color="#00ff97" />
         </div>
 
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 32, color: '#fff', marginBottom: 12, lineHeight: 1.2 }}>Your funnel is ready.</div>
-        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 32px' }}>
-          Built by scraping <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{brandName}</span> — which is just the start. It gets dramatically better once you fill in the gaps.
+        <div style={{
+          fontFamily: 'Barlow, sans-serif',
+          fontWeight: 900,
+          fontSize: 28,
+          color: '#fff',
+          lineHeight: 1.2,
+          marginBottom: 12,
+          textAlign: 'center',
+        }}>
+          This is a basic preview.<br/>
+          <span style={{ color: '#00ff97' }}>
+            It gets dramatically better.
+          </span>
+        </div>
+
+        <div style={{
+          fontSize: 15,
+          color: 'rgba(255,255,255,0.5)',
+          lineHeight: 1.7,
+          textAlign: 'center',
+          maxWidth: 380,
+          margin: '0 auto 8px',
+        }}>
+          We built this from scraping{' '}
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>
+            {brandName}
+          </span>
+          {' '}&mdash; website data is usually incomplete.
+        </div>
+
+        <div style={{
+          fontSize: 13,
+          color: 'rgba(255,255,255,0.3)',
+          textAlign: 'center',
+          marginBottom: 28,
+          fontStyle: 'italic',
+        }}>
+          (Psst &mdash; it also means your SEO could use some work 👀)
         </div>
 
         <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left' }}>
@@ -66,10 +101,10 @@ export default function FunnelReadyModal({ isOpen, brandName, onContinue, images
         </div>
 
         <button onClick={onContinue} disabled={!imagesLoaded} style={{ width: '100%', padding: 15, background: '#00ff97', color: '#000', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 15, border: 'none', borderRadius: 12, cursor: imagesLoaded ? 'pointer' : 'not-allowed', marginBottom: 10, opacity: imagesLoaded ? 1 : 0.5, transition: 'opacity 0.3s ease' }}>
-          {imagesLoaded ? 'See my funnel — let\u0027s improve it →' : 'Importing images...'}
+          {imagesLoaded ? 'Make it better \u2014 add your brand \u2192' : 'Importing images...'}
         </button>
         <button onClick={onContinue} style={{ width: '100%', padding: 12, background: 'transparent', color: 'rgba(255,255,255,0.25)', fontSize: 13, border: 'none', cursor: 'pointer' }}>
-          Looks good for now
+          Show me the preview first
         </button>
       </div>
     </div>

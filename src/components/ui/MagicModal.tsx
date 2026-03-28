@@ -193,7 +193,9 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
               borderRadius: 20,
               boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
               padding: '20px 24px',
+              textAlign: 'center' as const,
             }}>
+              <div style={{ width: 32, height: 3, background: '#00ff97', borderRadius: 2, margin: '0 auto 10px' }} />
               <div style={{
                 fontSize: 10, fontWeight: 700,
                 letterSpacing: '0.12em',
@@ -201,6 +203,7 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
                 marginBottom: 14,
                 borderBottom: '1px solid rgba(255,255,255,0.08)',
                 paddingBottom: 12,
+                textAlign: 'center' as const,
               }}>
                 VARIATION 1
               </div>
@@ -213,6 +216,7 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
                 minHeight: 32,
                 marginBottom: 12,
                 lineHeight: 1.2,
+                textAlign: 'center' as const,
               }}>
                 {typedText}
                 <span style={{
@@ -234,6 +238,7 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical' as const,
                 overflow: 'hidden',
+                textAlign: 'center' as const,
               }}>
                 {bodyText ? bodyText.slice(0, 80) + (bodyText.length > 80 ? '...' : '') : 'Crafting your message...'}
               </div>
@@ -241,6 +246,8 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
               <div style={{
                 fontSize: 13, fontWeight: 700,
                 color: '#00ff97',
+                textAlign: 'center' as const,
+                display: 'block',
               }}>
                 Shop Now →
               </div>
