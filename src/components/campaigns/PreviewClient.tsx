@@ -369,7 +369,7 @@ export default function PreviewClient({
           Ad creatives, copy, and landing page — generated from your brand. Refine below to make it perfect.
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {[{ num: '9', label: 'Ad creatives' }, { num: '3', label: 'Copy variations' }, { num: '7', label: 'Landing sections' }].map(({ num, label }) => (
+          {[{ num: '12', label: 'Ad creatives' }, { num: '3', label: 'Copy variations' }, { num: '7', label: 'Landing sections' }].map(({ num, label }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 999, padding: '8px 18px' }}>
               <span style={{ fontSize: 18, fontWeight: 900, color: '#00ff97', fontFamily: 'Barlow, sans-serif' }}>{num}</span>
               <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{label}</span>
