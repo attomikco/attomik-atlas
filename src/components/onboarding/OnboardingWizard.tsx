@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, Upload, ArrowLeft } from 'lucide-react'
 import AttomikLogo from '@/components/ui/AttomikLogo'
 
-const inputCls = "w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
+const inputCls = "w-full text-base border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[#bbb]"
 
 export default function OnboardingWizard() {
   const supabase = createClient()
@@ -233,14 +233,14 @@ export default function OnboardingWizard() {
           onChange={e => setWebsite(e.target.value)}
           placeholder="https://yourbrand.com"
           onKeyDown={e => e.key === 'Enter' && analyzeWebsite()} />
-        {errors.website && <p className="text-danger text-xs mt-1">{errors.website}</p>}
+        {errors.website && <p className="text-danger text-sm mt-1">{errors.website}</p>}
       </div>
       <button onClick={analyzeWebsite} disabled={detecting}
-        className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 text-base font-bold py-3 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
         style={{ background: '#00ff97', color: '#000' }}>
-        {detecting ? <><Loader2 size={15} className="animate-spin" /> Analyzing...</> : 'Analyze my site →'}
+        {detecting ? <><Loader2 size={16} className="animate-spin" /> Analyzing...</> : 'Analyze my site →'}
       </button>
-      <button onClick={skipToManual} className="text-xs text-muted hover:text-ink transition-colors cursor-pointer w-full text-center">
+      <button onClick={skipToManual} className="text-sm text-muted hover:text-ink transition-colors cursor-pointer w-full text-center">
         or set up manually →
       </button>
     </div>
@@ -250,7 +250,7 @@ export default function OnboardingWizard() {
       {/* Tiny back link */}
       <button onClick={() => { setDetected(false); setDetectedName(null) }} style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        fontSize: 13, fontWeight: 700, color: '#00ff97', background: 'none',
+        fontSize: 16, fontWeight: 700, color: '#00ff97', background: 'none',
         border: 'none', cursor: 'pointer', marginBottom: 16,
         padding: 0,
       }}>
@@ -272,7 +272,7 @@ export default function OnboardingWizard() {
             <div style={{
               fontFamily: 'Barlow, sans-serif',
               fontWeight: 900,
-              fontSize: 32,
+              fontSize: 38,
               color: '#fff',
               letterSpacing: '-0.02em',
               marginBottom: 16,
@@ -297,7 +297,7 @@ export default function OnboardingWizard() {
                     flexShrink: 0,
                   }} />
                   <span style={{
-                    fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.6)',
+                    fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.6)',
                     letterSpacing: '0.08em', textTransform: 'uppercase' as const,
                   }}>{label}</span>
                 </div>
@@ -308,12 +308,12 @@ export default function OnboardingWizard() {
               {brandFont && (
                 <div style={{
                   background: 'rgba(255,255,255,0.15)', borderRadius: 20,
-                  padding: '5px 14px', fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.9)',
+                  padding: '5px 14px', fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.9)',
                 }}>{brandFont}</div>
               )}
               <div style={{
                 background: 'rgba(0,255,151,0.15)', border: '1px solid rgba(0,255,151,0.4)',
-                borderRadius: 20, padding: '5px 14px', fontSize: 11, color: '#00ff97', fontWeight: 700,
+                borderRadius: 20, padding: '5px 14px', fontSize: 13, color: '#00ff97', fontWeight: 700,
                 marginLeft: 'auto',
               }}>
                 {detectedName ? '✦ Detected' : '✦ Manual'}
@@ -341,7 +341,7 @@ export default function OnboardingWizard() {
       {detectedImages.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{
-            fontSize: 10, fontWeight: 700, color: '#999',
+            fontSize: 12, fontWeight: 700, color: '#999',
             letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8,
           }}>
             Detected images ({Math.min(detectedImages.length, 8)})
@@ -360,26 +360,26 @@ export default function OnboardingWizard() {
       {/* Editable fields — compact 2-col grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Brand name *</label>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Brand name *</label>
           <input className={inputCls} value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="e.g. Afterdream" />
-          {errors.brandName && <p className="text-danger text-xs mt-1">{errors.brandName}</p>}
+          {errors.brandName && <p className="text-danger text-sm mt-1">{errors.brandName}</p>}
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Website</label>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Website</label>
           <input className={inputCls} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourbrand.com" />
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Brand font</label>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Brand font</label>
           <input className={inputCls} value={brandFont} onChange={e => setBrandFont(e.target.value)} placeholder="Fraunces, Barlow..." />
         </div>
       </div>
 
       {/* Color inputs label */}
       <div style={{ marginBottom: 10, marginTop: 4 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
           Pick your brand colors
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+        <div style={{ fontSize: 14, color: 'var(--muted)' }}>
           For a better preview — edit anything we detected.
         </div>
       </div>
@@ -392,7 +392,7 @@ export default function OnboardingWizard() {
           { label: 'Accent', value: accentColor, set: setAccentColor, id: 'color-accent' },
         ].map(({ label, value, set, id }) => (
           <div key={id}>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</label>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: 6,
@@ -401,7 +401,7 @@ export default function OnboardingWizard() {
               }} onClick={() => (document.getElementById(id) as HTMLInputElement)?.click()} />
               <input id={id} type="color" value={value || '#000000'} onChange={e => set(e.target.value)}
                 style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }} />
-              <input className={inputCls + ' font-mono'} style={{ fontSize: 11, padding: '6px 8px' }}
+              <input className={inputCls + ' font-mono'} style={{ fontSize: 13, padding: '6px 8px' }}
                 value={value} placeholder="#000000" onChange={e => set(e.target.value)} />
             </div>
           </div>
@@ -426,8 +426,8 @@ export default function OnboardingWizard() {
           {/* Product picker — shown when products detected and not in manual mode */}
           {detectedProducts.length > 0 && !showManualProduct ? (
             <>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#000', marginBottom: 16 }}>Tap to select your hero product</div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#444', marginBottom: 12 }}>We found {detectedProducts.length} {detectedProducts.length === 1 ? 'product' : 'products'}. Select one for your first campaign.</p>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#000', marginBottom: 16 }}>Tap to select your hero product</div>
+              <p style={{ fontSize: 16, fontWeight: 500, color: '#444', marginBottom: 12 }}>We found {detectedProducts.length} {detectedProducts.length === 1 ? 'product' : 'products'}. Select one for your first campaign.</p>
               <div className="grid grid-cols-2 gap-3" style={{ textAlign: 'left' }}>
                 {detectedProducts.map((p, idx) => (
                   <button key={idx} onClick={() => selectProduct(idx)}
@@ -440,18 +440,18 @@ export default function OnboardingWizard() {
                         {p.name?.[0] || '?'}
                       </div>
                     )}
-                    <div style={{ fontSize: 14, fontWeight: 700 }} className="truncate">{p.name}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700 }} className="truncate">{p.name}</div>
                     <div className="flex items-center justify-between mt-0.5">
-                      {p.price && <span style={{ fontSize: 13 }} className="text-muted">${p.price}</span>}
-                      <span className="text-[10px] font-semibold" style={{ color: selectedProductIdx === idx ? '#00cc6a' : '#ccc' }}>
+                      {p.price && <span style={{ fontSize: 16 }} className="text-muted">${p.price}</span>}
+                      <span className="font-semibold" style={{ fontSize: 12, color: selectedProductIdx === idx ? '#00cc6a' : '#ccc' }}>
                         {selectedProductIdx === idx ? '✓ Selected' : 'Tap to select'}
                       </span>
                     </div>
                   </button>
                 ))}
               </div>
-              {errors.productName && <p className="text-danger text-xs">{errors.productName}</p>}
-              <button onClick={switchToManualProduct} className="text-xs text-muted hover:text-ink transition-colors cursor-pointer w-full text-center mt-1">
+              {errors.productName && <p className="text-danger text-sm">{errors.productName}</p>}
+              <button onClick={switchToManualProduct} className="text-sm text-muted hover:text-ink transition-colors cursor-pointer w-full text-center mt-1">
                 or add a different product →
               </button>
             </>
@@ -459,16 +459,16 @@ export default function OnboardingWizard() {
             /* Manual product entry */
             <>
               <div>
-                <label className="text-xs font-semibold block mb-1">Product name *</label>
+                <label className="text-sm font-semibold block mb-1">Product name *</label>
                 <input className={inputCls} value={productName} onChange={e => setProductName(e.target.value)} placeholder="e.g. Dream Blend Coffee" />
-                {errors.productName && <p className="text-danger text-xs mt-1">{errors.productName}</p>}
+                {errors.productName && <p className="text-danger text-sm mt-1">{errors.productName}</p>}
               </div>
               <div>
-                <label className="text-xs font-semibold block mb-1">Single unit price</label>
+                <label className="text-sm font-semibold block mb-1">Single unit price</label>
                 <input className={inputCls} value={priceRange} onChange={e => setPriceRange(e.target.value)} placeholder="$24" />
               </div>
               <div>
-                <label className="text-xs font-semibold block mb-1">One-line description</label>
+                <label className="text-sm font-semibold block mb-1">One-line description</label>
                 <input className={inputCls} value={productDesc} onChange={e => setProductDesc(e.target.value)} placeholder="Organic single-origin pour-over coffee" />
               </div>
             </>
@@ -478,24 +478,24 @@ export default function OnboardingWizard() {
           {/* Image uploads + detected product image */}
           <div>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>
+              <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>
                 Product images
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)', marginLeft: 8 }}>optional</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted)', marginLeft: 8 }}>optional</span>
               </div>
-              <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+              <div style={{ fontSize: 16, color: 'var(--muted)' }}>
                 Add images for a better preview — you can always do this later too.
               </div>
             </div>
             {productImageUrl && (
               <div className="flex items-center gap-2 mb-2">
                 <img src={productImageUrl} alt="" className="w-14 h-14 object-cover rounded-btn border border-border" />
-                <span className="text-xs text-muted">from site</span>
+                <span className="text-sm text-muted">from site</span>
               </div>
             )}
             <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
               onChange={e => setImageFiles(Array.from(e.target.files || []))} />
             <button onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors border border-dashed border-border rounded-btn px-4 py-3 w-full justify-center">
+              className="flex items-center gap-2 text-base text-muted hover:text-ink transition-colors border border-dashed border-border rounded-btn px-4 py-3 w-full justify-center">
               <Upload size={14} />
               {imageFiles.length > 0 ? `${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''} selected` : 'Choose images'}
             </button>
@@ -509,9 +509,9 @@ export default function OnboardingWizard() {
       content: (
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-semibold block mb-1">Campaign name *</label>
+            <label className="text-sm font-semibold block mb-1">Campaign name *</label>
             <input className={inputCls} value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="e.g. Spring Launch — Premium Taste" />
-            {errors.campaignName && <p className="text-danger text-xs mt-1">{errors.campaignName}</p>}
+            {errors.campaignName && <p className="text-danger text-sm mt-1">{errors.campaignName}</p>}
           </div>
           {errors.submit && <p className="text-danger text-sm">{errors.submit}</p>}
         </div>
@@ -545,8 +545,8 @@ export default function OnboardingWizard() {
           ))}
         </div>
 
-        <h2 className="text-center uppercase tracking-tight" style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 22, marginBottom: 4 }}>{current.title}</h2>
-        <p className="text-muted text-sm mb-6 text-center">{current.subtitle}</p>
+        <h2 className="text-center uppercase tracking-tight" style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 26, marginBottom: 4 }}>{current.title}</h2>
+        <p className="text-muted text-base mb-6 text-center">{current.subtitle}</p>
 
         {current.content}
 
@@ -554,18 +554,18 @@ export default function OnboardingWizard() {
         {showNext && (
           <div className="flex items-center justify-between mt-8">
             {step > 0 ? (
-              <button onClick={back} className="text-sm text-muted hover:text-ink transition-colors font-semibold">Back</button>
+              <button onClick={back} className="text-base text-muted hover:text-ink transition-colors font-semibold">Back</button>
             ) : <div />}
 
             {step < 2 ? (
               <button onClick={next}
-                className="text-sm font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90"
+                className="text-base font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90"
                 style={{ background: '#00ff97', color: '#000' }}>
                 Next
               </button>
             ) : (
               <button onClick={submit} disabled={saving}
-                className="flex items-center gap-2 text-sm font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-2 text-base font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: '#00ff97', color: '#000' }}>
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 {saving ? 'Creating your funnel...' : 'Launch my funnel →'}
