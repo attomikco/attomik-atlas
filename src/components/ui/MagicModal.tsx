@@ -24,7 +24,7 @@ const COPY = {
     phrases: ['Teaching the AI your brand voice.', 'Writing copy that sounds like you.', '3 angles. 1 clear winner.', 'Crafting words that convert.', 'Your Meta ads are being born.'],
     sub: (name: string) => `Generating 3 ad variations for ${name}.`,
     donePhrase: 'Your ads are written. ✦',
-    doneSub: '3 variations ready. Let\'s see them.',
+    doneSub: '12 creatives ready. Let\'s see them.',
   },
   landing: {
     phrases: ['Architecting your conversion story.', 'Building the page that closes the sale.', 'Mapping the journey from click to customer.', 'Structuring your most persuasive argument.', '7 sections. 1 goal: convert.'],
@@ -197,8 +197,8 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
         )}
         {mode === 'adcopy' && isDone && (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 96, fontWeight: 900, color: '#00ff97', lineHeight: 1, animation: 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards' }}>3</div>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 8 }}>variations ready</div>
+            <div style={{ fontSize: 96, fontWeight: 900, color: '#00ff97', lineHeight: 1, animation: 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards' }}>12</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 8 }}>creatives ready</div>
           </div>
         )}
 
