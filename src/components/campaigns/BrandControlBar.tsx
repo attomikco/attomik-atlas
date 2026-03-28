@@ -59,9 +59,11 @@ export default function BrandControlBar({
                 { label: 'Secondary', value: secondaryColor, onChange: onSecondaryChange },
                 { label: 'Accent', value: accentColor, onChange: onAccentChange },
               ].map(({ label, value, onChange }) => (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
+                <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                   <input type="color" value={value} onChange={e => onChange(e.target.value)} title={label}
                     style={{ width: 52, height: 52, borderRadius: 12, border: '2px solid #eee', cursor: 'pointer', padding: 3, background: 'none' }} />
+                  <input value={value} onChange={e => { const v = e.target.value; if (/^#[0-9a-fA-F]{0,6}$/.test(v) || v === '') onChange(v) }}
+                    style={{ width: 64, fontSize: 10, fontWeight: 600, fontFamily: 'monospace', textAlign: 'center', border: '1px solid #eee', borderRadius: 6, padding: '3px 4px', color: '#333', outline: 'none' }} />
                   <span style={{ fontSize: 9, fontWeight: 700, color: '#666', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
                 </div>
               ))}
