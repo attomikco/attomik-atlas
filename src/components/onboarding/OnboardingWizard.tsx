@@ -377,7 +377,7 @@ export default function OnboardingWizard() {
       title: 'Your product & audience',
       subtitle: detectedProducts.length > 0 && !showManualProduct
         ? 'Pick the product you want to market first.'
-        : 'Just add one product for now — you can add more later and change any of this anytime.',
+        : "We couldn't detect products automatically. Add your hero product below — you can always update this later.",
       content: (
         <div className="space-y-4" style={{ textAlign: 'center' }}>
           {/* Product picker — shown when products detected and not in manual mode */}
@@ -415,6 +415,10 @@ export default function OnboardingWizard() {
           ) : (
             /* Manual product entry */
             <>
+              <div style={{ background: '#fff8ed', border: '1px solid #fde8bb', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#92660a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
+                <span>💡</span>
+                <span>Tip: if you&apos;re on Shopify, make sure your store is public and not password protected.</span>
+              </div>
               <div>
                 <label className="text-xs font-semibold block mb-1">Product name *</label>
                 <input className={inputCls} value={productName} onChange={e => setProductName(e.target.value)} placeholder="e.g. Dream Blend Coffee" />

@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
+    const timeout = setTimeout(() => controller.abort(), 8000)
 
     let html: string
     try {
@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
         const baseUrl = normalizedUrl.replace(/\/+$/, '')
         const prodRes = await fetch(`${baseUrl}/products.json?limit=6`, {
           headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-          signal: AbortSignal.timeout(3000),
+          signal: AbortSignal.timeout(6000),
         })
         if (prodRes.ok) {
           const prodData = await prodRes.json()
@@ -239,6 +239,59 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Fallback 2: Open Graph product tags
+    if (products.length === 0) {
+      const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1]
+      const ogDesc = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)?.[1]
+      const ogImg = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1]
+      const ogPrice = html.match(/<meta[^>]+property=["']product:price:amount["'][^>]+content=["']([^"']+)["']/i)?.[1]
+      if (ogTitle && ogTitle !== name) {
+        products.push({
+          name: decodeHtml(ogTitle),
+          description: ogDesc ? decodeHtml(ogDesc).slice(0, 200) : null,
+          price: ogPrice || null,
+          image: ogImg || null,
+        })
+      }
+    }
+
+    // Fallback 3: WooCommerce public API
+    if (products.length === 0) {
+      try {
+        const baseUrl = normalizedUrl.replace(/\/+$/, '')
+        const wcRes = await fetch(`${baseUrl}/wp-json/wc/v3/products?per_page=6&status=publish`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(3000),
+        })
+        if (wcRes.ok) {
+          const wcData = await wcRes.json()
+          if (Array.isArray(wcData)) {
+            products = wcData.slice(0, 6).map((p: any) => ({
+              name: decodeHtml(p.name || ''),
+              description: p.short_description ? p.short_description.replace(/<[^>]*>/g, ' ').trim().slice(0, 200) : null,
+              price: p.price || null,
+              image: p.images?.[0]?.src || null,
+            })).filter((p: DetectedProduct) => p.name)
+          }
+        }
+      } catch {}
+    }
+
+    // Fallback 4: Scrape h1 + price patterns
+    if (products.length === 0) {
+      const h1 = html.match(/<h1[^>]*>([^<]+)<\/h1>/i)?.[1]
+      const pricePattern = html.match(/\$\s*(\d+(?:\.\d{2})?)/)?.[1]
+      const metaDesc = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1]
+      if (h1 && h1.length < 80) {
+        products.push({
+          name: decodeHtml(h1.trim()),
+          description: metaDesc ? decodeHtml(metaDesc).slice(0, 200) : null,
+          price: pricePattern || null,
+          image: null,
+        })
+      }
+    }
+
     // ── Image scraping ──────────────────────────────────────────
     type ScrapedImage = { url: string; tag: 'product' | 'lifestyle' | 'background' | 'other'; score: number }
     const imagePool: string[] = []
@@ -271,7 +324,7 @@ export async function POST(req: NextRequest) {
       // Try to get more from products.json raw data
       try {
         const baseUrl = normalizedUrl.replace(/\/+$/, '')
-        const r = await fetch(`${baseUrl}/products.json?limit=6`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(2000) })
+        const r = await fetch(`${baseUrl}/products.json?limit=6`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(4000) })
         if (r.ok) {
           const d = await r.json()
           for (const p of (d?.products || [])) {
