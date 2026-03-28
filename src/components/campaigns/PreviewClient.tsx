@@ -617,31 +617,53 @@ export default function PreviewClient({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">2</span>
-              <span className="font-bold text-xl" style={{ textTransform: 'uppercase' }}>Ad Copy</span>
+              <span style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, textTransform: 'uppercase' }}>Ad Copy</span>
             </div>
             <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)} className="text-sm text-muted hover:text-ink transition-colors">
               Edit copy →
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[0, 1, 2].map(i => {
-              const v = adVariations[i]
-              return v ? (
-                <div key={i} className="border border-border rounded-card p-5 bg-paper space-y-3">
-                  <div className="text-xs font-semibold text-muted uppercase tracking-wide">Variation {i + 1}</div>
-                  <div className="font-bold text-base" style={headingStyle}>{v.headline}</div>
-                  <p className="text-sm leading-relaxed bg-cream rounded-btn p-3">{v.primary_text}</p>
-                  {v.description && <p className="text-sm text-muted bg-cream rounded-btn p-3">{v.description}</p>}
-                  <div className="text-xs text-muted font-mono pt-2 border-t border-border">{v.primary_text.length} chars</div>
+            {adVariations.slice(0, 3).map((v, i) => (
+              <div key={i} style={{
+                background: i === 0 ? '#000' : '#fff',
+                border: i === 0 ? 'none' : '1px solid var(--border)',
+                borderRadius: 16, padding: '28px 28px 24px',
+                display: 'flex', flexDirection: 'column', gap: 0,
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: i === 0 ? '#00ff97' : '#bbb', marginBottom: 12 }}>
+                  Variation {i + 1}
                 </div>
-              ) : (
-                <div key={i} className="border border-dashed border-border rounded-card p-5 bg-paper flex flex-col items-center justify-center text-center" style={{ minHeight: 200 }}>
-                  <div className={skeleton + ' w-8 h-8 rounded-full mb-2'} />
-                  <div className="text-sm font-semibold text-muted">Variation {i + 1}</div>
-                  <div className="text-xs text-muted mt-1">Generating...</div>
+                <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, lineHeight: 1.1, letterSpacing: '-0.02em', color: i === 0 ? '#fff' : '#000', marginBottom: 20, textTransform: 'uppercase' }}>
+                  {v.headline}
                 </div>
-              )
-            })}
+                <div style={{ width: 32, height: 2, background: i === 0 ? '#00ff97' : '#000', borderRadius: 1, marginBottom: 20 }} />
+                <div style={{ fontSize: 14, lineHeight: 1.7, color: i === 0 ? 'rgba(255,255,255,0.65)' : '#444', flex: 1, marginBottom: 20 }}>
+                  {v.primary_text}
+                </div>
+                {v.description && (
+                  <div style={{ display: 'inline-block', background: i === 0 ? 'rgba(255,255,255,0.08)' : '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 13, color: i === 0 ? 'rgba(255,255,255,0.5)' : '#666', marginBottom: 16 }}>
+                    {v.description}
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, borderTop: `1px solid ${i === 0 ? 'rgba(255,255,255,0.1)' : '#eee'}` }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: i === 0 ? 'rgba(255,255,255,0.3)' : '#bbb' }}>
+                    {v.primary_text.length} chars
+                  </span>
+                  <button onClick={() => navigator.clipboard.writeText(`HEADLINE:\n${v.headline}\n\nPRIMARY TEXT:\n${v.primary_text}\n\nDESCRIPTION:\n${v.description}`)}
+                    style={{ background: i === 0 ? 'rgba(255,255,255,0.1)' : '#f0f0f0', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: i === 0 ? '#fff' : '#000', cursor: 'pointer' }}>
+                    Copy all
+                  </button>
+                </div>
+              </div>
+            ))}
+            {adVariations.length < 3 && [...Array(3 - adVariations.length)].map((_, i) => (
+              <div key={`skel-${i}`} className="border border-dashed border-border rounded-card p-5 bg-paper flex flex-col items-center justify-center text-center" style={{ minHeight: 200 }}>
+                <div className={skeleton + ' w-8 h-8 rounded-full mb-2'} />
+                <div className="text-sm font-semibold text-muted">Variation {adVariations.length + i + 1}</div>
+                <div className="text-xs text-muted mt-1">Generating...</div>
+              </div>
+            ))}
           </div>
         </div>
 
