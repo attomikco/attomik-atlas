@@ -708,7 +708,7 @@ export default function PreviewClient({
               <div style={{ width: '100%', height: 600, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', position: 'relative', background: '#fff' }}>
                 <iframe
                   src={`/api/campaigns/${campaign.id}/landing-html`}
-                  style={{ width: '250%', height: '250%', border: 'none', transform: 'scale(0.4)', transformOrigin: 'top left', pointerEvents: 'none' }}
+                  style={{ width: '250%', height: '250%', border: 'none', transform: 'scale(0.4)', transformOrigin: 'top left' }}
                   title="Landing page preview"
                 />
               </div>
