@@ -9,6 +9,7 @@ import SplitTemplate from '@/components/creatives/templates/SplitTemplate'
 import StatTemplate from '@/components/creatives/templates/StatTemplate'
 import TestimonialTemplate from '@/components/creatives/templates/TestimonialTemplate'
 import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
+import GridTemplate from '@/components/creatives/templates/GridTemplate'
 import MagicModal from '@/components/ui/MagicModal'
 import CreativeReel from './CreativeReel'
 import FunnelReadyModal from '@/components/ui/FunnelReadyModal'
@@ -410,263 +411,118 @@ export default function PreviewClient({
           </div>
 
           {adVariation ? (() => {
-            const CARD_H = 320
-            const baseProps = {
-              headline: adVariation.headline,
-              bodyText: adVariation.primary_text.slice(0, 100),
-              ctaText: landingBrief?.hero?.cta_text || 'Shop Now',
-              brandColor: brandPrimary,
-              brandName: brand.name,
-              headlineFont: fontFamily, headlineWeight: fh?.weight || '800',
-              headlineTransform: fh?.transform || 'none',
-              headlineColor: textOnPrimary, bodyFont: fontFamily, bodyWeight: '400',
-              bodyTransform: 'none', bodyColor: textOnPrimary,
-              headlineSizeMul: 1, bodySizeMul: 1,
-              showOverlay: true, overlayOpacity: 0.35,
-              textBanner: 'none' as const, textBannerColor: brandPrimary,
-              showCta: true, ctaColor: brandAccent,
-              ctaFontColor: textOnAccent, imagePosition: 'center',
-              bgColor: brandPrimary,
-            }
-            const cards = [
-              { label: 'Facebook Feed', srcW: 1080, srcH: 1080, Comp: OverlayTemplate, img: img0, pos: 'center' as const, tp: 'bottom-left' as const },
-              { label: 'Instagram 4:5', srcW: 1080, srcH: 1350, Comp: SplitTemplate, img: img1, pos: 'center' as const, tp: 'center' as const },
-              { label: 'Social Proof', srcW: 1080, srcH: 1080, Comp: TestimonialTemplate, img: img2, pos: 'bottom' as const, tp: 'center' as const },
-              { label: 'Statement', srcW: 1080, srcH: 1080, Comp: StatTemplate, img: img3, pos: 'center' as const, tp: 'center' as const },
-              { label: 'Instagram Story', srcW: 1080, srcH: 1920, Comp: OverlayTemplate, img: img4, pos: 'center' as const, tp: 'bottom-left' as const },
+            const v0 = adVariations[0] || adVariation
+            const v1 = adVariations[1] || v0
+            const v2 = adVariations[2] || v0
+
+            const SRC_W = 1080
+            const SRC_H = 1350
+            const STORY_SRC_W = 1080
+            const STORY_SRC_H = 1920
+
+            const gridCards = [
+              { label: 'Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
+              { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
+              { label: 'Statement', Comp: StatTemplate, img: img3, variation: v0, tp: 'center' as const, bgColor: brand.accent_color || brand.secondary_color || brandPrimary },
+              { label: 'Card', Comp: UGCTemplate, img: img4, variation: v1, tp: 'center' as const, bgColor: brandPrimary },
+              { label: 'Grid', Comp: GridTemplate, img: img0, variation: v2, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
             ]
+
+            const storyCards = [
+              { label: 'Story — Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
+              { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brand.accent_color || brandPrimary },
+            ]
+
+            function makeProps(card: { variation: typeof v0, img: string | null, tp: 'center' | 'bottom-left', bgColor: string }) {
+              const hColor = card.img ? '#ffffff' : textOnPrimary
+              return {
+                headline: card.variation?.headline || adVariation?.headline || '',
+                bodyText: (card.variation?.primary_text || adVariation?.primary_text || '').slice(0, 100),
+                ctaText: landingBrief?.hero?.cta_text || 'Shop Now',
+                brandColor: brandPrimary,
+                brandName: brand.name,
+                headlineFont: fontFamily,
+                headlineWeight: fh?.weight || '800',
+                headlineTransform: fh?.transform || 'none',
+                headlineColor: hColor,
+                bodyFont: fontFamily,
+                bodyWeight: '400',
+                bodyTransform: 'none',
+                bodyColor: hColor,
+                headlineSizeMul: 1,
+                bodySizeMul: 1,
+                showOverlay: !!card.img,
+                overlayOpacity: 0.4,
+                textBanner: 'none' as const,
+                textBannerColor: card.bgColor,
+                showCta: true,
+                ctaColor: brandAccent,
+                ctaFontColor: textOnAccent,
+                imagePosition: 'center',
+                bgColor: card.bgColor,
+                imageUrl: card.img,
+                textPosition: card.tp,
+              }
+            }
+
             return (
               <>
-                {/* Gallery — all cards 320px tall */}
-                <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: 16 }}>
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: 16, alignItems: 'flex-start', width: 'fit-content', minWidth: '100%' }}>
-                    {cards.map((c, i) => {
-                      const scale = CARD_H / c.srcH
-                      const cardW = Math.round(c.srcW * scale)
-                      return (
-                        <div key={i} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{ fontSize: 11, color: '#888', marginBottom: 8, textAlign: 'center', fontWeight: 500 }}>{c.label}</div>
-                          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 12, border: '1px solid #e0e0e0', width: cardW, height: CARD_H, flexShrink: 0 }}>
-                            <div style={{ position: 'absolute', top: 0, left: 0, width: c.srcW, height: c.srcH, transform: `scale(${scale})`, transformOrigin: 'top left', pointerEvents: 'none' }}>
-                              <c.Comp {...baseProps} width={c.srcW} height={c.srcH} imageUrl={c.img} bgColor={brandPrimary} textPosition={c.tp} imagePosition={c.pos} />
-                            </div>
+                {/* ── 4:5 GRID — 6 creatives, 2 per row ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 48 }}>
+                  {gridCards.map((card, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#888', marginBottom: 8 }}>
+                        {card.label}
+                      </div>
+                      <div style={{ width: '100%', aspectRatio: '4/5', position: 'relative', overflow: 'hidden', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+                          <div
+                            ref={el => {
+                              if (!el) return
+                              const w = el.parentElement!.offsetWidth
+                              const scale = w / SRC_W
+                              el.style.transform = `scale(${scale})`
+                            }}
+                            style={{ position: 'absolute', top: 0, left: 0, width: SRC_W, height: SRC_H, transformOrigin: 'top left' }}
+                          >
+                            <card.Comp {...makeProps(card)} width={SRC_W} height={SRC_H} />
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Platform showcase */}
-                <div style={{
-                  background: '#f2f2f2',
-                  borderRadius: 16,
-                  padding: '28px 32px',
-                  marginTop: 8,
-                }}>
-                  <div style={{
-                    textAlign: 'center',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: '#888',
-                    marginBottom: 24,
-                  }}>
-                    How your ad looks across platforms
+                {/* ── 9:16 STORIES — 3 in a row ── */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 32, marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', marginBottom: 20, textAlign: 'center' }}>
+                    Instagram & TikTok Stories
                   </div>
-
-                  <div style={{
-                    display: 'flex',
-                    gap: 20,
-                    alignItems: 'flex-end',
-                    justifyContent: 'center',
-                    flexWrap: 'wrap',
-                  }}>
-                    {([
-                      { label: 'Facebook Feed', platform: 'facebook', w: 400, srcH: 1080 },
-                      { label: 'Instagram', platform: 'instagram', w: 400, srcH: 1080 },
-                      { label: 'Story', platform: 'story', w: 225, srcH: 1920 },
-                    ] as const).map(({ label, platform, w, srcH }) => {
-                      const scale = w / 1080
-                      const platformTemplateProps = {
-                        ...baseProps,
-                        width: 1080,
-                        height: srcH,
-                        imageUrl: img0,
-                        bgColor: brandPrimary,
-                        textPosition: 'center' as const,
-                        showCta: false,
-                      }
-
-                      return (
-                        <div key={platform} style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 10,
-                        }}>
-                          {/* Platform label pill */}
-                          <div style={{
-                            background: '#000',
-                            color: '#fff',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            padding: '4px 14px',
-                            borderRadius: 999,
-                            letterSpacing: '0.04em',
-                          }}>
-                            {label}
-                          </div>
-
-                          {/* Creative frame */}
-                          <div style={{
-                            width: w,
-                            height: 400,
-                            borderRadius: 12,
-                            overflow: 'hidden',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-                            position: 'relative',
-                            flexShrink: 0,
-                          }}>
-                            {/* Scaled template */}
-                            <div style={{
-                              position: 'absolute',
-                              top: 0, left: 0,
-                              width: 1080,
-                              height: srcH,
-                              transform: `scale(${scale})`,
-                              transformOrigin: 'top left',
-                              pointerEvents: 'none',
-                            }}>
-                              <OverlayTemplate {...platformTemplateProps} />
-                            </div>
-
-                            {/* Top chrome overlay */}
-                            <div style={{
-                              position: 'absolute',
-                              top: 0, left: 0, right: 0,
-                              padding: '10px 10px 30px',
-                              background: 'linear-gradient(to bottom, rgba(0,0,0,0.55), transparent)',
-                              zIndex: 10,
-                            }}>
-                              {platform === 'story' && (
-                                <div style={{
-                                  width: '100%', height: 2,
-                                  background: 'rgba(255,255,255,0.3)',
-                                  borderRadius: 1, marginBottom: 6,
-                                }}>
-                                  <div style={{
-                                    width: '33%', height: '100%',
-                                    background: '#fff', borderRadius: 1,
-                                  }} />
-                                </div>
-                              )}
-                              <div style={{
-                                display: 'flex', alignItems: 'center', gap: 5,
-                              }}>
-                                <div style={{
-                                  width: 18, height: 18,
-                                  borderRadius: '50%',
-                                  background: brandPrimary,
-                                  display: 'flex', alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: '#fff', fontSize: 8, fontWeight: 700,
-                                  flexShrink: 0,
-                                }}>
-                                  {brand.name?.[0] || 'B'}
-                                </div>
-                                <span style={{
-                                  color: '#fff', fontSize: 10, fontWeight: 600,
-                                }}>
-                                  {brand.name}
-                                </span>
-                                <span style={{
-                                  color: 'rgba(255,255,255,0.6)', fontSize: 9,
-                                }}>
-                                  Sponsored
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Bottom CTA overlay */}
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 0, left: 0, right: 0,
-                              padding: platform === 'story' ? '30px 10px 10px' : '20px 10px 10px',
-                              background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)',
-                              zIndex: 10,
-                            }}>
-                              {platform === 'story' ? (
-                                <>
-                                  <div style={{
-                                    width: '100%',
-                                    padding: '7px 0',
-                                    borderRadius: 999,
-                                    background: '#fff',
-                                    textAlign: 'center',
-                                    fontWeight: 700,
-                                    fontSize: 10,
-                                    color: '#000',
-                                    marginBottom: 3,
-                                  }}>
-                                    {'↑ '}{adVariation?.headline || 'Shop Now'}
-                                  </div>
-                                  <div style={{
-                                    textAlign: 'center',
-                                    color: 'rgba(255,255,255,0.5)',
-                                    fontSize: 8,
-                                  }}>
-                                    Swipe up
-                                  </div>
-                                </>
-                              ) : (
-                                <div style={{
-                                  display: 'inline-block',
-                                  background: '#fff',
-                                  color: '#000',
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  padding: '5px 12px',
-                                  borderRadius: 999,
-                                }}>
-                                  {adVariation?.description || 'Shop Now'}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Copy below card */}
-                          <div style={{
-                            width: '100%',
-                            maxWidth: w,
-                            marginTop: 4,
-                            paddingTop: 12,
-                            borderTop: '1px solid var(--border)',
-                          }}>
-                            <div style={{
-                              fontSize: 14,
-                              color: '#333',
-                              lineHeight: 1.6,
-                              marginBottom: 6,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical' as const,
-                              overflow: 'hidden',
-                            }}>
-                              {adVariation?.primary_text || ''}
-                            </div>
-                            <div style={{
-                              fontSize: 12,
-                              color: '#999',
-                              fontStyle: 'italic',
-                            }}>
-                              {adVariation?.description || ''}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    {storyCards.map((card, i) => (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#888', marginBottom: 8 }}>
+                          {card.label}
+                        </div>
+                        <div style={{ width: '100%', aspectRatio: '9/16', position: 'relative', overflow: 'hidden', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+                            <div
+                              ref={el => {
+                                if (!el) return
+                                const w = el.parentElement!.offsetWidth
+                                const scale = w / STORY_SRC_W
+                                el.style.transform = `scale(${scale})`
+                              }}
+                              style={{ position: 'absolute', top: 0, left: 0, width: STORY_SRC_W, height: STORY_SRC_H, transformOrigin: 'top left' }}
+                            >
+                              <card.Comp {...makeProps(card)} width={STORY_SRC_W} height={STORY_SRC_H} />
                             </div>
                           </div>
                         </div>
-                      )
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>
