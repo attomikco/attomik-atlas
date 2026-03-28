@@ -393,18 +393,18 @@ export default function PreviewClient({
           {/* Without vs With */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 0, alignItems: 'stretch', marginBottom: 40 }}>
             <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '24px 28px' }}>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 12 }}>Without this</div>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>Without this</div>
               {['Random creative with no system', 'Copy that doesn\'t match the ad', 'Generic page that loses the sale', 'Months wasted finding what works'].map((t, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, fontSize: 13, color: 'rgba(255,255,255,0.35)', lineHeight: 1.5 }}>
-                  <span style={{ color: 'rgba(255,80,80,0.6)', fontSize: 15, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>✕</span>{t}
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+                  <span style={{ color: 'rgba(255,100,100,0.9)', fontSize: 15, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>✕</span>{t}
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 13, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>VS</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 15, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em' }}>VS</div>
             <div style={{ border: '1px solid rgba(0,255,151,0.2)', borderRadius: 14, padding: '24px 28px', background: 'rgba(0,255,151,0.03)' }}>
               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#00ff97', marginBottom: 12 }}>With this</div>
               {['A complete funnel built in 30 seconds', 'Consistent message from ad to page', 'Landing page that closes the sale', 'Start testing today, find winners fast'].map((t, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5 }}>
                   <span style={{ color: '#00ff97', fontSize: 15, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>✓</span>{t}
                 </div>
               ))}
