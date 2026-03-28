@@ -71,13 +71,19 @@ export default function PreviewClient({
 
   const hasContent = adCopyContent.length > 0 || landingContent.length > 0
 
-  // Parse existing content — extract ALL variations
+  // Parse existing content — extract ALL variations (handles both formats)
   const existingAdVariations: AdVariation[] = adCopyContent.length > 0
     ? (() => {
         try {
+          // Try first row — may contain {variations: [...]} or a single variation
           const parsed = JSON.parse(adCopyContent[0].content)
           if (parsed?.variations && Array.isArray(parsed.variations)) return parsed.variations.slice(0, 3)
-          return [parsed].filter(Boolean)
+          // Old format: each row is a single variation
+          const all: AdVariation[] = [parsed].filter(Boolean)
+          for (let i = 1; i < Math.min(adCopyContent.length, 3); i++) {
+            try { all.push(JSON.parse(adCopyContent[i].content)) } catch {}
+          }
+          return all
         } catch { return [] }
       })()
     : []
@@ -373,7 +379,7 @@ export default function PreviewClient({
       </div>
 
       {brand.status === 'draft' && (
-        <div className="max-w-5xl mx-auto px-4 md:px-10 mt-4">
+        <div className="max-w-5xl mx-auto px-4 md:px-10 mt-8">
           <div style={{
             background: '#000',
             border: '1px solid rgba(255,255,255,0.1)',

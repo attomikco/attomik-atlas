@@ -73,15 +73,13 @@ Respond ONLY with valid JSON in this exact format, no other text:
       description: v.description.slice(0, 40),
     }))
 
-    // Save each variation to generated_content
-    for (const v of parsed.variations) {
-      await supabase.from('generated_content').insert({
-        campaign_id: id,
-        brand_id: brand.id,
-        type: 'fb_ad',
-        content: JSON.stringify(v),
-      })
-    }
+    // Save all variations as one row
+    await supabase.from('generated_content').insert({
+      campaign_id: id,
+      brand_id: brand.id,
+      type: 'fb_ad',
+      content: JSON.stringify(parsed),
+    })
 
     return NextResponse.json(parsed)
   } catch {
