@@ -350,83 +350,6 @@ export default function PreviewClient({
       {/* Preview content — hidden until ready */}
       <div style={{ visibility: previewReady ? 'visible' : 'hidden', opacity: previewReady ? 1 : 0, transition: 'opacity 0.6s ease', background: 'var(--cream, #f8f7f4)' }}>
 
-      {brand.status === 'draft' && (
-        <div className="max-w-5xl mx-auto px-4 md:px-10 mt-4">
-          <div style={{
-            background: '#000',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 12,
-            padding: '16px 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            marginBottom: 24,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 32, height: 32,
-                borderRadius: 8,
-                background: 'rgba(0,255,151,0.1)',
-                border: '1px solid rgba(0,255,151,0.2)',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', flexShrink: 0,
-              }}>
-                <Info size={15} color="#00ff97" />
-              </div>
-              <div>
-                <div style={{
-                  fontSize: 13, fontWeight: 700, color: '#fff',
-                  marginBottom: 2,
-                }}>
-                  This funnel is saved as a draft
-                </div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-                  Activate it to unlock full editing, brand settings and export.
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={activateBrand}
-              disabled={activating}
-              style={{
-                background: '#00ff97',
-                color: '#000',
-                fontFamily: 'Barlow, sans-serif',
-                fontWeight: 800,
-                fontSize: 13,
-                padding: '10px 20px',
-                borderRadius: 999,
-                border: 'none',
-                cursor: activating ? 'not-allowed' : 'pointer',
-                opacity: activating ? 0.7 : 1,
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              {activating ? (
-                <>
-                  <span style={{
-                    width: 12, height: 12, borderRadius: '50%',
-                    border: '2px solid rgba(0,0,0,0.3)',
-                    borderTopColor: '#000',
-                    animation: 'spin 0.8s linear infinite',
-                    display: 'inline-block',
-                  }} />
-                  Activating...
-                </>
-              ) : (
-                'Activate & continue \u2192'
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Hero */}
       <div style={{ background: '#000', padding: '64px 32px 56px', textAlign: 'center', marginBottom: 0 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.25)', borderRadius: 999, padding: '5px 16px', fontSize: 11, fontWeight: 700, color: '#00ff97', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 24 }}>
@@ -448,6 +371,52 @@ export default function PreviewClient({
         </div>
       </div>
       <div style={{ height: 40, background: 'linear-gradient(to bottom, #000, var(--cream, #f8f7f4))' }} />
+
+      {brand.status === 'draft' && (
+        <div className="max-w-5xl mx-auto px-4 md:px-10 mt-4">
+          <div style={{
+            background: '#000',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 12,
+            padding: '18px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            marginBottom: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Info size={15} color="#00ff97" />
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 2 }}>
+                  This funnel is saved as a draft
+                </div>
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+                  Activate it to unlock full editing, brand settings and export.
+                </div>
+              </div>
+            </div>
+            <button onClick={activateBrand} disabled={activating} style={{
+              background: '#00ff97', color: '#000',
+              fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 15,
+              padding: '12px 24px', borderRadius: 999, border: 'none',
+              cursor: activating ? 'not-allowed' : 'pointer',
+              opacity: activating ? 0.7 : 1,
+              whiteSpace: 'nowrap', flexShrink: 0,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {activating ? (
+                <>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.3)', borderTopColor: '#000', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                  Activating...
+                </>
+              ) : 'Activate & continue \u2192'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto px-4 md:px-10 py-8 space-y-8">
         {/* Brand control bar */}
