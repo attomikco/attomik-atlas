@@ -12,8 +12,7 @@ export default function FunnelReadyModal({ isOpen, brandName, onContinue }: { is
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 520, margin: '0 auto' }}>
         {/* Logo */}
         <AttomikLogo height={38} color="#ffffff" />
-        {/* Divider */}
-        <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.15)', margin: '20px 0' }} />
+        <div style={{ height: 40 }} />
 
         {/* Main message */}
         <div style={{
@@ -50,7 +49,7 @@ export default function FunnelReadyModal({ isOpen, brandName, onContinue }: { is
         {/* SEO nudge */}
         <div style={{
           fontSize: 14,
-          color: 'rgba(255,255,255,0.25)',
+          color: '#00ff97',
           textAlign: 'center',
           fontStyle: 'italic',
           marginBottom: 48,
