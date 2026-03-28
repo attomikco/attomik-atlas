@@ -642,7 +642,7 @@ export default function PreviewClient({
                   {v.primary_text}
                 </div>
                 {v.description && (
-                  <div style={{ display: 'inline-block', background: i === 0 ? 'rgba(255,255,255,0.08)' : '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 13, color: i === 0 ? 'rgba(255,255,255,0.5)' : '#666', marginBottom: 16 }}>
+                  <div style={{ display: 'inline-block', background: i === 0 ? 'rgba(0,255,151,0.12)' : '#f8f8f8', border: i === 0 ? '1px solid rgba(0,255,151,0.25)' : '1px solid #e0e0e0', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: i === 0 ? '#00ff97' : '#555', marginBottom: 16 }}>
                     {v.description}
                   </div>
                 )}
@@ -650,7 +650,23 @@ export default function PreviewClient({
                   <span style={{ fontFamily: 'monospace', fontSize: 11, color: i === 0 ? 'rgba(255,255,255,0.3)' : '#bbb' }}>
                     {v.primary_text.length} chars
                   </span>
-                  <button onClick={() => navigator.clipboard.writeText(`HEADLINE:\n${v.headline}\n\nPRIMARY TEXT:\n${v.primary_text}\n\nDESCRIPTION:\n${v.description}`)}
+                  <button id={`copy-btn-${i}`} onClick={() => {
+                    const text = `HEADLINE:\n${v.headline}\n\nPRIMARY TEXT:\n${v.primary_text}\n\nDESCRIPTION:\n${v.description}`
+                    if (navigator.clipboard && window.isSecureContext) {
+                      navigator.clipboard.writeText(text).then(() => {
+                        const btn = document.getElementById(`copy-btn-${i}`)
+                        if (btn) {
+                          btn.textContent = 'Copied ✓'
+                          btn.style.background = '#00ff97'
+                          btn.style.color = '#000'
+                          setTimeout(() => { btn.textContent = 'Copy all'; btn.style.background = i === 0 ? 'rgba(255,255,255,0.1)' : '#f0f0f0'; btn.style.color = i === 0 ? '#fff' : '#000' }, 1500)
+                        }
+                      })
+                    } else {
+                      const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'
+                      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
+                    }
+                  }}
                     style={{ background: i === 0 ? 'rgba(255,255,255,0.1)' : '#f0f0f0', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: i === 0 ? '#fff' : '#000', cursor: 'pointer' }}>
                     Copy all
                   </button>
