@@ -25,6 +25,7 @@ export default function FunnelReadyModal({ isOpen, brandName, onContinue }: { is
           textAlign: 'center',
           lineHeight: 1.15,
           marginBottom: 16,
+          textTransform: 'uppercase' as const,
         }}>
           This is a basic preview.<br/>
           <span style={{ color: '#00ff97' }}>
