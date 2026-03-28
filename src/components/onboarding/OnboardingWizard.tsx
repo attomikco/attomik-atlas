@@ -258,82 +258,40 @@ export default function OnboardingWizard() {
       </button>
 
       {/* Brand identity card */}
-      <div style={{
-        borderRadius: 16,
-        overflow: 'hidden',
-        marginBottom: 20,
-        position: 'relative',
-        minHeight: 140,
-        background: primaryColor || '#111',
-      }}>
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'stretch', gap: 0 }}>
-          {/* Left: brand info */}
-          <div style={{ flex: '0 0 50%', width: '50%', padding: '16px 18px' }}>
-            <div style={{
-              fontFamily: 'Barlow, sans-serif',
-              fontWeight: 900,
-              fontSize: 35,
-              color: '#fff',
-              letterSpacing: '-0.02em',
-              marginBottom: 16,
-              lineHeight: 1.1,
-              textTransform: (fontTransform || 'none') as React.CSSProperties['textTransform'],
-            }}>
-              {brandName || 'Your Brand'}
-            </div>
-            {/* Colors row */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-              {[
-                { label: 'Primary', value: primaryColor },
-                { label: 'Secondary', value: secondaryColor },
-                { label: 'Accent', value: accentColor },
-              ].filter(c => c.value).map(({ label, value }) => (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: value!, border: '3px solid rgba(255,255,255,0.4)',
-                    boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.3)',
-                    outline: '2px solid rgba(255,255,255,0.15)', outlineOffset: '2px',
-                    flexShrink: 0,
-                  }} />
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)',
-                    letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-                  }}>{label}</span>
-                </div>
-              ))}
-            </div>
-            {/* Font + detected row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              {brandFont && (
-                <div style={{
-                  background: 'rgba(255,255,255,0.15)', borderRadius: 20,
-                  padding: '5px 14px', fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.9)',
-                }}>{brandFont}</div>
-              )}
-              <div style={{
-                background: 'rgba(0,255,151,0.15)', border: '1px solid rgba(0,255,151,0.4)',
-                borderRadius: 20, padding: '5px 14px', fontSize: 12, color: '#00ff97', fontWeight: 700,
-                marginLeft: 'auto',
-              }}>
-                {detectedName ? '✦ Detected' : '✦ Manual'}
+      <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, display: 'flex', background: '#111' }}>
+        {/* Left: brand info */}
+        <div style={{ flex: '0 0 50%', padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 24, color: '#fff', lineHeight: 1.1 }}>
+            {brandName || 'Your Brand'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {[
+              { label: 'Primary', value: primaryColor },
+              { label: 'Secondary', value: secondaryColor },
+              { label: 'Accent', value: accentColor },
+            ].filter(c => c.value).map(({ label, value }) => (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: value!, border: '2px solid rgba(255,255,255,0.15)' }} />
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{label}</span>
               </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {brandFont && (
+              <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{brandFont}</div>
+            )}
+            <div style={{ background: 'rgba(0,255,151,0.12)', border: '1px solid rgba(0,255,151,0.3)', borderRadius: 20, padding: '4px 12px', fontSize: 11, color: '#00ff97', fontWeight: 700, marginLeft: 'auto' }}>
+              {detectedName ? '✦ Detected' : '✦ Manual'}
             </div>
           </div>
-
-          {/* Right: detected image — full bleed */}
-          {detectedImage && (
-            <div style={{
-              flex: '0 0 50%', width: '50%',
-              borderRadius: '0 12px 12px 0',
-              overflow: 'hidden',
-              margin: 0,
-            }}>
-              <img src={detectedImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                onError={e => { e.currentTarget.parentElement!.style.display = 'none' }} />
-            </div>
-          )}
         </div>
+        {/* Right: OG image — full bleed */}
+        {detectedImage && (
+          <div style={{ flex: '0 0 50%', overflow: 'hidden' }}>
+            <img src={detectedImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+          </div>
+        )}
       </div>
 
       {/* Detected images strip */}
