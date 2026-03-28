@@ -270,28 +270,28 @@ export default function OnboardingWizard() {
           <div style={{
             fontFamily: 'Barlow, sans-serif',
             fontWeight: 900,
-            fontSize: 26,
+            fontSize: 32,
             color: '#fff',
             letterSpacing: '-0.02em',
-            marginBottom: 12,
+            marginBottom: 16,
             lineHeight: 1.1,
             textTransform: (fontTransform || 'none') as React.CSSProperties['textTransform'],
           }}>
             {brandName || 'Your Brand'}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             {[
               { label: 'Primary', value: primaryColor },
               { label: 'Secondary', value: secondaryColor },
               { label: 'Accent', value: accentColor },
             ].filter(c => c.value && c.value !== '#000000' && c.value !== '#ffffff').map(({ label, value }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{
-                  width: 20, height: 20, borderRadius: 6,
+                  width: 28, height: 28, borderRadius: 8,
                   background: value, border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0,
                 }} />
                 <span style={{
-                  fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)',
+                  fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.6)',
                   letterSpacing: '0.06em', textTransform: 'uppercase',
                 }}>{label}</span>
               </div>
@@ -300,15 +300,15 @@ export default function OnboardingWizard() {
               <>
                 <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.2)', margin: '0 4px' }} />
                 <div style={{
-                  background: 'rgba(255,255,255,0.12)', borderRadius: 20,
-                  padding: '3px 10px', fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: 600,
+                  background: 'rgba(255,255,255,0.15)', borderRadius: 20,
+                  padding: '5px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 700,
                 }}>{brandFont}</div>
               </>
             )}
             <div style={{ marginLeft: 'auto' }}>
               <div style={{
                 background: 'rgba(0,255,151,0.15)', border: '1px solid rgba(0,255,151,0.3)',
-                borderRadius: 20, padding: '3px 10px', fontSize: 10, color: '#00ff97', fontWeight: 700,
+                borderRadius: 20, padding: '4px 12px', fontSize: 11, color: '#00ff97', fontWeight: 700,
               }}>
                 {detectedName ? '✦ Detected' : '✦ Manual'}
               </div>
@@ -360,13 +360,9 @@ export default function OnboardingWizard() {
           <input className={inputCls} value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="e.g. Afterdream" />
           {errors.brandName && <p className="text-danger text-xs mt-1">{errors.brandName}</p>}
         </div>
-        <div>
+        <div style={{ gridColumn: '1 / -1' }}>
           <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Website</label>
           <input className={inputCls} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourbrand.com" />
-        </div>
-        <div>
-          <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Category</label>
-          <input className={inputCls} value={category} onChange={e => setCategory(e.target.value)} placeholder="Coffee, Skincare..." />
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 600, color: '#666', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Brand font</label>
@@ -417,7 +413,7 @@ export default function OnboardingWizard() {
           {detectedProducts.length > 0 && !showManualProduct ? (
             <>
               <div style={{ fontSize: 15, fontWeight: 800, color: '#000', marginBottom: 16 }}>Tap to select your hero product</div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#444', marginBottom: 12 }}>We found {detectedProducts.length} products. Pick the one you want to market first.</p>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#444', marginBottom: 12 }}>We found {detectedProducts.length} {detectedProducts.length === 1 ? 'product' : 'products'}. Select one for your first campaign.</p>
               <div className="grid grid-cols-2 gap-3" style={{ textAlign: 'left' }}>
                 {detectedProducts.map((p, idx) => (
                   <button key={idx} onClick={() => selectProduct(idx)}
@@ -467,7 +463,15 @@ export default function OnboardingWizard() {
           {/* Shared fields */}
           {/* Image uploads + detected product image */}
           <div>
-            <label className="text-xs font-semibold block mb-1">Product images (optional)</label>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>
+                Product images
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)', marginLeft: 8 }}>optional</span>
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                Add images for a better preview — you can always do this later too.
+              </div>
+            </div>
             {productImageUrl && (
               <div className="flex items-center gap-2 mb-2">
                 <img src={productImageUrl} alt="" className="w-14 h-14 object-cover rounded-btn border border-border" />
