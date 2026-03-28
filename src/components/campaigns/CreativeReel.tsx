@@ -21,9 +21,10 @@ interface CreativeReelProps {
   allImageUrls?: string[]
   adVariations?: AdVariation[]
   onComplete: () => void
+  style?: React.CSSProperties
 }
 
-export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrls, adVariations, onComplete }: CreativeReelProps) {
+export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrls, adVariations, onComplete, style: externalStyle }: CreativeReelProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
   const [isExiting, setIsExiting] = useState(false)
@@ -95,7 +96,6 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
     let step = 0
     function advance() {
       if (step >= TOTAL - 1) {
-        // Last template shown — start exit
         setTimeout(() => {
           setIsExiting(true)
           setTimeout(() => onComplete(), 600)
@@ -118,22 +118,21 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
   const scale = 300 / 1080
 
   return (
-    <div
-      className="fixed inset-0 z-[90] flex flex-col items-center justify-center"
-      style={{
-        background: '#0a0a0a',
-        opacity: isExiting ? 0 : 1,
-        transition: 'opacity 500ms ease',
-      }}
-    >
-      {/* Logo */}
-      <div style={{ position: 'absolute', top: 40, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200, background: '#000',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', padding: '40px 24px',
+      opacity: isExiting ? 0 : 1, transition: 'opacity 500ms ease',
+      ...externalStyle,
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 520, margin: '0 auto' }}>
+        {/* Logo */}
         <AttomikLogo height={38} color="#ffffff" />
-      </div>
+        {/* Divider */}
+        <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.15)', margin: '20px 0' }} />
 
-      {/* Progress dots */}
-      <div className="absolute left-0 right-0 flex flex-col items-center px-8" style={{ top: 100 }}>
-        <div className="flex gap-1">
+        {/* Progress dots */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 32 }}>
           {Array.from({ length: TOTAL }).map((_, i) => (
             <div key={i} style={{
               width: 32, height: 4, borderRadius: 2,
@@ -142,44 +141,32 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
             }} />
           ))}
         </div>
-      </div>
 
-      {/* Creative */}
-      <div style={{
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'scale(1)' : 'scale(0.95)',
-        transition: 'opacity 250ms ease, transform 250ms ease',
-      }}>
+        {/* Creative */}
         <div style={{
-          width: 300, height: 300, borderRadius: 12, overflow: 'hidden',
-          boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
-          background: '#fff',
+          opacity: isVisible ? 1 : 0,
+          transform: isVisible ? 'scale(1)' : 'scale(0.95)',
+          transition: 'opacity 250ms ease, transform 250ms ease',
+          marginBottom: 32,
         }}>
-          <div style={{ width: 1080, height: 1080, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-            <Comp {...current.props} />
+          <div style={{ width: 300, height: 300, borderRadius: 12, overflow: 'hidden', boxShadow: '0 25px 80px rgba(0,0,0,0.5)', background: '#fff' }}>
+            <div style={{ width: 1080, height: 1080, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+              <Comp {...current.props} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom */}
-      <div className="absolute bottom-8 left-0 right-0 text-center">
-        <div style={{
-          color: '#fff', fontFamily: 'Barlow, sans-serif', fontWeight: 800,
-          fontSize: 20, transition: 'opacity 300ms',
-          opacity: isVisible ? 1 : 0, marginBottom: 4,
-        }}>
-          {phrases[currentIndex]}
-        </div>
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginBottom: 12 }}>
-          Attomik — AI-powered funnel builder
-        </div>
-        <div style={{
-          color: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 600,
-          letterSpacing: '0.15em', textTransform: 'uppercase',
-          transition: 'opacity 250ms',
-          opacity: isVisible ? 1 : 0,
-        }}>
-          {current.label}
+        {/* Phrase */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#fff', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 20, transition: 'opacity 300ms', opacity: isVisible ? 1 : 0, marginBottom: 4 }}>
+            {phrases[currentIndex]}
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginBottom: 12 }}>
+            Attomik — AI-powered funnel builder
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', transition: 'opacity 250ms', opacity: isVisible ? 1 : 0 }}>
+            {current.label}
+          </div>
         </div>
       </div>
     </div>

@@ -39,12 +39,13 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
   const [visible, setVisible] = useState(false)
   const [scanText, setScanText] = useState('Scanning website...')
   const [visibleBlocks, setVisibleBlocks] = useState(0)
+  const [currentBlock, setCurrentBlock] = useState(-1)
   const [typedText, setTypedText] = useState('')
 
   const copy = COPY[mode]
 
   useEffect(() => {
-    if (isOpen) { setPhraseIndex(0); setVisibleBlocks(0); setTypedText(''); setTimeout(() => setVisible(true), 50) }
+    if (isOpen) { setPhraseIndex(0); setVisibleBlocks(0); setCurrentBlock(-1); setTypedText(''); setTimeout(() => setVisible(true), 50) }
     else setVisible(false)
   }, [isOpen])
 
@@ -64,17 +65,37 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
 
   useEffect(() => {
     if (!isOpen || isDone || mode !== 'landing') return
-    setVisibleBlocks(0); let count = 0
-    const interval = setInterval(() => { count++; setVisibleBlocks(count); if (count >= 6) clearInterval(interval) }, 500)
-    return () => clearInterval(interval)
+    setVisibleBlocks(0); setCurrentBlock(-1)
+    let count = 0
+    const buildInterval = setInterval(() => {
+      count++
+      setVisibleBlocks(count)
+      setCurrentBlock(count - 1)
+      if (count >= 6) {
+        clearInterval(buildInterval)
+        // After all built, cycle through them
+        let cycle = 0
+        const cycleInterval = setInterval(() => {
+          cycle = (cycle + 1) % 6
+          setCurrentBlock(cycle)
+        }, 800)
+        // Clean up cycle on unmount via return below won't catch this,
+        // so store ref
+        ;(buildInterval as any).__cycleInterval = cycleInterval
+      }
+    }, 600)
+    return () => {
+      clearInterval(buildInterval)
+      if ((buildInterval as any).__cycleInterval) clearInterval((buildInterval as any).__cycleInterval)
+    }
   }, [isOpen, isDone, mode])
 
   const charIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const targetIndexRef = useRef(0)
+  const cycleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    // Always clear on any change
     if (charIntervalRef.current) clearInterval(charIntervalRef.current)
     if (loopTimeoutRef.current) clearTimeout(loopTimeoutRef.current)
     setTypedText('')
@@ -83,16 +104,8 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
     if (!isOpen || isDone || mode !== 'adcopy') return
 
     const targets = headline
-      ? [
-          headline,
-          headline.split(' ').slice(0, 3).join(' ') + '.',
-          'Beyond Ordinary.',
-        ]
-      : [
-          'Built Different.',
-          'Made to Convert.',
-          'Your Story, Told Right.',
-        ]
+      ? [headline, headline.split(' ').slice(0, 3).join(' ') + '.', 'Beyond Ordinary.']
+      : ['Built Different.', 'Made to Convert.', 'Your Story, Told Right.']
 
     let i = 0
 
@@ -125,23 +138,28 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
     }
   }, [isOpen, isDone, mode, headline])
 
+  // Clean up landing cycle interval
+  useEffect(() => {
+    return () => { if (cycleIntervalRef.current) clearInterval(cycleIntervalRef.current) }
+  }, [])
+
   if (!isOpen) return null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: visible ? 1 : 0, transition: 'opacity 0.4s ease' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '40px 24px', opacity: visible ? 1 : 0, transition: 'opacity 0.4s ease' }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         @keyframes scanDot { 0%, 100% { opacity: 0; transform: scale(0.5); } 50% { opacity: 0.8; transform: scale(1); } }
         @keyframes popIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      <div style={{ position: 'absolute', top: 40, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 520, margin: '0 auto' }}>
+        {/* Logo */}
         <AttomikLogo height={38} color="#ffffff" />
-      </div>
+        {/* Divider */}
+        <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.15)', margin: '20px 0' }} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%', maxWidth: 480, padding: '120px 32px 0' }}>
         {/* SCAN: Radar */}
         {mode === 'scan' && !isDone && (
           <div style={{ position: 'relative', width: 240, height: 240, marginBottom: 32 }}>
@@ -161,97 +179,24 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
 
         {/* ADCOPY: Typewriter */}
         {mode === 'adcopy' && !isDone && (
-          <div style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: 400,
-            height: 220,
-            margin: '0 auto 40px',
-          }}>
-            {/* Back cards — decorative */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: 400, height: 220, margin: '0 auto 40px' }}>
             {[
               { scale: 0.92, y: 16, opacity: 0.25 },
               { scale: 0.96, y: 8, opacity: 0.45 },
             ].map((card, i) => (
-              <div key={i} style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(255,255,255,0.02)',
-                border: 'none',
-                borderRadius: 20,
-                transform: `translateY(${card.y}px) scale(${card.scale})`,
-                opacity: card.opacity,
-                transformOrigin: 'bottom center',
-              }} />
+              <div key={i} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.02)', border: 'none', borderRadius: 20, transform: `translateY(${card.y}px) scale(${card.scale})`, opacity: card.opacity, transformOrigin: 'bottom center' }} />
             ))}
-
-            {/* Front card — active */}
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
-              border: 'none',
-              borderRadius: 20,
-              boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
-              padding: '20px 24px',
-              textAlign: 'center' as const,
-            }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))', border: 'none', borderRadius: 20, boxShadow: '0 24px 48px rgba(0,0,0,0.5)', padding: '20px 24px', textAlign: 'center' }}>
               <div style={{ width: 32, height: 3, background: '#00ff97', borderRadius: 2, margin: '0 auto 10px' }} />
-              <div style={{
-                fontSize: 10, fontWeight: 700,
-                letterSpacing: '0.12em',
-                color: '#00ff97',
-                marginBottom: 14,
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                paddingBottom: 12,
-                textAlign: 'center' as const,
-              }}>
-                VARIATION 1
-              </div>
-
-              <div style={{
-                fontSize: 22,
-                fontWeight: 800,
-                color: '#fff',
-                fontFamily: 'Barlow, sans-serif',
-                minHeight: 32,
-                marginBottom: 12,
-                lineHeight: 1.2,
-                textAlign: 'center' as const,
-              }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#00ff97', marginBottom: 14, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 12, textAlign: 'center' }}>VARIATION 1</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: 'Barlow, sans-serif', minHeight: 32, marginBottom: 12, lineHeight: 1.2, textAlign: 'center' }}>
                 {typedText}
-                <span style={{
-                  display: 'inline-block',
-                  width: 2, height: 22,
-                  background: '#00ff97',
-                  marginLeft: 2,
-                  verticalAlign: 'middle',
-                  animation: 'pulse 0.8s ease infinite',
-                }} />
+                <span style={{ display: 'inline-block', width: 2, height: 22, background: '#00ff97', marginLeft: 2, verticalAlign: 'middle', animation: 'pulse 0.8s ease infinite' }} />
               </div>
-
-              <div style={{
-                fontSize: 13,
-                color: 'rgba(255,255,255,0.4)',
-                lineHeight: 1.6,
-                marginBottom: 14,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical' as const,
-                overflow: 'hidden',
-                textAlign: 'center' as const,
-              }}>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', textAlign: 'center' }}>
                 {bodyText ? bodyText.slice(0, 80) + (bodyText.length > 80 ? '...' : '') : 'Crafting your message...'}
               </div>
-
-              <div style={{
-                fontSize: 13, fontWeight: 700,
-                color: '#00ff97',
-                textAlign: 'center' as const,
-                display: 'block',
-              }}>
-                Shop Now →
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#00ff97', textAlign: 'center' }}>Shop Now →</div>
             </div>
           </div>
         )}
@@ -265,11 +210,22 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
         {/* LANDING: Building blocks */}
         {mode === 'landing' && !isDone && (
           <div style={{ width: 280, marginBottom: 40 }}>
-            {[{ label: 'HERO', h: 56, accent: true }, { label: 'PROBLEM', h: 32, accent: false }, { label: 'SOLUTION', h: 32, accent: false }, { label: 'BENEFITS', h: 40, accent: false }, { label: 'SOCIAL PROOF', h: 48, accent: false }, { label: 'CTA', h: 40, accent: true }].map((b, i) => (
-              <div key={i} style={{ height: b.h, background: b.accent ? 'rgba(0,255,151,0.08)' : 'rgba(255,255,255,0.06)', border: `1px solid ${b.accent ? 'rgba(0,255,151,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 8, marginBottom: 6, display: 'flex', alignItems: 'center', paddingLeft: 12, opacity: visibleBlocks > i ? 1 : 0, transform: visibleBlocks > i ? 'translateY(0)' : 'translateY(8px)', transition: 'opacity 0.4s ease, transform 0.4s ease' }}>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: b.accent ? '#00ff97' : 'rgba(255,255,255,0.3)' }}>{b.label}</span>
-              </div>
-            ))}
+            {[{ label: 'HERO', h: 56 }, { label: 'PROBLEM', h: 32 }, { label: 'SOLUTION', h: 32 }, { label: 'BENEFITS', h: 40 }, { label: 'SOCIAL PROOF', h: 48 }, { label: 'CTA', h: 40 }].map((b, i) => {
+              const isActive = currentBlock === i
+              const isVisible = visibleBlocks > i
+              return (
+                <div key={i} style={{
+                  height: b.h,
+                  background: isActive ? 'rgba(0,255,151,0.12)' : isVisible ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                  border: isActive ? '1px solid rgba(0,255,151,0.3)' : '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 8, marginBottom: 6, display: 'flex', alignItems: 'center', paddingLeft: 12,
+                  opacity: isVisible ? 1 : 0, transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
+                  transition: 'all 0.4s ease',
+                }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: isActive ? '#00ff97' : isVisible ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)' }}>{b.label}</span>
+                </div>
+              )
+            })}
           </div>
         )}
         {mode === 'landing' && isDone && (
@@ -278,15 +234,15 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
             <div style={{ color: '#00ff97', fontSize: 12, marginTop: 12, fontWeight: 700 }}>7 sections complete</div>
           </div>
         )}
-      </div>
 
-      {/* Bottom phrases */}
-      <div style={{ position: 'absolute', bottom: 48, left: 0, right: 0, textAlign: 'center', padding: '0 32px' }}>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 28, color: '#fff', transition: 'opacity 0.3s ease', marginBottom: 10 }}>
-          {isDone ? copy.donePhrase : copy.phrases[phraseIndex]}
-        </div>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>
-          {isDone ? copy.doneSub : copy.sub(brandName)}
+        {/* Phrases */}
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 28, color: '#fff', transition: 'opacity 0.3s ease', marginBottom: 10 }}>
+            {isDone ? copy.donePhrase : copy.phrases[phraseIndex]}
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>
+            {isDone ? copy.doneSub : copy.sub(brandName)}
+          </div>
         </div>
       </div>
     </div>

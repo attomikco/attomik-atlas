@@ -278,7 +278,7 @@ export default function PreviewClient({
   const skeleton = 'animate-pulse bg-cream rounded'
 
   return (
-    <div className="min-h-screen" style={{ background: previewReady ? 'var(--cream, #f8f7f4)' : '#000', transition: 'background 0.5s ease' }}>
+    <div className="min-h-screen" style={{ background: '#000' }}>
       {/* Persistent black screen gate */}
       {!previewReady && (
         <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 150, pointerEvents: 'none' }} />
@@ -301,27 +301,29 @@ export default function PreviewClient({
         bodyText={adVariations[0]?.primary_text}
       />
 
-      {showReel && adVariation && (
-        <CreativeReel
-          brand={brand}
-          adVariation={adVariation}
-          imageUrl={brandImageUrl}
-          allImageUrls={allImageUrls}
-          adVariations={adVariations}
-          onComplete={() => { setShowReel(false); setShowReadyModal(true) }}
-        />
-      )}
+      {/* CreativeReel — always mounted, controlled via style */}
+      <CreativeReel
+        brand={brand}
+        adVariation={adVariation || { headline: '', primary_text: '', description: '' }}
+        imageUrl={img0}
+        allImageUrls={allImageUrls}
+        adVariations={adVariations}
+        onComplete={() => { setShowReel(false); setShowReadyModal(true) }}
+        style={{
+          opacity: showReel ? 1 : 0,
+          pointerEvents: showReel ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease',
+        }}
+      />
 
       <FunnelReadyModal
         isOpen={showReadyModal}
         brandName={brand.name}
-        imagesLoaded={imagesLoaded}
-        imageCount={allImageUrls.length}
         onContinue={() => { setShowReadyModal(false); setPreviewReady(true) }}
       />
 
       {/* Preview content — hidden until ready */}
-      <div style={{ visibility: previewReady ? 'visible' : 'hidden', opacity: previewReady ? 1 : 0, transition: 'opacity 0.5s ease' }}>
+      <div style={{ visibility: previewReady ? 'visible' : 'hidden', opacity: previewReady ? 1 : 0, transition: 'opacity 0.6s ease', background: 'var(--cream, #f8f7f4)' }}>
 
       {/* Top nav bar */}
       <div className="border-b border-border bg-paper sticky top-0 z-40">
