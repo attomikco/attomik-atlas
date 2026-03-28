@@ -137,7 +137,7 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      <div style={{ position: 'absolute', top: 32, left: 32 }}><AttomikLogo height={22} color="rgba(255,255,255,0.25)" /></div>
+      <div style={{ position: 'absolute', top: 32, left: 32 }}><AttomikLogo height={26} color="rgba(255,255,255,0.5)" /></div>
 
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%', maxWidth: 480, padding: '0 32px' }}>

@@ -128,7 +128,7 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
     >
       {/* Top */}
       <div className="absolute top-8 left-0 right-0 flex flex-col items-center px-8">
-        <div className="mb-6"><AttomikLogo height={22} color="#ffffff" /></div>
+        <div className="mb-6"><AttomikLogo height={26} color="rgba(255,255,255,0.5)" /></div>
         <div className="flex gap-1">
           {Array.from({ length: TOTAL }).map((_, i) => (
             <div key={i} style={{

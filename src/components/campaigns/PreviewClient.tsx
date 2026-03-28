@@ -12,6 +12,7 @@ import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 import MagicModal from '@/components/ui/MagicModal'
 import CreativeReel from './CreativeReel'
 import FunnelReadyModal from '@/components/ui/FunnelReadyModal'
+import AttomikLogo from '@/components/ui/AttomikLogo'
 
 interface AdVariation {
   primary_text: string
@@ -182,7 +183,7 @@ export default function PreviewClient({
       setMagicModal({ mode: 'adcopy', isDone: true })
       await new Promise(r => setTimeout(r, 1500))
       setMagicModal(null)
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 600))
 
       // Landing brief
       setMagicModal({ mode: 'landing', isDone: false })
@@ -194,7 +195,7 @@ export default function PreviewClient({
       setMagicModal({ mode: 'landing', isDone: true })
       await new Promise(r => setTimeout(r, 1500))
       setMagicModal(null)
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 600))
 
       // Reel
       setShowReel(true)
@@ -249,6 +250,18 @@ export default function PreviewClient({
 
   return (
     <div className="min-h-screen" style={{ background: previewReady ? 'var(--cream, #f8f7f4)' : '#000', transition: 'background 0.5s ease' }}>
+      {/* Persistent black screen gate */}
+      {!previewReady && (
+        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 150, pointerEvents: 'none' }} />
+      )}
+
+      {/* Branded logo in gaps between modals */}
+      {!previewReady && !magicModal && !showReel && !showReadyModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AttomikLogo height={32} color="rgba(255,255,255,0.15)" />
+        </div>
+      )}
+
       {/* MagicModal */}
       <MagicModal
         isOpen={!!magicModal}

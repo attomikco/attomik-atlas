@@ -18,7 +18,7 @@ export default function FunnelReadyModal({ isOpen, brandName, onContinue, images
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, opacity: visible ? 1 : 0, transition: 'opacity 0.4s ease' }}>
       <style>{`@keyframes progressPulse { 0% { width: 20%; opacity: 1; } 50% { width: 75%; opacity: 0.8; } 100% { width: 20%; opacity: 1; } }`}</style>
-      <div style={{ position: 'absolute', top: 32, left: 32 }}><AttomikLogo height={20} color="rgba(255,255,255,0.25)" /></div>
+      <div style={{ position: 'absolute', top: 32, left: 32 }}><AttomikLogo height={24} color="rgba(255,255,255,0.4)" /></div>
 
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
