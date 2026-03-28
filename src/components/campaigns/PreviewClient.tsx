@@ -271,6 +271,10 @@ export default function PreviewClient({
   const img2 = getImg(2)
   const img3 = getImg(3)
   const img4 = getImg(4)
+  const img5 = getImg(5)
+  const img6 = getImg(6)
+  const img7 = getImg(7)
+  const img8 = getImg(8)
 
   // Template props for ad creative
   const templateProps = adVariation ? {
@@ -437,6 +441,23 @@ export default function PreviewClient({
           onAccentChange={setBrandAccent}
           onFontChange={setFontFamily}
           onImageIndexChange={setActiveImageIndex}
+          onAddImages={async (files: File[]) => {
+            const newUrls: string[] = []
+            for (const file of files) {
+              const ext = file.name.split('.').pop() || 'jpg'
+              const path = `${brand.id}/manual_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+              const { error } = await supabase.storage.from('brand-images').upload(path, file, { contentType: file.type })
+              if (!error) {
+                await supabase.from('brand_images').insert({ brand_id: brand.id, file_name: file.name, storage_path: path, mime_type: file.type, tag: 'product' })
+                const { data } = supabase.storage.from('brand-images').getPublicUrl(path)
+                newUrls.push(data.publicUrl)
+              }
+            }
+            setAllImageUrls(prev => [...prev, ...newUrls])
+          }}
+          onRemoveImage={(index: number) => {
+            setAllImageUrls(prev => prev.filter((_, i) => i !== index))
+          }}
           onSave={saveBrandColors}
           saving={savingBrand}
         />
@@ -457,7 +478,7 @@ export default function PreviewClient({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">1</span>
-              <span className="font-bold text-xl">Ad Creatives</span>
+              <span className="font-bold text-xl" style={{ textTransform: 'uppercase' }}>Ad Creatives</span>
             </div>
             <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)} className="text-sm text-muted hover:text-ink transition-colors">
               Edit in creative builder →
@@ -478,15 +499,21 @@ export default function PreviewClient({
               { label: 'Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
               { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
               { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Statement', Comp: StatTemplate, img: img3, variation: v0, tp: 'center' as const, bgColor: brand.accent_color || brand.secondary_color || brandPrimary },
-              { label: 'Card', Comp: UGCTemplate, img: img4, variation: v1, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Grid', Comp: GridTemplate, img: img0, variation: v2, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brand.accent_color || brand.secondary_color || brandPrimary },
+              { label: 'Card', Comp: UGCTemplate, img: img4, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
+              { label: 'Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center' as const, bgColor: brand.accent_color || brandPrimary },
+              { label: 'Split Alt', Comp: SplitTemplate, img: img7, variation: v0, tp: 'center' as const, bgColor: brandPrimary },
+              { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brand.accent_color || brandPrimary },
             ]
 
             const storyCards = [
-              { label: 'Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
-              { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
-              { label: 'Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brand.accent_color || brandPrimary },
+              { label: 'Story — Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
+              { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brand.accent_color || brandPrimary },
+              { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: img4, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
+              { label: 'Story — Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brand.accent_color || brand.secondary_color || brandPrimary },
             ]
 
             function makeProps(card: { variation: typeof v0, img: string | null, tp: 'center' | 'bottom-left', bgColor: string }) {
@@ -593,7 +620,7 @@ export default function PreviewClient({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">2</span>
-              <span className="font-bold text-xl">Ad Copy</span>
+              <span className="font-bold text-xl" style={{ textTransform: 'uppercase' }}>Ad Copy</span>
             </div>
             <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)} className="text-sm text-muted hover:text-ink transition-colors">
               Edit copy →
@@ -626,7 +653,7 @@ export default function PreviewClient({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">3</span>
-              <span className="font-bold text-xl">Landing Page</span>
+              <span className="font-bold text-xl" style={{ textTransform: 'uppercase' }}>Landing Page</span>
             </div>
             <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)} className="text-sm text-muted hover:text-ink transition-colors">
               View full brief →

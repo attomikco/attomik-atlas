@@ -12,6 +12,8 @@ interface BrandControlBarProps {
   onAccentChange: (v: string) => void
   onFontChange: (v: string) => void
   onImageIndexChange: (i: number) => void
+  onAddImages: (files: File[]) => void
+  onRemoveImage: (index: number) => void
   onSave: () => void
   saving?: boolean
 }
@@ -21,6 +23,7 @@ export default function BrandControlBar({
   fontFamily, allImageUrls, activeImageIndex,
   onPrimaryChange, onSecondaryChange, onAccentChange,
   onFontChange, onImageIndexChange,
+  onAddImages, onRemoveImage,
   onSave, saving,
 }: BrandControlBarProps) {
   return (
@@ -30,7 +33,7 @@ export default function BrandControlBar({
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(0,255,151,0.08)', border: '1px solid rgba(0,255,151,0.2)', borderRadius: 999, padding: '4px 14px', fontSize: 11, fontWeight: 700, color: '#00ff97', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
           ✦ Auto-detected from your website
         </div>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 26, color: '#000', letterSpacing: '-0.01em', marginBottom: 6 }}>
+        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, color: '#000', letterSpacing: '-0.01em', marginBottom: 6, textTransform: 'uppercase' }}>
           This is what we fetched from your site.
         </div>
         <div style={{ fontSize: 14, color: '#888', maxWidth: 460, margin: '0 auto', lineHeight: 1.6 }}>
@@ -120,12 +123,27 @@ export default function BrandControlBar({
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {allImageUrls.slice(0, 10).map((url, i) => (
-                <div key={i} onClick={() => onImageIndexChange(i)}
-                  style={{ width: 80, height: 80, borderRadius: 12, overflow: 'hidden', border: activeImageIndex === i ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s', flexShrink: 0 }}>
-                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+                <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+                  <div onClick={() => onImageIndexChange(i)}
+                    style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', border: activeImageIndex === i ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s' }}>
+                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+                  </div>
+                  <button onClick={() => onRemoveImage(i)}
+                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}>
+                    ×
+                  </button>
                 </div>
               ))}
+              {/* Add images button */}
+              <label style={{ width: 96, height: 96, borderRadius: 12, border: '2px dashed #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#bbb', fontSize: 11, fontWeight: 600, gap: 4, flexShrink: 0, transition: 'border-color 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = '#999')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = '#ddd')}>
+                <span style={{ fontSize: 24, lineHeight: 1 }}>+</span>
+                Add
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                  onChange={e => { const files = Array.from(e.target.files || []); if (files.length) onAddImages(files); e.target.value = '' }} />
+              </label>
             </div>
           </div>
         )}
