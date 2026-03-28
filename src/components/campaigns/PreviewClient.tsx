@@ -687,62 +687,40 @@ export default function PreviewClient({
         <div className="mt-12 pt-12 border-t border-border">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <span className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-xs font-bold">3</span>
-              <span className="font-bold text-xl" style={{ textTransform: 'uppercase' }}>Landing Page</span>
+              <span className="w-7 h-7 rounded-full bg-ink text-[#00ff97] flex items-center justify-center text-xs font-black">3</span>
+              <span style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, textTransform: 'uppercase' }}>Landing Page</span>
             </div>
-            <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)} className="text-sm text-muted hover:text-ink transition-colors">
-              View full brief →
-            </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <a
+                href={`/api/campaigns/${campaign.id}/landing-html`}
+                download={`${brand.name.toLowerCase().replace(/\s+/g, '-')}-landing-page.html`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#000', color: '#00ff97', fontSize: 12, fontWeight: 700, padding: '8px 16px', borderRadius: 999, textDecoration: 'none', border: 'none' }}
+              >
+                ↓ Download HTML
+              </a>
+              <button onClick={() => navigateWithActivation(`/campaigns/${campaign.id}`)} style={{ fontSize: 13, color: '#888', background: 'none', border: 'none', cursor: 'pointer' }}>
+                Edit brief →
+              </button>
+            </div>
           </div>
           {landingBrief ? (
-            <div className="max-w-3xl mx-auto border border-border rounded-card overflow-hidden">
-              <div className="p-8" style={{ background: brandPrimary, color: textOnPrimary }}>
-                <div className="text-2xl font-black" style={headingStyle}>{landingBrief.hero.headline}</div>
-                <div className="text-sm mt-2" style={{ opacity: 0.7 }}>{landingBrief.hero.subheadline}</div>
-                <button className="text-sm font-bold mt-4 px-5 py-2 rounded-btn" style={{ background: brandAccent, color: textOnAccent }}>{landingBrief.hero.cta_text}</button>
+            <div style={{ position: 'relative' }}>
+              <div style={{ width: '100%', height: 600, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', position: 'relative', background: '#fff' }}>
+                <iframe
+                  src={`/api/campaigns/${campaign.id}/landing-html`}
+                  style={{ width: '250%', height: '250%', border: 'none', transform: 'scale(0.4)', transformOrigin: 'top left', pointerEvents: 'none' }}
+                  title="Landing page preview"
+                />
               </div>
-              {landingBrief.benefits?.length > 0 && (
-                <div className="p-5 bg-paper border-b border-border">
-                  <div className="flex flex-wrap gap-2">
-                    {landingBrief.benefits.slice(0, 4).map((b, i) => (
-                      <span key={i} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ border: `1px solid ${brandAccent}40`, color: brandAccent }}>{b.headline}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {landingBrief.social_proof && (
-                <div className="p-6 bg-cream">
-                  <div className="text-3xl font-black" style={{ color: brandAccent }}>{landingBrief.social_proof.stat}</div>
-                  <p className="text-sm italic text-muted mt-2 leading-relaxed">{landingBrief.social_proof.testimonial}</p>
-                  <p className="text-xs text-muted mt-1">{landingBrief.social_proof.attribution}</p>
-                </div>
-              )}
-              <div className="p-6 bg-paper">
-                {landingBrief.problem && (
-                  <div className="mb-4">
-                    <div className="font-semibold text-sm" style={{ ...headingStyle, color: brandAccent }}>{landingBrief.problem.headline}</div>
-                    <div className="text-sm text-muted mt-1">{landingBrief.problem.body}</div>
-                  </div>
-                )}
-                {landingBrief.solution && (
-                  <div>
-                    <div className="font-semibold text-sm" style={{ ...headingStyle, color: brandAccent }}>{landingBrief.solution.headline}</div>
-                    <div className="text-sm text-muted mt-1">{landingBrief.solution.body}</div>
-                  </div>
-                )}
-              </div>
-              <div className="p-6 text-center" style={{ background: brandPrimary, color: textOnPrimary }}>
-                <div className="font-bold text-lg" style={headingStyle}>{landingBrief.final_cta.headline}</div>
-                <button className="text-sm font-bold mt-3 px-5 py-2 rounded-btn" style={{ background: brandAccent, color: textOnAccent }}>{landingBrief.final_cta.cta_text}</button>
+              <div style={{ position: 'absolute', bottom: 16, right: 16 }}>
+                <a href={`/api/campaigns/${campaign.id}/landing-html`} target="_blank" rel="noopener noreferrer"
+                  style={{ background: '#000', color: '#00ff97', fontSize: 12, fontWeight: 700, padding: '8px 16px', borderRadius: 999, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  ↗ View full page
+                </a>
               </div>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto bg-paper border border-border rounded-card p-8 space-y-4">
-              <div className={skeleton + ' h-12 w-3/4'} />
-              <div className={skeleton + ' h-4 w-full'} />
-              <div className={skeleton + ' h-32 w-full'} />
-              <p className="text-muted text-xs">Generating landing brief...</p>
-            </div>
+            <div className={skeleton + ' w-full h-64 rounded-card'} />
           )}
         </div>
 
