@@ -318,6 +318,7 @@ export default function PreviewClient({
         imageUrl={img0}
         allImageUrls={allImageUrls}
         adVariations={adVariations}
+        isActive={showReel}
         onComplete={() => { setShowReel(false); setShowReadyModal(true) }}
         style={{
           opacity: showReel ? 1 : 0,

@@ -21,10 +21,11 @@ interface CreativeReelProps {
   allImageUrls?: string[]
   adVariations?: AdVariation[]
   onComplete: () => void
+  isActive?: boolean
   style?: React.CSSProperties
 }
 
-export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrls, adVariations, onComplete, style: externalStyle }: CreativeReelProps) {
+export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrls, adVariations, onComplete, isActive = true, style: externalStyle }: CreativeReelProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
   const [isExiting, setIsExiting] = useState(false)
@@ -93,6 +94,7 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
   ]
 
   useEffect(() => {
+    if (!isActive) return
     let step = 0
     function advance() {
       if (step >= TOTAL - 1) {
@@ -111,7 +113,15 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
     }
     intervalRef.current = setInterval(advance, 1100)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [onComplete])
+  }, [onComplete, isActive])
+
+  useEffect(() => {
+    if (!isActive) {
+      setCurrentIndex(0)
+      setIsVisible(true)
+      setIsExiting(false)
+    }
+  }, [isActive])
 
   const current = configs[currentIndex]
   const Comp = current.component
