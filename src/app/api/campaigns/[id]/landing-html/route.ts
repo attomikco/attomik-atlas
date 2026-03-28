@@ -3,6 +3,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
+function isLight(hex: string) {
+  const c = hex.replace('#', '')
+  if (c.length < 6) return false
+  const r = parseInt(c.slice(0, 2), 16)
+  const g = parseInt(c.slice(2, 4), 16)
+  const b = parseInt(c.slice(4, 6), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 > 128
+}
+
+function lighten(hex: string, amount = 0.9): string {
+  const c = hex.replace('#', '')
+  const r = parseInt(c.slice(0, 2), 16)
+  const g = parseInt(c.slice(2, 4), 16)
+  const b = parseInt(c.slice(4, 6), 16)
+  const lr = Math.round(r + (255 - r) * amount)
+  const lg = Math.round(g + (255 - g) * amount)
+  const lb = Math.round(b + (255 - b) * amount)
+  return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -34,110 +54,154 @@ export async function GET(
   catch { return new NextResponse('Invalid brief', { status: 500 }) }
 
   const brand = campaign.brand
-  const primary = brand.primary_color || '#000000'
-  const accent = brand.accent_color || brand.secondary_color || '#00ff97'
-  const font = brand.font_heading?.family || brand.font_primary?.split('|')[0] || 'system-ui'
 
-  // Fetch first brand image
+  // Colors
+  const primary = brand.primary_color || '#000000'
+  const secondary = brand.secondary_color || primary
+  const accent = brand.accent_color || secondary
+  const textOnPrimary = isLight(primary) ? '#000000' : '#ffffff'
+  const textOnPrimarySecondary = isLight(primary) ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)'
+
+  // Font
+  const fontFamily = brand.font_heading?.family || brand.font_primary?.split('|')[0] || 'system-ui'
+  const fontTransform = brand.font_heading?.transform || 'none'
+  const fontWeight = brand.font_heading?.weight || '700'
+  const googleFontUrl = fontFamily && fontFamily !== 'system-ui'
+    ? `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700;800;900&display=swap`
+    : null
+
+  // Images
   const { data: images } = await supabase
     .from('brand_images')
-    .select('storage_path')
+    .select('storage_path, tag')
     .eq('brand_id', brand.id)
-    .limit(1)
+    .order('created_at')
+    .limit(6)
 
-  const imageUrl = images?.[0]
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/brand-images/${images[0].storage_path}`
-    : ''
+  const getUrl = (path: string) =>
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/brand-images/${path}`
+
+  const productImgs = images?.filter(i => i.tag === 'product').map(i => getUrl(i.storage_path)) || []
+  const lifestyleImgs = images?.filter(i => i.tag === 'lifestyle' || i.tag === 'background').map(i => getUrl(i.storage_path)) || []
+  const heroImg = productImgs[0] || lifestyleImgs[0] || ''
+  const lifestyleImg = lifestyleImgs[0] || productImgs[1] || heroImg
+
+  // Benefits HTML
+  const benefitsHtml = (brief.benefits || []).slice(0, 4).map((b: any) => `
+    <div class="benefit-item fade-in">
+      <div class="benefit-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="benefit-title heading">${b.headline}</h3>
+        <p class="benefit-desc">${b.body}</p>
+      </div>
+    </div>
+  `).join('')
+
+  // FAQ HTML
+  const faqHtml = (brief.faq || []).map((f: any) => `
+    <div class="faq-item fade-in">
+      <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        ${f.question}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="faq-answer"><p>${f.answer}</p></div>
+    </div>
+  `).join('')
 
   // Read template
   const templatePath = join(process.cwd(), 'src/lib/landing-template.html')
   let html = readFileSync(templatePath, 'utf-8')
 
-  const fontUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@300;400;500;600;700;800;900&display=swap`
+  // Inject brand theme via :root override
+  const brandStyles = `
+<style id="brand-theme">
+  ${googleFontUrl ? `@import url('${googleFontUrl}');` : ''}
+  :root {
+    --bg:              ${lighten(primary, 0.92)};
+    --bg-alt:          ${lighten(primary, 0.88)};
+    --bg-card:         ${lighten(primary, 0.95)};
+    --bg-dark:         ${primary};
+    --bg-dark-alt:     ${secondary};
+    --text:            ${primary};
+    --text-secondary:  ${primary};
+    --text-tertiary:   ${primary}88;
+    --text-on-dark:    ${textOnPrimary};
+    --text-on-dark-secondary: ${textOnPrimarySecondary};
+    --text-on-dark-tertiary:  ${textOnPrimary}88;
+    --primary:         ${secondary};
+    --primary-light:   ${accent};
+    --primary-dim:     ${secondary}22;
+    --accent:          ${accent};
+    --accent-light:    ${accent};
+    --accent-dim:      ${accent}22;
+    --border:          ${primary}18;
+    --border-strong:   ${primary}30;
+    --border-on-dark:  ${textOnPrimary}18;
+  }
+  body { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-serif !important; }
+  .heading { font-family: '${fontFamily}', serif !important; font-weight: ${fontWeight} !important; text-transform: ${fontTransform} !important; }
+</style>`
 
-  // Inject brand styles
-  html = html.replace(
-    '</head>',
-    `<link rel="stylesheet" href="${fontUrl}">
-    <style>
-      :root {
-        --primary: ${primary};
-        --accent: ${accent};
-        --font-brand: '${font}', system-ui, sans-serif;
-      }
-      body, .heading { font-family: var(--font-brand) !important; }
-      .btn-primary { background: ${primary} !important; }
-      .btn-primary:hover { background: ${accent} !important; }
-      .hero { background: ${primary} !important; }
-      .final-cta { background: ${primary} !important; }
-      .section-label { color: ${accent} !important; }
-      .floating-cta a { background: ${primary} !important; }
-      .hero-badge { background: ${accent}22 !important; color: ${accent} !important; border-color: ${accent}44 !important; }
-    </style>
-    </head>`
-  )
+  html = html.replace('</head>', `${brandStyles}\n</head>`)
 
   // Title + meta
   html = html.replace(/<title>[^<]*<\/title>/, `<title>${brand.name} | ${brief.hero?.headline || 'Landing Page'}</title>`)
   html = html.replace(/<meta name="description" content="[^"]*"/, `<meta name="description" content="${brief.hero?.subheadline || ''}"`)
-  html = html.replace(/<meta name="author" content="[^"]*"/, `<meta name="author" content="${brand.name}"`)
 
-  // Hero content
-  if (brief.hero) {
-    html = html.replace(
-      /(<h1 class="hero-headline[^"]*"[^>]*>)[\s\S]*?(<\/h1>)/,
-      `$1${brief.hero.headline}$2`
-    )
-    html = html.replace(
-      /(<p class="hero-sub[^"]*"[^>]*>)[^<]*/,
-      `$1${brief.hero.subheadline}`
-    )
+  // Logo
+  if (brand.logo_url) {
+    html = html.replace(/<img[^>]*class="hero-logo"[^>]*>/, `<img src="${brand.logo_url}" alt="${brand.name}" class="hero-logo">`)
+  } else {
+    html = html.replace(/<img[^>]*class="hero-logo"[^>]*>/, `<span style="font-family:'${fontFamily}',sans-serif;font-weight:900;font-size:22px;color:${textOnPrimary};letter-spacing:-0.02em;text-transform:${fontTransform}">${brand.name}</span>`)
   }
+
+  // Hero
+  html = html.replace(/(<h1[^>]*class="[^"]*hero-headline[^"]*"[^>]*>)[\s\S]*?(<\/h1>)/, `$1${brief.hero?.headline || ''}$2`)
+  html = html.replace(/(<p[^>]*class="[^"]*hero-sub[^"]*"[^>]*>)[^<]*/, `$1${brief.hero?.subheadline || ''}`)
+
+  // Hero CTA
+  html = html.replace(/(<a[^>]*class="[^"]*btn-primary[^"]*"[^>]*>)\s*[\s\S]*?(<svg)/, `$1\n      ${brief.hero?.cta_text || 'Shop Now'}\n      $2`)
 
   // Hero image
-  if (imageUrl) {
-    html = html.replace(
-      /(<img[^>]*class="[^"]*hero-img[^"]*"[^>]*src=")[^"]*(")/,
-      `$1${imageUrl}$2`
-    )
-  }
-
-  // Problem section
-  if (brief.problem) {
-    // Find first section-headline after problem marker or first one
-    const problemPattern = /(<section[^>]*id="[^"]*problem[^"]*"[^>]*>[\s\S]*?<h2[^>]*class="[^"]*section-headline[^"]*"[^>]*>)[^<]*([\s\S]*?<p[^>]*class="[^"]*section-sub[^"]*"[^>]*>)[^<]*/
-    if (problemPattern.test(html)) {
-      html = html.replace(problemPattern, `$1${brief.problem.headline}$2${brief.problem.body}`)
-    }
+  if (heroImg) {
+    html = html.replace(/(<img[^>]*class="[^"]*hero-product[^"]*"[^>]*src=")[^"]*(")/,`$1${heroImg}$2`)
+    html = html.replace(/url\('https:\/\/drinkafterdream\.com[^']*'\)/g, `url('${heroImg}')`)
   }
 
   // Social proof
   if (brief.social_proof) {
-    html = html.replace(/(<span class="[^"]*stat-number[^"]*">)[^<]*/, `$1${brief.social_proof.stat}`)
-    html = html.replace(/(<blockquote[^>]*>)[^<]*/, `$1"${brief.social_proof.testimonial}"`)
+    html = html.replace(/(<span[^>]*class="[^"]*stat-number[^"]*"[^>]*>)[^<]*/g, `$1${brief.social_proof.stat}`)
+    html = html.replace(/(<blockquote[^>]*>)\s*<p>[^<]*/, `$1<p>"${brief.social_proof.testimonial}"`)
+    html = html.replace(/(<cite[^>]*>)[^<]*/, `$1${brief.social_proof.attribution}`)
   }
 
   // Final CTA
   if (brief.final_cta) {
-    // Replace the last section-headline in final-cta
-    const finalCtaMatch = html.match(/<section class="final-cta">[\s\S]*?<h2[^>]*class="[^"]*section-headline[^"]*"[^>]*>[^<]*<\/h2>/)
-    if (finalCtaMatch) {
-      const original = finalCtaMatch[0]
-      const replaced = original.replace(/(<h2[^>]*class="[^"]*section-headline[^"]*"[^>]*>)[^<]*/, `$1${brief.final_cta.headline}`)
-      html = html.replace(original, replaced)
-    }
+    html = html.replace(/(<section[^>]*class="[^"]*final-cta[^"]*"[\s\S]*?<h2[^>]*class="[^"]*section-headline[^"]*"[^>]*>)[\s\S]*?(<\/h2>)/, `$1${brief.final_cta.headline}$2`)
   }
 
-  // CTA button text replacements
-  if (brief.hero?.cta_text) {
-    html = html.replace(/>Try Afterdream[^<]*/g, `>${brief.hero.cta_text}`)
-    html = html.replace(/>Get the Discovery Set[^<]*/g, `>${brief.final_cta?.cta_text || brief.hero.cta_text}`)
+  // Lifestyle image
+  if (lifestyleImg) {
+    html = html.replace(/(<img[^>]*class="[^"]*lifestyle-img[^"]*"[^>]*src=")[^"]*(")/,`$1${lifestyleImg}$2`)
   }
 
-  // Clean Afterdream-specific references
+  // Brand name throughout
   html = html.replace(/Afterdream/g, brand.name)
   html = html.replace(/drinkafterdream\.com/g, brand.website?.replace(/^https?:\/\//, '') || '#')
-  html = html.replace(/pixel_id: '[^']*'/g, `pixel_id: ''`)
+  html = html.replace(/© \d+ [^<]*/, `© ${new Date().getFullYear()} ${brand.name}`)
+
+  // Floating CTA
+  html = html.replace(/>Try [^<]*<\/a>/g, `>${brief.hero?.cta_text || 'Shop Now'} →</a>`)
+  html = html.replace(/>Get the Discovery Set[^<]*/g, `>${brief.final_cta?.cta_text || brief.hero?.cta_text || 'Shop Now'}`)
+
+  // Remove tracking IDs
+  html = html.replace(/G-[A-Z0-9]{8,}/g, '').replace(/pixel_id:\s*'[^']*'/g, "pixel_id: ''").replace(/1199920381791227/g, '')
 
   return new NextResponse(html, {
     headers: {
