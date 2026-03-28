@@ -182,7 +182,7 @@ export default function PreviewClient({
       setMagicModal({ mode: 'adcopy', isDone: true })
       await new Promise(r => setTimeout(r, 1500))
       setMagicModal(null)
-      await new Promise(r => setTimeout(r, 300))
+      await new Promise(r => setTimeout(r, 400))
 
       // Landing brief
       setMagicModal({ mode: 'landing', isDone: false })
@@ -194,7 +194,7 @@ export default function PreviewClient({
       setMagicModal({ mode: 'landing', isDone: true })
       await new Promise(r => setTimeout(r, 1500))
       setMagicModal(null)
-      await new Promise(r => setTimeout(r, 300))
+      await new Promise(r => setTimeout(r, 400))
 
       // Reel
       setShowReel(true)
@@ -264,6 +264,8 @@ export default function PreviewClient({
           brand={brand}
           adVariation={adVariation}
           imageUrl={brandImageUrl}
+          allImageUrls={allImageUrls}
+          adVariations={adVariations}
           onComplete={() => { setShowReel(false); setShowReadyModal(true) }}
         />
       )}

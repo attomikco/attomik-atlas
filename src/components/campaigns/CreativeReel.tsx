@@ -8,14 +8,22 @@ import StatTemplate from '@/components/creatives/templates/StatTemplate'
 import TestimonialTemplate from '@/components/creatives/templates/TestimonialTemplate'
 import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 
+interface AdVariation {
+  primary_text: string
+  headline: string
+  description: string
+}
+
 interface CreativeReelProps {
   brand: Brand
-  adVariation: { primary_text: string; headline: string; description: string }
+  adVariation: AdVariation
   imageUrl: string | null
+  allImageUrls?: string[]
+  adVariations?: AdVariation[]
   onComplete: () => void
 }
 
-export default function CreativeReel({ brand, adVariation, imageUrl, onComplete }: CreativeReelProps) {
+export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrls, adVariations, onComplete }: CreativeReelProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
   const [isExiting, setIsExiting] = useState(false)
@@ -30,42 +38,57 @@ export default function CreativeReel({ brand, adVariation, imageUrl, onComplete 
   ]
 
   const fontFamily = brand.font_heading?.family || brand.font_primary?.split('|')[0] || ''
-  const base = {
-    width: 1080, height: 1080,
-    imageUrl,
-    headline: adVariation.headline,
-    bodyText: adVariation.primary_text.slice(0, 100),
-    ctaText: 'Shop Now',
-    brandColor: brand.primary_color || '#000000',
-    brandName: brand.name,
-    headlineFont: fontFamily,
-    headlineWeight: brand.font_heading?.weight || '800',
-    headlineTransform: brand.font_heading?.transform || 'none',
-    headlineColor: '#ffffff',
-    bodyFont: fontFamily,
-    bodyWeight: '400',
-    bodyTransform: 'none',
-    bodyColor: 'rgba(255,255,255,0.85)',
-    bgColor: brand.primary_color || '#000000',
-    headlineSizeMul: 1,
-    bodySizeMul: 1,
-    showOverlay: true,
-    overlayOpacity: 0.35,
-    textBanner: 'none' as const,
-    textBannerColor: '#000',
-    textPosition: 'bottom-left' as const,
-    showCta: true,
-    ctaColor: brand.accent_color || brand.secondary_color || '#00ff97',
-    ctaFontColor: '#000000',
-    imagePosition: 'center',
+  const imgs = allImageUrls && allImageUrls.length > 0 ? allImageUrls : [imageUrl, imageUrl, imageUrl, imageUrl, imageUrl]
+  const getImg = (i: number) => imgs[i % imgs.length] || imageUrl
+  const getVariation = (i: number): AdVariation => adVariations?.[i % (adVariations?.length || 1)] || adVariation
+
+  const bgColors = [
+    brand.primary_color || '#000000',
+    brand.secondary_color || brand.primary_color || '#000000',
+    brand.primary_color || '#000000',
+    brand.accent_color || brand.secondary_color || '#000000',
+    brand.primary_color || '#000000',
+  ]
+
+  const makeBase = (i: number) => {
+    const v = getVariation(i)
+    return {
+      width: 1080, height: 1080,
+      imageUrl: getImg(i),
+      headline: v.headline,
+      bodyText: v.primary_text.slice(0, 100),
+      ctaText: 'Shop Now',
+      brandColor: brand.primary_color || '#000000',
+      brandName: brand.name,
+      headlineFont: fontFamily,
+      headlineWeight: brand.font_heading?.weight || '800',
+      headlineTransform: brand.font_heading?.transform || 'none',
+      headlineColor: '#ffffff',
+      bodyFont: fontFamily,
+      bodyWeight: '400',
+      bodyTransform: 'none',
+      bodyColor: 'rgba(255,255,255,0.85)',
+      bgColor: bgColors[i],
+      headlineSizeMul: 1,
+      bodySizeMul: 1,
+      showOverlay: true,
+      overlayOpacity: 0.35,
+      textBanner: 'none' as const,
+      textBannerColor: '#000',
+      textPosition: 'bottom-left' as const,
+      showCta: true,
+      ctaColor: brand.accent_color || brand.secondary_color || '#00ff97',
+      ctaFontColor: '#000000',
+      imagePosition: 'center',
+    }
   }
 
   const configs = [
-    { label: 'Hero Creative', component: OverlayTemplate, props: { ...base, textPosition: 'center' as const, overlayOpacity: 0.4 } },
-    { label: 'Split Layout', component: SplitTemplate, props: { ...base, textPosition: 'center' as const, bgColor: brand.secondary_color || brand.primary_color || '#1a1a1a' } },
-    { label: 'Statement', component: StatTemplate, props: { ...base, textPosition: 'center' as const, showOverlay: true, overlayOpacity: 0.3, bgColor: '#000' } },
-    { label: 'Social Proof', component: TestimonialTemplate, props: { ...base, bgColor: brand.secondary_color || brand.primary_color || '#fff', imagePosition: 'bottom' } },
-    { label: 'Card Style', component: UGCTemplate, props: { ...base, bgColor: brand.primary_color || '#fff', imagePosition: 'bottom' } },
+    { label: 'Hero Creative', component: OverlayTemplate, props: { ...makeBase(0), textPosition: 'center' as const, overlayOpacity: 0.4 } },
+    { label: 'Split Layout', component: SplitTemplate, props: { ...makeBase(1), textPosition: 'center' as const } },
+    { label: 'Statement', component: StatTemplate, props: { ...makeBase(2), textPosition: 'center' as const, overlayOpacity: 0.3 } },
+    { label: 'Social Proof', component: TestimonialTemplate, props: { ...makeBase(3), imagePosition: 'bottom' } },
+    { label: 'Card Style', component: UGCTemplate, props: { ...makeBase(4), imagePosition: 'bottom' } },
   ]
 
   useEffect(() => {

@@ -152,8 +152,12 @@ export default function OnboardingWizard() {
         }
       } catch {}
     }
-    // Upload scraped images from website
-    for (const img of detectedImages.slice(0, 8)) {
+    // Upload scraped images from website (prepend OG image as lifestyle)
+    const ogEntry: typeof detectedImages = detectedImage
+      ? [{ url: detectedImage, tag: 'lifestyle' as const, score: 10 }]
+      : []
+    const allToUpload = [...ogEntry, ...detectedImages].slice(0, 9)
+    for (const img of allToUpload) {
       try {
         const imgRes = await fetch('/api/brands/proxy-image', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -246,11 +250,11 @@ export default function OnboardingWizard() {
       {/* Tiny back link */}
       <button onClick={() => { setDetected(false); setDetectedName(null) }} style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        fontSize: 11, color: '#999', background: 'none',
+        fontSize: 13, fontWeight: 700, color: '#00ff97', background: 'none',
         border: 'none', cursor: 'pointer', marginBottom: 16,
         padding: 0,
       }}>
-        <ArrowLeft size={12} /> Back to website detection
+        <ArrowLeft size={14} /> Back to website detection
       </button>
 
       {/* Brand identity card */}
@@ -262,19 +266,6 @@ export default function OnboardingWizard() {
         minHeight: 140,
         background: primaryColor || '#111',
       }}>
-        {detectedImage && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: `url(${detectedImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            opacity: 0.25,
-          }} />
-        )}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: `linear-gradient(135deg, ${primaryColor || '#111'}ee, ${secondaryColor || primaryColor || '#333'}99)`,
-        }} />
         <div style={{ position: 'relative', zIndex: 1, padding: '20px 20px 16px' }}>
           <div style={{
             fontFamily: 'Barlow, sans-serif',
@@ -325,6 +316,22 @@ export default function OnboardingWizard() {
           </div>
         </div>
       </div>
+
+      {/* Main brand image */}
+      {detectedImage && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, color: '#999',
+            letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8,
+          }}>
+            Main brand image
+          </div>
+          <img src={detectedImage} alt="Brand image" style={{
+            width: '100%', height: 180, objectFit: 'cover',
+            borderRadius: 12, border: '1px solid var(--border)', display: 'block',
+          }} onError={e => { e.currentTarget.style.display = 'none' }} />
+        </div>
+      )}
 
       {/* Detected images strip */}
       {detectedImages.length > 0 && (
@@ -405,13 +412,13 @@ export default function OnboardingWizard() {
         ? 'Pick the product you want to market first.'
         : 'Just add one product for now — you can add more later and change any of this anytime.',
       content: (
-        <div className="space-y-4">
+        <div className="space-y-4" style={{ textAlign: 'center' }}>
           {/* Product picker — shown when products detected and not in manual mode */}
           {detectedProducts.length > 0 && !showManualProduct ? (
             <>
-              <div className="label mb-0.5">Tap to select your hero product</div>
-              <p className="text-xs text-muted mb-3">We found {detectedProducts.length} products. Pick the one you want to market first.</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#000', marginBottom: 16 }}>Tap to select your hero product</div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#444', marginBottom: 12 }}>We found {detectedProducts.length} products. Pick the one you want to market first.</p>
+              <div className="grid grid-cols-2 gap-3" style={{ textAlign: 'left' }}>
                 {detectedProducts.map((p, idx) => (
                   <button key={idx} onClick={() => selectProduct(idx)}
                     className="rounded-card p-3 text-left transition-all cursor-pointer"
@@ -423,9 +430,9 @@ export default function OnboardingWizard() {
                         {p.name?.[0] || '?'}
                       </div>
                     )}
-                    <div className="font-semibold text-sm truncate">{p.name}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }} className="truncate">{p.name}</div>
                     <div className="flex items-center justify-between mt-0.5">
-                      {p.price && <span className="text-xs text-muted">${p.price}</span>}
+                      {p.price && <span style={{ fontSize: 13 }} className="text-muted">${p.price}</span>}
                       <span className="text-[10px] font-semibold" style={{ color: selectedProductIdx === idx ? '#00cc6a' : '#ccc' }}>
                         {selectedProductIdx === idx ? '✓ Selected' : 'Tap to select'}
                       </span>

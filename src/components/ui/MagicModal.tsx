@@ -175,9 +175,9 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
               <div key={i} style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 16,
+                background: 'rgba(255,255,255,0.02)',
+                border: 'none',
+                borderRadius: 20,
                 transform: `translateY(${card.y}px) scale(${card.scale})`,
                 opacity: card.opacity,
                 transformOrigin: 'bottom center',
@@ -188,9 +188,10 @@ export default function MagicModal({ isOpen, mode, isDone, brandName = 'your bra
             <div style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 16,
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
+              border: 'none',
+              borderRadius: 20,
+              boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
               padding: '20px 24px',
             }}>
               <div style={{
