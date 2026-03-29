@@ -20,10 +20,10 @@ export default function TopNav() {
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid var(--border)',
       display: 'flex', alignItems: 'center',
-      padding: '0 32px', height: 56, gap: 4,
+      padding: '0 40px', height: 72, gap: 4,
     }}>
       <Link href="/dashboard" style={{ marginRight: 20, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-        <AttomikLogo height={20} color="#000" />
+        <AttomikLogo height={28} color="#000" />
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
@@ -33,10 +33,10 @@ export default function TopNav() {
             : pathname.startsWith(href)
           return (
             <Link key={href} href={href} style={{
-              fontSize: 13, fontWeight: active ? 700 : 500,
+              fontSize: 15, fontWeight: active ? 700 : 500,
               color: active ? '#000' : '#888',
               textDecoration: 'none',
-              padding: '6px 14px', borderRadius: 8,
+              padding: '8px 16px', borderRadius: 8,
               background: active ? '#f0f0f0' : 'transparent',
               transition: 'all 0.15s',
             }}>
@@ -49,8 +49,8 @@ export default function TopNav() {
       <Link href="/onboarding" style={{
         background: '#000', color: '#00ff97',
         fontFamily: 'Barlow, sans-serif',
-        fontWeight: 800, fontSize: 12,
-        padding: '8px 18px', borderRadius: 999,
+        fontWeight: 800, fontSize: 14,
+        padding: '10px 24px', borderRadius: 999,
         textDecoration: 'none',
       }}>
         + New funnel
