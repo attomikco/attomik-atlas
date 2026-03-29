@@ -1,4 +1,5 @@
 'use client'
+import { useEffect, useState } from 'react'
 
 interface BrandControlBarProps {
   primaryColor: string
@@ -26,6 +27,29 @@ export default function BrandControlBar({
   onAddImages, onRemoveImage,
   onSave, saving,
 }: BrandControlBarProps) {
+  const [activeColorField, setActiveColorField] = useState<'primary' | 'secondary' | 'accent' | null>(null)
+
+  const palette = [
+    primaryColor,
+    secondaryColor,
+    accentColor,
+    '#000000',
+    '#ffffff',
+    '#f5f5f5',
+    '#1a1a1a',
+  ].filter((c, i, arr) => arr.indexOf(c) === i)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest('.color-picker-wrap')) {
+        setActiveColorField(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   return (
     <div style={{ marginBottom: 32 }}>
       {/* Title + subtitle — outside card */}
@@ -55,16 +79,93 @@ export default function BrandControlBar({
             <div style={{ fontSize: 10, fontWeight: 700, color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Colors</div>
             <div style={{ display: 'flex', gap: 16 }}>
               {[
-                { label: 'Primary', value: primaryColor, onChange: onPrimaryChange },
-                { label: 'Secondary', value: secondaryColor, onChange: onSecondaryChange },
-                { label: 'Accent', value: accentColor, onChange: onAccentChange },
-              ].map(({ label, value, onChange }) => (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <input type="color" value={value} onChange={e => onChange(e.target.value)} title={label}
-                    style={{ width: 52, height: 52, borderRadius: 12, border: '2px solid #eee', cursor: 'pointer', padding: 3, background: 'none' }} />
-                  <input value={value} onChange={e => { const v = e.target.value; if (/^#[0-9a-fA-F]{0,6}$/.test(v) || v === '') onChange(v) }}
-                    style={{ width: 64, fontSize: 10, fontWeight: 600, fontFamily: 'monospace', textAlign: 'center', border: '1px solid #eee', borderRadius: 6, padding: '3px 4px', color: '#333', outline: 'none' }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: '#666', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+                { label: 'Primary', value: primaryColor, key: 'primary' as const, onChange: onPrimaryChange },
+                { label: 'Secondary', value: secondaryColor, key: 'secondary' as const, onChange: onSecondaryChange },
+                { label: 'Accent', value: accentColor, key: 'accent' as const, onChange: onAccentChange },
+              ].map(({ label, value, key, onChange }) => (
+                <div key={label} className="color-picker-wrap" style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 7, position: 'relative',
+                }}>
+                  <div
+                    onClick={() => setActiveColorField(activeColorField === key ? null : key)}
+                    style={{
+                      width: 52, height: 52, borderRadius: 12,
+                      background: value,
+                      border: activeColorField === key ? '3px solid #000' : '2px solid #eee',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.15s',
+                      boxShadow: activeColorField === key ? '0 0 0 2px rgba(0,0,0,0.1)' : 'none',
+                    }}
+                  />
+                  <span style={{ fontSize: 9, fontWeight: 600, color: '#999', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                    {value.toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    {label}
+                  </span>
+
+                  {activeColorField === key && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: '50%',
+                      transform: 'translateX(-50%)', marginTop: 8,
+                      background: '#fff', border: '1px solid #e0e0e0',
+                      borderRadius: 16, padding: 16, zIndex: 100,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: 220,
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
+                        Brand colors
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                        {palette.map(color => (
+                          <div
+                            key={color}
+                            onClick={() => { onChange(color); setActiveColorField(null) }}
+                            title={color}
+                            style={{
+                              width: 32, height: 32, borderRadius: 8,
+                              background: color,
+                              border: color === value ? '3px solid #000' : '1.5px solid #e0e0e0',
+                              cursor: 'pointer', transition: 'transform 0.1s', flexShrink: 0,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)' }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ borderTop: '1px solid #f0f0f0', marginBottom: 12 }} />
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                        Custom
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          value={value}
+                          onChange={e => onChange(e.target.value)}
+                          style={{
+                            width: 36, height: 36, borderRadius: 8,
+                            border: '1.5px solid #eee', cursor: 'pointer',
+                            padding: 2, background: 'none', flexShrink: 0,
+                          }}
+                        />
+                        <input
+                          type="text"
+                          value={value.toUpperCase()}
+                          onChange={e => {
+                            const v = e.target.value
+                            if (/^#[0-9A-Fa-f]{6}$/.test(v)) onChange(v)
+                          }}
+                          placeholder="#000000"
+                          style={{
+                            flex: 1, padding: '7px 10px',
+                            border: '1.5px solid #eee', borderRadius: 8,
+                            fontSize: 12, fontFamily: 'monospace',
+                            fontWeight: 600, color: '#000', outline: 'none',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
