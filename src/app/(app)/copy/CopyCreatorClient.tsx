@@ -102,6 +102,17 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
   const [audienceOverride, setAudienceOverride] = useState('')
   const [generating, setGenerating] = useState(false)
   const [starred, setStarred] = useState<number[]>([])
+  const [loadingPhrase, setLoadingPhrase] = useState(0)
+
+  const loadingPhrases = [
+    'Reading your brand voice...',
+    'Finding the right angle...',
+    'Writing variation 1...',
+    'Writing variation 2...',
+    'Writing variation 3...',
+    'Polishing the hooks...',
+    'Almost there...',
+  ]
 
   function toggleStar(i: number) { setStarred(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]) }
   function updateVariation(i: number, field: string, value: string) { setVariations(prev => prev.map((v, idx) => idx === i ? { ...v, [field]: value } : v)) }
@@ -110,6 +121,8 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
   async function generate() {
     if (!campaignId || generating) return
     setGenerating(true)
+    setLoadingPhrase(0)
+    const phraseInterval = setInterval(() => { setLoadingPhrase(p => (p + 1) % loadingPhrases.length) }, 1200)
     try {
       const body: any = { count }
       if (angle && angle !== 'custom') body.angle = angle
@@ -121,12 +134,15 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
         setVariations(prev => [...data.variations.map((v: any) => ({ ...v, angle })), ...prev])
       }
     } catch (e) { console.error('Copy generation failed:', e) }
-    setGenerating(false)
+    finally { clearInterval(phraseInterval); setGenerating(false) }
   }
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 1400, margin: '0 auto' }}>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes pulse { 0%,100%{opacity:1;transform:translate(-50%,-50%) scale(1)} 50%{opacity:0.5;transform:translate(-50%,-50%) scale(0.7)} }
+      `}</style>
 
       <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
         {/* Left panel */}
@@ -198,7 +214,7 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
               {generating ? (
-                <><span style={{ width: 14, height: 14, border: '2px solid #bbb', borderTopColor: '#666', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />Writing copy...</>
+                <><div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Writing...</>
               ) : `Generate ${count} variations →`}
             </button>
 
@@ -227,21 +243,42 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
             )}
           </div>
 
-          {variations.length === 0 && !generating && (
+          {generating ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, gap: 28 }}>
+              <div style={{ position: 'relative', width: 80, height: 80 }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid #f0f0f0' }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid transparent', borderTopColor: '#000', animation: 'spin 0.8s linear infinite' }} />
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 10, height: 10, borderRadius: '50%', background: '#00ff97', animation: 'pulse 1s ease infinite' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 24, textTransform: 'uppercase', letterSpacing: '-0.01em', color: '#000', marginBottom: 8 }}>
+                  {loadingPhrases[loadingPhrase]}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                  Generating {count} variation{count !== 1 ? 's' : ''} for {selectedCampaign?.brand?.name || 'your brand'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {loadingPhrases.map((_, i) => (
+                  <div key={i} style={{ width: i === loadingPhrase ? 20 : 6, height: 6, borderRadius: 3, background: i === loadingPhrase ? '#000' : '#e0e0e0', transition: 'all 0.3s ease' }} />
+                ))}
+              </div>
+            </div>
+          ) : variations.length === 0 ? (
             <div style={{ border: '2px dashed var(--border)', borderRadius: 16, padding: '60px 40px', textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>✦</div>
               <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', marginBottom: 8 }}>Ready to write.</div>
               <div style={{ fontSize: 14, color: 'var(--muted)' }}>Pick an angle and hit generate.</div>
             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+              {variations.map((v, i) => (
+                <VariationCard key={i} variation={v} index={i} isStarred={starred.includes(i)}
+                  onStar={() => toggleStar(i)} onUpdate={(field, value) => updateVariation(i, field, value)}
+                  onDelete={() => deleteVariation(i)} />
+              ))}
+            </div>
           )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-            {variations.map((v, i) => (
-              <VariationCard key={i} variation={v} index={i} isStarred={starred.includes(i)}
-                onStar={() => toggleStar(i)} onUpdate={(field, value) => updateVariation(i, field, value)}
-                onDelete={() => deleteVariation(i)} />
-            ))}
-          </div>
         </div>
       </div>
     </div>

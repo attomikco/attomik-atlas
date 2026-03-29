@@ -3,16 +3,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import AttomikLogo from './AttomikLogo'
 
+const NAV_LINKS = [
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/brand', label: 'Brand Hub' },
+  { href: '/creatives', label: 'Creative Studio' },
+  { href: '/copy', label: 'Copy Creator' },
+  { href: '/campaigns', label: 'Campaigns' },
+]
+
 export default function TopNav() {
   const pathname = usePathname()
-
-  const links = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/brand', label: 'Brand Hub' },
-    { href: '/creatives', label: 'Creative Studio' },
-    { href: '/copy', label: 'Copy Creator' },
-    { href: '/campaigns', label: 'Campaigns' },
-  ]
 
   return (
     <nav style={{
@@ -28,7 +28,7 @@ export default function TopNav() {
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-        {links.map(({ href, label }) => {
+        {NAV_LINKS.map(({ href, label }) => {
           const active = href === '/dashboard'
             ? pathname === '/dashboard'
             : pathname.startsWith(href)
