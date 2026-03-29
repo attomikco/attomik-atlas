@@ -166,6 +166,17 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     setImages(prev => prev.filter(img => img.id !== id))
   }
 
+  async function uploadProductImage(file: File, productIndex: number): Promise<string | null> {
+    const ext = file.name.split('.').pop() || 'jpg'
+    const path = `${brand.id}/product_${productIndex}_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('brand-images').upload(path, file, { contentType: file.type })
+    if (error) return null
+    const { data } = supabase.storage.from('brand-images').getPublicUrl(path)
+    const { data: inserted } = await supabase.from('brand_images').insert({ brand_id: brand.id, file_name: file.name, storage_path: path, mime_type: file.type, tag: 'product' as const }).select().single()
+    if (inserted) setImages(prev => [...prev, inserted as BrandImage])
+    return data.publicUrl
+  }
+
   const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' }
   const inputStyle: React.CSSProperties = { border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '11px 14px', fontSize: 14, width: '100%', outline: 'none', color: '#000', background: '#fff' }
   const helperStyle: React.CSSProperties = { fontSize: 11, color: '#aaa', marginTop: 4 }
@@ -338,6 +349,39 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               <button onClick={() => removeProduct(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--muted)', lineHeight: 1, padding: '0 4px' }}>×</button>
             )}
           </div>
+
+          {/* Product image */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>Product image</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {(() => {
+                const productImgs = images.filter(img => img.tag === 'product')
+                const currentImg = product.image || (productImgs[index] ? getImageUrl(productImgs[index]) : null)
+                return currentImg ? (
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <img src={currentImg} alt={product.name || 'Product'} style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                    <label style={{ position: 'absolute', inset: 0, borderRadius: 10, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s', fontSize: 11, fontWeight: 700, color: '#fff' }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
+                      Change
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadProductImage(f, index); if (url) updateProduct(index, 'image', url) }} />
+                    </label>
+                  </div>
+                ) : (
+                  <label style={{ width: 80, height: 80, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 10, fontWeight: 700, gap: 4, flexShrink: 0, transition: 'border-color 0.15s', textAlign: 'center' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+                    <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>Add photo
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadProductImage(f, index); if (url) updateProduct(index, 'image', url) }} />
+                  </label>
+                )
+              })()}
+              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+                {images.filter(img => img.tag === 'product')[index]
+                  ? 'Scraped from your website. Click to replace.'
+                  : 'Upload your hero product shot. Used in ad creatives.'}
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={labelStyle}>Product name *</label>
