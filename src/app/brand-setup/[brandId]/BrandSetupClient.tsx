@@ -163,7 +163,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           width: 52, height: 52, borderRadius: 12, background: value,
           border: activeColor === key ? '3px solid #000' : '2px solid #eee',
           cursor: 'pointer', transition: 'border-color 0.15s',
-          boxShadow: activeColor === key ? '0 0 0 2px rgba(0,0,0,0.1)' : 'none',
+          boxShadow: activeColor === key ? '0 0 0 2px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.12)',
         }} />
         <span style={{ fontSize: 9, fontWeight: 600, color: '#999', fontFamily: 'monospace' }}>{value.toUpperCase()}</span>
         <span style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
