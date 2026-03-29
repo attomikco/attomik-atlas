@@ -35,8 +35,6 @@ export default function OnboardingWizard() {
   type ScrapedImage = { url: string; tag: 'product' | 'lifestyle' | 'background' | 'other'; score: number }
   const [detectedImages, setDetectedImages] = useState<ScrapedImage[]>([])
   const [detectedProducts, setDetectedProducts] = useState<DetectedProduct[]>([])
-  const [selectedProductIdx, setSelectedProductIdx] = useState<number | null>(null)
-  const [showManualProduct, setShowManualProduct] = useState(false)
   const [productName, setProductName] = useState('')
   const [priceRange, setPriceRange] = useState('')
   const [productDesc, setProductDesc] = useState('')
@@ -94,24 +92,10 @@ export default function OnboardingWizard() {
     setDetected(true)
   }
 
-  function selectProduct(idx: number) {
-    const p = detectedProducts[idx]
-    if (!p) return
-    setSelectedProductIdx(idx)
-    setProductName(p.name)
-    setProductDesc(p.description || '')
-    setPriceRange(p.price || '')
-    setProductImageUrl(p.image || null)
-  }
-
-  function switchToManualProduct() {
-    setShowManualProduct(true)
-  }
-
   function validate(): boolean {
     const errs: Record<string, string> = {}
     if (step === 0 && !brandName.trim()) errs.brandName = 'Brand name is required'
-    if (step === 1 && !productName.trim() && selectedProductIdx === null) errs.productName = 'Select or add a product'
+    if (step === 1 && detectedProducts.length === 0 && !productName.trim()) errs.productName = 'Add a product name'
     if (step === 2 && !campaignName.trim()) errs.campaignName = 'Campaign name is required'
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -119,10 +103,6 @@ export default function OnboardingWizard() {
 
   function next() {
     if (!validate()) return
-    // Auto-select first product when entering step 2
-    if (step === 0 && detectedProducts.length > 0 && selectedProductIdx === null) {
-      selectProduct(0)
-    }
     if (step === 1 && !campaignName) setCampaignName(`${brandName.trim()} — Launch Campaign`)
     setStep(s => Math.min(s + 1, 2))
   }
@@ -209,7 +189,18 @@ export default function OnboardingWizard() {
       accent_color: accentColor || null,
       font_primary: brandFont ? `${brandFont}|700|${fontTransform}` : null,
       font_heading: brandFont ? { family: brandFont, weight: '700', transform: fontTransform, letterSpacing: fontLetterSpacing } : null,
-      products: productName.trim() ? [{ name: productName.trim(), description: productDesc.trim() || null, price_range: priceRange.trim() || null }] : null,
+      products: (() => {
+        if (detectedProducts.length > 0) {
+          return detectedProducts.map(p => ({
+            name: p.name, description: p.description || null,
+            price_range: p.price || null, image: p.image || null,
+          }))
+        }
+        if (productName.trim()) {
+          return [{ name: productName.trim(), description: productDesc.trim() || null, price_range: priceRange.trim() || null, image: null }]
+        }
+        return null
+      })(),
       status: 'draft',
     }).select('id').single()
 
@@ -373,46 +364,42 @@ export default function OnboardingWizard() {
       content: step1Content,
     },
     {
-      title: 'Your product & audience',
-      subtitle: detectedProducts.length > 0 && !showManualProduct
-        ? 'Pick the product you want to market first.'
-        : "We couldn't detect products automatically. Add your hero product below — you can always update this later.",
+      title: detectedProducts.length > 0 ? 'Your products' : 'Your product & audience',
+      subtitle: detectedProducts.length > 0
+        ? 'All saved to your brand. You can edit them in Brand Hub later.'
+        : "Add your hero product below — you can always update this later.",
       content: (
         <div className="space-y-4" style={{ textAlign: 'center' }}>
-          {/* Product picker — shown when products detected and not in manual mode */}
-          {detectedProducts.length > 0 && !showManualProduct ? (
+          {detectedProducts.length > 0 ? (
             <>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#000', marginBottom: 16 }}>Tap to select your hero product</div>
-              <p style={{ fontSize: 15, fontWeight: 500, color: '#444', marginBottom: 12 }}>We found {detectedProducts.length} {detectedProducts.length === 1 ? 'product' : 'products'}. Select one for your first campaign.</p>
-              <div className="grid grid-cols-2 gap-3 wiz-product-grid" style={{ textAlign: 'left' }}>
-                {detectedProducts.map((p, idx) => (
-                  <button key={idx} onClick={() => selectProduct(idx)}
-                    className="rounded-card p-3 text-left transition-all cursor-pointer"
-                    style={{ border: selectedProductIdx === idx ? '2px solid #00ff97' : '2px solid #e0e0e0', background: selectedProductIdx === idx ? 'rgba(0,255,151,0.05)' : 'transparent' }}>
-                    {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-full aspect-square object-cover rounded-btn mb-2" />
-                    ) : (
-                      <div className="w-full aspect-square bg-cream rounded-btn mb-2 flex items-center justify-center text-2xl font-black text-muted">
-                        {p.name?.[0] || '?'}
-                      </div>
-                    )}
-                    <div style={{ fontSize: 15, fontWeight: 700 }} className="truncate">{p.name}</div>
-                    <div className="flex items-center justify-between mt-0.5">
-                      {p.price && <span style={{ fontSize: 14 }} className="text-muted">${p.price}</span>}
-                      <span className="font-semibold" style={{ fontSize: 11, color: selectedProductIdx === idx ? '#00cc6a' : '#ccc' }}>
-                        {selectedProductIdx === idx ? '✓ Selected' : 'Tap to select'}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>✦</div>
+                <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', marginBottom: 8 }}>
+                  We found {detectedProducts.length} {detectedProducts.length === 1 ? 'product' : 'products'}.
+                </div>
+                <div style={{ fontSize: 14, color: '#666', lineHeight: 1.6 }}>
+                  All saved to your brand. You can edit them in Brand Hub after your funnel is ready.
+                </div>
               </div>
-              {errors.productName && <p className="text-danger text-xs">{errors.productName}</p>}
-              <button onClick={switchToManualProduct} className="text-xs text-muted hover:text-ink transition-colors cursor-pointer w-full text-center mt-1">
-                or add a different product →
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto', textAlign: 'left' }}>
+                {detectedProducts.slice(0, 6).map((p, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#f8f8f8', borderRadius: 10, border: '1px solid #eee' }}>
+                    {p.image && (
+                      <img src={p.image} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} onError={e => { e.currentTarget.style.display = 'none' }} />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>{p.name}</div>
+                      {p.price && <div style={{ fontSize: 11, color: '#999', marginTop: 1 }}>{p.price}</div>}
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#00a86b', background: 'rgba(0,255,151,0.1)', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,255,151,0.2)' }}>✓ Saved</div>
+                  </div>
+                ))}
+                {detectedProducts.length > 6 && (
+                  <div style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: '4px 0' }}>+{detectedProducts.length - 6} more saved</div>
+                )}
+              </div>
             </>
           ) : (
-            /* Manual product entry */
             <>
               <div style={{ background: '#fff8ed', border: '1px solid #fde8bb', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#92660a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
                 <span>💡</span>
@@ -434,8 +421,7 @@ export default function OnboardingWizard() {
             </>
           )}
 
-          {/* Shared fields */}
-          {/* Image uploads + detected product image */}
+          {/* Image uploads */}
           <div>
             <div style={{ marginBottom: 8 }}>
               <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>
@@ -446,12 +432,6 @@ export default function OnboardingWizard() {
                 Add images for a better preview — you can always do this later too.
               </div>
             </div>
-            {productImageUrl && (
-              <div className="flex items-center gap-2 mb-2">
-                <img src={productImageUrl} alt="" className="w-14 h-14 object-cover rounded-btn border border-border" />
-                <span className="text-xs text-muted">from site</span>
-              </div>
-            )}
             <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
               onChange={e => setImageFiles(Array.from(e.target.files || []))} />
             <button onClick={() => fileRef.current?.click()}
