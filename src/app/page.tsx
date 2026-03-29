@@ -10,8 +10,18 @@ export default function HomePage() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   function go(url: string) {
-    if (!url.trim()) return
-    router.push(`/onboarding?url=${encodeURIComponent(url.trim())}`)
+    const v = url.trim()
+    if (!v) return
+    // Must look like a URL — not random text pasted by accident
+    let normalized = v
+    if (!/^https?:\/\//i.test(normalized)) normalized = 'https://' + normalized
+    try {
+      const parsed = new URL(normalized)
+      if (!parsed.hostname.includes('.')) return
+      router.push(`/onboarding?url=${encodeURIComponent(normalized)}`)
+    } catch {
+      return // not a valid URL, ignore
+    }
   }
 
   useEffect(() => {
