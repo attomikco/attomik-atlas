@@ -114,7 +114,7 @@ export default function BrandSetupClient({
 
       router.push(`/creatives?brand=${initialBrand.id}&campaign=${campaignId}`)
     } else {
-      setTimeout(() => router.push('/'), 2500)
+      setTimeout(() => router.push('/dashboard'), 2500)
     }
   }
 
@@ -241,7 +241,7 @@ export default function BrandSetupClient({
 
           <div>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/dashboard')}
               style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 13, cursor: 'pointer' }}
             >
               Skip for now, go to dashboard →

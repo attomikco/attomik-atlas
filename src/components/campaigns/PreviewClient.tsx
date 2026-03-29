@@ -113,7 +113,7 @@ export default function PreviewClient({
     await supabase.from('brands').update({ status: 'active' }).eq('id', brand.id)
     sessionStorage.removeItem('attomik_draft_brand_id')
     sessionStorage.removeItem('attomik_draft_campaign_id')
-    router.push('/')
+    router.push('/dashboard')
   }
 
   async function navigateWithActivation(href: string) {

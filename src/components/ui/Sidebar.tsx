@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { LayoutDashboard, Sparkles, Layers, Rocket, Settings, Menu, X } from 'lucide-react'
 
 const NAV = [
-  { href: '/',           label: 'Dashboard',       icon: LayoutDashboard },
+  { href: '/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
   { href: '/brand',      label: 'Brand Hub',       icon: Sparkles },
   { href: '/creatives',  label: 'Creative Studio', icon: Layers },
   { href: '/campaigns',  label: 'Campaigns',       icon: Rocket },
@@ -81,7 +81,7 @@ export default function Sidebar() {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV.map(({ href, label, icon: Icon }) => {
-            const active = href === '/' ? path === '/' : path.startsWith(href)
+            const active = path === href || (href !== '/dashboard' && path.startsWith(href))
             return (
               <Link
                 key={href}
