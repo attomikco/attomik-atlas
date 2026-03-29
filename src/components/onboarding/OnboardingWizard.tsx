@@ -206,7 +206,7 @@ export default function OnboardingWizard() {
       website: website.trim() || null,
       primary_color: primaryColor || null,
       secondary_color: secondaryColor || null,
-      accent_color: secondaryColor || null,
+      accent_color: accentColor || null,
       font_primary: brandFont ? `${brandFont}|700|${fontTransform}` : null,
       font_heading: brandFont ? { family: brandFont, weight: '700', transform: fontTransform, letterSpacing: fontLetterSpacing } : null,
       products: productName.trim() ? [{ name: productName.trim(), description: productDesc.trim() || null, price_range: priceRange.trim() || null }] : null,

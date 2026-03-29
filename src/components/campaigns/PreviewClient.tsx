@@ -662,23 +662,23 @@ export default function PreviewClient({
 
             const gridCards = [
               { label: 'Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
-              { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
               { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brand.accent_color || brand.secondary_color || brandPrimary },
+              { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brandAccent },
               { label: 'Card', Comp: UGCTemplate, img: img4, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
-              { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center' as const, bgColor: brand.accent_color || brandPrimary },
+              { label: 'Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brandSecondary },
+              { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center' as const, bgColor: brandAccent },
               { label: 'Split Alt', Comp: SplitTemplate, img: img7, variation: v0, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brand.accent_color || brandPrimary },
+              { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
             ]
 
             const storyCards = [
               { label: 'Story — Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
-              { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
-              { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brand.accent_color || brandPrimary },
-              { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brand.secondary_color || brandPrimary },
+              { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
+              { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brandAccent },
+              { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
               { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: img4, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Story — Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brand.accent_color || brand.secondary_color || brandPrimary },
+              { label: 'Story — Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brandAccent },
             ]
 
             function makeProps(card: { variation: typeof v0, img: string | null, tp: 'center' | 'bottom-left', bgColor: string }) {
