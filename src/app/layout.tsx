@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${barlow.variable} ${dmMono.variable}`}>
-      <body className={barlow.className}>{children}</body>
+      <body className={barlow.className} style={{ background: '#000' }}>{children}</body>
     </html>
   )
 }
