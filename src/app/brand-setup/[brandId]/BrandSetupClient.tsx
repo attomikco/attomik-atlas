@@ -56,9 +56,14 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [fontFamily, setFontFamily] = useState(brand.font_primary?.split('|')[0] || '')
   const [logoUrl, setLogoUrl] = useState(brand.logo_url || '')
   const [defaultCta, setDefaultCta] = useState(brand.default_cta || '')
-  const [productName, setProductName] = useState(brand.products?.[0]?.name || '')
-  const [productDesc, setProductDesc] = useState(brand.products?.[0]?.description || '')
-  const [productPrice, setProductPrice] = useState(brand.products?.[0]?.price_range || '')
+  const [products, setProducts] = useState<Array<{ name: string; description: string; price: string; image: string | null }>>(
+    brand.products?.map((p: any) => ({
+      name: p.name || '',
+      description: p.description || '',
+      price: p.price_range || p.price || '',
+      image: p.image || null,
+    })) || [{ name: '', description: '', price: '', image: null }]
+  )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [images, setImages] = useState<BrandImage[]>(initialImages)
@@ -67,6 +72,17 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [activeColor, setActiveColor] = useState<'primary' | 'secondary' | 'accent' | null>(null)
 
   const palette = [primaryColor, secondaryColor, accentColor, '#000000', '#ffffff', '#f5f5f5', '#1a1a1a'].filter((c, i, a) => a.indexOf(c) === i)
+
+  function updateProduct(index: number, field: string, value: string) {
+    setProducts(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p))
+  }
+  function addProduct() {
+    setProducts(prev => [...prev, { name: '', description: '', price: '', image: null }])
+  }
+  function removeProduct(index: number) {
+    if (products.length === 1) return
+    setProducts(prev => prev.filter((_, i) => i !== index))
+  }
 
   // Build image URLs
   useEffect(() => {
@@ -97,7 +113,9 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   async function saveAll() {
     setSaving(true)
     setSaved(false)
-    const products = productName ? [{ name: productName, description: productDesc || undefined, price_range: productPrice || undefined }] : brand.products
+    const savedProducts = products.filter(p => p.name.trim()).map(p => ({
+      name: p.name.trim(), description: p.description.trim() || null, price_range: p.price.trim() || null, image: p.image || null,
+    }))
     await supabase.from('brands').update({
       name, website: website || null, mission: mission || null,
       target_audience: targetAudience || null, brand_voice: brandVoice || null,
@@ -105,7 +123,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       avoid_words: avoidWords.length ? avoidWords : null,
       primary_color: primaryColor, secondary_color: secondaryColor, accent_color: accentColor,
       font_primary: fontFamily || null, logo_url: logoUrl || null,
-      default_cta: defaultCta || null, products: products || null,
+      default_cta: defaultCta || null, products: savedProducts.length ? savedProducts : null,
     }).eq('id', brand.id)
     setSaving(false)
     setSaved(true)
@@ -308,27 +326,52 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '36px 0' }} />
 
-      {/* ── SECTION 4: YOUR PRODUCT ── */}
-      <SectionHeader title="Your Product" subtitle="Hero product details" />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
-          <div>
-            <label style={labelStyle}>Product name</label>
-            <input style={inputStyle} value={productName} onChange={e => setProductName(e.target.value)} placeholder="Your hero product" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+      {/* ── SECTION 4: YOUR PRODUCTS ── */}
+      <SectionHeader title="Your Products" subtitle={`${products.length} product${products.length !== 1 ? 's' : ''}`} />
+
+      {products.map((product, index) => (
+        <div key={index} style={{
+          background: '#fff', border: '1px solid var(--border)', borderRadius: 14,
+          padding: '20px 20px 16px', marginBottom: 12, position: 'relative',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>
+              Product {index + 1}
+            </span>
+            {products.length > 1 && (
+              <button onClick={() => removeProduct(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--muted)', lineHeight: 1, padding: '0 4px' }}>×</button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={labelStyle}>Product name *</label>
+              <input style={inputStyle} value={product.name} onChange={e => updateProduct(index, 'name', e.target.value)} placeholder="e.g. Afterdream Tropical" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+            </div>
+            <div>
+              <label style={labelStyle}>Price</label>
+              <input style={inputStyle} value={product.price} onChange={e => updateProduct(index, 'price', e.target.value)} placeholder="$29.99" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+            </div>
           </div>
           <div>
-            <label style={labelStyle}>Price range</label>
-            <input style={inputStyle} value={productPrice} onChange={e => setProductPrice(e.target.value)} placeholder="e.g. $29 – $49" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+            <label style={labelStyle}>One-line description</label>
+            <input style={inputStyle} value={product.description} onChange={e => updateProduct(index, 'description', e.target.value)} placeholder="e.g. Juicy pineapple + cherry non-alcoholic social tonic" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
           </div>
         </div>
-        <div>
-          <label style={labelStyle}>What problem does it solve?</label>
-          <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={3} value={productDesc} onChange={e => setProductDesc(e.target.value)} placeholder="People want to socialize and have a good time without the negative effects of alcohol..." onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
-        </div>
-        <div>
-          <label style={labelStyle}>Default CTA text</label>
-          <input style={inputStyle} value={defaultCta} onChange={e => setDefaultCta(e.target.value)} placeholder="e.g. Shop Now, Try It Free, Get Started" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
-        </div>
+      ))}
+
+      <button onClick={addProduct} style={{
+        width: '100%', padding: 12, background: 'transparent', border: '2px dashed var(--border)',
+        borderRadius: 14, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--muted)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        transition: 'border-color 0.15s, color 0.15s',
+      }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#000'; e.currentTarget.style.color = '#000' }}
+         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}>
+        + Add another product
+      </button>
+
+      <div style={{ marginTop: 16 }}>
+        <label style={labelStyle}>Default CTA text</label>
+        <input style={inputStyle} value={defaultCta} onChange={e => setDefaultCta(e.target.value)} placeholder="e.g. Shop Now, Try It Free, Get Started" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
       </div>
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '36px 0' }} />
