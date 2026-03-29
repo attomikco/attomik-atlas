@@ -10,6 +10,7 @@ export default function TopNav() {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/brand', label: 'Brand Hub' },
     { href: '/creatives', label: 'Creative Studio' },
+    { href: '/copy', label: 'Copy Creator' },
     { href: '/campaigns', label: 'Campaigns' },
   ]
 

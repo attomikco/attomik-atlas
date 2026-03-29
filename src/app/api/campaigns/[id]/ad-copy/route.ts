@@ -22,10 +22,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const brand = campaign.brand
   const systemPrompt = buildBrandSystemPrompt(brand)
 
-  const audience = campaign.audience_notes || brand.target_audience || 'their target audience'
-  const angle = campaign.angle ? `Campaign angle/concept: ${campaign.angle}` : ''
+  const body = await req.json().catch(() => ({}))
+  const variationCount = body.count || 3
+  const angleOverride = body.angle || ''
+  const audienceOverride = body.audience || ''
 
-  const userPrompt = `Write 3 distinct Facebook ad variations for ${brand.name}.
+  const audience = audienceOverride || campaign.audience_notes || brand.target_audience || 'their target audience'
+  const angle = angleOverride ? `Use this specific angle: ${angleOverride}` : campaign.angle ? `Campaign angle/concept: ${campaign.angle}` : ''
+
+  const userPrompt = `Write ${variationCount} distinct Facebook ad variations for ${brand.name}.
 
 CAMPAIGN BRIEF:
 - Campaign: ${campaign.name}
@@ -45,15 +50,13 @@ Make each variation feel distinctly different — vary the angle, tone, and hook
 Respond ONLY with valid JSON in this exact format, no other text:
 {
   "variations": [
-    { "primary_text": "...", "headline": "...", "description": "..." },
-    { "primary_text": "...", "headline": "...", "description": "..." },
-    { "primary_text": "...", "headline": "...", "description": "..." }
+    ${Array(variationCount).fill('{ "primary_text": "...", "headline": "...", "description": "..." }').join(',\n    ')}
   ]
 }`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 1500,
+    max_tokens: Math.max(1500, variationCount * 500),
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   })
