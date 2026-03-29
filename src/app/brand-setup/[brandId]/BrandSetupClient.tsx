@@ -261,7 +261,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>
               Color logo <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 10 }}>for light backgrounds</span>
             </div>
-            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 100, borderRadius: 12, border: '2px dashed var(--border)', background: '#fff', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 110, borderRadius: 12, border: '2px dashed var(--border)', background: '#fff', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
               {logoDark ? (
                 <>
@@ -283,7 +283,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>
               White logo <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 10 }}>for dark backgrounds</span>
             </div>
-            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 100, borderRadius: 12, border: '2px dashed var(--border)', background: '#1a1a1a', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 110, borderRadius: 12, border: '2px dashed rgba(255,255,255,0.15)', background: '#2a2a2a', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.05)' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = '#555')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
               {logoLight ? (
                 <>
