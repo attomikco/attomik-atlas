@@ -9,17 +9,24 @@ export async function POST(req: NextRequest) {
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    const timeout = setTimeout(() => controller.abort(), 12000)
 
     let html: string
     try {
       const res = await fetch(normalizedUrl, {
         signal: controller.signal,
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Cache-Control': 'no-cache',
+        },
       })
       html = await res.text()
-    } catch {
-      return NextResponse.json({ name: null, colors: [], font: null, ogImage: null, logo: null })
+    } catch (e) {
+      console.error('[detect-website] fetch failed:', e)
+      return NextResponse.json({ name: null, colors: [], font: null, ogImage: null, logo: null, products: [], images: [] })
     } finally {
       clearTimeout(timeout)
     }
@@ -397,7 +404,8 @@ export async function POST(req: NextRequest) {
     const images = uniqueImages.sort((a, b) => b.score - a.score).slice(0, 12)
 
     return NextResponse.json({ name, colors, font, fontTransform, letterSpacing, ogImage, logo, platform, products, images })
-  } catch {
+  } catch (e) {
+    console.error('[detect-website] outer catch:', e)
     return NextResponse.json({ name: null, colors: [], font: null, fontTransform: 'none', letterSpacing: 'normal', ogImage: null, logo: null, platform: 'other', products: [], images: [] })
   }
 }

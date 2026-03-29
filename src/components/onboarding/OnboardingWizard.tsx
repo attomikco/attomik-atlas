@@ -62,6 +62,14 @@ export default function OnboardingWizard() {
 
   async function analyzeWebsite() {
     if (!website.trim()) { setErrors({ website: 'Enter a URL' }); return }
+    setBrandName('')
+    setPrimaryColor('#000000')
+    setSecondaryColor('#ffffff')
+    setAccentColor('#00ff97')
+    setBrandFont('')
+    setDetectedImage(null)
+    setDetectedProducts([])
+    setDetectedImages([])
     setDetecting(true)
     setErrors({})
     try {
@@ -83,7 +91,8 @@ export default function OnboardingWizard() {
       if (data.images?.length > 0) setDetectedImages(data.images)
       setDetected(true)
     } catch {
-      setDetected(true) // show manual form even on failure
+      setBrandName('')
+      setDetected(true)
     }
     setDetecting(false)
   }
