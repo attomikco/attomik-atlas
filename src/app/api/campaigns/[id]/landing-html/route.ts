@@ -163,8 +163,11 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
   // ══════════════════════════════════════════════════════════
   // 4. LOGO
   // ══════════════════════════════════════════════════════════
-  const logoHtml = brand.logo_url
-    ? `<img src="${brand.logo_url}" alt="${brand.name}" class="hero-logo" style="max-height:44px;width:auto;">`
+  const notesData = (() => { try { return brand.notes ? JSON.parse(brand.notes) : null } catch { return null } })()
+  const logoLight = notesData?.logo_url_light
+  const logoToUse = logoLight || brand.logo_url
+  const logoHtml = logoToUse
+    ? `<img src="${logoToUse}" alt="${brand.name}" class="hero-logo" style="max-height:44px;width:auto;">`
     : `<span style="font-family:'${fontFamily}',sans-serif;font-weight:900;font-size:20px;color:${textOnDark};letter-spacing:-0.02em;text-transform:${fontTransform}">${brand.name}</span>`
   html = html.replace(/<img[^>]*class="hero-logo"[^>]*>/, logoHtml)
 

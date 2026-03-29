@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Brand, BrandImage } from '@/types'
 
@@ -38,9 +38,12 @@ function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (
   )
 }
 
+function tryParse(s: string | null) {
+  try { return s ? JSON.parse(s) : null } catch { return null }
+}
+
 export default function BrandHubClient({ brand, initialImages }: { brand: Brand; initialImages: BrandImage[] }) {
   const supabase = createClient()
-  const logoInputRef = useRef<HTMLInputElement>(null)
 
   // State
   const [name, setName] = useState(brand.name)
@@ -54,7 +57,8 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [secondaryColor, setSecondaryColor] = useState(brand.secondary_color || '#000000')
   const [accentColor, setAccentColor] = useState(brand.accent_color || '#000000')
   const [fontFamily, setFontFamily] = useState(brand.font_primary?.split('|')[0] || '')
-  const [logoUrl, setLogoUrl] = useState(brand.logo_url || '')
+  const [logoDark, setLogoDark] = useState(brand.logo_url || '')
+  const [logoLight, setLogoLight] = useState(tryParse(brand.notes)?.logo_url_light || '')
   const [defaultCta, setDefaultCta] = useState(brand.default_cta || '')
   const [products, setProducts] = useState<Array<{ name: string; description: string; price: string; image: string | null }>>(
     brand.products?.map((p: any) => ({
@@ -122,7 +126,8 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       tone_keywords: toneKeywords.length ? toneKeywords : null,
       avoid_words: avoidWords.length ? avoidWords : null,
       primary_color: primaryColor, secondary_color: secondaryColor, accent_color: accentColor,
-      font_primary: fontFamily || null, logo_url: logoUrl || null,
+      font_primary: fontFamily || null, logo_url: logoDark || null,
+      notes: JSON.stringify({ ...tryParse(brand.notes), logo_url_light: logoLight || null }),
       default_cta: defaultCta || null, products: savedProducts.length ? savedProducts : null,
     }).eq('id', brand.id)
     setSaving(false)
@@ -130,15 +135,14 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     setTimeout(() => setSaved(false), 3000)
   }
 
-  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  async function uploadLogo(file: File, variant: 'dark' | 'light') {
     const ext = file.name.split('.').pop() || 'png'
-    const path = `${brand.id}/logo.${ext}`
+    const path = `${brand.id}/logo_${variant}.${ext}`
     const { error } = await supabase.storage.from('brand-assets').upload(path, file, { contentType: file.type, upsert: true })
     if (!error) {
       const { data } = supabase.storage.from('brand-assets').getPublicUrl(path)
-      setLogoUrl(data.publicUrl)
+      if (variant === 'dark') setLogoDark(data.publicUrl)
+      else setLogoLight(data.publicUrl)
     }
   }
 
@@ -265,20 +269,56 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       </div>
 
       {/* Logo */}
-      <div
-        onClick={() => logoInputRef.current?.click()}
-        style={{ border: '2px dashed var(--border)', borderRadius: 16, padding: 24, display: 'flex', alignItems: 'center', gap: 20, cursor: 'pointer', marginTop: 16 }}
-      >
-        {logoUrl ? (
-          <img src={logoUrl} style={{ height: 56, borderRadius: 8, maxWidth: 200, objectFit: 'contain' }} alt="Logo" />
-        ) : (
-          <div style={{ width: 56, height: 56, borderRadius: 8, background: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--muted)' }}>+</div>
-        )}
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{logoUrl ? 'Change logo' : 'Upload logo'}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>PNG, SVG or JPG. Shown on landing pages and creatives.</div>
+      <div style={{ marginTop: 16 }}>
+        <label style={labelStyle}>Logo</label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* Color logo */}
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>
+              Color logo <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 10 }}>for light backgrounds</span>
+            </div>
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 100, borderRadius: 12, border: '2px dashed var(--border)', background: '#fff', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+              {logoDark ? (
+                <>
+                  <img src={logoDark} style={{ maxHeight: 60, maxWidth: '80%', objectFit: 'contain' }} alt="Color logo" />
+                  <span style={{ position: 'absolute', bottom: 6, fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>Click to replace</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 24, color: 'var(--muted)', marginBottom: 4 }}>+</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>Upload logo</span>
+                </>
+              )}
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f, 'dark') }} />
+            </label>
+          </div>
+
+          {/* White logo */}
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>
+              White logo <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 10 }}>for dark backgrounds</span>
+            </div>
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 100, borderRadius: 12, border: '2px dashed var(--border)', background: '#1a1a1a', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = '#555')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+              {logoLight ? (
+                <>
+                  <img src={logoLight} style={{ maxHeight: 60, maxWidth: '80%', objectFit: 'contain' }} alt="White logo" />
+                  <span style={{ position: 'absolute', bottom: 6, fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Click to replace</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 24, color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>+</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>Upload white logo</span>
+                </>
+              )}
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f, 'light') }} />
+            </label>
+          </div>
         </div>
-        <input type="file" accept="image/*" style={{ display: 'none' }} ref={logoInputRef} onChange={handleLogoUpload} />
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
+          Color logo used on landing pages and light backgrounds. White logo used on dark ad creatives and overlays.
+        </div>
       </div>
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '36px 0' }} />
