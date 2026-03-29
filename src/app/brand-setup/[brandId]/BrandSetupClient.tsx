@@ -283,17 +283,17 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>
               White logo <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 10 }}>for dark backgrounds</span>
             </div>
-            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 110, borderRadius: 12, border: '2px dashed rgba(255,255,255,0.15)', background: '#2a2a2a', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.05)' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = '#555')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 110, borderRadius: 12, border: '2px dashed #d0d0d0', background: logoLight ? 'repeating-conic-gradient(#e0e0e0 0% 25%, #f5f5f5 0% 50%) 0 0 / 16px 16px' : '#f0f0f0', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = '#d0d0d0')}>
               {logoLight ? (
                 <>
                   <img src={logoLight} style={{ maxHeight: 60, maxWidth: '80%', objectFit: 'contain' }} alt="White logo" />
-                  <span style={{ position: 'absolute', bottom: 6, fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Click to replace</span>
+                  <span style={{ position: 'absolute', bottom: 6, fontSize: 10, color: '#666', fontWeight: 600 }}>Click to replace</span>
                 </>
               ) : (
                 <>
-                  <span style={{ fontSize: 24, color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>+</span>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>Upload white logo</span>
+                  <span style={{ fontSize: 24, color: '#999', marginBottom: 4 }}>+</span>
+                  <span style={{ fontSize: 11, color: '#999', fontWeight: 600 }}>Upload white logo</span>
                 </>
               )}
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f, 'light') }} />
