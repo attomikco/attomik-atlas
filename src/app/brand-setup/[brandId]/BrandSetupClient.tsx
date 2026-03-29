@@ -82,6 +82,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [images, setImages] = useState<BrandImage[]>(initialImages)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState<'dark' | 'light' | null>(null)
 
   function updateColor(index: number, value: string) { setColors(prev => prev.map((c, i) => i === index ? { ...c, value } : c)) }
   function updateColorLabel(index: number, label: string) { setColors(prev => prev.map((c, i) => i === index ? { ...c, label } : c)) }
@@ -157,11 +158,25 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   async function uploadLogo(file: File, variant: 'dark' | 'light') {
     const ext = file.name.split('.').pop() || 'png'
     const path = `${brand.id}/logo_${variant}.${ext}`
+    let url: string | null = null
+
     const { error } = await supabase.storage.from('brand-assets').upload(path, file, { contentType: file.type, upsert: true })
     if (!error) {
-      const { data } = supabase.storage.from('brand-assets').getPublicUrl(path)
-      if (variant === 'dark') setLogoDark(data.publicUrl)
-      else setLogoLight(data.publicUrl)
+      url = supabase.storage.from('brand-assets').getPublicUrl(path).data.publicUrl
+    } else {
+      // Fallback to brand-images bucket
+      const { error: error2 } = await supabase.storage.from('brand-images').upload(`logos/${path}`, file, { contentType: file.type, upsert: true })
+      if (error2) return
+      url = supabase.storage.from('brand-images').getPublicUrl(`logos/${path}`).data.publicUrl
+    }
+
+    if (!url) return
+    if (variant === 'dark') {
+      setLogoDark(url)
+      await supabase.from('brands').update({ logo_url: url }).eq('id', brand.id)
+    } else {
+      setLogoLight(url)
+      await supabase.from('brands').update({ notes: JSON.stringify({ ...tryParse(brand.notes), logo_url_light: url }) }).eq('id', brand.id)
     }
   }
 
@@ -263,7 +278,12 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             </div>
             <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 110, borderRadius: 12, border: '2px dashed var(--border)', background: '#fff', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-              {logoDark ? (
+              {uploadingLogo === 'dark' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 20, height: 20, border: '2px solid #eee', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>Uploading...</span>
+                </div>
+              ) : logoDark ? (
                 <>
                   <img src={logoDark} style={{ maxHeight: 60, maxWidth: '80%', objectFit: 'contain' }} alt="Color logo" />
                   <span style={{ position: 'absolute', bottom: 6, fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>Click to replace</span>
@@ -274,7 +294,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                   <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>Upload logo</span>
                 </>
               )}
-              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f, 'dark') }} />
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) { setUploadingLogo('dark'); uploadLogo(f, 'dark').finally(() => setUploadingLogo(null)) } }} />
             </label>
           </div>
 
@@ -285,7 +305,12 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             </div>
             <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 110, borderRadius: 12, border: '2px dashed #d0d0d0', background: logoLight ? 'repeating-conic-gradient(#e0e0e0 0% 25%, #f5f5f5 0% 50%) 0 0 / 16px 16px' : '#f0f0f0', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = '#d0d0d0')}>
-              {logoLight ? (
+              {uploadingLogo === 'light' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 20, height: 20, border: '2px solid #ddd', borderTopColor: '#666', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: 11, color: '#999' }}>Uploading...</span>
+                </div>
+              ) : logoLight ? (
                 <>
                   <img src={logoLight} style={{ maxHeight: 60, maxWidth: '80%', objectFit: 'contain' }} alt="White logo" />
                   <span style={{ position: 'absolute', bottom: 6, fontSize: 10, color: '#666', fontWeight: 600 }}>Click to replace</span>
@@ -296,7 +321,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                   <span style={{ fontSize: 11, color: '#999', fontWeight: 600 }}>Upload white logo</span>
                 </>
               )}
-              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f, 'light') }} />
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) { setUploadingLogo('light'); uploadLogo(f, 'light').finally(() => setUploadingLogo(null)) } }} />
             </label>
           </div>
         </div>
@@ -536,7 +561,10 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           ✓ Brand saved
         </div>
       )}
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   )
 }
