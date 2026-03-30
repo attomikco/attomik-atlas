@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decodeHtml } from '@/lib/decodeHtml'
 
-function upgradeShopifyUrl(url: string): string {
-  if (url && (url.includes('cdn.shopify.com') || url.includes('shopifycdn.com'))) {
-    try {
-      const u = new URL(url)
-      u.searchParams.delete('width')
-      u.searchParams.delete('height')
-      u.searchParams.delete('crop')
-      u.pathname = u.pathname
-        .replace(/_small\./g, '.').replace(/_medium\./g, '.').replace(/_large\./g, '.')
-        .replace(/_thumb\./g, '.').replace(/_100x\./g, '.').replace(/_200x\./g, '.')
-        .replace(/_300x\./g, '.').replace(/_400x\./g, '.')
+function upgradeImageUrl(url: string): string {
+  if (!url) return url
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('shopify') || u.hostname.includes('shopifycdn')) {
+      u.searchParams.delete('width'); u.searchParams.delete('height'); u.searchParams.delete('crop'); u.searchParams.delete('w'); u.searchParams.delete('h')
+      u.pathname = u.pathname.replace(/_(?:pico|icon|thumb|small|compact|medium|large|grande|1024x1024|2048x2048|\d+x\d*|\d*x\d+)\./g, '.')
       return u.toString()
-    } catch { return url }
-  }
-  return url
+    }
+    u.searchParams.delete('width'); u.searchParams.delete('height'); u.searchParams.delete('w'); u.searchParams.delete('h')
+    u.searchParams.delete('size'); u.searchParams.delete('resize'); u.searchParams.delete('fit'); u.searchParams.delete('crop')
+    u.searchParams.delete('quality'); u.searchParams.delete('q'); u.searchParams.delete('auto'); u.searchParams.delete('fm'); u.searchParams.delete('ixlib')
+    u.pathname = u.pathname.replace(/-\d+x\d+(\.[a-z]+)$/i, '$1')
+    return u.toString()
+  } catch { return url }
 }
 
 export async function POST(req: NextRequest) {
@@ -249,7 +249,7 @@ export async function POST(req: NextRequest) {
               name: decodeHtml(p.title) || '',
               description: p.body_html ? p.body_html.replace(/<[^>]*>/g, ' ').trim().slice(0, 200) : null,
               price: p.variants?.[0]?.price || null,
-              image: p.images?.[0]?.src ? upgradeShopifyUrl(p.images[0].src) : null,
+              image: p.images?.[0]?.src ? upgradeImageUrl(p.images[0].src) : null,
             }))
           }
         }
@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
               name: decodeHtml(p.name || ''),
               description: p.short_description ? p.short_description.replace(/<[^>]*>/g, ' ').trim().slice(0, 200) : null,
               price: p.price || null,
-              image: p.images?.[0]?.src ? upgradeShopifyUrl(p.images[0].src) : null,
+              image: p.images?.[0]?.src ? upgradeImageUrl(p.images[0].src) : null,
             })).filter((p: DetectedProduct) => p.name)
           }
         }
@@ -437,11 +437,11 @@ export async function POST(req: NextRequest) {
 
     // Upgrade Shopify CDN URLs to full resolution
     for (const img of uniqueImages) {
-      img.url = upgradeShopifyUrl(img.url)
+      img.url = upgradeImageUrl(img.url)
     }
 
-    const finalOgImage = ogImage ? upgradeShopifyUrl(ogImage) : null
-    const finalLogo = logo ? upgradeShopifyUrl(logo) : null
+    const finalOgImage = ogImage ? upgradeImageUrl(ogImage) : null
+    const finalLogo = logo ? upgradeImageUrl(logo) : null
 
     const images = uniqueImages.sort((a, b) => b.score - a.score).slice(0, 12)
 
