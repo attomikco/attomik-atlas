@@ -3,6 +3,17 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Brand, BrandImage } from '@/types'
 
+const POPULAR_FONTS = [
+  'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Raleway', 'Nunito',
+  'DM Sans', 'Outfit', 'Plus Jakarta Sans', 'Sora', 'Jost', 'Mulish', 'Karla',
+  'Space Grotesk', 'Barlow', 'Oswald', 'Source Sans 3', 'Noto Sans', 'Ubuntu',
+  'Quicksand', 'Cabin', 'Rubik', 'Manrope',
+  'Playfair Display', 'Merriweather', 'Lora', 'Cormorant', 'Fraunces', 'Libre Baskerville',
+  'EB Garamond', 'Crimson Text', 'Spectral',
+  'Bebas Neue', 'Anton', 'Black Han Sans', 'Abril Fatface', 'Righteous', 'Alfa Slab One',
+  'Pacifico', 'Satisfy', 'Dancing Script', 'Great Vibes', 'Lobster',
+]
+
 function TagInput({ tags, onChange, placeholder, pillColor = '#000', pillBg = '#f0f0f0' }: { tags: string[]; onChange: (t: string[]) => void; placeholder: string; pillColor?: string; pillBg?: string }) {
   const [input, setInput] = useState('')
   const id = 'tag-inp-' + placeholder.replace(/\s/g, '-')
@@ -432,7 +443,8 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                 <select value={font.label} onChange={e => setFonts(prev => prev.map((f, i) => i === index ? { ...f, label: e.target.value } : f))} style={{ ...inputStyle, width: 130, fontSize: 12, padding: '8px 12px', color: '#555', cursor: 'pointer', appearance: 'none' as const, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center', paddingRight: 28 }}>
                   {['Heading', 'Body', 'Accent', 'Mono', 'Display', 'UI'].map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <input type="text" value={font.family} onChange={e => updateFont(index, e.target.value)} style={{ ...inputStyle, flex: 1, fontFamily: font.family || 'inherit', fontSize: 14, padding: '8px 14px' }} placeholder="e.g. Barlow, Montserrat, Fraunces..." onFocus={e => (e.target.style.borderColor = '#000')} onBlur={e => (e.target.style.borderColor = '#e0e0e0')} />
+                <input type="text" list={`font-list-${index}`} value={font.family} onChange={e => updateFont(index, e.target.value)} style={{ ...inputStyle, flex: 1, fontFamily: font.family ? `${font.family}, sans-serif` : 'inherit', fontSize: 14, padding: '8px 14px' }} placeholder="Search or type a Google Font..." onFocus={e => (e.target.style.borderColor = '#000')} onBlur={e => (e.target.style.borderColor = '#e0e0e0')} />
+                <datalist id={`font-list-${index}`}>{POPULAR_FONTS.map(f => <option key={f} value={f} />)}</datalist>
                 {fonts.length > 1 && (
                   <button onClick={() => removeFont(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--muted)', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
                 )}
