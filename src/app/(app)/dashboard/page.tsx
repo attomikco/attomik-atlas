@@ -50,7 +50,6 @@ export default async function DashboardPage({
     .select('*')
     .eq('brand_id', brand.id)
     .order('created_at', { ascending: false })
-    .limit(3)
 
   const latestCampaign = campaigns?.[0]
 
@@ -73,6 +72,8 @@ export default async function DashboardPage({
           .pv-dash-pillars { grid-template-columns: 1fr !important; }
           .pv-dash-brand { flex-direction: column !important; }
         }
+        .dash-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important; }
+        .dash-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; border-color: #ccc !important; }
       `}</style>
 
       {/* Header */}
@@ -109,11 +110,13 @@ export default async function DashboardPage({
         {/* Left: color accent + logo + name + meta */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
           <div style={{ width: 4, height: 44, borderRadius: 2, background: primaryColor, flexShrink: 0 }} />
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, color: 'var(--ink)', flexShrink: 0 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: primaryColor, border: `1px solid ${textOnPrimary}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
             {brand.logo_url ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={brand.logo_url} style={{ width: 28, height: 28, objectFit: 'contain' }} alt="" />
-            ) : brand.name[0].toUpperCase()}
+              <img src={brand.logo_url} style={{ width: 28, height: 28, objectFit: 'contain', filter: isLight(primaryColor) ? 'none' : 'brightness(0) invert(1)' }} alt={brand.name} />
+            ) : (
+              <span style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: textOnPrimary }}>{brand.name[0].toUpperCase()}</span>
+            )}
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, color: 'var(--ink)', letterSpacing: '-0.02em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand.name}</div>
@@ -176,9 +179,9 @@ export default async function DashboardPage({
 
         {/* Brand Hub */}
         <Link href={`/brand-setup/${brand.id}`} style={{ textDecoration: 'none' }}>
-          <div style={{
+          <div className="dash-card" style={{
             background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%',
-            cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s',
+            cursor: 'pointer',
             display: 'flex', flexDirection: 'column',
           }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>✦</div>
@@ -209,9 +212,9 @@ export default async function DashboardPage({
 
         {/* Creative Studio */}
         <Link href={latestCampaign ? `/creatives?brand=${brand.id}&campaign=${latestCampaign.id}` : `/creatives?brand=${brand.id}`} style={{ textDecoration: 'none' }}>
-          <div style={{
+          <div className="dash-card" style={{
             background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%',
-            cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s',
+            cursor: 'pointer',
             display: 'flex', flexDirection: 'column',
           }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>▦</div>
@@ -232,9 +235,9 @@ export default async function DashboardPage({
 
         {/* Campaigns */}
         <Link href="/campaigns" style={{ textDecoration: 'none' }}>
-          <div style={{
+          <div className="dash-card" style={{
             background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%',
-            cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s',
+            cursor: 'pointer',
             display: 'flex', flexDirection: 'column',
           }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>◈</div>
@@ -261,36 +264,40 @@ export default async function DashboardPage({
         </Link>
       </div>
 
-      {/* Latest campaign preview */}
-      {latestCampaign && (
-        <div style={{
-          background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: 16,
-          padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-        }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }}>
-              Latest campaign
-            </div>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--ink)' }}>
-              {latestCampaign.name}
-            </div>
+      {/* Campaigns section */}
+      <div style={{ marginTop: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink)' }}>
+            Campaigns <span style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, color: 'var(--muted)', fontFamily: 'system-ui', textTransform: 'none', letterSpacing: 0 }}>{campaigns?.length || 0}</span>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Link href={`/preview/${latestCampaign.id}`} style={{
-              fontSize: 12, fontWeight: 700, color: 'var(--ink)', textDecoration: 'none',
-              padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 999, background: '#fff',
-            }}>
-              View funnel →
-            </Link>
-            <Link href={`/creatives?brand=${brand.id}&campaign=${latestCampaign.id}`} style={{
-              fontSize: 12, fontWeight: 700, color: '#000', textDecoration: 'none',
-              padding: '8px 16px', border: 'none', borderRadius: 999, background: '#00ff97',
-            }}>
-              Edit creatives →
-            </Link>
-          </div>
+          <Link href="/campaigns" style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none' }}>View all →</Link>
         </div>
-      )}
+        {!campaigns?.length ? (
+          <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>No campaigns yet.</div>
+            <Link href="/onboarding" style={{ fontSize: 13, fontWeight: 700, color: '#000', textDecoration: 'none', padding: '8px 20px', background: '#00ff97', borderRadius: 999 }}>Create your first funnel →</Link>
+          </div>
+        ) : (
+          <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+            {(campaigns as any[]).map((c: any, i: number) => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < campaigns.length - 1 ? '1px solid var(--border)' : 'none', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: primaryColor, flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: c.status === 'active' ? 'rgba(0,255,151,0.1)' : '#f5f5f5', color: c.status === 'active' ? '#00a86b' : 'var(--muted)', flexShrink: 0 }}>{c.status}</span>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <Link href={`/preview/${c.id}`} style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 999, background: '#fff', whiteSpace: 'nowrap' }}>View</Link>
+                  <Link href={`/creatives?brand=${brand.id}&campaign=${c.id}`} style={{ fontSize: 12, fontWeight: 700, color: '#000', textDecoration: 'none', padding: '5px 12px', background: '#f0f0f0', borderRadius: 999, whiteSpace: 'nowrap' }}>Creatives →</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
