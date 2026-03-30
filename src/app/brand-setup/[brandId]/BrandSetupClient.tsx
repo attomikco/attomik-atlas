@@ -45,6 +45,11 @@ function tryParse(s: string | null) {
 export default function BrandHubClient({ brand, initialImages }: { brand: Brand; initialImages: BrandImage[] }) {
   const supabase = createClient()
 
+  const isLight = (hex: string) => {
+    const c = hex.replace('#', ''); if (c.length < 6) return false
+    return (parseInt(c.slice(0,2),16)*299+parseInt(c.slice(2,4),16)*587+parseInt(c.slice(4,6),16)*114)/1000 > 128
+  }
+
   // State
   const [name, setName] = useState(brand.name)
   const [website, setWebsite] = useState(brand.website || '')
@@ -261,11 +266,41 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   return (
     <div style={{ padding: '32px 40px', maxWidth: 800, margin: '0 auto', background: 'var(--cream, #f8f7f4)', color: 'var(--ink, #1a1a1a)', minHeight: '100vh' }}>
 
+      {/* Brand banner */}
+      {(() => {
+        const pc = colors[0]?.value || brand.primary_color || '#000'
+        const textOn = isLight(pc) ? '#000' : '#fff'
+        return (
+          <div style={{ borderRadius: 16, background: pc, padding: '20px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, position: 'relative', overflow: 'hidden', flexWrap: 'wrap' }}>
+            <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: `${textOn}06`, pointerEvents: 'none' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, zIndex: 1 }}>
+              {logoDark ? (
+                <img src={logoDark} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain', filter: isLight(pc) ? 'none' : 'brightness(0) invert(1)' }} alt={name} />
+              ) : (
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: `${textOn}15`, border: `1px solid ${textOn}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: textOn, flexShrink: 0 }}>
+                  {name[0]?.toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, color: textOn, textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1 }}>{name || brand.name}</div>
+                <div style={{ fontSize: 11, color: `${textOn}60`, marginTop: 3 }}>{website?.replace(/https?:\/\//, '') || brand.website?.replace(/https?:\/\//, '') || '—'}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, zIndex: 1 }}>
+              {colors.slice(0, 4).filter(c => c.value).map((c, i) => (
+                <div key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: c.value, border: `2px solid ${textOn}20`, flexShrink: 0 }} title={c.label} />
+              ))}
+              {fonts[0]?.family && (<><div style={{ width: 1, height: 24, background: `${textOn}15` }} /><div style={{ fontSize: 13, fontFamily: `${fonts[0].family}, sans-serif`, color: `${textOn}70`, fontWeight: 600 }}>{fonts[0].family}</div></>)}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 40, paddingBottom: 24, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
-          <div style={{ fontSize: 14, color: 'var(--muted)', marginTop: 4 }}>Everything Attomik knows about {brand.name}. The more you add, the better your creatives.</div>
+          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>The more you fill in, the better your creatives get.</div>
         </div>
         <button onClick={saveAll} disabled={saving} style={{
           background: saving ? '#e0e0e0' : '#000', color: saving ? '#999' : '#00ff97',
