@@ -69,6 +69,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [brandVoice, setBrandVoice] = useState(brand.brand_voice || '')
   const [toneKeywords, setToneKeywords] = useState<string[]>(brand.tone_keywords || [])
   const [avoidWords, setAvoidWords] = useState<string[]>(brand.avoid_words || [])
+  const [neverWords, setNeverWords] = useState<string[]>(tryParse(brand.notes)?.never_words || [])
   const [colors, setColors] = useState<Array<{ label: string; value: string }>>(() => {
     const base = [
       { label: 'Primary', value: brand.primary_color || '#000000' },
@@ -78,9 +79,10 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     const extra = tryParse(brand.notes)?.extra_colors || []
     return [...base, ...extra]
   })
+  const headingFamily = brand.font_heading?.family || brand.font_primary?.split('|')[0] || ''
   const [fonts, setFonts] = useState<Array<{ label: string; family: string }>>([
-    { label: 'Heading', family: brand.font_heading?.family || brand.font_primary?.split('|')[0] || '' },
-    { label: 'Body', family: brand.font_body?.family || brand.font_secondary?.split('|')[0] || '' },
+    { label: 'Heading', family: headingFamily },
+    { label: 'Body', family: brand.font_body?.family || brand.font_secondary?.split('|')[0] || headingFamily },
   ])
   const [logoDark, setLogoDark] = useState(brand.logo_url || '')
   const [logoLight, setLogoLight] = useState(tryParse(brand.notes)?.logo_url_light || '')
@@ -192,6 +194,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       notes: JSON.stringify({
         ...tryParse(brand.notes),
         logo_url_light: logoLight || null,
+        never_words: neverWords.length ? neverWords : null,
         extra_colors: colors.slice(3).map(c => ({ label: c.label, value: c.value })),
       }),
       default_cta: defaultCta || null, products: savedProducts.length ? savedProducts : null,
@@ -261,15 +264,18 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     return data.publicUrl
   }
 
-  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' }
+  const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }
   const inputStyle: React.CSSProperties = { border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '11px 14px', fontSize: 14, width: '100%', outline: 'none', color: '#000', background: '#fff' }
-  const helperStyle: React.CSSProperties = { fontSize: 11, color: '#aaa', marginTop: 4 }
+  const helperStyle: React.CSSProperties = { fontSize: 13, color: 'var(--muted)', marginTop: 4 }
 
-  function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  function SectionHeader({ title, subtitle, action }: { title: string; subtitle: string; action?: React.ReactNode }) {
     return (
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{title}</div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 400 }}>{subtitle}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{title}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 400 }}>{subtitle}</div>
+        </div>
+        {action}
       </div>
     )
   }
@@ -308,20 +314,9 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       })()}
 
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>The more you fill in, the better your creatives get.</div>
-        </div>
-        <button onClick={saveAll} disabled={saving} style={{
-          background: saving ? '#e0e0e0' : '#000', color: saving ? '#999' : '#00ff97',
-          fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 13,
-          padding: '10px 24px', borderRadius: 999, border: 'none',
-          cursor: saving ? 'not-allowed' : 'pointer',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save changes'}
-        </button>
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
+        <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>The more you fill in, the better your creatives get.</div>
       </div>
 
       {/* ── SECTION 1: IDENTITY ── */}
@@ -397,7 +392,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             </label>
           </div>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
           Color logo used on landing pages and light backgrounds. White logo used on dark ad creatives and overlays.
         </div>
       </div>
@@ -467,13 +462,11 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '36px 0' }} />
 
       {/* ── SECTION 3: BRAND VOICE ── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Brand Voice</div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 400, flex: 1 }}>How your brand communicates</div>
-        <button onClick={generateVoice} disabled={generatingVoice} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '4px 12px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {generatingVoice ? (<><div style={{ width: 10, height: 10, border: '2px solid #ddd', borderTopColor: '#555', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Generating...</>) : '✦ AI fill'}
+      <SectionHeader title="Brand Voice" subtitle="How your brand communicates" action={
+        <button onClick={generateVoice} disabled={generatingVoice} style={{ background: generatingVoice ? '#e0e0e0' : '#00ff97', color: '#000', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 13, padding: '9px 20px', borderRadius: 999, border: 'none', cursor: generatingVoice ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+          {generatingVoice ? (<><div style={{ width: 12, height: 12, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Analyzing your brand...</>) : <>✦ AI-fill from website</>}
         </button>
-      </div>
+      } />
 
       {generatingVoice && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.04)', border: '1px solid #e0e0e0', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: 'var(--muted)' }}>
@@ -510,8 +503,14 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           <TagInput tags={toneKeywords} onChange={setToneKeywords} placeholder="e.g. Bold, Energetic, Approachable" pillColor="#00704a" pillBg="rgba(0,255,151,0.1)" />
         </div>
         <div>
-          <label style={labelStyle}>Words/phrases to avoid</label>
-          <TagInput tags={avoidWords} onChange={setAvoidWords} placeholder="e.g. Cheap, Basic, Alcoholic" pillColor="#b91c1c" pillBg="rgba(239,68,68,0.08)" />
+          <label style={labelStyle}>Words to avoid</label>
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>Tone guidance — Claude will avoid these when possible.</div>
+          <TagInput tags={avoidWords} onChange={setAvoidWords} placeholder="e.g. cheap, basic, discount..." pillColor="#b91c1c" pillBg="rgba(239,68,68,0.08)" />
+        </div>
+        <div>
+          <label style={labelStyle}>Never use <span style={{ marginLeft: 8, fontSize: 11, background: '#fff0f0', color: '#d00', padding: '2px 8px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.04em' }}>STRICT</span></label>
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>Brand policy — these words will NEVER appear in any generated copy, no exceptions.</div>
+          <TagInput tags={neverWords} onChange={setNeverWords} placeholder="e.g. THC, guaranteed, FDA approved..." pillColor="#991b1b" pillBg="rgba(220,38,38,0.12)" />
         </div>
       </div>
 
@@ -521,64 +520,48 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       <SectionHeader title="Your Products" subtitle={`${products.length} product${products.length !== 1 ? 's' : ''}`} />
 
       {products.map((product, index) => (
-        <div key={index} style={{
-          background: '#fff', border: '1px solid var(--border)', borderRadius: 14,
-          padding: '20px 20px 16px', marginBottom: 12, position: 'relative',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>
-              Product {index + 1}
-            </span>
-            {products.length > 1 && (
-              <button onClick={() => removeProduct(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--muted)', lineHeight: 1, padding: '0 4px' }}>×</button>
-            )}
+        <div key={index} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: 16, marginBottom: 12, display: 'flex', gap: 16, alignItems: 'flex-start', position: 'relative' }}>
+          {/* LEFT: Product image */}
+          <div style={{ flexShrink: 0 }}>
+            {(() => {
+              const productImgs = images.filter(img => img.tag === 'product')
+              const currentImg = product.image || (productImgs[index] ? getImageUrl(productImgs[index]) : null)
+              return (
+                <label style={{ width: 96, height: 96, borderRadius: 10, border: currentImg ? '1px solid var(--border)' : '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', background: currentImg ? 'transparent' : '#fafafa', flexShrink: 0, position: 'relative' }}>
+                  {currentImg ? (
+                    <>
+                      <img src={currentImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s', fontSize: 11, fontWeight: 700, color: '#fff' }}
+                        onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>Change</div>
+                    </>
+                  ) : (
+                    <><span style={{ fontSize: 22, color: '#ccc' }}>+</span><span style={{ fontSize: 10, color: '#bbb', fontWeight: 600 }}>Photo</span></>
+                  )}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadProductImage(f, index); if (url) updateProduct(index, 'image', url) }} />
+                </label>
+              )
+            })()}
           </div>
-
-          {/* Product image */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Product image</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {(() => {
-                const productImgs = images.filter(img => img.tag === 'product')
-                const currentImg = product.image || (productImgs[index] ? getImageUrl(productImgs[index]) : null)
-                return currentImg ? (
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <img src={currentImg} alt={product.name || 'Product'} style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }} />
-                    <label style={{ position: 'absolute', inset: 0, borderRadius: 10, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s', fontSize: 11, fontWeight: 700, color: '#fff' }}
-                      onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
-                      Change
-                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadProductImage(f, index); if (url) updateProduct(index, 'image', url) }} />
-                    </label>
-                  </div>
-                ) : (
-                  <label style={{ width: 120, height: 120, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 10, fontWeight: 700, gap: 4, flexShrink: 0, transition: 'border-color 0.15s', textAlign: 'center' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-                    <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>Add photo
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadProductImage(f, index); if (url) updateProduct(index, 'image', url) }} />
-                  </label>
-                )
-              })()}
-              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
-                {images.filter(img => img.tag === 'product')[index]
-                  ? 'Scraped from your website. Click to replace.'
-                  : 'Upload your hero product shot. Used in ad creatives.'}
+          {/* RIGHT: Product info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Product {index + 1}</span>
+              {products.length > 1 && <button onClick={() => removeProduct(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--muted)', lineHeight: 1, padding: 0 }}>×</button>}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={labelStyle}>Name *</label>
+                <input style={inputStyle} value={product.name} onChange={e => updateProduct(index, 'name', e.target.value)} placeholder="e.g. Afterdream Tropical" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+              </div>
+              <div>
+                <label style={labelStyle}>Price</label>
+                <input style={inputStyle} value={product.price} onChange={e => updateProduct(index, 'price', e.target.value)} placeholder="$29.99" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
               </div>
             </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 12 }}>
             <div>
-              <label style={labelStyle}>Product name *</label>
-              <input style={inputStyle} value={product.name} onChange={e => updateProduct(index, 'name', e.target.value)} placeholder="e.g. Afterdream Tropical" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+              <label style={labelStyle}>Description</label>
+              <input style={inputStyle} value={product.description} onChange={e => updateProduct(index, 'description', e.target.value)} placeholder="e.g. Juicy pineapple + cherry non-alcoholic social tonic" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
             </div>
-            <div>
-              <label style={labelStyle}>Price</label>
-              <input style={inputStyle} value={product.price} onChange={e => updateProduct(index, 'price', e.target.value)} placeholder="$29.99" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
-            </div>
-          </div>
-          <div>
-            <label style={labelStyle}>One-line description</label>
-            <input style={inputStyle} value={product.description} onChange={e => updateProduct(index, 'description', e.target.value)} placeholder="e.g. Juicy pineapple + cherry non-alcoholic social tonic" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
           </div>
         </div>
       ))}
@@ -645,8 +628,13 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         </div>
       </div>
 
-      {/* Spacer at bottom */}
-      <div style={{ height: 80 }} />
+      {/* Sticky save bar */}
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 40, background: 'rgba(248,247,244,0.95)', backdropFilter: 'blur(8px)', borderTop: '1px solid var(--border)', padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginTop: 48 }}>
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{saved ? '✓ All changes saved' : 'Unsaved changes'}</div>
+        <button onClick={saveAll} disabled={saving} style={{ background: saving ? '#e0e0e0' : '#000', color: saving ? '#999' : '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 14, padding: '12px 32px', borderRadius: 999, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save changes'}
+        </button>
+      </div>
 
       {/* Floating save toast */}
       {saved && (
