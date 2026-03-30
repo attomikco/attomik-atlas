@@ -475,7 +475,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           <div style={{ fontSize: 13, color: '#00a86b', lineHeight: 1.5 }}>
             <strong>✦ AI pre-filled</strong> — We analyzed your website and made our best guess. Review each field and improve it to get better creatives.
           </div>
-          <button onClick={generateVoice} style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 700, color: '#00a86b', cursor: 'pointer', whiteSpace: 'nowrap', padding: 0, flexShrink: 0 }}>Regenerate →</button>
+          <button onClick={generateVoice} disabled={generatingVoice} style={{ background: '#000', color: '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12, padding: '7px 16px', borderRadius: 999, border: 'none', cursor: generatingVoice ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>{generatingVoice ? 'Generating...' : '↺ Regenerate'}</button>
         </div>
       )}
 
