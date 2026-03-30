@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 interface BrandControlBarProps {
   primaryColor: string
@@ -30,8 +30,10 @@ export default function BrandControlBar({
   onSave, saving,
 }: BrandControlBarProps) {
   const [activeColorField, setActiveColorField] = useState<'primary' | 'secondary' | 'accent' | null>(null)
+  const originalColors = useRef([primaryColor, secondaryColor, accentColor].filter(Boolean))
 
   const palette = [
+    ...originalColors.current,
     primaryColor,
     secondaryColor,
     accentColor,
@@ -39,7 +41,7 @@ export default function BrandControlBar({
     '#ffffff',
     '#f5f5f5',
     '#1a1a1a',
-  ].filter((c, i, arr) => arr.indexOf(c) === i)
+  ].filter((c, i, arr) => c && arr.indexOf(c) === i)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -116,24 +118,28 @@ export default function BrandControlBar({
                       boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: 220,
                     }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
-                        Brand colors
+                        Detected colors
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                        {palette.map(color => (
+                        {palette.map(color => {
+                          const isOriginal = originalColors.current.includes(color)
+                          const isCurrent = color === value
+                          return (
                           <div
                             key={color}
                             onClick={() => { onChange(color); setActiveColorField(null) }}
-                            title={color}
+                            title={isOriginal ? `${color} (detected)` : color}
                             style={{
-                              width: 32, height: 32, borderRadius: 8,
+                              width: 36, height: 36, borderRadius: 10,
                               background: color,
-                              border: color === value ? '3px solid #000' : '1.5px solid #e0e0e0',
-                              cursor: 'pointer', transition: 'transform 0.1s', flexShrink: 0,
+                              border: isCurrent ? '3px solid #000' : isOriginal ? '2px solid rgba(0,0,0,0.2)' : '1.5px solid #e0e0e0',
+                              cursor: 'pointer', transition: 'transform 0.1s', flexShrink: 0, position: 'relative',
                             }}
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)' }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
                           />
-                        ))}
+                          )
+                        })}
                       </div>
                       <div style={{ borderTop: '1px solid #f0f0f0', marginBottom: 12 }} />
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
