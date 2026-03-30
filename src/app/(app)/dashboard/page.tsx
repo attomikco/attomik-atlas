@@ -80,48 +80,64 @@ export default async function DashboardPage() {
       </div>
 
       {/* Brand card */}
-      <div className="pv-dash-brand" style={{
-        background: primaryColor, borderRadius: 20, padding: '28px 32px', marginBottom: 20,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          {brand.logo_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={brand.logo_url} alt={brand.name}
-              style={{ height: 48, width: 'auto', objectFit: 'contain', borderRadius: 8, maxWidth: 120 }} />
-          ) : (
-            <div style={{
-              width: 48, height: 48, borderRadius: 12, background: `${textOnPrimary}18`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, color: textOnPrimary, flexShrink: 0,
-            }}>
-              {brand.name[0].toUpperCase()}
+      <div style={{ borderRadius: 20, overflow: 'hidden', marginBottom: 20, background: primaryColor, position: 'relative' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(circle at 80% 50%, ${textOnPrimary}08 0%, transparent 60%)`, pointerEvents: 'none' }} />
+        <div style={{ padding: '32px 36px', display: 'flex', alignItems: 'stretch', justifyContent: 'space-between', gap: 32, position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
+          {/* Left: identity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            {brand.logo_url ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={brand.logo_url} alt={brand.name} style={{ height: 56, width: 'auto', objectFit: 'contain', maxWidth: 140, filter: isLight(primaryColor) ? 'none' : 'brightness(0) invert(1)' }} />
+            ) : (
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: `${textOnPrimary}15`, border: `1.5px solid ${textOnPrimary}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 26, color: textOnPrimary, flexShrink: 0 }}>
+                {brand.name[0].toUpperCase()}
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: `${textOnPrimary}55`, marginBottom: 4 }}>Active brand</div>
+              <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 'clamp(20px, 3vw, 32px)', color: textOnPrimary, letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: 1, marginBottom: 6 }}>{brand.name}</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${textOnPrimary}10`, borderRadius: 999, padding: '3px 10px', fontSize: 11, color: `${textOnPrimary}70`, fontWeight: 500 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#00ff97', flexShrink: 0 }} />
+                {brand.website?.replace(/https?:\/\//, '') || 'No website'}
+              </div>
             </div>
-          )}
-          <div>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 24, color: textOnPrimary, letterSpacing: '-0.01em', textTransform: 'uppercase' }}>
-              {brand.name}
+          </div>
+
+          {/* Right: completeness + actions */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, minWidth: 200 }}>
+            <div style={{ width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: `${textOnPrimary}60` }}>Brand strength</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: textOnPrimary }}>{completenessPercent}%</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: `${textOnPrimary}18`, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${completenessPercent}%`, background: completenessPercent === 100 ? '#00ff97' : `${textOnPrimary}90`, borderRadius: 3, transition: 'width 0.8s ease' }} />
+              </div>
+              {completenessPercent < 100 && (
+                <div style={{ fontSize: 11, color: `${textOnPrimary}50`, marginTop: 6 }}>{completedCount}/{completenessFields.length} fields complete</div>
+              )}
             </div>
-            <div style={{ fontSize: 13, color: `${textOnPrimary}80`, marginTop: 2 }}>
-              {brand.website || 'No website set'}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link href={`/brand-setup/${brand.id}`} style={{ fontSize: 12, fontWeight: 700, color: textOnPrimary, textDecoration: 'none', padding: '7px 14px', borderRadius: 999, border: `1px solid ${textOnPrimary}25`, background: `${textOnPrimary}10`, whiteSpace: 'nowrap' }}>Edit brand</Link>
+              {latestCampaign && (
+                <Link href={`/preview/${latestCampaign.id}`} style={{ fontSize: 12, fontWeight: 700, color: primaryColor, textDecoration: 'none', padding: '7px 14px', borderRadius: 999, background: textOnPrimary, whiteSpace: 'nowrap' }}>View funnel →</Link>
+              )}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, minWidth: 160 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: `${textOnPrimary}70`, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Brand completeness
-          </div>
-          <div style={{ width: 160, height: 4, background: `${textOnPrimary}20`, borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', width: `${completenessPercent}%`,
-              background: completenessPercent === 100 ? '#00ff97' : textOnPrimary,
-              borderRadius: 2, transition: 'width 0.5s ease',
-            }} />
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: textOnPrimary }}>
-            {completedCount}/{completenessFields.length} complete
-          </div>
+        {/* Bottom strip */}
+        <div style={{ borderTop: `1px solid ${textOnPrimary}12`, padding: '12px 36px', display: 'flex', gap: 24, position: 'relative', zIndex: 1 }}>
+          {[
+            { label: 'Campaigns', value: campaigns?.length || 0 },
+            { label: 'Images', value: imageCount || 0 },
+            { label: 'Products', value: (brand as any).products?.length || 0 },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 16, color: textOnPrimary }}>{value}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: `${textOnPrimary}50`, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
