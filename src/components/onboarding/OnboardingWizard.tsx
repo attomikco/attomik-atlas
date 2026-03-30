@@ -137,9 +137,15 @@ export default function OnboardingWizard() {
           if (!error) {
             const { data } = supabase.storage.from('brand-assets').getPublicUrl(path)
             await supabase.from('brands').update({ logo_url: data.publicUrl }).eq('id', brandId)
+          } else {
+            await supabase.from('brands').update({ logo_url: detectedLogo }).eq('id', brandId)
           }
+        } else {
+          await supabase.from('brands').update({ logo_url: detectedLogo }).eq('id', brandId)
         }
-      } catch {}
+      } catch {
+        await supabase.from('brands').update({ logo_url: detectedLogo }).eq('id', brandId)
+      }
     }
 
     // Upload manually selected files — parallel

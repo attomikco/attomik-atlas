@@ -198,15 +198,32 @@ export async function POST(req: NextRequest) {
         const srcMatch = logoImg[0].match(/src=["']([^"']+)["']/i)
         if (srcMatch) {
           logo = srcMatch[1]
-          // Resolve relative URLs
           if (logo.startsWith('/')) {
-            try {
-              const u = new URL(normalizedUrl)
-              logo = u.origin + logo
-            } catch {}
+            try { logo = new URL(logo, normalizedUrl).href } catch {}
           }
         }
       }
+    }
+    // Look for img in header/nav area
+    if (!logo) {
+      const navLogoImg = html.match(/<(?:header|nav)[^>]*>[\s\S]{0,2000}?<img[^>]+src=["']([^"']+)["'][^>]*>/i)
+      if (navLogoImg?.[1]) {
+        const src = navLogoImg[1]
+        if (!src.includes('icon') && !src.includes('favicon')) {
+          try { logo = new URL(src, normalizedUrl).href } catch {}
+        }
+      }
+    }
+    // Check for SVG logo link
+    if (!logo) {
+      const svgLogoLink = html.match(/href=["']([^"']*\.svg[^"']*)["'][^>]*(?:logo|brand)/i)
+      if (svgLogoLink?.[1]) {
+        try { logo = new URL(svgLogoLink[1], normalizedUrl).href } catch {}
+      }
+    }
+    // og:image as last resort if it looks like a logo
+    if (!logo && ogImage) {
+      if (/logo|brand|mark/i.test(ogImage) || /200x200|400x400/i.test(ogImage)) logo = ogImage
     }
 
     // ── Platform detection ────────────────────────────────────────
