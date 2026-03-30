@@ -174,8 +174,22 @@ export default function PreviewClient({
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null)
   const [lifestyleImageUrl, setLifestyleImageUrl] = useState<string | null>(null)
   const [allImageUrls, setAllImageUrls] = useState<string[]>([])
+  const [productImageUrls, setProductImageUrls] = useState<string[]>([])
+  const [lifestyleImageUrls, setLifestyleImageUrls] = useState<string[]>([])
   const [imagesLoaded, setImagesLoaded] = useState(brandImages.length > 0)
   const brandImageUrl = productImageUrl
+
+  async function filterGoodImages(urls: string[]): Promise<string[]> {
+    const results = await Promise.allSettled(
+      urls.map(url => new Promise<string | null>((resolve) => {
+        const img = new Image()
+        img.onload = () => resolve(img.naturalWidth >= 300 && img.naturalHeight >= 300 ? url : null)
+        img.onerror = () => resolve(null)
+        img.src = url
+      }))
+    )
+    return results.map(r => r.status === 'fulfilled' ? r.value : null).filter((url): url is string => url !== null)
+  }
 
   // Brand colors (editable state)
   const [brandPrimary, setBrandPrimary] = useState(brand.primary_color || '#000000')
@@ -233,9 +247,15 @@ export default function PreviewClient({
       if (lifestyle.length > 0) setLifestyleImageUrl(buildImageUrl(lifestyle[0].storage_path))
       else if (products.length > 0) setLifestyleImageUrl(buildImageUrl(products[0].storage_path))
       else if (images.length > 0) setLifestyleImageUrl(buildImageUrl(images[0].storage_path))
+      const productUrls = products.map(img => buildImageUrl(img.storage_path))
+      const lifestyleUrls = lifestyle.map(img => buildImageUrl(img.storage_path))
+      setProductImageUrls(productUrls)
+      setLifestyleImageUrls(lifestyleUrls)
       const allUrls = images.map(img => buildImageUrl(img.storage_path))
       setAllImageUrls(allUrls)
-      console.log('[Preview] All image URLs:', allUrls.length)
+      filterGoodImages(allUrls).then(goodUrls => { if (goodUrls.length > 0) setAllImageUrls(goodUrls) })
+      filterGoodImages(productUrls).then(good => { if (good.length > 0) setProductImageUrls(good) })
+      filterGoodImages(lifestyleUrls).then(good => { if (good.length > 0) setLifestyleImageUrls(good) })
     }
     if (brandImages.length > 0) {
       console.log('[Preview] Using server-provided brandImages:', brandImages.length)
@@ -335,20 +355,30 @@ export default function PreviewClient({
     letterSpacing: fh?.letterSpacing === 'wide' ? '0.12em' : fh?.letterSpacing === 'tight' ? '-0.02em' : 'normal',
   }
 
-  // Cycle images across creative cards (offset by activeImageIndex)
+  // Smart image pickers — prefer tagged pools, fall back to all
+  function getProductImg(offset: number): string | null {
+    const pool = productImageUrls.length > 0 ? productImageUrls : allImageUrls
+    if (pool.length === 0) return null
+    return pool[(activeImageIndex + offset) % pool.length]
+  }
+  function getLifestyleImg(offset: number): string | null {
+    const pool = lifestyleImageUrls.length > 0 ? lifestyleImageUrls : allImageUrls
+    if (pool.length === 0) return null
+    return pool[(activeImageIndex + offset) % pool.length]
+  }
   const getImg = (offset: number) =>
     allImageUrls.length > 0
       ? allImageUrls[(activeImageIndex + offset) % allImageUrls.length]
       : productImageUrl || null
-  const img0 = getImg(0)
-  const img1 = getImg(1)
-  const img2 = getImg(2)
-  const img3 = getImg(3)
-  const img4 = getImg(4)
-  const img5 = getImg(5)
-  const img6 = getImg(6)
-  const img7 = getImg(7)
-  const img8 = getImg(8)
+  const img0 = getProductImg(0)
+  const img1 = getProductImg(1)
+  const img2 = getLifestyleImg(0)
+  const img3 = getProductImg(2)
+  const img4 = getProductImg(3)
+  const img5 = getProductImg(4)
+  const img6 = getLifestyleImg(1)
+  const img7 = getProductImg(5)
+  const img8 = getLifestyleImg(2)
 
   // Template props for ad creative
   const templateProps = adVariation ? {
@@ -600,6 +630,8 @@ export default function PreviewClient({
           accentColor={brandAccent}
           fontFamily={fontFamily}
           allImageUrls={allImageUrls}
+          productImageUrls={productImageUrls}
+          lifestyleImageUrls={lifestyleImageUrls}
           activeImageIndex={activeImageIndex}
           onPrimaryChange={setBrandPrimary}
           onSecondaryChange={setBrandSecondary}

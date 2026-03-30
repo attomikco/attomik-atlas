@@ -7,6 +7,8 @@ interface BrandControlBarProps {
   accentColor: string
   fontFamily: string
   allImageUrls: string[]
+  productImageUrls?: string[]
+  lifestyleImageUrls?: string[]
   activeImageIndex: number
   onPrimaryChange: (v: string) => void
   onSecondaryChange: (v: string) => void
@@ -21,7 +23,7 @@ interface BrandControlBarProps {
 
 export default function BrandControlBar({
   primaryColor, secondaryColor, accentColor,
-  fontFamily, allImageUrls, activeImageIndex,
+  fontFamily, allImageUrls, productImageUrls = [], lifestyleImageUrls = [], activeImageIndex,
   onPrimaryChange, onSecondaryChange, onAccentChange,
   onFontChange, onImageIndexChange,
   onAddImages, onRemoveImage,
@@ -224,8 +226,28 @@ export default function BrandControlBar({
                   style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid #eee', background: '#fafafa', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {allImageUrls.filter(url => !url.includes('/logo.') && !url.includes('_logo')).slice(0, 10).map((url, i) => (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              {productImageUrls.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase', marginRight: -4 }}>Product</span>}
+              {productImageUrls.slice(0, 4).map((url, i) => (
+                <div key={`p-${i}`} style={{ position: 'relative', flexShrink: 0 }}>
+                  <div onClick={() => onImageIndexChange(i)}
+                    style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', border: activeImageIndex === i ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s' }}>
+                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+                  </div>
+                </div>
+              ))}
+              {lifestyleImageUrls.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase', marginLeft: 8, marginRight: -4 }}>Lifestyle</span>}
+              {lifestyleImageUrls.slice(0, 4).map((url, i) => (
+                <div key={`l-${i}`} style={{ position: 'relative', flexShrink: 0 }}>
+                  <div onClick={() => onImageIndexChange(productImageUrls.length + i)}
+                    style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', border: '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s' }}>
+                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+                  </div>
+                </div>
+              ))}
+              {productImageUrls.length === 0 && lifestyleImageUrls.length === 0 && allImageUrls.filter(url => !url.includes('/logo.') && !url.includes('_logo')).slice(0, 10).map((url, i) => (
                 <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
                   <div onClick={() => onImageIndexChange(i)}
                     style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', border: activeImageIndex === i ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s' }}>
