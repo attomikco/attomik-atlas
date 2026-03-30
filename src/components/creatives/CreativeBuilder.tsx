@@ -621,24 +621,9 @@ export default function CreativeBuilder({
             getPublicUrl={getPublicUrl}
           />
 
-          <CopyEditor
-            headline={headline}
-            setHeadline={setHeadline}
-            bodyText={bodyText}
-            setBodyText={setBodyText}
-            ctaText={ctaText}
-            setCtaText={setCtaText}
-            showCta={showCta}
-            setShowCta={setShowCta}
-            brandId={brandId}
-            setExportToast={setExportToast}
-            inputCls={inputCls}
-            generateCopy={generateCopy}
-            generating={generating}
-          />
         </div>
 
-        {/* RIGHT SIDEBAR: Style + template-specific */}
+        {/* RIGHT SIDEBAR: Style + Copy + template-specific */}
         <div className="lg:col-span-5 space-y-4">
           <StylePanel
             templateId={templateId}
@@ -687,6 +672,22 @@ export default function CreativeBuilder({
             setCtaColor={setCtaColor}
             ctaFontColor={ctaFontColor}
             setCtaFontColor={setCtaFontColor}
+          />
+
+          <CopyEditor
+            headline={headline}
+            setHeadline={setHeadline}
+            bodyText={bodyText}
+            setBodyText={setBodyText}
+            ctaText={ctaText}
+            setCtaText={setCtaText}
+            showCta={showCta}
+            setShowCta={setShowCta}
+            brandId={brandId}
+            setExportToast={setExportToast}
+            inputCls={inputCls}
+            generateCopy={generateCopy}
+            generating={generating}
           />
 
           {/* Template-specific sidebars */}
