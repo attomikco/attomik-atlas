@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Brand, BrandImage } from '@/types'
 
-function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (t: string[]) => void; placeholder: string }) {
+function TagInput({ tags, onChange, placeholder, pillColor = '#000', pillBg = '#f0f0f0' }: { tags: string[]; onChange: (t: string[]) => void; placeholder: string; pillColor?: string; pillBg?: string }) {
   const [input, setInput] = useState('')
   const id = 'tag-inp-' + placeholder.replace(/\s/g, '-')
   return (
@@ -12,7 +12,7 @@ function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (
       onClick={() => document.getElementById(id)?.focus()}
     >
       {tags.map((tag, i) => (
-        <span key={i} style={{ background: '#f0f0f0', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: '#000' }}>
+        <span key={i} style={{ background: pillBg, borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: pillColor }}>
           {tag}
           <span onClick={() => onChange(tags.filter((_, j) => j !== i))} style={{ cursor: 'pointer', opacity: 0.5, fontSize: 14 }}>×</span>
         </span>
@@ -475,7 +475,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           <div style={{ fontSize: 13, color: '#00a86b', lineHeight: 1.5 }}>
             <strong>✦ AI pre-filled</strong> — We analyzed your website and made our best guess. Review each field and improve it to get better creatives.
           </div>
-          <button onClick={generateVoice} disabled={generatingVoice} style={{ background: '#000', color: '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12, padding: '7px 16px', borderRadius: 999, border: 'none', cursor: generatingVoice ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>{generatingVoice ? 'Generating...' : '↺ Regenerate'}</button>
+          <button onClick={generateVoice} disabled={generatingVoice} style={{ background: '#000', color: '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12, padding: '7px 16px', borderRadius: 999, border: 'none', cursor: generatingVoice ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>{generatingVoice ? 'Generating...' : <><span style={{ fontSize: 16, lineHeight: 1 }}>↺</span> Regenerate</>}</button>
         </div>
       )}
 
@@ -495,11 +495,11 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         </div>
         <div>
           <label style={labelStyle}>Tone keywords (press Enter to add)</label>
-          <TagInput tags={toneKeywords} onChange={setToneKeywords} placeholder="e.g. Bold, Energetic, Approachable" />
+          <TagInput tags={toneKeywords} onChange={setToneKeywords} placeholder="e.g. Bold, Energetic, Approachable" pillColor="#00704a" pillBg="rgba(0,255,151,0.1)" />
         </div>
         <div>
           <label style={labelStyle}>Words/phrases to avoid</label>
-          <TagInput tags={avoidWords} onChange={setAvoidWords} placeholder="e.g. Cheap, Basic, Alcoholic" />
+          <TagInput tags={avoidWords} onChange={setAvoidWords} placeholder="e.g. Cheap, Basic, Alcoholic" pillColor="#b91c1c" pillBg="rgba(239,68,68,0.08)" />
         </div>
       </div>
 
