@@ -20,6 +20,7 @@ export default function OnboardingWizard() {
   const [detected, setDetected] = useState(false)
   const [detectedName, setDetectedName] = useState<string | null>(null)
   const [detectedImage, setDetectedImage] = useState<string | null>(null)
+  const [detectedLogo, setDetectedLogo] = useState<string | null>(null)
   const [brandName, setBrandName] = useState('')
   const [website, setWebsite] = useState(searchParams.get('url') || '')
   const [category, setCategory] = useState('')
@@ -68,6 +69,7 @@ export default function OnboardingWizard() {
     setAccentColor('#00ff97')
     setBrandFont('')
     setDetectedImage(null)
+    setDetectedLogo(null)
     setDetectedProducts([])
     setDetectedImages([])
     setDetecting(true)
@@ -87,6 +89,7 @@ export default function OnboardingWizard() {
       if (data.fontTransform && data.fontTransform !== 'none') setFontTransform(data.fontTransform)
       if (data.letterSpacing && data.letterSpacing !== 'normal') setFontLetterSpacing(data.letterSpacing)
       if (data.ogImage) setDetectedImage(data.ogImage)
+      if (data.logo) setDetectedLogo(data.logo)
       if (data.products?.length > 0) setDetectedProducts(data.products)
       if (data.images?.length > 0) setDetectedImages(data.images)
       setDetected(true)
@@ -122,6 +125,23 @@ export default function OnboardingWizard() {
   }
 
   async function uploadImagesInBackground(brandId: string) {
+    // Upload detected logo to brand-assets
+    if (detectedLogo) {
+      try {
+        const logoRes = await fetch('/api/brands/proxy-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: detectedLogo }) })
+        if (logoRes.ok) {
+          const blob = await logoRes.blob()
+          const ext = detectedLogo.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'png'
+          const path = `${brandId}/logo_dark.${ext}`
+          const { error } = await supabase.storage.from('brand-assets').upload(path, blob, { contentType: blob.type || 'image/png', upsert: true })
+          if (!error) {
+            const { data } = supabase.storage.from('brand-assets').getPublicUrl(path)
+            await supabase.from('brands').update({ logo_url: data.publicUrl }).eq('id', brandId)
+          }
+        }
+      } catch {}
+    }
+
     // Upload manually selected files — parallel
     await Promise.allSettled(imageFiles.map(async (file) => {
       try {
@@ -198,6 +218,7 @@ export default function OnboardingWizard() {
       accent_color: accentColor || null,
       font_primary: brandFont ? `${brandFont}|700|${fontTransform}` : null,
       font_heading: brandFont ? { family: brandFont, weight: '700', transform: fontTransform, letterSpacing: fontLetterSpacing } : null,
+      logo_url: detectedLogo || null,
       products: (() => {
         if (detectedProducts.length > 0) {
           return detectedProducts.map(p => ({
