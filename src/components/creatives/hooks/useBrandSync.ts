@@ -148,14 +148,35 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     const cachedCopy = copyCache.get(brandId)
     if (cachedCopy) {
       setRecentCopy(cachedCopy)
+      const latestAd = cachedCopy.find(c => c.type === 'fb_ad')
+      if (latestAd) {
+        try {
+          const parsed = JSON.parse(latestAd.content)
+          const v = parsed.variations?.[0] || parsed
+          if (v.headline) setHeadline(v.headline)
+          if (v.primary_text) setBodyText(v.primary_text.slice(0, 150))
+          if (v.description) setCtaText(v.description)
+        } catch {}
+      }
     } else {
       const supabase = createClient()
-      supabase.from('generated_content').select('id, content, type, created_at').eq('brand_id', brandId)
+      supabase.from('generated_content').select('id, content, type, created_at, campaign_id').eq('brand_id', brandId)
         .order('created_at', { ascending: false }).limit(20)
         .then(({ data }) => {
           const copy = (data as GeneratedCopy[]) ?? []
           copyCache.set(brandId, copy)
           setRecentCopy(copy)
+          // Auto-populate copy fields from latest fb_ad
+          const latestAd = copy.find(c => c.type === 'fb_ad')
+          if (latestAd) {
+            try {
+              const parsed = JSON.parse(latestAd.content)
+              const v = parsed.variations?.[0] || parsed
+              if (v.headline) setHeadline(v.headline)
+              if (v.primary_text) setBodyText(v.primary_text.slice(0, 150))
+              if (v.description) setCtaText(v.description)
+            } catch {}
+          }
         })
     }
   }, [brandId])
