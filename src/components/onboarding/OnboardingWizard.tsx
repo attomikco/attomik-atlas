@@ -163,25 +163,22 @@ export default function OnboardingWizard() {
         }
       } catch {}
     }))
-    // Download and upload detected product image
-    if (productImageUrl) {
+    // Upload ALL detected product images
+    const productImageUrls = detectedProducts.map(p => p.image).filter((url): url is string => !!url)
+    await Promise.allSettled(productImageUrls.map(async (imgUrl, idx) => {
       try {
-        const imgRes = await fetch(productImageUrl)
-        if (imgRes.ok) {
-          const blob = await imgRes.blob()
-          const ext = productImageUrl.split('.').pop()?.split('?')[0] || 'jpg'
-          const fileName = `${Date.now()}-product.${ext}`
-          const storagePath = `${brandId}/${fileName}`
-          const { error: uploadErr } = await supabase.storage.from('brand-images').upload(storagePath, blob, { contentType: blob.type || 'image/jpeg' })
-          if (!uploadErr) {
-            await supabase.from('brand_images').insert({
-              brand_id: brandId, file_name: fileName, storage_path: storagePath,
-              tag: 'product', mime_type: blob.type || 'image/jpeg', size_bytes: blob.size,
-            })
-          }
+        const imgRes = await fetch('/api/brands/proxy-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: imgUrl }) })
+        if (!imgRes.ok) return
+        const blob = await imgRes.blob()
+        const ext = imgUrl.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'jpg'
+        const fileName = `product_${idx}_${Date.now()}.${ext}`
+        const storagePath = `${brandId}/${fileName}`
+        const { error: uploadErr } = await supabase.storage.from('brand-images').upload(storagePath, blob, { contentType: blob.type || 'image/jpeg' })
+        if (!uploadErr) {
+          await supabase.from('brand_images').insert({ brand_id: brandId, file_name: fileName, storage_path: storagePath, tag: 'product', mime_type: blob.type || 'image/jpeg', size_bytes: blob.size })
         }
       } catch {}
-    }
+    }))
     // Upload scraped images from website — parallel (prepend OG image as lifestyle)
     const ogEntry: typeof detectedImages = detectedImage
       ? [{ url: detectedImage, tag: 'lifestyle' as const, score: 10 }]
