@@ -106,6 +106,14 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [isDirty, setIsDirty] = useState(false)
   const [fontDropdownOpen, setFontDropdownOpen] = useState<number | null>(null)
   const [fontSearch, setFontSearch] = useState('')
+  const [openColorPicker, setOpenColorPicker] = useState<number | null>(null)
+  const colorPickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) { if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) setOpenColorPicker(null) }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const initialRef = useRef({
     name: brand.name, website: brand.website || '', mission: brand.mission || '',
@@ -431,10 +439,29 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {colors.map((color, index) => (
             <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <label style={{ width: 40, height: 40, borderRadius: 10, background: color.value, border: '2px solid #eee', cursor: 'pointer', display: 'block', boxShadow: '0 1px 4px rgba(0,0,0,0.12)', flexShrink: 0, position: 'relative' }}>
-                <input type="color" value={color.value} onChange={e => updateColor(index, e.target.value)} style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', top: 0, left: 0 }} />
-              </label>
-              <input type="text" value={color.value.toUpperCase()} onChange={e => { const v = e.target.value; if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) updateColor(index, v) }} onBlur={() => { if (!/^#[0-9A-Fa-f]{6}$/.test(color.value)) updateColor(index, colors[index].value) }} style={{ ...inputStyle, width: 110, fontFamily: 'monospace', fontSize: 13, padding: '8px 12px', textTransform: 'uppercase' }} maxLength={7} placeholder="#000000" onFocus={e => (e.target.style.borderColor = '#000')} />
+              {/* Swatch with popup picker */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div onClick={() => setOpenColorPicker(openColorPicker === index ? null : index)} style={{ width: 40, height: 40, borderRadius: 10, background: color.value, border: openColorPicker === index ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }} />
+                {openColorPicker === index && (
+                  <div ref={colorPickerRef} style={{ position: 'absolute', top: 48, left: 0, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 14, padding: 14, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 220 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Brand colors</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                      {[...colors.map(c => c.value), '#000000', '#ffffff', '#f5f5f5', '#1a1a1a'].filter((c, i, a) => c && a.indexOf(c) === i).map(swatch => (
+                        <div key={swatch} onClick={() => { updateColor(index, swatch); setOpenColorPicker(null) }} style={{ width: 28, height: 28, borderRadius: 8, background: swatch, border: color.value === swatch ? '3px solid #000' : '1.5px solid #e0e0e0', cursor: 'pointer', transition: 'transform 0.1s' }}
+                          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')} onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} title={swatch} />
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Custom</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: color.value, flexShrink: 0, border: '1px solid #eee' }} />
+                      <input type="text" value={color.value.toUpperCase()} onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) updateColor(index, e.target.value) }} style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '6px 10px', textTransform: 'uppercase' }} maxLength={7} />
+                      <label style={{ width: 28, height: 28, borderRadius: 6, overflow: 'hidden', cursor: 'pointer', border: '1px solid #eee', flexShrink: 0, background: 'linear-gradient(135deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <input type="color" value={color.value} onChange={e => updateColor(index, e.target.value)} style={{ opacity: 0, width: 0, height: 0 }} />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
               <select value={color.label} onChange={e => updateColorLabel(index, e.target.value)} style={{ ...inputStyle, flex: 1, fontSize: 13, padding: '8px 12px', color: '#555', cursor: 'pointer', appearance: 'none' as const, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', paddingRight: 32 }}>
                 {['Primary', 'Secondary', 'Accent', 'Background', 'Text', 'Button', 'Button Text', 'Border', 'Surface', 'Dark', 'Light', 'Custom'].map(o => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -482,7 +509,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                 )}
               </div>
               {font.family && (
-                <div style={{ fontSize: 14, fontFamily: `${font.family}, sans-serif`, color: 'var(--muted)', padding: '0 0 0 120px' }}>
+                <div style={{ fontSize: 14, fontFamily: `${font.family}, sans-serif`, color: 'var(--muted)', paddingTop: 6 }}>
                   The quick brown fox jumps over the lazy dog
                 </div>
               )}
@@ -538,11 +565,13 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         <div>
           <label style={labelStyle}>Tone keywords (press Enter to add)</label>
           <TagInput tags={toneKeywords} onChange={setToneKeywords} placeholder="e.g. Bold, Energetic, Approachable" pillColor="#00704a" pillBg="rgba(0,255,151,0.1)" />
+          <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>Press comma or Enter to add a tag.</div>
         </div>
         <div>
           <label style={labelStyle}>Words to avoid</label>
-          <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>Tone guidance — Claude avoids these when possible. <span style={{ color: '#aaa' }}>Type a word and press comma or Enter to add.</span></p>
+          <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>Tone guidance — Claude avoids these when possible.</p>
           <TagInput tags={avoidWords} onChange={setAvoidWords} placeholder="e.g. cheap, basic, discount..." pillColor="#b91c1c" pillBg="rgba(239,68,68,0.08)" />
+          <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>Press comma or Enter to add a tag.</div>
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -550,8 +579,9 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             <span style={{ fontSize: 10, fontWeight: 800, background: '#fff0f0', color: '#cc0000', padding: '2px 8px', borderRadius: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>STRICT</span>
             <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>— optional</span>
           </div>
-          <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>Brand policy — these will NEVER appear in any generated copy. Use for legal or compliance restrictions. <span style={{ color: '#aaa' }}>Type a word and press comma or Enter to add.</span></p>
+          <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>Brand policy — these will NEVER appear in any generated copy. Use for legal or compliance restrictions.</p>
           <TagInput tags={neverWords} onChange={setNeverWords} placeholder="e.g. THC, guaranteed, FDA approved..." pillColor="#991b1b" pillBg="rgba(220,38,38,0.12)" />
+          <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>Press comma or Enter to add a tag.</div>
         </div>
       </div>
 
@@ -561,14 +591,14 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       <SectionHeader title="Your Products" subtitle={`${products.length} product${products.length !== 1 ? 's' : ''}`} />
 
       {products.map((product, index) => (
-        <div key={index} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: 16, marginBottom: 12, display: 'flex', gap: 16, alignItems: 'flex-start', position: 'relative' }}>
+        <div key={index} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: 16, marginBottom: 12, display: 'flex', gap: 16, alignItems: 'stretch', position: 'relative' }}>
           {/* LEFT: Product image */}
           <div style={{ flexShrink: 0 }}>
             {(() => {
               const productImgs = images.filter(img => img.tag === 'product')
               const currentImg = product.image || (productImgs[index] ? getImageUrl(productImgs[index]) : null)
               return (
-                <label style={{ width: 110, alignSelf: 'stretch', minHeight: 110, borderRadius: 10, border: currentImg ? '1px solid var(--border)' : '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', background: currentImg ? 'transparent' : '#fafafa', flexShrink: 0, position: 'relative' }}>
+                <label style={{ width: 120, flexShrink: 0, borderRadius: 10, border: currentImg ? '1px solid var(--border)' : '2px dashed var(--border)', cursor: 'pointer', overflow: 'hidden', background: currentImg ? '#000' : '#fafafa', position: 'relative', alignSelf: 'stretch', minHeight: 120, display: 'block' }}>
                   {currentImg ? (
                     <>
                       <img src={currentImg} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
@@ -576,7 +606,10 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                         onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>Change</div>
                     </>
                   ) : (
-                    <><span style={{ fontSize: 22, color: '#ccc' }}>+</span><span style={{ fontSize: 10, color: '#bbb', fontWeight: 600 }}>Photo</span></>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 24, color: '#ccc' }}>+</span>
+                      <span style={{ fontSize: 10, color: '#bbb', fontWeight: 600 }}>Add photo</span>
+                    </div>
                   )}
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadProductImage(f, index); if (url) updateProduct(index, 'image', url) }} />
                 </label>
