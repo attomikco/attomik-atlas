@@ -744,12 +744,19 @@ export default function CreativeBuilder({
       <div ref={exportRef} aria-hidden style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }} />
 
       {/* Toast */}
-      {exportToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-pill shadow-lg"
-          style={{ background: '#000', color: '#00ff97' }}>
-          <Check size={14} /> {exportToast}
+      {(exporting || exportingAll) && !exportToast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12, background: '#000', color: '#fff', padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+          {exportingAll ? 'Generating all sizes...' : 'Generating PNG...'}
         </div>
       )}
+      {exportToast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, background: '#000', color: '#00ff97', padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,10.5 12,3.5" stroke="#00ff97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          {exportToast}
+        </div>
+      )}
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

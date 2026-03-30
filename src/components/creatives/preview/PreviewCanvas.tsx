@@ -67,7 +67,7 @@ export default function PreviewCanvas({
             className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill hover:opacity-80 transition-all disabled:opacity-40"
             style={{ background: '#111', color: '#4ade80' }}>
             {exportingAll ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-            All sizes
+            {exportingAll ? 'Generating...' : 'All sizes'}
           </button>
         </div>
         {/* Batch generate */}
