@@ -421,9 +421,11 @@ export default function OnboardingWizard() {
                 {detectedProducts.slice(0, 8).map((p, i) => (
                   <div key={i} style={{ background: '#f8f8f8', borderRadius: 14, overflow: 'hidden', border: '1px solid #eee', display: 'flex', flexDirection: 'column' }}>
                     {p.image ? (
-                      <img src={p.image} alt={p.name} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} onError={e => { e.currentTarget.style.display = 'none' }} />
+                      <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', flexShrink: 0 }}>
+                        <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.currentTarget.parentElement!.style.display = 'none' }} />
+                      </div>
                     ) : (
-                      <div style={{ width: '100%', height: 140, background: 'linear-gradient(135deg, #f0f0f0, #e0e0e0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#ccc' }}>◻</div>
+                      <div style={{ width: '100%', aspectRatio: '1/1', background: 'linear-gradient(135deg, #f0f0f0, #e0e0e0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#ccc' }}>◻</div>
                     )}
                     <div style={{ padding: '10px 12px' }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#000', marginBottom: 2, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
