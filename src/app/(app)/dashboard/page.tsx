@@ -173,31 +173,27 @@ export default async function DashboardPage() {
         <Link href={`/brand-setup/${brand.id}`} style={{ textDecoration: 'none' }}>
           <div style={{
             background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%',
-            cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
+            cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s',
+            display: 'flex', flexDirection: 'column',
           }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 20,
-            }}>✦</div>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 8, color: '#000' }}>
-              Brand Hub
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 20 }}>
-              Add your brand voice, colors, fonts and product details. The more context you give, the better your creatives get.
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>✦</div>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#000', marginBottom: 10 }}>Brand Hub</div>
+            <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 20, flex: 1 }}>
+              Colors, fonts, voice and product details. The more you add, the better every creative gets.
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {[
                 { label: 'Colors', done: !!brand.primary_color },
                 { label: 'Voice', done: !!brand.brand_voice },
                 { label: 'Images', done: hasImages },
-                { label: 'Product', done: !!(brand.products as any)?.length },
+                { label: 'Products', done: !!(brand.products as any)?.length },
               ].map(({ label, done }) => (
                 <span key={label} style={{
                   fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                  padding: '3px 8px', borderRadius: 4,
-                  background: done ? 'rgba(0,255,151,0.1)' : 'rgba(0,0,0,0.05)',
-                  color: done ? '#00a86b' : 'var(--muted)',
-                  border: done ? '1px solid rgba(0,255,151,0.25)' : '1px solid transparent',
+                  padding: '4px 10px', borderRadius: 6,
+                  background: done ? 'rgba(0,255,151,0.08)' : '#f5f5f5',
+                  color: done ? '#00a86b' : '#bbb',
+                  border: done ? '1px solid rgba(0,255,151,0.2)' : '1px solid transparent',
                 }}>
                   {done ? '✓' : '○'} {label}
                 </span>
@@ -207,26 +203,25 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Creative Studio */}
-        <Link
-          href={latestCampaign ? `/creatives?brand=${brand.id}&campaign=${latestCampaign.id}` : `/creatives?brand=${brand.id}`}
-          style={{ textDecoration: 'none' }}
-        >
+        <Link href={latestCampaign ? `/creatives?brand=${brand.id}&campaign=${latestCampaign.id}` : `/creatives?brand=${brand.id}`} style={{ textDecoration: 'none' }}>
           <div style={{
             background: '#000', borderRadius: 20, padding: '28px 24px', height: '100%',
-            cursor: 'pointer', transition: 'transform 0.15s',
+            cursor: 'pointer', transition: 'transform 0.2s',
+            display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden',
           }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 20,
-            }}>▦</div>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 8, color: '#fff' }}>
-              Creative Studio
+            <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(0,255,151,0.06)', pointerEvents: 'none' }} />
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>▦</div>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#fff', marginBottom: 10 }}>Creative Studio</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>
+              9 templates, batch generation, Meta-ready exports. Your brand applied automatically.
             </div>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 20 }}>
-              Build ad creatives on demand. Pick a template, choose your image, tweak the copy. Export Meta-ready in seconds.
-            </div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#00ff97', fontSize: 13, fontWeight: 700 }}>
-              Open studio →
+            <div style={{ display: 'flex', gap: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              {[{ num: '9', label: 'Templates' }, { num: '3', label: 'Sizes' }, { num: '∞', label: 'Variations' }].map(({ num, label }) => (
+                <div key={label}>
+                  <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: '#00ff97', lineHeight: 1 }}>{num}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </Link>
@@ -235,20 +230,28 @@ export default async function DashboardPage() {
         <Link href="/campaigns" style={{ textDecoration: 'none' }}>
           <div style={{
             background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%',
-            cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
+            cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s',
+            display: 'flex', flexDirection: 'column',
           }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 20,
-            }}>◈</div>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 8, color: '#000' }}>
-              Campaigns
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>◈</div>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#000', marginBottom: 10 }}>Campaigns</div>
+            <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>
+              Set your goal, audience and offer. Generate a complete funnel in one shot.
             </div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 20 }}>
-              Create a full campaign. Set your goal, audience, and budget — then generate your complete funnel in one shot.
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
-              {campaigns?.length || 0} campaign{campaigns?.length !== 1 ? 's' : ''} created
+            <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              {campaigns?.length ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(campaigns as any[]).slice(0, 2).map((c: any) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{c.name}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#00a86b', background: 'rgba(0,255,151,0.08)', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,255,151,0.2)' }}>Active</span>
+                    </div>
+                  ))}
+                  {campaigns.length > 2 && <div style={{ fontSize: 11, color: 'var(--muted)' }}>+{campaigns.length - 2} more</div>}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>No campaigns yet — create your first</div>
+              )}
             </div>
           </div>
         </Link>
