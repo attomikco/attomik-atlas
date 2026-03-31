@@ -88,6 +88,7 @@ export default function HomePage() {
         .fu4 { animation-delay: 0.35s }
         .fu5 { animation-delay: 0.45s }
         .inp:focus { border-color: #00ff97 !important; background: rgba(255,255,255,0.1) !important; }
+        .inp::placeholder { color: rgba(255,255,255,0.3) !important; }
         .cta-btn:hover:not(:disabled) { background: #1aff9f !important; transform: translateY(-1px); }
         .ghost-btn:hover { color: rgba(255,255,255,0.8) !important; }
         @media (max-width: 768px) {
@@ -110,14 +111,14 @@ export default function HomePage() {
       </nav>
 
       {/* HERO */}
-      <section className="hp-hero-pad" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 60px', textAlign: 'center' }}>
+      <section className="hp-hero-pad" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 60px', textAlign: 'center', color: '#fff' }}>
         <div className="fu fu1" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(0,255,151,0.08)', border: '1px solid rgba(0,255,151,0.2)', borderRadius: 999, padding: '6px 18px', fontSize: 11, fontWeight: 700, color: '#00ff97', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 28 }}>
           ✦ Free funnel preview — no credit card
         </div>
-        <h1 className="fu fu2" style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 'clamp(40px, 7vw, 80px)', lineHeight: 1.0, letterSpacing: '-0.03em', marginBottom: 20, textTransform: 'uppercase', maxWidth: 900 }}>
+        <h1 className="fu fu2" style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 'clamp(40px, 7vw, 80px)', lineHeight: 1.0, letterSpacing: '-0.03em', marginBottom: 20, textTransform: 'uppercase', maxWidth: 900, color: '#fff' }}>
           Go from website<br/><span style={{ color: '#00ff97' }}>to full ad funnel</span><br/>in 30 seconds.
         </h1>
-        <p className="fu fu3" style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, maxWidth: 520, marginBottom: 40 }}>
+        <p className="fu fu3" style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, maxWidth: 520, marginBottom: 40 }}>
           Paste your URL. We extract your brand automatically and generate 9 ad creatives, 3 copy variations, and a full landing page — ready to launch on Meta today.
         </p>
         <div className="fu fu4" style={{ width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -128,7 +129,7 @@ export default function HomePage() {
           {[{ num: '300+', label: 'CPG brands' }, { num: '30s', label: 'To full funnel' }, { num: '9', label: 'Ad creatives' }, { num: '100%', label: 'Brand-matched' }].map(({ num, label }) => (
             <div key={label} style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 'clamp(22px, 3vw, 28px)', color: '#fff', lineHeight: 1 }}>{num}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
             </div>
           ))}
         </div>
