@@ -64,6 +64,30 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     service: 'Services', brand: 'Offerings',
   } as Record<string, string>)[businessType] || 'Products'
 
+  const namePlaceholder: string = ({
+    shopify: 'e.g. Afterdream Tropical',
+    ecommerce: 'e.g. Afterdream Tropical',
+    saas: 'e.g. Pro Plan',
+    restaurant: 'e.g. Wagyu Burger',
+    service: 'e.g. Brand Strategy Package',
+    brand: 'e.g. Your main offering',
+  } as Record<string, string>)[businessType] || 'e.g. Product name'
+
+  const pricePlaceholder: string = ({
+    shopify: '$29.99', ecommerce: '$29.99',
+    saas: '$49/mo', restaurant: '$24',
+    service: 'From $2,000', brand: 'Starting at...',
+  } as Record<string, string>)[businessType] || '$29.99'
+
+  const descPlaceholder: string = ({
+    shopify: 'e.g. Juicy pineapple + cherry tonic',
+    ecommerce: 'e.g. Juicy pineapple + cherry tonic',
+    saas: 'e.g. Everything in Starter plus unlimited seats',
+    restaurant: 'e.g. 8oz wagyu, truffle fries, house sauce',
+    service: 'e.g. 3-month brand strategy engagement',
+    brand: 'e.g. Describe your main offering',
+  } as Record<string, string>)[businessType] || 'Brief description'
+
   const isLight = (hex: string) => {
     const c = hex.replace('#', ''); if (c.length < 6) return false
     return (parseInt(c.slice(0,2),16)*299+parseInt(c.slice(2,4),16)*587+parseInt(c.slice(4,6),16)*114)/1000 > 128
@@ -646,16 +670,16 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={labelStyle}>Name *</label>
-                <input style={inputStyle} value={product.name} onChange={e => updateProduct(index, 'name', e.target.value)} placeholder="e.g. Afterdream Tropical" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+                <input style={inputStyle} value={product.name} onChange={e => updateProduct(index, 'name', e.target.value)} placeholder={namePlaceholder} onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
               </div>
               <div>
                 <label style={labelStyle}>Price</label>
-                <input style={inputStyle} value={product.price} onChange={e => updateProduct(index, 'price', e.target.value)} placeholder="$29.99" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+                <input style={inputStyle} value={product.price} onChange={e => updateProduct(index, 'price', e.target.value)} placeholder={pricePlaceholder} onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
               </div>
             </div>
             <div>
               <label style={labelStyle}>Description</label>
-              <input style={inputStyle} value={product.description} onChange={e => updateProduct(index, 'description', e.target.value)} placeholder="e.g. Juicy pineapple + cherry non-alcoholic social tonic" onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
+              <input style={inputStyle} value={product.description} onChange={e => updateProduct(index, 'description', e.target.value)} placeholder={descPlaceholder} onFocus={e => e.currentTarget.style.borderColor = '#000'} onBlur={e => e.currentTarget.style.borderColor = '#e0e0e0'} />
             </div>
           </div>
         </div>
