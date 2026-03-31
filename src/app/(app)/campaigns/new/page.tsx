@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import NewCampaignForm from '@/components/campaigns/NewCampaignForm'
+import CampaignBriefForm from '@/components/campaigns/CampaignBriefForm'
 
 export default async function NewCampaignPage({
   searchParams,
@@ -12,18 +11,14 @@ export default async function NewCampaignPage({
   const supabase = await createClient()
   const { data: brands } = await supabase
     .from('brands')
-    .select('id, name, primary_color, products, target_audience')
+    .select('id, name, primary_color, logo_url, products, target_audience, brand_voice, mission')
     .eq('status', 'active')
     .order('name')
 
   return (
-    <div className="p-4 md:p-10 max-w-2xl">
-      <Link href="/campaigns" className="flex items-center gap-1.5 text-sm text-muted hover:text-ink transition-colors mb-6">
-        <ArrowLeft size={14} /> All campaigns
-      </Link>
-      <h1 className="mb-2">New campaign</h1>
-      <p className="text-muted mb-8">Create a campaign to tie together creatives, ad copy, and landing page briefs.</p>
-      <NewCampaignForm brands={brands ?? []} defaultBrandId={brandParam} />
+    <div style={{ padding: '32px 40px', maxWidth: 720, margin: '0 auto' }}>
+      <Link href="/campaigns" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--muted)', textDecoration: 'none', marginBottom: 28 }}>← All campaigns</Link>
+      <CampaignBriefForm brands={brands ?? []} defaultBrandId={brandParam} />
     </div>
   )
 }

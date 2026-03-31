@@ -275,7 +275,7 @@ export default async function DashboardPage({
         {!campaigns?.length ? (
           <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>No campaigns yet.</div>
-            <Link href="/onboarding" style={{ fontSize: 13, fontWeight: 700, color: '#000', textDecoration: 'none', padding: '8px 20px', background: '#00ff97', borderRadius: 999 }}>Create your first funnel →</Link>
+            <Link href="/campaigns/new" style={{ fontSize: 13, fontWeight: 700, color: '#000', textDecoration: 'none', padding: '8px 20px', background: '#00ff97', borderRadius: 999 }}>New campaign →</Link>
           </div>
         ) : (
           <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>

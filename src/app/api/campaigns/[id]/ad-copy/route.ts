@@ -49,9 +49,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const audienceOverride = body.audience || ''
 
   const audience = audienceOverride || campaign.audience_notes || brand.target_audience || 'their target audience'
-  const angle = angleOverride ? `Use this specific angle: ${angleOverride}` : campaign.angle ? `Campaign angle/concept: ${campaign.angle}` : ''
+  const angle = angleOverride ? `Use this specific angle: ${angleOverride}` : campaign.angle ? `Copy angle: ${campaign.angle}` : ''
+
+  // Map campaign goal to type-specific context for the prompt
+  const goalKey = (campaign.goal || '').toLowerCase().replace(/[^a-z]/g, '_').replace(/_+/g, '_')
+  const campaignTypeContext = ({
+    new_product_launch: 'This is a NEW PRODUCT LAUNCH campaign. Lead with excitement and novelty.',
+    limited_offer___sale: 'This is a LIMITED TIME OFFER campaign. Create urgency. Make the deal the hero.',
+    seasonal___holiday: 'This is a SEASONAL campaign. Tie the message to the moment/season.',
+    brand_awareness: 'This is a BRAND AWARENESS campaign. Focus on who you are and what makes you different.',
+    retargeting: 'This is a RETARGETING campaign. Speak to people who already know the brand. Reference familiarity.',
+    new_audience___cold_traffic: 'This is a COLD TRAFFIC campaign. Assume zero brand awareness. Hook with the problem or outcome.',
+  } as Record<string, string>)[goalKey] || ''
 
   const userPrompt = `Write ${variationCount} distinct Facebook ad variations for ${brand.name}, which is ${offeringContext}.
+
+${campaignTypeContext}
 
 CAMPAIGN BRIEF:
 - Campaign: ${campaign.name}
