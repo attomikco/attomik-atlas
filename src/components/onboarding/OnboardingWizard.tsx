@@ -48,9 +48,6 @@ export default function OnboardingWizard() {
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null)
   const [targetAudience, setTargetAudience] = useState('')
   const [imageFiles, setImageFiles] = useState<File[]>([])
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadTotal, setUploadTotal] = useState(0)
-  const [uploadPhase, setUploadPhase] = useState<'idle' | 'creating' | 'uploading' | 'done'>('idle')
   const fileRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const autoAnalyzed = useRef(false)
@@ -139,9 +136,6 @@ export default function OnboardingWizard() {
     const productImageUrls = detectedProducts.map(p => p.image).filter((url): url is string => !!url)
     const ogEntry: typeof detectedImages = detectedImage ? [{ url: detectedImage, tag: 'lifestyle' as const, score: 10 }] : []
     const allScraped = [...ogEntry, ...detectedImages].slice(0, 20)
-    const total = (detectedLogo ? 1 : 0) + imageFiles.length + productImageUrls.length + allScraped.length
-    setUploadTotal(total)
-
     const uploadTasks: Promise<void>[] = []
     const imageRows: { brand_id: string; file_name: string; storage_path: string; tag: string; mime_type: string; size_bytes?: number }[] = []
 
@@ -167,7 +161,6 @@ export default function OnboardingWizard() {
         } catch {
           await supabase.from('brands').update({ logo_url: detectedLogo }).eq('id', brandId)
         }
-        setUploadProgress(prev => prev + 1)
       })())
     }
 
@@ -183,7 +176,6 @@ export default function OnboardingWizard() {
             imageRows.push({ brand_id: brandId, file_name: file.name, storage_path: storagePath, tag: 'product', mime_type: file.type, size_bytes: file.size })
           }
         } catch {}
-        setUploadProgress(prev => prev + 1)
       })())
     })
 
@@ -202,7 +194,6 @@ export default function OnboardingWizard() {
             imageRows.push({ brand_id: brandId, file_name: fileName, storage_path: storagePath, tag: 'product', mime_type: blob.type || 'image/jpeg', size_bytes: blob.size })
           }
         } catch {}
-        setUploadProgress(prev => prev + 1)
       })())
     })
 
@@ -221,7 +212,6 @@ export default function OnboardingWizard() {
             imageRows.push({ brand_id: brandId, file_name: filename, storage_path: path, tag: img.tag, mime_type: blob.type || 'image/jpeg', size_bytes: blob.size })
           }
         } catch {}
-        setUploadProgress(prev => prev + 1)
       })())
     })
 
@@ -240,7 +230,6 @@ export default function OnboardingWizard() {
   async function submit() {
     if (!validate()) return
     setSaving(true)
-    setUploadPhase('creating')
 
     const slug = brandName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).slice(2, 6)
 
@@ -295,19 +284,11 @@ export default function OnboardingWizard() {
     sessionStorage.setItem('attomik_draft_brand_id', brand.id)
     sessionStorage.setItem('attomik_draft_campaign_id', campaign.id)
 
-    // Count uploads
-    const productImageUrls = detectedProducts.map(p => p.image).filter((url): url is string => !!url)
-    const ogEntry = detectedImage ? 1 : 0
-    const total = productImageUrls.length + Math.min(ogEntry + detectedImages.length, 20) + (detectedLogo ? 1 : 0) + imageFiles.length
-    setUploadTotal(total)
-    setUploadProgress(0)
-    setUploadPhase('uploading')
-
-    await uploadImagesInBackground(brand.id)
-
-    setUploadPhase('done')
-    await new Promise(r => setTimeout(r, 800))
+    // Redirect immediately — uploads continue in background
     router.push(`/preview/${campaign.id}`)
+
+    // Fire and forget — do NOT await
+    uploadImagesInBackground(brand.id)
   }
 
   // ── Step 1 content ──────────────────────────────────────────────
@@ -596,74 +577,8 @@ export default function OnboardingWizard() {
 
   return (
     <div ref={scrollRef} className="fixed inset-0 bg-ink z-50 flex flex-col items-center wizard-scroll" style={{ padding: 'clamp(16px, 4vw, 80px) 16px', overflowY: 'auto' }}>
-      {uploadPhase !== 'idle' && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: '#000', zIndex: 9999,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: 32,
-        }}>
-          <AttomikLogo height={32} color="#fff" />
-
-          {/* SVG ring with progress */}
-          <div style={{ position: 'relative' }}>
-            <svg width="80" height="80" style={{ animation: 'spin 2s linear infinite' }}>
-              <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(0,255,151,0.15)" strokeWidth="2" />
-              <circle
-                cx="40" cy="40" r="34" fill="none" stroke="#00ff97" strokeWidth="2"
-                strokeDasharray={`${uploadPhase === 'uploading'
-                  ? (uploadProgress / Math.max(uploadTotal, 1)) * 213
-                  : uploadPhase === 'done' ? 213 : 20} 213`}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dasharray 0.5s ease' }}
-                transform="rotate(-90 40 40)"
-              />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {uploadPhase === 'done' ? (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <polyline points="4,12 9,17 20,6" stroke="#00ff97" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              ) : (
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#00ff97', fontFamily: 'monospace' }}>
-                  {uploadPhase === 'uploading' && uploadTotal > 0 ? `${uploadProgress}/${uploadTotal}` : '...'}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Status text */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, color: '#fff', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 8 }}>
-              {uploadPhase === 'creating' && 'Creating your brand...'}
-              {uploadPhase === 'uploading' && 'Saving your images...'}
-              {uploadPhase === 'done' && 'Your brand is ready.'}
-            </div>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
-              {uploadPhase === 'creating' && 'Setting up your workspace'}
-              {uploadPhase === 'uploading' && `Uploading ${uploadTotal} images to your brand library`}
-              {uploadPhase === 'done' && 'Generating your funnel...'}
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          {uploadPhase === 'uploading' && uploadTotal > 0 && (
-            <div style={{ width: 200, height: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 1, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${(uploadProgress / uploadTotal) * 100}%`,
-                background: '#00ff97', borderRadius: 1,
-                transition: 'width 0.4s ease',
-                boxShadow: '0 0 8px rgba(0,255,151,0.5)',
-              }} />
-            </div>
-          )}
-        </div>
-      )}
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .wizard-scroll::-webkit-scrollbar { display: none; }
         .wizard-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         @media (max-width: 600px) {
@@ -810,10 +725,7 @@ export default function OnboardingWizard() {
                 className="flex items-center gap-2 text-sm font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: '#00ff97', color: '#000', position: 'relative', overflow: 'hidden' }}>
                 {saving && <Loader2 size={14} className="animate-spin" />}
-                {saving ? (uploadTotal > 0 ? `Saving images ${uploadProgress}/${uploadTotal}...` : 'Building your funnel...') : 'Launch my funnel →'}
-                {saving && uploadTotal > 0 && (
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, height: 3, borderRadius: 999, background: '#000', width: `${(uploadProgress / uploadTotal) * 100}%`, transition: 'width 0.3s ease' }} />
-                )}
+                {saving ? 'Building your funnel...' : 'Build my funnel →'}
               </button>
             )}
           </div>
