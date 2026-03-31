@@ -264,18 +264,20 @@ export default function PreviewClient({
     }
     function loadImages(images: BrandImage[]) {
       console.log('[Preview] brand images:', images.map(i => ({ id: i.id, tag: i.tag, storage_path: i.storage_path })))
-      const products = images.filter(i => i.tag === 'product')
-      const lifestyle = images.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
+      // Filter out logos from content pools — they shouldn't appear in ad templates
+      const contentImages = images.filter(i => i.tag !== 'logo')
+      const products = contentImages.filter(i => i.tag === 'product')
+      const lifestyle = contentImages.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
       if (products.length > 0) setProductImageUrl(buildImageUrl(products[0].storage_path))
-      else if (images.length > 0) setProductImageUrl(buildImageUrl(images[0].storage_path))
+      else if (contentImages.length > 0) setProductImageUrl(buildImageUrl(contentImages[0].storage_path))
       if (lifestyle.length > 0) setLifestyleImageUrl(buildImageUrl(lifestyle[0].storage_path))
       else if (products.length > 0) setLifestyleImageUrl(buildImageUrl(products[0].storage_path))
-      else if (images.length > 0) setLifestyleImageUrl(buildImageUrl(images[0].storage_path))
+      else if (contentImages.length > 0) setLifestyleImageUrl(buildImageUrl(contentImages[0].storage_path))
       const productUrls = products.map(img => buildImageUrl(img.storage_path))
       const lifestyleUrls = lifestyle.map(img => buildImageUrl(img.storage_path))
       setProductImageUrls(productUrls)
       setLifestyleImageUrls(lifestyleUrls)
-      const allUrls = images.map(img => buildImageUrl(img.storage_path))
+      const allUrls = contentImages.map(img => buildImageUrl(img.storage_path))
       setAllImageUrls(allUrls)
       filterGoodImages(allUrls).then(goodUrls => {
         if (goodUrls.length >= Math.ceil(allUrls.length * 0.3) || goodUrls.length >= 3) {

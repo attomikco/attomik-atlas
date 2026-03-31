@@ -14,7 +14,10 @@ export async function POST(
     scrapedImages,
   } = await req.json()
 
-  const imageRows: { brand_id: string; file_name: string; storage_path: string; tag: string; mime_type: string }[] = []
+  const imageRows: {
+    brand_id: string; file_name: string; storage_path: string;
+    tag: string; mime_type: string; alt_text?: string | null
+  }[] = []
 
   async function proxyAndUpload(
     url: string,
@@ -48,7 +51,7 @@ export async function POST(
 
   const tasks: Promise<void>[] = []
 
-  // Logo
+  // Logo — store in brand-assets, update brands.logo_url
   if (logoUrl) {
     tasks.push((async () => {
       const ext = logoUrl.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'png'
@@ -69,7 +72,7 @@ export async function POST(
     })())
   }
 
-  // Product images
+  // Product images — always tagged 'product'
   ;(productImageUrls || []).forEach((url: string, idx: number) => {
     tasks.push((async () => {
       const ext = url.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'jpg'
@@ -87,20 +90,24 @@ export async function POST(
     })())
   })
 
-  // Scraped images
-  ;(scrapedImages || []).slice(0, 20).forEach(
-    (img: { url: string; tag: string }, idx: number) => {
+  // Scraped images — preserve tag and alt_text from detection
+  ;(scrapedImages || []).slice(0, 25).forEach(
+    (img: { url: string; tag: string; alt?: string | null }, idx: number) => {
       tasks.push((async () => {
         const ext = img.url.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'jpg'
-        const path = `${brandId}/scraped_${idx}_${Date.now()}.${ext}`
-        const result = await proxyAndUpload(img.url, path)
+        const prefix = img.tag === 'logo' ? 'logo' : img.tag === 'product' ? 'product' : 'scraped'
+        const path = `${brandId}/${prefix}_${idx}_${Date.now()}.${ext}`
+        const bucket = img.tag === 'logo' ? 'brand-assets' : 'brand-images'
+        const result = await proxyAndUpload(img.url, path, bucket)
         if (result) {
+          // Logo images go to brand_images too so they're queryable
           imageRows.push({
             brand_id: brandId,
-            file_name: `scraped_${idx}.${ext}`,
+            file_name: `${prefix}_${idx}.${ext}`,
             storage_path: path,
             tag: img.tag,
             mime_type: result.contentType,
+            alt_text: img.alt || null,
           })
         }
       })())

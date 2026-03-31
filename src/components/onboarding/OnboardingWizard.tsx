@@ -40,7 +40,7 @@ export default function OnboardingWizard() {
 
   // Step 2
   type DetectedProduct = { name: string; description: string | null; price: string | null; image: string | null }
-  type ScrapedImage = { url: string; tag: 'product' | 'lifestyle' | 'background' | 'other'; score: number }
+  type ScrapedImage = { url: string; tag: 'product' | 'lifestyle' | 'background' | 'logo' | 'other'; score: number; alt?: string | null }
   const [detectedImages, setDetectedImages] = useState<ScrapedImage[]>([])
   const [detectedProducts, setDetectedProducts] = useState<DetectedProduct[]>([])
   const [productName, setProductName] = useState('')
@@ -207,9 +207,9 @@ export default function OnboardingWizard() {
         logoUrl: detectedLogo || null,
         productImageUrls: detectedProducts.map(p => p.image).filter(Boolean),
         scrapedImages: [
-          ...(detectedImage ? [{ url: detectedImage, tag: 'lifestyle' }] : []),
-          ...detectedImages.map(i => ({ url: i.url, tag: i.tag })),
-        ].slice(0, 20),
+          ...(detectedImage ? [{ url: detectedImage, tag: 'lifestyle', alt: null }] : []),
+          ...detectedImages.map(i => ({ url: i.url, tag: i.tag, alt: i.alt || null })),
+        ].slice(0, 25),
       }),
     }).catch(() => {})
   }

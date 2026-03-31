@@ -2,7 +2,7 @@ export type BrandStatus = 'active' | 'draft' | 'paused' | 'offboarded'
 export type CampaignType = 'email' | 'ad_copy' | 'social' | 'seo' | 'dtc_brief' | 'funnel'
 export type CampaignStatus = 'draft' | 'in_review' | 'approved' | 'scheduled' | 'sent' | 'archived'
 export type AssetType = 'guidelines' | 'html_template' | 'logo' | 'other'
-export type ImageTag = 'product' | 'lifestyle' | 'ugc' | 'background' | 'seasonal' | 'other'
+export type ImageTag = 'product' | 'lifestyle' | 'ugc' | 'background' | 'seasonal' | 'logo' | 'other'
 
 export interface FontStyle {
   family: string

@@ -334,35 +334,56 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Image scraping ──────────────────────────────────────────
-    type ScrapedImage = { url: string; tag: 'product' | 'lifestyle' | 'background' | 'other'; score: number }
-    const imagePool: string[] = []
+    type ImageTagType = 'product' | 'lifestyle' | 'background' | 'logo' | 'other'
+    type ScrapedImage = { url: string; tag: ImageTagType; score: number; alt: string | null }
+    type RawImage = { url: string; alt: string | null; context: string; source: string }
+    const imagePool: RawImage[] = []
 
     const resolveUrl = (src: string): string => {
       try { return new URL(src, normalizedUrl).href } catch { return src }
     }
 
-    // OG + meta images
-    if (ogImage) imagePool.push(ogImage)
-    const twitterImg = html.match(/<meta[^>]+(?:name|property)=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i)?.[1]
-    if (twitterImg) imagePool.push(resolveUrl(twitterImg))
+    // Build a set of known product image URLs for cross-referencing
+    const knownProductUrls = new Set<string>()
+    for (const p of products) {
+      if (p.image) {
+        knownProductUrls.add(p.image)
+        try { knownProductUrls.add(new URL(p.image).pathname) } catch {}
+      }
+    }
 
-    // All <img> tags
-    const imgTags = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*/gi) || []
-    const noisePatterns = /icon|favicon|sprite|pixel|1x1|badge|arrow|chevron|star|rating|_32x|_16x|thumb_small|\.svg/i
-    for (const tag of imgTags) {
+    // OG + meta images
+    const twitterImg = html.match(/<meta[^>]+(?:name|property)=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i)?.[1]
+    if (ogImage) imagePool.push({ url: ogImage, alt: null, context: 'meta', source: 'og' })
+    if (twitterImg) imagePool.push({ url: resolveUrl(twitterImg), alt: null, context: 'meta', source: 'twitter' })
+
+    // All <img> tags — extract alt text and surrounding context
+    const noisePatterns = /favicon|sprite|pixel|1x1|badge|arrow|chevron|star|rating|_32x|_16x|thumb_small/i
+    // Match full img tags including surrounding parent context (up to 300 chars before)
+    const imgTagRegex = /<img[^>]+>/gi
+    let imgMatch
+    while ((imgMatch = imgTagRegex.exec(html)) !== null) {
+      const tag = imgMatch[0]
       const src = tag.match(/src=["']([^"']+)["']/i)?.[1]
       if (!src || src.startsWith('data:')) continue
-      if (noisePatterns.test(src) && !/logo/i.test(src)) continue
+      if (noisePatterns.test(src)) continue
       if (/width=["']?1["']?|height=["']?1["']?/.test(tag)) continue
-      imagePool.push(resolveUrl(src))
+
+      const alt = tag.match(/alt=["']([^"']*)["']/i)?.[1] || null
+      // Grab ~300 chars before the img tag for parent context (class names, section ids)
+      const before = html.slice(Math.max(0, imgMatch.index - 300), imgMatch.index)
+      const parentClasses = (before.match(/class=["']([^"']+)["']/gi) || []).join(' ').toLowerCase()
+      const parentIds = (before.match(/id=["']([^"']+)["']/gi) || []).join(' ').toLowerCase()
+      const context = parentClasses + ' ' + parentIds
+
+      imagePool.push({ url: resolveUrl(src), alt, context, source: 'img-tag' })
     }
 
     // Shopify product images (all images, not just first)
     if (isShopify && products.length > 0) {
       for (const p of products) {
-        if (p.image) imagePool.push(p.image)
+        if (p.image) imagePool.push({ url: p.image, alt: p.name, context: '', source: 'shopify-product' })
       }
-      // Try to get more from products.json raw data
       try {
         const baseUrl = normalizedUrl.replace(/\/+$/, '')
         const r = await fetch(`${baseUrl}/products.json?limit=6`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(4000) })
@@ -370,7 +391,12 @@ export async function POST(req: NextRequest) {
           const d = await r.json()
           for (const p of (d?.products || [])) {
             for (const img of (p.images || []).slice(0, 3)) {
-              if (img.src) imagePool.push(img.src)
+              if (img.src) {
+                const imgUrl = img.src
+                knownProductUrls.add(imgUrl)
+                try { knownProductUrls.add(new URL(imgUrl).pathname) } catch {}
+                imagePool.push({ url: imgUrl, alt: p.title || null, context: '', source: 'shopify-product' })
+              }
             }
           }
         }
@@ -384,17 +410,34 @@ export async function POST(req: NextRequest) {
         const parsed = JSON.parse(block.replace(/<\/?script[^>]*>/gi, ''))
         const items = Array.isArray(parsed) ? parsed : [parsed]
         for (const item of items) {
-          if (typeof item.image === 'string') imagePool.push(resolveUrl(item.image))
-          if (Array.isArray(item.image)) item.image.forEach((u: string) => typeof u === 'string' && imagePool.push(resolveUrl(u)))
+          const isProduct = item['@type'] === 'Product'
+          if (typeof item.image === 'string') {
+            const u = resolveUrl(item.image)
+            imagePool.push({ url: u, alt: item.name || null, context: '', source: isProduct ? 'jsonld-product' : 'jsonld' })
+            if (isProduct) { knownProductUrls.add(u); try { knownProductUrls.add(new URL(u).pathname) } catch {} }
+          }
+          if (Array.isArray(item.image)) {
+            for (const u of item.image) {
+              if (typeof u === 'string') {
+                const resolved = resolveUrl(u)
+                imagePool.push({ url: resolved, alt: item.name || null, context: '', source: isProduct ? 'jsonld-product' : 'jsonld' })
+                if (isProduct) { knownProductUrls.add(resolved); try { knownProductUrls.add(new URL(resolved).pathname) } catch {} }
+              }
+            }
+          }
         }
       } catch {}
     }
 
     // CSS background images
+    const bgImgUrls = new Set<string>()
     const bgImgs = allCSS.match(/url\(['"]?(https?:[^'")\s]+)['"]?\)/gi) || []
     for (const bg of bgImgs) {
       const u = bg.replace(/url\(['"]?/, '').replace(/['"]?\)/, '')
-      if (/\.(jpg|jpeg|png|webp)/i.test(u)) imagePool.push(u)
+      if (/\.(jpg|jpeg|png|webp)/i.test(u)) {
+        bgImgUrls.add(u)
+        imagePool.push({ url: u, alt: null, context: 'css-bg', source: 'css-bg' })
+      }
     }
 
     // Srcset — grab highest res
@@ -404,35 +447,91 @@ export async function POST(req: NextRequest) {
       const entries = val.split(',').map(s => s.trim())
       if (entries.length > 0) {
         const last = entries[entries.length - 1].split(/\s+/)[0]
-        if (last && !last.startsWith('data:')) imagePool.push(resolveUrl(last))
+        if (last && !last.startsWith('data:')) imagePool.push({ url: resolveUrl(last), alt: null, context: '', source: 'srcset' })
       }
     }
 
-    // Deduplicate + score
+    // ── Deduplicate, score, and tag with context ──────────────────
     const seen = new Set<string>()
     const uniqueImages: ScrapedImage[] = []
-    for (const url of imagePool) {
-      if (!url.startsWith('http')) continue
+
+    // Context patterns for smart tagging
+    const logoContextPattern = /logo|partner|brand-?logo|sponsor|trust|retailer|stockist|as-seen|featured-?in|press/i
+    const heroContextPattern = /hero|banner|jumbotron|slider|carousel|splash|masthead|above-?fold/i
+    const testimonialContextPattern = /testimonial|review|ugc|user-generated|customer-?photo/i
+    const productContextPattern = /product|shop|catalog|item|merch|collection/i
+
+    // Product name keywords for alt text matching
+    const productNames = products.map(p => p.name.toLowerCase()).filter(n => n.length > 2)
+
+    for (const raw of imagePool) {
+      if (!raw.url.startsWith('http')) continue
       let pathname: string
-      try { pathname = new URL(url).pathname } catch { pathname = url }
+      try { pathname = new URL(raw.url).pathname } catch { pathname = raw.url }
       if (seen.has(pathname)) continue
       seen.add(pathname)
 
+      const url = raw.url
+      const altLower = (raw.alt || '').toLowerCase()
+      const ctx = raw.context
+
+      // ── Determine tag ──
+      let tag: ImageTagType = 'other'
+
+      // 1. Known product URL (from products.json, JSON-LD Product, etc.)
+      if (knownProductUrls.has(url) || knownProductUrls.has(pathname) ||
+          raw.source === 'shopify-product' || raw.source === 'jsonld-product') {
+        tag = 'product'
+      }
+      // 2. Alt text matches a detected product name
+      else if (altLower && productNames.some(pn => altLower.includes(pn))) {
+        tag = 'product'
+      }
+      // 3. URL path signals product
+      else if (/\/products?\/|\/shop\/|\/catalog\//i.test(url)) {
+        tag = 'product'
+      }
+      // 4. Context signals product (parent class/id)
+      else if (productContextPattern.test(ctx) && !logoContextPattern.test(ctx)) {
+        tag = 'product'
+      }
+      // 5. Logo detection — URL or context
+      else if (/logo/i.test(url) || /logo/i.test(altLower) || logoContextPattern.test(ctx)) {
+        tag = 'logo'
+      }
+      // 6. SVG images are usually logos/icons
+      else if (/\.svg/i.test(url)) {
+        tag = 'logo'
+      }
+      // 7. Hero/lifestyle — URL or context
+      else if (/\/lifestyle|\/campaign|\/lookbook|\/editorial|\/hero|\/banner/i.test(url) || heroContextPattern.test(ctx)) {
+        tag = 'lifestyle'
+      }
+      // 8. OG/Twitter images are usually lifestyle/hero shots
+      else if (raw.source === 'og' || raw.source === 'twitter') {
+        tag = 'lifestyle'
+      }
+      // 9. Testimonials/UGC
+      else if (testimonialContextPattern.test(ctx) || testimonialContextPattern.test(altLower)) {
+        tag = 'lifestyle'
+      }
+      // 10. CSS background images
+      else if (bgImgUrls.has(url)) {
+        tag = 'background'
+      }
+
+      // ── Score ──
       let score = 0
-      if (/\/products?\/|\/shop\/|\/catalog\//i.test(url)) score += 3
+      if (tag === 'product') score += 5
+      if (tag === 'lifestyle') score += 3
       if (/\.(jpg|jpeg|webp)/i.test(url)) score += 3
-      if (url === ogImage || url === twitterImg) score += 2
-      if (/\/lifestyle|\/campaign|\/hero|\/banner/i.test(url)) score += 2
+      if (raw.source === 'og' || raw.source === 'twitter') score += 2
       if (name && url.toLowerCase().includes(name.toLowerCase())) score += 1
-      if (/\/icon|\/logo|\/badge|\/button/i.test(url)) score -= 2
+      if (tag === 'logo') score -= 3
       if (/thumb|thumbnail|_small|_mini|32x|16x/i.test(url)) score -= 3
+      if (/icon|badge|button/i.test(url) && tag !== 'logo') score -= 2
 
-      let tag: ScrapedImage['tag'] = 'other'
-      if (/\/products?\/|\/shop\/|\/catalog\//i.test(url)) tag = 'product'
-      else if (/\/lifestyle|\/campaign|\/lookbook|\/editorial|\/hero|\/banner/i.test(url)) tag = 'lifestyle'
-      else if (bgImgs.some(b => b.includes(url))) tag = 'background'
-
-      uniqueImages.push({ url, tag, score })
+      uniqueImages.push({ url, tag, score, alt: raw.alt })
     }
 
     // Upgrade Shopify CDN URLs to full resolution
@@ -443,7 +542,16 @@ export async function POST(req: NextRequest) {
     const finalOgImage = ogImage ? upgradeImageUrl(ogImage) : null
     const finalLogo = logo ? upgradeImageUrl(logo) : null
 
-    const images = uniqueImages.sort((a, b) => b.score - a.score).slice(0, 12)
+    // Sort by score, products first, then lifestyle, then others. Exclude logos from main images.
+    const contentImages = uniqueImages
+      .filter(i => i.tag !== 'logo')
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 25)
+    const logoImages = uniqueImages
+      .filter(i => i.tag === 'logo')
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+    const images = [...contentImages, ...logoImages]
 
     // ── Business type detection ──────────────────────────────────
     type BusinessType = 'shopify' | 'ecommerce' | 'saas' | 'restaurant' | 'service' | 'brand'
