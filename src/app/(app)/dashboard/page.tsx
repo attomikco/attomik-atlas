@@ -86,25 +86,6 @@ export default async function DashboardPage({
         </h1>
       </div>
 
-      {/* Brand switcher */}
-      {brands.length > 1 && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          {brands.map((b: any) => {
-            const isActive = b.id === brand.id
-            return (
-              <Link key={b.id} href={`/dashboard?brand=${b.id}`} style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px',
-                borderRadius: 999, border: isActive ? '2px solid #000' : '1.5px solid var(--border)',
-                background: isActive ? '#000' : '#fff', textDecoration: 'none', transition: 'all 0.15s', flexShrink: 0,
-              }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: b.primary_color || '#000', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#fff' : 'var(--ink)', whiteSpace: 'nowrap' }}>{b.name}</span>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
       {/* Brand card */}
       <div style={{ borderRadius: 20, background: '#fff', border: '1px solid var(--border)', marginBottom: 16, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
         {/* Left: color accent + logo + name + meta */}
@@ -175,7 +156,7 @@ export default async function DashboardPage({
       )}
 
       {/* Three pillars */}
-      <div className="pv-dash-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+      <div className="pv-dash-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32, alignItems: 'stretch' }}>
 
         {/* Brand Hub */}
         <Link href={`/brand-setup/${brand.id}`} style={{ textDecoration: 'none' }}>
@@ -189,7 +170,7 @@ export default async function DashboardPage({
             <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 20, flex: 1 }}>
               Colors, fonts, voice and product details. The more you add, the better every creative gets.
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {[
                 { label: 'Colors', done: !!brand.primary_color },
                 { label: 'Voice', done: !!brand.brand_voice },
@@ -222,7 +203,7 @@ export default async function DashboardPage({
             <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>
               9 templates, batch generation, Meta-ready exports. Your brand applied automatically.
             </div>
-            <div style={{ display: 'flex', gap: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <div style={{ marginTop: 'auto', display: 'flex', gap: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
               {[{ num: '9', label: 'Templates' }, { num: '3', label: 'Sizes' }, { num: '∞', label: 'Variations' }].map(({ num, label }) => (
                 <div key={label}>
                   <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: primaryColor, lineHeight: 1 }}>{num}</div>
@@ -245,7 +226,7 @@ export default async function DashboardPage({
             <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>
               Set your goal, audience and offer. Generate a complete funnel in one shot.
             </div>
-            <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)' }}>
               {campaigns?.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(campaigns as any[]).slice(0, 2).map((c: any) => (
@@ -269,7 +250,7 @@ export default async function DashboardPage({
             <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>✉</div>
             <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#000', marginBottom: 10 }}>Email</div>
             <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>Generate campaign emails from your brief. Export HTML or push directly to Klaviyo.</div>
-            <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Klaviyo ready</div>
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Klaviyo ready</div>
           </div>
         </Link>
       </div>

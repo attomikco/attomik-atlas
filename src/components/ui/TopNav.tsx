@@ -87,11 +87,11 @@ export default function TopNav() {
             border: '1px solid', borderColor: dropdownOpen ? '#ccc' : 'var(--border)',
             borderRadius: 10, padding: '6px 12px 6px 8px', cursor: 'pointer', transition: 'all 0.15s',
           }}>
-            <div style={{ width: 22, height: 22, borderRadius: 6, background: activeBrand.primary_color || '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: activeBrand.primary_color || '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
               {activeBrand.logo_url ? (
-                <img src={activeBrand.logo_url} style={{ width: 14, height: 14, objectFit: 'contain', filter: isLight(activeBrand.primary_color || '#fff') ? 'none' : 'brightness(0) invert(1)' }} alt="" />
+                <img src={activeBrand.logo_url} style={{ width: 20, height: 20, objectFit: 'contain', filter: isLight(activeBrand.primary_color || '#fff') ? 'none' : 'brightness(0) invert(1)' }} alt="" />
               ) : (
-                <span style={{ fontSize: 10, fontWeight: 900, color: isLight(activeBrand.primary_color || '#000') ? '#000' : '#fff', fontFamily: 'Barlow, sans-serif' }}>{activeBrand.name[0]}</span>
+                <span style={{ fontSize: 12, fontWeight: 900, color: isLight(activeBrand.primary_color || '#000') ? '#000' : '#fff', fontFamily: 'Barlow, sans-serif' }}>{activeBrand.name[0]}</span>
               )}
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#000', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeBrand.name}</span>
