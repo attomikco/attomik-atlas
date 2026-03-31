@@ -132,101 +132,6 @@ export default function OnboardingWizard() {
     setStep(s => Math.max(s - 1, 0))
   }
 
-  async function uploadImagesInBackground(brandId: string) {
-    const productImageUrls = detectedProducts.map(p => p.image).filter((url): url is string => !!url)
-    const ogEntry: typeof detectedImages = detectedImage ? [{ url: detectedImage, tag: 'lifestyle' as const, score: 10 }] : []
-    const allScraped = [...ogEntry, ...detectedImages].slice(0, 20)
-    const uploadTasks: Promise<void>[] = []
-    const imageRows: { brand_id: string; file_name: string; storage_path: string; tag: string; mime_type: string; size_bytes?: number }[] = []
-
-    // Logo upload task
-    if (detectedLogo) {
-      uploadTasks.push((async () => {
-        try {
-          const logoRes = await fetch('/api/brands/proxy-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: detectedLogo }) })
-          if (!logoRes.ok) {
-            await supabase.from('brands').update({ logo_url: detectedLogo }).eq('id', brandId)
-            return
-          }
-          const blob = await logoRes.blob()
-          const ext = detectedLogo.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'png'
-          const path = `${brandId}/logo_dark.${ext}`
-          const { error } = await supabase.storage.from('brand-assets').upload(path, blob, { contentType: blob.type || 'image/png', upsert: true })
-          if (!error) {
-            const { data } = supabase.storage.from('brand-assets').getPublicUrl(path)
-            await supabase.from('brands').update({ logo_url: data.publicUrl }).eq('id', brandId)
-          } else {
-            await supabase.from('brands').update({ logo_url: detectedLogo }).eq('id', brandId)
-          }
-        } catch {
-          await supabase.from('brands').update({ logo_url: detectedLogo }).eq('id', brandId)
-        }
-      })())
-    }
-
-    // Manual file upload tasks — all parallel
-    imageFiles.forEach((file) => {
-      uploadTasks.push((async () => {
-        try {
-          const ext = file.name.split('.').pop() || 'jpg'
-          const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-          const storagePath = `${brandId}/${fileName}`
-          const { error: uploadErr } = await supabase.storage.from('brand-images').upload(storagePath, file, { contentType: file.type })
-          if (!uploadErr) {
-            imageRows.push({ brand_id: brandId, file_name: file.name, storage_path: storagePath, tag: 'product', mime_type: file.type, size_bytes: file.size })
-          }
-        } catch {}
-      })())
-    })
-
-    // Product image tasks — all parallel
-    productImageUrls.forEach((imgUrl, idx) => {
-      uploadTasks.push((async () => {
-        try {
-          const res = await fetch('/api/brands/proxy-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: imgUrl }) })
-          if (!res.ok) return
-          const blob = await res.blob()
-          const ext = imgUrl.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'jpg'
-          const fileName = `product_${idx}_${Date.now()}.${ext}`
-          const storagePath = `${brandId}/${fileName}`
-          const { error } = await supabase.storage.from('brand-images').upload(storagePath, blob, { contentType: blob.type || 'image/jpeg' })
-          if (!error) {
-            imageRows.push({ brand_id: brandId, file_name: fileName, storage_path: storagePath, tag: 'product', mime_type: blob.type || 'image/jpeg', size_bytes: blob.size })
-          }
-        } catch {}
-      })())
-    })
-
-    // Scraped image tasks — all parallel
-    allScraped.forEach((img, idx) => {
-      uploadTasks.push((async () => {
-        try {
-          const res = await fetch('/api/brands/proxy-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: img.url }) })
-          if (!res.ok) return
-          const blob = await res.blob()
-          const ext = img.url.split('.').pop()?.split('?')[0]?.slice(0, 4) || 'jpg'
-          const filename = `scraped_${idx}_${Date.now()}.${ext}`
-          const path = `${brandId}/${filename}`
-          const { error } = await supabase.storage.from('brand-images').upload(path, blob, { contentType: blob.type || 'image/jpeg' })
-          if (!error) {
-            imageRows.push({ brand_id: brandId, file_name: filename, storage_path: path, tag: img.tag, mime_type: blob.type || 'image/jpeg', size_bytes: blob.size })
-          }
-        } catch {}
-      })())
-    })
-
-    // Process in batches of 10 to avoid overwhelming the proxy route
-    const BATCH_SIZE = 10
-    for (let i = 0; i < uploadTasks.length; i += BATCH_SIZE) {
-      await Promise.allSettled(uploadTasks.slice(i, i + BATCH_SIZE))
-    }
-
-    // Batch insert all image rows at once
-    if (imageRows.length > 0) {
-      await supabase.from('brand_images').insert(imageRows)
-    }
-  }
-
   async function submit() {
     if (!validate()) return
     setSaving(true)
@@ -284,8 +189,19 @@ export default function OnboardingWizard() {
     // Redirect immediately — uploads continue in background
     router.push(`/preview/${campaign.id}`)
 
-    // Fire and forget — do NOT await
-    uploadImagesInBackground(brand.id)
+    // Fire and forget to server — survives component unmount
+    fetch(`/api/brands/${brand.id}/upload-scraped-images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        logoUrl: detectedLogo || null,
+        productImageUrls: detectedProducts.map(p => p.image).filter(Boolean),
+        scrapedImages: [
+          ...(detectedImage ? [{ url: detectedImage, tag: 'lifestyle' }] : []),
+          ...detectedImages.map(i => ({ url: i.url, tag: i.tag })),
+        ].slice(0, 20),
+      }),
+    }).catch(() => {})
   }
 
   // ── Step 1 content ──────────────────────────────────────────────
