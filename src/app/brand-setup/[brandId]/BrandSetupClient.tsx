@@ -360,28 +360,34 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       {/* Brand banner */}
       {(() => {
         const pc = colors[0]?.value || brand.primary_color || '#000'
-        const textOn = isLight(pc) ? '#000' : '#fff'
+        const light = isLight(pc)
+        const textOn = light ? '#000' : '#fff'
+        const textSub = light ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)'
+        const textMid = light ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'
+        const border = light ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'
+        const divider = light ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'
+        const ghost = light ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'
         return (
           <div style={{ borderRadius: 16, background: pc, padding: '20px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, position: 'relative', overflow: 'hidden', flexWrap: 'wrap' }}>
-            <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: `${textOn}06`, pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: ghost, pointerEvents: 'none' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, zIndex: 1 }}>
               {logoDark ? (
-                <img src={logoDark} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain', filter: isLight(pc) ? 'none' : 'brightness(0) invert(1)' }} alt={name} />
+                <img src={logoDark} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain', filter: light ? 'none' : 'brightness(0) invert(1)' }} alt={name} />
               ) : (
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: `${textOn}15`, border: `1px solid ${textOn}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: textOn, flexShrink: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: ghost, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: textOn, flexShrink: 0 }}>
                   {name[0]?.toUpperCase()}
                 </div>
               )}
               <div>
                 <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, color: textOn, textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1 }}>{name || brand.name}</div>
-                <div style={{ fontSize: 11, color: `${textOn}60`, marginTop: 3 }}>{website?.replace(/https?:\/\//, '') || brand.website?.replace(/https?:\/\//, '') || '—'}</div>
+                <div style={{ fontSize: 11, color: textSub, marginTop: 3 }}>{website?.replace(/https?:\/\//, '') || brand.website?.replace(/https?:\/\//, '') || '—'}</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, zIndex: 1 }}>
               {colors.slice(0, 4).filter(c => c.value).map((c, i) => (
-                <div key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: c.value, border: `2px solid ${textOn}20`, flexShrink: 0 }} title={c.label} />
+                <div key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: c.value, border: `2px solid ${border}`, flexShrink: 0 }} title={c.label} />
               ))}
-              {fonts[0]?.family && (<><div style={{ width: 1, height: 24, background: `${textOn}15` }} /><div style={{ fontSize: 13, fontFamily: `${fonts[0].family}, sans-serif`, color: `${textOn}70`, fontWeight: 600 }}>{fonts[0].family}</div></>)}
+              {fonts[0]?.family && (<><div style={{ width: 1, height: 24, background: divider }} /><div style={{ fontSize: 13, fontFamily: `${fonts[0].family}, sans-serif`, color: textMid, fontWeight: 600 }}>{fonts[0].family}</div></>)}
             </div>
           </div>
         )
