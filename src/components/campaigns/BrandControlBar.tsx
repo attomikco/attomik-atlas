@@ -220,74 +220,94 @@ export default function BrandControlBar({
           </div>
         </div>
 
-        {/* Row 2: Images — full width */}
+        {/* Row 2: Images by category */}
         {allImageUrls.length > 0 && (
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>Images ({allImageUrls.length})</span>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => onImageIndexChange((activeImageIndex - 1 + allImageUrls.length) % allImageUrls.length)}
-                  style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid #eee', background: '#fafafa', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-                <button onClick={() => onImageIndexChange((activeImageIndex + 1) % allImageUrls.length)}
-                  style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid #eee', background: '#fafafa', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              {productImageUrls.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase', marginRight: -4 }}>Product</span>}
-              {productImageUrls.slice(0, 4).map((url, i) => {
-                const realIndex = allImageUrls.indexOf(url)
-                return (
-                  <div key={`p-${i}`} style={{ position: 'relative', flexShrink: 0 }}>
-                    <div onClick={() => onImageIndexChange(realIndex >= 0 ? realIndex : i)}
-                      style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', border: activeImageIndex === (realIndex >= 0 ? realIndex : i) ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s' }}>
-                      <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
-                    </div>
-                    <button onClick={() => onRemoveImage(url)}
-                      style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}>×</button>
-                  </div>
-                )
-              })}
-              {lifestyleImageUrls.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase', marginLeft: 8, marginRight: -4 }}>Lifestyle</span>}
-              {lifestyleImageUrls.slice(0, 4).map((url, i) => {
-                const realIndex = allImageUrls.indexOf(url)
-                return (
-                  <div key={`l-${i}`} style={{ position: 'relative', flexShrink: 0 }}>
-                    <div onClick={() => onImageIndexChange(realIndex >= 0 ? realIndex : i)}
-                      style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', border: activeImageIndex === (realIndex >= 0 ? realIndex : i) ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s' }}>
-                      <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
-                    </div>
-                    <button onClick={() => onRemoveImage(url)}
-                      style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}>×</button>
-                  </div>
-                )
-              })}
-              {productImageUrls.length === 0 && lifestyleImageUrls.length === 0 && allImageUrls
-                .map((url, realIndex) => ({ url, realIndex }))
-                .filter(({ url }) => !url.includes('/logo.') && !url.includes('_logo'))
-                .slice(0, 10)
-                .map(({ url, realIndex }) => (
-                <div key={realIndex} style={{ position: 'relative', flexShrink: 0 }}>
-                  <div onClick={() => onImageIndexChange(realIndex)}
-                    style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', border: activeImageIndex === realIndex ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', transition: 'border-color 0.15s' }}>
-                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
-                  </div>
-                  <button onClick={() => onRemoveImage(url)}
-                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}>×</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            {/* Product images row */}
+            {productImageUrls.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#bbb', marginBottom: 8 }}>
+                  Product ({productImageUrls.length})
                 </div>
-              ))}
-              {/* Add images button */}
-              <label style={{ width: 96, height: 96, borderRadius: 12, border: '2px dashed #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600, gap: 4, flexShrink: 0, transition: 'border-color 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = '#999')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = '#ddd')}>
-                <span style={{ fontSize: 24, lineHeight: 1 }}>+</span>
-                Add
-                <input type="file" accept="image/*" multiple style={{ display: 'none' }}
-                  onChange={e => { const files = Array.from(e.target.files || []); if (files.length) onAddImages(files); e.target.value = '' }} />
-              </label>
-            </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {productImageUrls.slice(0, 6).map((url, i) => (
+                    <div key={`p-${i}`} style={{ position: 'relative', flexShrink: 0 }}>
+                      <div onClick={() => onImageIndexChange(allImageUrls.indexOf(url))}
+                        style={{ width: 80, height: 80, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', border: activeImageIndex === allImageUrls.indexOf(url) ? '3px solid #000' : '2px solid #eee', transition: 'border-color 0.15s' }}>
+                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+                      </div>
+                      <button onClick={() => onRemoveImage(url)}
+                        style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}>×</button>
+                    </div>
+                  ))}
+                  <label style={{ width: 80, height: 80, borderRadius: 10, border: '2px dashed #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#aaa', fontSize: 10, fontWeight: 600, gap: 3, flexShrink: 0 }}>
+                    <span style={{ fontSize: 20 }}>+</span>
+                    Add
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                      onChange={e => { const files = Array.from(e.target.files || []); if (files.length) onAddImages(files); e.target.value = '' }} />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Lifestyle images row */}
+            {lifestyleImageUrls.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#bbb', marginBottom: 8 }}>
+                  Lifestyle ({lifestyleImageUrls.length})
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {lifestyleImageUrls.slice(0, 6).map((url, i) => (
+                    <div key={`l-${i}`} style={{ position: 'relative', flexShrink: 0 }}>
+                      <div onClick={() => onImageIndexChange(allImageUrls.indexOf(url))}
+                        style={{ width: 80, height: 80, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', border: activeImageIndex === allImageUrls.indexOf(url) ? '3px solid #000' : '2px solid #eee', transition: 'border-color 0.15s' }}>
+                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+                      </div>
+                      <button onClick={() => onRemoveImage(url)}
+                        style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}>×</button>
+                    </div>
+                  ))}
+                  <label style={{ width: 80, height: 80, borderRadius: 10, border: '2px dashed #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#aaa', fontSize: 10, fontWeight: 600, gap: 3, flexShrink: 0 }}>
+                    <span style={{ fontSize: 20 }}>+</span>
+                    Add
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                      onChange={e => { const files = Array.from(e.target.files || []); if (files.length) onAddImages(files); e.target.value = '' }} />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Fallback — no tagged images, show all */}
+            {productImageUrls.length === 0 && lifestyleImageUrls.length === 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {allImageUrls
+                  .filter(url => !url.includes('/logo.') && !url.includes('_logo'))
+                  .slice(0, 10)
+                  .map((url, i) => {
+                    const realIndex = allImageUrls.indexOf(url)
+                    return (
+                      <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+                        <div onClick={() => onImageIndexChange(realIndex)}
+                          style={{ width: 80, height: 80, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', border: activeImageIndex === realIndex ? '3px solid #000' : '2px solid #eee' }}>
+                          <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }} />
+                        </div>
+                        <button onClick={() => onRemoveImage(url)}
+                          style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}>×</button>
+                      </div>
+                    )
+                  })}
+                <label style={{ width: 80, height: 80, borderRadius: 10, border: '2px dashed #ddd', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#aaa', fontSize: 10, fontWeight: 600, gap: 3, flexShrink: 0 }}>
+                  <span style={{ fontSize: 20 }}>+</span>
+                  Add
+                  <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                    onChange={e => { const files = Array.from(e.target.files || []); if (files.length) onAddImages(files); e.target.value = '' }} />
+                </label>
+              </div>
+            )}
           </div>
         )}
       </div>
