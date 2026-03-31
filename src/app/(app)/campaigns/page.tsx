@@ -1,12 +1,30 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
-export default async function CampaignsPage() {
+export default async function CampaignsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ brand?: string }>
+}) {
+  const { brand: brandParam } = await searchParams
   const supabase = await createClient()
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('*, brand:brands(name, primary_color, logo_url)')
+
+  const { data: brands } = await supabase
+    .from('brands').select('id')
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
+
+  const activeBrandId = brandParam || brands?.[0]?.id
+
+  let campaigns: any[] | null = null
+  if (activeBrandId) {
+    const { data } = await supabase
+      .from('campaigns')
+      .select('*, brand:brands(name, primary_color, logo_url)')
+      .eq('brand_id', activeBrandId)
+      .order('created_at', { ascending: false })
+    campaigns = data
+  }
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 1000, margin: '0 auto' }}>

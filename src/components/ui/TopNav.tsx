@@ -55,10 +55,11 @@ export default function TopNav() {
   }
 
   function getBrandNavHref(href: string) {
-    if (!activeBrand) return href
+    if (!activeBrand?.id) return href
     if (href === '/brand-setup') return `/brand-setup/${activeBrand.id}`
     if (href === '/creatives') return `/creatives?brand=${activeBrand.id}`
     if (href === '/dashboard') return `/dashboard?brand=${activeBrand.id}`
+    if (href === '/campaigns') return `/campaigns?brand=${activeBrand.id}`
     return href
   }
 
@@ -69,7 +70,7 @@ export default function TopNav() {
   }
 
   return (
-    <nav style={{ position: 'sticky', top: 0, zIndex: 40, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 32px', height: 64, gap: 0 }}>
+    <nav style={{ position: 'sticky', top: 0, zIndex: 40, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 32px', height: 72, gap: 0 }}>
       <Link href="/dashboard" style={{ marginRight: 24, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
         <AttomikLogo height={24} color="#000" />
       </Link>
@@ -137,7 +138,7 @@ export default function TopNav() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
         {NAV_LINKS.map(({ href, label }) => {
-          const active = href === '/dashboard' ? pathname === '/dashboard' || pathname === '/' : pathname.startsWith(href)
+          const active = href === '/dashboard' ? pathname === '/dashboard' || pathname === '/' : href === '/brand-setup' ? pathname.startsWith('/brand-setup') : pathname.startsWith(href)
           return (
             <Link key={href} href={getBrandNavHref(href)} style={{
               fontSize: 14, fontWeight: active ? 700 : 500, color: active ? '#000' : '#888',

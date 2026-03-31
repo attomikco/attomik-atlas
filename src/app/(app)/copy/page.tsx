@@ -5,9 +5,9 @@ import CopyCreatorClient from './CopyCreatorClient'
 export default async function CopyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campaign?: string }>
+  searchParams: Promise<{ campaign?: string; brand?: string }>
 }) {
-  const { campaign: campaignId } = await searchParams
+  const { campaign: campaignId, brand: brandParam } = await searchParams
   const supabase = await createClient()
 
   const { data: brands } = await supabase
@@ -15,10 +15,16 @@ export default async function CopyPage({
 
   if (!brands?.length) redirect('/onboarding')
 
-  const { data: campaigns } = await supabase
+  const activeBrandId = brandParam || brands[0]?.id
+
+  const query = supabase
     .from('campaigns')
     .select('*, brand:brands(name, primary_color)')
     .order('created_at', { ascending: false })
+
+  if (activeBrandId) query.eq('brand_id', activeBrandId)
+
+  const { data: campaigns } = await query
 
   let existingVariations: any[] = []
   let selectedCampaign: any = null

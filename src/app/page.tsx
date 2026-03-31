@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import AttomikLogo from '@/components/ui/AttomikLogo'
 
 export default function HomePage() {
@@ -9,10 +10,16 @@ export default function HomePage() {
   const [website2, setWebsite2] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Redirect returning users to dashboard
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('brands').select('id').eq('status', 'active').limit(1)
+      .then(({ data }) => { if (data?.length) router.replace('/dashboard') })
+  }, [router])
+
   function go(url: string) {
     const v = url.trim()
     if (!v) return
-    // Must look like a URL — not random text pasted by accident
     let normalized = v
     if (!/^https?:\/\//i.test(normalized)) normalized = 'https://' + normalized
     try {
@@ -20,7 +27,7 @@ export default function HomePage() {
       if (!parsed.hostname.includes('.')) return
       router.push(`/onboarding?url=${encodeURIComponent(normalized)}`)
     } catch {
-      return // not a valid URL, ignore
+      return
     }
   }
 
