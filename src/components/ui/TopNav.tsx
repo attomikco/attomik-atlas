@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AttomikLogo from './AttomikLogo'
+import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, layout } from '@/lib/design-tokens'
 
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -72,9 +73,9 @@ export default function TopNav() {
   }
 
   return (
-    <nav style={{ position: 'sticky', top: 0, zIndex: 40, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 32px', height: 72, gap: 0 }}>
+    <nav style={{ position: 'sticky', top: 0, zIndex: 40 /* TODO: tokenize */, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 32px', height: layout.navHeight, gap: 0 }}>
       <Link href="/dashboard" style={{ marginRight: 24, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-        <AttomikLogo height={30} color="#000" />
+        <AttomikLogo height={30} color={colors.ink} />
       </Link>
 
       <div style={{ width: 1, height: 24, background: 'var(--border)', marginRight: 24, flexShrink: 0 }} />
@@ -83,53 +84,53 @@ export default function TopNav() {
         <div ref={dropdownRef} style={{ position: 'relative', marginRight: 24, flexShrink: 0 }}>
           <button onClick={() => setDropdownOpen(p => !p)} style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            background: dropdownOpen ? '#f5f5f5' : '#f8f8f8',
-            border: '1px solid', borderColor: dropdownOpen ? '#ccc' : 'var(--border)',
-            borderRadius: 10, padding: '6px 12px 6px 8px', cursor: 'pointer', transition: 'all 0.15s',
+            background: dropdownOpen ? colors.gray200 : colors.gray150,
+            border: '1px solid', borderColor: dropdownOpen ? colors.gray450 : 'var(--border)',
+            borderRadius: radius.lg, padding: '6px 12px 6px 8px', cursor: 'pointer', transition: `all ${transition.base}`,
           }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: activeBrand.primary_color || '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ width: 28, height: 28, borderRadius: radius.md, background: activeBrand.primary_color || colors.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
               {activeBrand.logo_url ? (
-                <img src={activeBrand.logo_url} style={{ width: 20, height: 20, objectFit: 'contain', filter: isLight(activeBrand.primary_color || '#fff') ? 'none' : 'brightness(0) invert(1)' }} alt="" />
+                <img src={activeBrand.logo_url} style={{ width: 20, height: 20, objectFit: 'contain', filter: isLight(activeBrand.primary_color || colors.paper) ? 'none' : 'brightness(0) invert(1)' }} alt="" />
               ) : (
-                <span style={{ fontSize: 12, fontWeight: 900, color: isLight(activeBrand.primary_color || '#000') ? '#000' : '#fff', fontFamily: 'Barlow, sans-serif' }}>{activeBrand.name[0]}</span>
+                <span style={{ fontSize: fontSize.caption, fontWeight: fontWeight.heading, color: isLight(activeBrand.primary_color || colors.ink) ? colors.ink : colors.paper, fontFamily: font.heading }}>{activeBrand.name[0]}</span>
               )}
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#000', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeBrand.name}</span>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0, opacity: 0.4 }}>
-              <path d="M2 4L6 8L10 4" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <span style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeBrand.name}</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: `transform ${transition.normal}`, flexShrink: 0, opacity: 0.4 }}>
+              <path d="M2 4L6 8L10 4" stroke={colors.ink} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
 
           {dropdownOpen && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', minWidth: 200, zIndex: 100, overflow: 'hidden', padding: 6 }}>
+            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: colors.paper, border: '1px solid var(--border)', borderRadius: radius.xl, boxShadow: shadow.dropdown, minWidth: 200, zIndex: zIndex.dropdown, overflow: 'hidden', padding: 6 }}>
               {brands.map((b: any) => (
                 <button key={b.id} onClick={() => switchBrand(b)} style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8,
-                  border: 'none', cursor: 'pointer', background: b.id === activeBrand.id ? '#f5f5f5' : 'transparent', textAlign: 'left', transition: 'background 0.1s',
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: radius.md,
+                  border: 'none', cursor: 'pointer', background: b.id === activeBrand.id ? colors.gray200 : 'transparent', textAlign: 'left', transition: `background ${transition.fast}`,
                 }}
-                  onMouseEnter={e => { if (b.id !== activeBrand.id) e.currentTarget.style.background = '#f9f9f9' }}
+                  onMouseEnter={e => { if (b.id !== activeBrand.id) e.currentTarget.style.background = colors.gray100 }}
                   onMouseLeave={e => { if (b.id !== activeBrand.id) e.currentTarget.style.background = 'transparent' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: b.primary_color || '#000', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: radius.md, background: b.primary_color || colors.ink, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     {b.logo_url ? (
-                      <img src={b.logo_url} style={{ width: 18, height: 18, objectFit: 'contain', filter: isLight(b.primary_color || '#fff') ? 'none' : 'brightness(0) invert(1)' }} alt="" />
+                      <img src={b.logo_url} style={{ width: 18, height: 18, objectFit: 'contain', filter: isLight(b.primary_color || colors.paper) ? 'none' : 'brightness(0) invert(1)' }} alt="" />
                     ) : (
-                      <span style={{ fontSize: 12, fontWeight: 900, color: isLight(b.primary_color || '#000') ? '#000' : '#fff', fontFamily: 'Barlow, sans-serif' }}>{b.name[0]}</span>
+                      <span style={{ fontSize: fontSize.caption, fontWeight: fontWeight.heading, color: isLight(b.primary_color || colors.ink) ? colors.ink : colors.paper, fontFamily: font.heading }}>{b.name[0]}</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#000', lineHeight: 1.2 }}>{b.name}</div>
+                  <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, lineHeight: 1.2 }}>{b.name}</div>
                   {b.id === activeBrand.id && (
                     <svg style={{ marginLeft: 'auto' }} width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <polyline points="2,7 5.5,10.5 12,3.5" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="2,7 5.5,10.5 12,3.5" stroke={colors.ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   )}
                 </button>
               ))}
               <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0 0', paddingTop: 6 }}>
                 <Link href="/onboarding" onClick={() => setDropdownOpen(false)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
-                  textDecoration: 'none', color: 'var(--muted)', fontSize: 12, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: radius.md,
+                  textDecoration: 'none', color: 'var(--muted)', fontSize: fontSize.caption, fontWeight: fontWeight.semibold,
                 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, border: '1.5px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#ccc' }}>+</div>
+                  <div style={{ width: 28, height: 28, borderRadius: radius.md, border: `1.5px dashed ${colors.gray450}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: fontSize.lg, color: colors.gray450 }}>+</div>
                   Add new brand
                 </Link>
               </div>
@@ -143,9 +144,9 @@ export default function TopNav() {
           const active = href === '/dashboard' ? pathname === '/dashboard' || pathname === '/' : href === '/brand-setup' ? pathname.startsWith('/brand-setup') : pathname.startsWith(href)
           return (
             <Link key={href} href={getBrandNavHref(href)} style={{
-              fontSize: 14, fontWeight: active ? 700 : 500, color: active ? '#000' : '#888',
-              textDecoration: 'none', padding: '7px 14px', borderRadius: 8,
-              background: active ? '#f0f0f0' : 'transparent', transition: 'all 0.15s', whiteSpace: 'nowrap',
+              fontSize: fontSize.md, fontWeight: active ? fontWeight.bold : fontWeight.medium, color: active ? colors.ink : colors.gray750,
+              textDecoration: 'none', padding: '7px 14px', borderRadius: radius.md,
+              background: active ? colors.gray250 : 'transparent', transition: `all ${transition.base}`, whiteSpace: 'nowrap',
             }}>{label}</Link>
           )
         })}
@@ -153,12 +154,12 @@ export default function TopNav() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <button onClick={async () => { const s = createClient(); await s.auth.signOut(); window.location.href = '/' }}
-          style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', background: 'none', border: '1px solid var(--border)', borderRadius: 999, padding: '6px 14px', cursor: 'pointer' }}>
+          style={{ fontSize: fontSize.caption, fontWeight: fontWeight.semibold, color: 'var(--muted)', background: 'none', border: '1px solid var(--border)', borderRadius: radius.pill, padding: '6px 14px', cursor: 'pointer' }}>
           Log out
         </button>
         <Link href="/onboarding" style={{
-          background: '#000', color: '#00ff97', fontFamily: 'Barlow, sans-serif',
-          fontWeight: 800, fontSize: 13, padding: '9px 20px', borderRadius: 999,
+          background: colors.ink, color: colors.accent, fontFamily: font.heading,
+          fontWeight: fontWeight.extrabold, fontSize: fontSize.body, padding: '9px 20px', borderRadius: radius.pill,
           textDecoration: 'none', whiteSpace: 'nowrap',
         }}>+ New funnel</Link>
       </div>
