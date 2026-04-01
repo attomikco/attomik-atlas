@@ -725,7 +725,15 @@ export default function PreviewClient({
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 md:px-10 py-8 space-y-8">
+      {/* ═══ DARK SECTION — Brand data + controls ═══ */}
+      <div style={{ background: '#000', padding: '48px 0 0' }}>
+        <div className="max-w-5xl mx-auto px-4 md:px-10">
+        {/* Part 1 header */}
+        <div style={{ maxWidth: 960, margin: '0 auto', marginBottom: 24 }}>
+          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, color: '#fff', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 6 }}>This is what we fetched from your site.</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>Update colors, font and images to make the creatives look dramatically better. Hit <span style={{ color: '#fff', fontWeight: 600 }}>Save to brand</span> to apply.</div>
+        </div>
+
         {/* Brand control bar */}
         <BrandControlBar
           primaryColor={brandPrimary}
@@ -769,14 +777,6 @@ export default function PreviewClient({
           onSave={saveBrandColors}
           saving={savingBrand}
         />
-
-        {/* ═══ PART 1 — WHAT WE FETCHED ═══ */}
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 32px 0' }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, color: '#fff', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 6 }}>This is what we fetched from your site.</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>Update colors, font and images to make the creatives look dramatically better. Hit <span style={{ color: '#fff', fontWeight: 600 }}>Save to brand</span> to apply.</div>
-          </div>
-        </div>
 
         {/* ═══ PART 2 — WHAT WE KNOW ═══ */}
         {(brand.mission || brand.brand_voice || brand.target_audience || (brand.tone_keywords && brand.tone_keywords.length > 0)) && (
@@ -831,9 +831,13 @@ export default function PreviewClient({
             <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, color: '#fff', textTransform: 'uppercase', letterSpacing: '-0.01em', textAlign: 'center' }}>We built you a full funnel.</div>
             <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
           </div>
-          <div style={{ textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Ad creatives · Copy · Landing page · Email</div>
+          <div style={{ textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,0.3)', marginBottom: 48 }}>Ad creatives · Copy · Landing page · Email</div>
         </div>
+        </div>
+      </div>
 
+      {/* ═══ CREAM SECTION — Funnel content ═══ */}
+      <div className="max-w-5xl mx-auto px-4 md:px-10 py-8 space-y-8">
         {/* ═══ SECTION 1: Ad Creatives ═══ */}
         <div>
           <div className="pv-section-head" style={{
