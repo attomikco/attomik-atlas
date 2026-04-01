@@ -770,131 +770,68 @@ export default function PreviewClient({
           saving={savingBrand}
         />
 
-        {/* Hero section */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-cream rounded-full border border-border text-sm">
-            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: brand.primary_color || '#e0e0e0' }} />
-            <span className="font-medium">{brand.name}</span>
+        {/* ═══ PART 1 — WHAT WE FETCHED ═══ */}
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 32px 0' }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, color: '#fff', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 6 }}>This is what we fetched from your site.</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>Update colors, font and images to make the creatives look dramatically better. Hit <span style={{ color: '#fff', fontWeight: 600 }}>Save to brand</span> to apply.</div>
           </div>
-          <h1 className="text-2xl md:text-3xl font-black">{campaign.name}</h1>
-          {campaign.angle && <p className="text-muted max-w-lg mx-auto">{campaign.angle}</p>}
-          <p className="text-sm text-muted max-w-md mx-auto">One consistent message across creative, copy, and landing page — built to convert.</p>
         </div>
 
-        {/* ── BRAND PROFILE SECTION ── */}
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 32px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(0,0,0,0.3)' }}>Your brand profile</div>
-            <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.08)' }} />
-            <a href={`/brand-setup/${brand.id}`} style={{ fontSize: 13, fontWeight: 700, color: 'rgba(0,0,0,0.3)', textDecoration: 'none', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Edit in Brand Hub →</a>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 48 }}>
-            {/* Brand identity card */}
-            <div style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 16, padding: '20px 22px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.35)', marginBottom: 14 }}>Identity</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 8, background: brand.primary_color || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                  {brand.logo_url ? (
-                    <img src={brand.logo_url} style={{ width: 26, height: 26, objectFit: 'contain' }} alt="" />
-                  ) : (
-                    <span style={{ fontSize: 16, fontWeight: 900, color: '#fff', fontFamily: 'Barlow, sans-serif' }}>{brand.name[0]}</span>
-                  )}
+        {/* ═══ PART 2 — WHAT WE KNOW ═══ */}
+        {(brand.mission || brand.brand_voice || brand.target_audience || (brand.tone_keywords && brand.tone_keywords.length > 0)) && (
+          <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 32px 0' }}>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, color: '#fff', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 6 }}>This is what we know about your brand.</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 28 }}>
+              AI-generated from {brand.website?.replace(/https?:\/\//, '') || 'your website'}. <a href={`/brand-setup/${brand.id}`} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'underline' }}>Improve in Brand Hub →</a>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {brand.mission && (
+                <div style={{ padding: '24px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '160px 1fr', gap: 24, alignItems: 'start' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', paddingTop: 4 }}>What you do</div>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: '#fff', lineHeight: 1.6 }}>{brand.mission}</div>
                 </div>
-                <div>
-                  <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: '#000', textTransform: 'uppercase' }}>{brand.name}</div>
-                  {brand.website && <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', marginTop: 1 }}>{brand.website.replace(/https?:\/\//, '')}</div>}
+              )}
+              {brand.target_audience && (
+                <div style={{ padding: '24px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '160px 1fr', gap: 24, alignItems: 'start' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', paddingTop: 4 }}>Who you talk to</div>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: '#fff', lineHeight: 1.6 }}>{brand.target_audience}</div>
                 </div>
-              </div>
-              {(brand.primary_color || brand.secondary_color || brand.accent_color) && (
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginBottom: 6, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Colors</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {[brand.primary_color, brand.secondary_color, brand.accent_color].filter(Boolean).map((color, i) => (
-                      <div key={i} style={{ width: 24, height: 24, borderRadius: 6, background: color!, border: '1px solid rgba(0,0,0,0.08)' }} title={color!} />
+              )}
+              {brand.brand_voice && (
+                <div style={{ padding: '24px 0', borderBottom: brand.tone_keywords?.length ? '1px solid rgba(255,255,255,0.08)' : 'none', display: 'grid', gridTemplateColumns: '160px 1fr', gap: 24, alignItems: 'start' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', paddingTop: 4 }}>Your brand voice</div>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: '#fff', lineHeight: 1.6 }}>{brand.brand_voice}</div>
+                </div>
+              )}
+              {brand.tone_keywords && brand.tone_keywords.length > 0 && (
+                <div style={{ padding: '24px 0', display: 'grid', gridTemplateColumns: '160px 1fr', gap: 24, alignItems: 'start' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', paddingTop: 8 }}>Your tone</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {brand.tone_keywords.map((kw: string, i: number) => (
+                      <span key={i} style={{ fontSize: 13, fontWeight: 700, color: '#00ff97', background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.25)', padding: '6px 14px', borderRadius: 999 }}>{kw}</span>
                     ))}
                   </div>
                 </div>
               )}
-              {brand.font_primary && (
-                <div>
-                  <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Font</div>
-                  <div style={{ fontSize: 15, color: 'rgba(0,0,0,0.6)', fontFamily: `${brand.font_primary.split('|')[0]}, sans-serif` }}>{brand.font_primary.split('|')[0]}</div>
-                </div>
-              )}
             </div>
-
-            {/* Brand voice card */}
-            {(brand.mission || brand.brand_voice || brand.target_audience) && (
-              <div style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 16, padding: '20px 22px' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.35)', marginBottom: 14 }}>Brand voice</div>
-                {brand.mission && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>What we do</div>
-                    <div style={{ fontSize: 15, color: 'rgba(0,0,0,0.7)', lineHeight: 1.6 }}>{brand.mission}</div>
-                  </div>
-                )}
-                {brand.target_audience && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Target audience</div>
-                    <div style={{ fontSize: 15, color: 'rgba(0,0,0,0.7)', lineHeight: 1.6 }}>{brand.target_audience}</div>
-                  </div>
-                )}
-                {brand.brand_voice && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Voice</div>
-                    <div style={{ fontSize: 15, color: 'rgba(0,0,0,0.7)', lineHeight: 1.6 }}>{brand.brand_voice}</div>
-                  </div>
-                )}
-                {brand.tone_keywords && brand.tone_keywords.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginBottom: 6, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Tone</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                      {brand.tone_keywords.map((kw: string, i: number) => (
-                        <span key={i} style={{ fontSize: 13, fontWeight: 600, color: brand.primary_color || '#000', background: `${brand.primary_color || '#000'}12`, border: `1px solid ${brand.primary_color || '#000'}25`, padding: '4px 10px', borderRadius: 4 }}>{kw}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Products card */}
-            {brand.products && brand.products.length > 0 && (
-              <div style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 16, padding: '20px 22px' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.35)', marginBottom: 14 }}>Products · {brand.products.length}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {(brand.products as any[]).slice(0, 4).map((p: any, i: number) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {p.image ? (
-                          <img src={p.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
-                        ) : (
-                          <span style={{ fontSize: 16, color: 'rgba(0,0,0,0.15)' }}>◻</span>
-                        )}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                        {p.price_range && <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', marginTop: 1 }}>{p.price_range}</div>}
-                      </div>
-                    </div>
-                  ))}
-                  {brand.products.length > 4 && <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.35)', fontWeight: 600 }}>+{brand.products.length - 4} more</div>}
-                </div>
+            {!brand.mission && !brand.brand_voice && (
+              <div style={{ background: 'rgba(0,255,151,0.06)', border: '1px solid rgba(0,255,151,0.15)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginTop: 24 }}>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Add brand voice and audience context for dramatically better copy and creatives.</div>
+                <a href={`/brand-setup/${brand.id}`} style={{ background: '#00ff97', color: '#000', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12, padding: '8px 18px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>Complete Brand Hub →</a>
               </div>
             )}
           </div>
+        )}
 
-          {/* CTA if brand voice is empty */}
-          {!brand.mission && !brand.brand_voice && (
-            <div style={{ background: `${brand.primary_color || '#000'}08`, border: `1px solid ${brand.primary_color || '#000'}18`, borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 48, gap: 16 }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: brand.primary_color || '#000', marginBottom: 4 }}>✦ Make your creatives better</div>
-                <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', lineHeight: 1.5 }}>Add your brand voice, target audience and products to get more accurate copy and creatives.</div>
-              </div>
-              <a href={`/brand-setup/${brand.id}`} style={{ background: brand.primary_color || '#000', color: '#fff', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12, padding: '9px 20px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>Complete Brand Hub →</a>
-            </div>
-          )}
+        {/* ═══ PART 3 — FUNNEL DIVIDER ═══ */}
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '56px 32px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, color: '#fff', textTransform: 'uppercase', letterSpacing: '-0.01em', textAlign: 'center' }}>We built you a full funnel.</div>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Ad creatives · Copy · Landing page · Email</div>
         </div>
 
         {/* ═══ SECTION 1: Ad Creatives ═══ */}
