@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import BrandSync from './BrandSync'
 
 export default async function DashboardPage({
   searchParams,
@@ -9,14 +10,25 @@ export default async function DashboardPage({
 }) {
   const { brand: brandParam } = await searchParams
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { data: brands } = await supabase
     .from('brands')
     .select('*')
     .eq('status', 'active')
+    .eq('user_id', user?.id || '')
     .order('created_at', { ascending: false })
 
-  if (!brands?.length) redirect('/onboarding')
+  if (!brands?.length) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 8 }}>✦</div>
+        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, textTransform: 'uppercase', textAlign: 'center' }}>No funnels yet</div>
+        <p style={{ color: '#555', fontSize: 16, textAlign: 'center', maxWidth: 400, lineHeight: 1.6 }}>Create your first AI-powered funnel — creatives, copy, and landing page in 30 seconds.</p>
+        <a href="/new" style={{ background: '#00ff97', color: '#000', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 15, padding: '14px 32px', borderRadius: 999, textDecoration: 'none', marginTop: 8 }}>+ New funnel</a>
+      </div>
+    )
+  }
 
   const brand = brands.find((b: any) => b.id === brandParam) || brands[0]
 
@@ -66,13 +78,15 @@ export default async function DashboardPage({
 
   return (
     <div className="pv-dash" style={{ padding: '32px 40px', maxWidth: 1000, margin: '0 auto' }}>
+      <BrandSync brandId={brand.id} />
       <style>{`
         @media (max-width: 768px) {
           .pv-dash { padding: 20px 16px !important; }
           .pv-dash-pillars { grid-template-columns: repeat(2, 1fr) !important; }
           .pv-dash-brand { flex-direction: column !important; }
         }
-        .dash-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important; }
+        .pv-dash-pillars > a { display: flex; min-width: 0; }
+        .dash-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important; width: 100% !important; }
         .dash-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; border-color: #ccc !important; }
       `}</style>
 
@@ -111,8 +125,26 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        {/* Right: completeness + actions */}
+        {/* Right: colors + font + completeness + actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+          {/* Color swatches + font */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {[brand.primary_color, brand.secondary_color, brand.accent_color].filter(Boolean).map((c, i) => (
+                <div key={i} style={{ width: 22, height: 22, borderRadius: '50%', background: c!, border: '2px solid rgba(0,0,0,0.08)', flexShrink: 0 }} />
+              ))}
+            </div>
+            {brand.font_heading?.family && (
+              <>
+                <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: 'rgba(0,0,0,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', lineHeight: 1 }}>Font</div>
+                  <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 600, fontFamily: `${brand.font_heading.family}, sans-serif`, lineHeight: 1.2, marginTop: 2 }}>{brand.font_heading.family}</div>
+                </div>
+              </>
+            )}
+          </div>
+          <div style={{ width: 1, height: 36, background: 'var(--border)', flexShrink: 0 }} />
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Brand strength</div>
             <div style={{ width: 120, height: 4, background: '#f0f0f0', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
@@ -124,7 +156,7 @@ export default async function DashboardPage({
           <div style={{ display: 'flex', gap: 8 }}>
             <Link href={`/brand-setup/${brand.id}`} style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', textDecoration: 'none', padding: '7px 14px', borderRadius: 999, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>Edit →</Link>
             {latestCampaign && (
-              <Link href={`/preview/${latestCampaign.id}`} style={{ fontSize: 12, fontWeight: 700, color: textOnPrimary, textDecoration: 'none', padding: '7px 14px', borderRadius: 999, background: primaryColor, whiteSpace: 'nowrap' }}>View funnel →</Link>
+              <Link href={`/preview/${latestCampaign.id}`} style={{ fontSize: 12, fontWeight: 700, color: '#00ff97', textDecoration: 'none', padding: '7px 14px', borderRadius: 999, background: '#000', whiteSpace: 'nowrap' }}>View funnel →</Link>
             )}
           </div>
         </div>
@@ -156,7 +188,7 @@ export default async function DashboardPage({
       )}
 
       {/* Three pillars */}
-      <div className="pv-dash-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32, alignItems: 'stretch' }}>
+      <div className="pv-dash-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, marginBottom: 32, alignItems: 'stretch' }}>
 
         {/* Brand Hub */}
         <Link href={`/brand-setup/${brand.id}`} style={{ textDecoration: 'none' }}>
@@ -206,7 +238,7 @@ export default async function DashboardPage({
             <div style={{ marginTop: 'auto', display: 'flex', gap: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
               {[{ num: '9', label: 'Templates' }, { num: '3', label: 'Sizes' }, { num: '∞', label: 'Variations' }].map(({ num, label }) => (
                 <div key={label}>
-                  <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: primaryColor, lineHeight: 1 }}>{num}</div>
+                  <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: '#000', lineHeight: 1 }}>{num}</div>
                   <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{label}</div>
                 </div>
               ))}

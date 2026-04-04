@@ -24,26 +24,35 @@ export default function AuthConfirmPage() {
 
     // With implicit flow, Supabase client auto-detects tokens in the URL hash
     // and sets the session. We just listen for it.
-    function getPostAuthRedirect() {
-      const demoCampaignId = sessionStorage.getItem('attomik_demo_campaign_id')
-      if (demoCampaignId) {
-        sessionStorage.removeItem('attomik_demo_campaign_id')
-        sessionStorage.removeItem('attomik_demo_brand_id')
-        return `/preview/${demoCampaignId}`
+    async function claimAndRedirect(session: { user: { id: string; email?: string } }) {
+      const brandId = sessionStorage.getItem('attomik_demo_brand_id')
+      const campaignId = sessionStorage.getItem('attomik_demo_campaign_id')
+      if (brandId) {
+        // Claim brand — set both user_id and client_email for compatibility
+        const update: Record<string, string> = {}
+        if (session.user.email) update.client_email = session.user.email
+        update.user_id = session.user.id
+        await supabase.from('brands').update(update).eq('id', brandId)
       }
-      return '/'
+      sessionStorage.removeItem('attomik_demo_brand_id')
+      sessionStorage.removeItem('attomik_demo_campaign_id')
+      if (campaignId) {
+        router.push(`/preview/${campaignId}`)
+      } else {
+        router.push('/')
+      }
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        router.push(getPostAuthRedirect())
+        claimAndRedirect(session)
       }
     })
 
     // Also check if session is already set
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.push(getPostAuthRedirect())
+        claimAndRedirect(session)
       }
     })
 

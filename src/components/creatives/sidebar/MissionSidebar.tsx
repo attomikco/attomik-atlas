@@ -21,7 +21,7 @@ export default function MissionSidebar({ subtitle, setSubtitle, images, selected
       {images.length > 0 && (
         <div>
           <label className="text-[10px] text-muted uppercase tracking-wide font-semibold block mb-1">Product image</label>
-          <div className="grid grid-cols-4 gap-1 max-h-[100px] overflow-y-auto">
+          <div className="grid grid-cols-4 gap-1">
             {images.map(img => (
               <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
                 className="aspect-square rounded-[3px] overflow-hidden border-2 transition-all"

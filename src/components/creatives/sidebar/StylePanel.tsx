@@ -66,9 +66,9 @@ interface StylePanelProps {
 }
 
 const sectionCls = "rounded-lg p-3 space-y-2.5"
-const sectionStyle = { border: '1px solid #e5e5e5', background: '#fafafa' }
+const sectionStyle: React.CSSProperties = { border: '1px solid #e5e5e5', background: '#fafafa', paddingBottom: 12 }
 const labelCls = "uppercase tracking-wide"
-const labelStyle = { fontSize: 11, fontWeight: 600, color: '#888', letterSpacing: '0.06em' }
+const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#999', letterSpacing: '0.06em', fontFamily: 'DM Mono, monospace', textTransform: 'uppercase', minWidth: 90, flexShrink: 0 }
 const swatchSize = { width: 28, height: 28, borderRadius: 5 }
 
 export default function StylePanel({
@@ -212,14 +212,14 @@ export default function StylePanel({
           ].map(row => (
             <div key={row.short} className={sectionCls} style={sectionStyle}>
               <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle, width: 64, flexShrink: 0 }}>{row.label}</span>
+                <span className={labelCls} style={{ ...labelStyle }}>{row.label}</span>
                 <select value={row.font} onChange={e => row.setFont(e.target.value)}
                   className="text-sm border border-border rounded-btn px-2 py-1.5 bg-cream focus:outline-none focus:border-accent flex-1 min-w-0 appearance-none">
                   {fontOptions}
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle, width: 64, flexShrink: 0 }}>Color</span>
+                <span className={labelCls} style={{ ...labelStyle }}>Color</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandColors.map(c => (
                     <button key={row.short + c.value} onClick={() => row.setColor(c.value)}
@@ -228,7 +228,7 @@ export default function StylePanel({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle, width: 64, flexShrink: 0 }}>Size</span>
+                <span className={labelCls} style={{ ...labelStyle }}>Size</span>
                 <input type="range" min={0.5} max={2} step={0.1} value={row.sizeMul}
                   onChange={e => row.setSizeMul(parseFloat(e.target.value))}
                   className="flex-1 min-w-0" style={{ accentColor: '#888' }} />
@@ -242,7 +242,7 @@ export default function StylePanel({
             <div className={sectionCls} style={sectionStyle}>
               <span className={labelCls} style={{ ...labelStyle, display: 'block' }}>{templateId === 'testimonial' ? 'Stars' : 'CTA'}</span>
               <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle, width: 64, flexShrink: 0 }}>{templateId === 'testimonial' ? 'Color' : 'Background'}</span>
+                <span className={labelCls} style={{ ...labelStyle }}>{templateId === 'testimonial' ? 'Color' : 'Background'}</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandColors.map(c => (
                     <button key={'cta-' + c.value} onClick={() => setCtaColor(c.value)}
@@ -251,7 +251,7 @@ export default function StylePanel({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle, width: 64, flexShrink: 0 }}>Text</span>
+                <span className={labelCls} style={{ ...labelStyle }}>Text</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandColors.map(c => (
                     <button key={'ctaf-' + c.value} onClick={() => setCtaFontColor(c.value)}

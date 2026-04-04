@@ -20,7 +20,7 @@ export default function OverlayTemplate({
   showCta, headlineFont, headlineWeight, headlineTransform, headlineColor,
   bodyFont, bodyWeight, bodyTransform, bodyColor, headlineSizeMul, bodySizeMul,
   ctaColor, ctaFontColor, bgColor, textPosition,
-  showOverlay, overlayOpacity, textBanner, textBannerColor, imagePosition,
+  showOverlay, overlayOpacity, textBanner, textBannerColor, imagePosition, isExporting,
 }: TemplateProps) {
   const p = px(EDGE_PAD, width)
   const pb = px(BOTTOM_PAD, width)
@@ -59,9 +59,9 @@ export default function OverlayTemplate({
   return (
     <div style={{ position: 'relative', overflow: 'hidden', width, height, fontFamily: ff(bodyFont), background: bgColor, WebkitFontSmoothing: 'antialiased' as any }}>
       {imageUrl ? (
-        <img crossOrigin="anonymous" src={imageUrl} alt="" width={width} height={height} onError={(e) => console.error('[Template] Image failed:', e.currentTarget.src)} style={{
-          position: 'absolute', inset: 0, width, height,
-          objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}`,
+        <img crossOrigin="anonymous" src={imageUrl} alt="" onError={(e) => console.error('[Template] Image failed:', e.currentTarget.src)} style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: `center ${imagePosition || 'center'}`, display: 'block',
         }} />
       ) : (
         <div style={{ position: 'absolute', inset: 0, background: bgColor || '#1a1a1a' }} />
@@ -128,16 +128,20 @@ export default function OverlayTemplate({
               marginTop: px(GAP_BODY_CTA, width),
             }}>
               <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                minWidth: px(160, width), height: px(52, width),
+                display: 'block',
+                paddingTop: px(16, width),
+                paddingBottom: px(16, width),
+                paddingLeft: px(28, width),
+                paddingRight: px(28, width),
                 background: ctaColor || brandColor,
+                borderRadius: CTA_RADIUS,
+                whiteSpace: 'nowrap' as const,
                 color: ctaFontColor || '#000',
                 fontSize: px(CTA_SIZE, width) * bodySizeMul,
                 fontWeight: 700,
-                padding: `0 ${px(CTA_PAD_H, width)}px`,
-                borderRadius: CTA_RADIUS,
-                whiteSpace: 'nowrap' as const,
                 fontFamily: ff(headlineFont),
+                textAlign: 'center' as const,
+                lineHeight: '1',
               }}>
                 {ctaText || 'Shop Now'}
               </div>

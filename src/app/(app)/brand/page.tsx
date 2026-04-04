@@ -11,7 +11,7 @@ export default async function BrandPage() {
     .limit(1)
 
   const brand = brands?.[0]
-  if (!brand) redirect('/onboarding')
+  if (!brand) redirect('/dashboard')
 
   redirect(`/brand-setup/${brand.id}`)
 }

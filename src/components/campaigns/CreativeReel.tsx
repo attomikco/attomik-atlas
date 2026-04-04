@@ -44,7 +44,14 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
   const reelImages = (allImageUrls && allImageUrls.length > 0 ? allImageUrls : []).slice(0, 5)
   const getImg = (i: number): string | null =>
     i < reelImages.length ? reelImages[i] : reelImages.length > 0 ? reelImages[0] : null
-  const getVariation = (i: number): AdVariation => adVariations?.[i % (adVariations?.length || 1)] || adVariation
+  const getVariation = (i: number): AdVariation => {
+    if (!adVariations || adVariations.length === 0) return adVariation
+    // For cards beyond the variation count, remix the copy to avoid looking identical
+    if (i < adVariations.length) return adVariations[i]
+    const base = adVariations[i % adVariations.length]
+    const alt = adVariations[(i + 1) % adVariations.length]
+    return { ...base, headline: alt.headline, primary_text: base.primary_text, description: base.description }
+  }
 
   const pri = brand.primary_color || colors.ink
   const sec = brand.secondary_color || brand.primary_color || colors.ink

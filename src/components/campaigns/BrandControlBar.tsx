@@ -2,6 +2,22 @@
 import { useEffect, useState, useRef } from 'react'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, letterSpacing } from '@/lib/design-tokens'
 
+// ============================================================
+// BRANDCONTROLBAR — SECTION REGISTRY
+// DO NOT remove or reorder sections without explicit instruction.
+//
+// SECTION 1: LOGO — shows brand.logo_url, single thumbnail, not removable
+// SECTION 2: COLORS — primary, secondary, accent color pickers
+// SECTION 3: FONT — font family display and picker
+// SECTION 4: PRODUCTS — getShopifyImages(), only if length > 0, capped at 8
+// SECTION 5: IMAGES — getProductImages() + getLifestyleImages() combined, capped at 8
+//
+// Any prompt editing this file must:
+// 1. Read the full file before making changes
+// 2. Only touch the section explicitly mentioned in the prompt
+// 3. Confirm all 5 sections still exist after changes
+// ============================================================
+
 interface BrandControlBarProps {
   primaryColor: string
   secondaryColor: string
@@ -141,7 +157,7 @@ export default function BrandControlBar({
           padding: '32px 40px',
           borderBottom: `1px solid ${colors.gray250}`,
         }}>
-          {/* Colors */}
+          {/* --- SECTION 2: COLORS --- */}
           <div>
             <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.extrabold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: colors.brandGreen, marginBottom: 16 }}>Colors</div>
             <div style={{ display: 'flex', gap: 20 }}>
@@ -245,7 +261,7 @@ export default function BrandControlBar({
           {/* Vertical divider */}
           <div style={{ width: 1, alignSelf: 'stretch', background: colors.gray250, flexShrink: 0 }} />
 
-          {/* Font */}
+          {/* --- SECTION 3: FONT --- */}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.extrabold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: colors.brandGreen, marginBottom: 16 }}>Font</div>
             <input
@@ -288,7 +304,7 @@ export default function BrandControlBar({
         {(logoUrl || filteredShopifyUrls.length > 0 || filteredCombinedUrls.length > 0) && (
           <div style={{ padding: '28px 40px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-            {/* LOGO — single thumbnail, not removable */}
+            {/* --- SECTION 1: LOGO --- */}
             {logoUrl && (
               <div>
                 <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.extrabold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: colors.brandGreen, marginBottom: 12 }}>
@@ -306,7 +322,7 @@ export default function BrandControlBar({
               </div>
             )}
 
-            {/* PRODUCTS — Shopify product images */}
+            {/* --- SECTION 4: PRODUCTS --- */}
             {filteredShopifyUrls.length > 0 && (
               <div>
                 <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.extrabold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: colors.brandGreen, marginBottom: 12 }}>
@@ -324,7 +340,7 @@ export default function BrandControlBar({
               </div>
             )}
 
-            {/* IMAGES — product + lifestyle combined */}
+            {/* --- SECTION 5: IMAGES --- */}
             {filteredCombinedUrls.length > 0 && (
               <div>
                 <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.extrabold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: colors.brandGreen, marginBottom: 12 }}>

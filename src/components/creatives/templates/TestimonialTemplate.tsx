@@ -17,7 +17,7 @@ export default function TestimonialTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform,
   bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul,
-  headlineColor, bodyColor, ctaColor, ctaFontColor, imagePosition,
+  headlineColor, bodyColor, ctaColor, ctaFontColor, imagePosition, isExporting,
 }: TemplateProps) {
   const imgH = Math.round(height * IMAGE_RATIO)
   const padH = px(PANEL_PAD_H, width)
@@ -30,7 +30,7 @@ export default function TestimonialTemplate({
     <div style={{ display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', width, height, fontFamily: ff(bodyFont) }}>
       <div style={{ position: 'relative', width, height: imgH, flexShrink: 0 }}>
         {imageUrl ? (
-          <img crossOrigin="anonymous" src={imageUrl} alt="" width={width} height={imgH} style={{ position: 'absolute', inset: 0, width, height: imgH, objectFit: 'cover', objectPosition: `center ${imagePosition || 'bottom'}` }} />
+          <img crossOrigin="anonymous" src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${imagePosition || 'bottom'}`, display: 'block' }} />
         ) : (
           <div style={{ position: 'absolute', inset: 0, background: brandColor || '#1a1a1a' }} />
         )}
@@ -77,12 +77,20 @@ export default function TestimonialTemplate({
         {showCta && (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: px(18, width) }}>
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              minWidth: px(160, width), height: px(52, width),
-              background: ctaColor || brandColor, color: ctaFontColor || '#000',
-              fontSize: px(CTA_SIZE, width) * bodySizeMul, fontWeight: 700,
-              padding: `0 ${px(CTA_PAD_H, width)}px`,
-              borderRadius: 6, fontFamily: ff(headlineFont), whiteSpace: 'nowrap' as const,
+              display: 'block',
+              paddingTop: px(16, width),
+              paddingBottom: px(16, width),
+              paddingLeft: px(28, width),
+              paddingRight: px(28, width),
+              background: ctaColor || brandColor,
+              borderRadius: 6,
+              whiteSpace: 'nowrap' as const,
+              color: ctaFontColor || '#000',
+              fontSize: px(CTA_SIZE, width) * bodySizeMul,
+              fontWeight: 700,
+              fontFamily: ff(headlineFont),
+              textAlign: 'center' as const,
+              lineHeight: '1',
             }}>
               {ctaText || 'Shop Now'}
             </div>

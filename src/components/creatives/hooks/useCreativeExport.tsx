@@ -30,6 +30,55 @@ interface UseCreativeExportOptions {
   setExportToast: (v: string | null) => void
 }
 
+export const exportPngViaPuppeteer = async (
+  templateId: string,
+  templateProps: Record<string, any>,
+  width: number,
+  height: number,
+  filename: string
+) => {
+  // Filter out non-serializable props (functions, React nodes)
+  const serializableProps = Object.fromEntries(
+    Object.entries(templateProps).filter(([, v]) => {
+      try { JSON.stringify(v); return true } catch { return false }
+    })
+  )
+
+  // Store props server-side to avoid URL length limits
+  const storeRes = await fetch('/api/export/props', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ props: serializableProps }),
+  })
+  const { id } = await storeRes.json()
+
+  const baseUrl = window.location.origin
+  const renderUrl = `${baseUrl}/render?template=${templateId}&width=${width}&height=${height}&propsId=${id}`
+
+  console.log('Using Puppeteer export for:', templateId, width, 'x', height)
+  const res = await fetch('/api/export/png', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ renderUrl, width, height, filename }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    let details = 'Unknown error'
+    try { const j = JSON.parse(text); details = j.details || j.error || text } catch { details = text }
+    console.error('[Puppeteer export] Server error:', res.status, details)
+    throw new Error(details)
+  }
+
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function useCreativeExport(opts: UseCreativeExportOptions) {
   const {
     brandSlug, brandId, campaignId, templateId, sizeId,
@@ -48,40 +97,35 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
     // Render at 2x native size for crisp text
     const s = 2
     const rw = w * s, rh = h * s
-    container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${rw}px;height:${rh}px;overflow:hidden;pointer-events:none;z-index:-1;opacity:0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;`
+    // Position far offscreen — NO opacity, NO visibility hidden (html2canvas needs fully rendered content)
+    container.style.cssText = `position:fixed;left:-99999px;top:0px;width:${rw}px;height:${rh}px;z-index:9999;overflow:hidden;background:white;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;`
     container.innerHTML = ''
     const { createRoot } = await import('react-dom/client')
     const wrapper = document.createElement('div'); wrapper.style.cssText = `width:${rw}px;height:${rh}px;overflow:hidden;`
     container.appendChild(wrapper)
     const root = createRoot(wrapper)
-    // Pass 2x dimensions so template renders text/layout at 2x
-    root.render(<Component {...props} width={rw} height={rh} />)
-    // Wait for next animation frame so DOM is painted
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    // Wait for all images to load (8s safety timeout)
-    await new Promise<void>(resolve => {
-      const timeout = setTimeout(() => { console.warn('[Export] Image load timeout — capturing anyway'); resolve() }, 8000)
-      setTimeout(() => {
-        const imgs = container.querySelectorAll('img')
-        if (imgs.length === 0) { clearTimeout(timeout); resolve(); return }
-        Promise.all(
-          Array.from(imgs).map(img =>
-            img.complete ? Promise.resolve() :
-            new Promise(r => { img.onload = r; img.onerror = r })
-          )
-        ).then(() => { clearTimeout(timeout); resolve() })
-      }, 200)
-    })
-    await new Promise(r => setTimeout(r, 100))
-    // Capture at 1:1 (already 2x size)
+    root.render(<Component {...props} width={rw} height={rh} isExporting={true} />)
+    // Wait for two animation frames so browser fully paints
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+    // Wait for all images to load (5s per-image timeout)
+    const imgs = container.querySelectorAll('img')
+    await Promise.all(
+      Array.from(imgs).map(img =>
+        img.complete && img.naturalWidth > 0 ? Promise.resolve() :
+        new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); setTimeout(res, 5000) })
+      )
+    )
+    // Buffer for final render
+    await new Promise(r => setTimeout(r, 200))
+    // Capture
     let canvas: HTMLCanvasElement
     try {
-      canvas = await html2canvas(container, { width: rw, height: rh, scale: 1, useCORS: true, allowTaint: true, logging: false })
+      canvas = await html2canvas(container, { width: rw, height: rh, scale: 1, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', logging: true })
     } catch (err) {
       console.error('[Export] html2canvas failed:', err)
       throw err
     }
-    if (!canvas.width || !canvas.height) throw new Error(`[Export] Canvas has zero dimensions: ${canvas.width}x${canvas.height}`)
+    if (canvas.width === 0 || canvas.height === 0) throw new Error(`[Export] Canvas empty: ${canvas.width}x${canvas.height}`)
     // Downscale to target size
     const out = document.createElement('canvas')
     out.width = w; out.height = h
@@ -90,17 +134,30 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(canvas, 0, 0, w, h)
     const dataUrl = out.toDataURL('image/png')
+    // Cleanup immediately
     root.unmount()
     container.innerHTML = ''
-    container.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;overflow:hidden;pointer-events:none;opacity:0;'
+    container.style.cssText = 'position:fixed;left:-99999px;top:0px;width:0;height:0;overflow:hidden;'
     return dataUrl
   }, [])
 
   const exportPng = useCallback(async () => {
     setExporting(true)
+    const fileName = `${brandSlug}-${templateId}-${sizeId}-${Date.now()}.png`
     try {
+      // Try server-side puppeteer export first
+      try {
+        await exportPngViaPuppeteer(templateId, templateProps, size.w, size.h, fileName)
+        setExportToast(campaignId ? 'Downloaded & saved to campaign' : 'Downloaded creative')
+        setTimeout(() => setExportToast(null), 3000)
+        setExporting(false)
+        return
+      } catch (err) {
+        console.warn('Puppeteer export failed, falling back to html2canvas:', err)
+      }
+      // Fallback to html2canvas
+      console.log('Using html2canvas fallback')
       const dataUrl = await renderAndCapture(TemplateComponent, templateProps, size.w, size.h)
-      const fileName = `${brandSlug}-${templateId}-${sizeId}-${Date.now()}.png`
       const link = document.createElement('a'); link.download = fileName; link.href = dataUrl; link.click()
       if (campaignId && brandId) {
         const base64 = dataUrl.split(',')[1]; const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0))

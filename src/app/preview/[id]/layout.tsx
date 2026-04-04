@@ -4,7 +4,7 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-cream">
       {/* Attomik Header */}
-      <header style={{ background: '#000', minHeight: 72, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <header style={{ background: '#000', minHeight: 72, borderBottom: '1px solid rgba(255,255,255,0.08)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between" style={{ padding: '20px 48px' }}>
           <div className="flex items-center">
             <AttomikLogo height={44} color="#ffffff" />
@@ -18,7 +18,7 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
               <span key={label} style={{ color: '#00ff97', fontSize: 13 }}>{label}</span>
             ))}
           </div>
-          <a href="/login" style={{ background: '#00ff97', color: '#000', fontSize: 15, fontWeight: 800, padding: '13px 28px', borderRadius: 999, letterSpacing: 'normal', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+          <a href="#signup" style={{ background: '#00ff97', color: '#000', fontSize: 15, fontWeight: 800, padding: '13px 28px', borderRadius: 999, letterSpacing: 'normal', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
             Get full access →
           </a>
         </div>

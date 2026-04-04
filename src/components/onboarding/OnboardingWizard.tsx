@@ -25,6 +25,12 @@ export default function OnboardingWizard() {
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => { if (user) setIsLoggedIn(true); setAuthChecked(true) })
+  }, [])
 
   // Step 1 — two states
   const [detecting, setDetecting] = useState(!!searchParams.get('url'))
@@ -156,10 +162,14 @@ export default function OnboardingWizard() {
 
     const slug = brandName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).slice(2, 6)
 
+    // If logged in, assign brand to current user
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+
     const { data: brand, error: brandErr } = await supabase.from('brands').insert({
       name: brandName.trim(),
       slug,
       website: website.trim() || null,
+      ...(currentUser ? { user_id: currentUser.id, client_email: currentUser.email } : {}),
       primary_color: primaryColor || null,
       secondary_color: secondaryColor || null,
       accent_color: accentColor || null,
@@ -646,7 +656,7 @@ export default function OnboardingWizard() {
             </div>
 
             {/* Subtext */}
-            <div style={{ fontSize: fontSize.xl, color: 'rgba(255,255,255,0.45)' /* TODO: tokenize */, lineHeight: 1.6, marginBottom: 36, maxWidth: 420 }}>
+            <div style={{ fontSize: fontSize.xl, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 36, maxWidth: 420 }}>
               Enter your website. We&apos;ll build a complete ad funnel in 30 seconds — creatives, copy, and landing page.
             </div>
 
@@ -659,10 +669,10 @@ export default function OnboardingWizard() {
                 placeholder="https://yourbrand.com"
                 autoFocus
                 style={{ width: '100%', padding: '16px 20px', fontSize: fontSize.lg, fontWeight: fontWeight.medium, background: colors.whiteAlpha8, border: `1.5px solid ${colors.whiteAlpha15}`, borderRadius: radius['2xl'], color: colors.paper, outline: 'none', textAlign: 'center' }}
-                onFocus={e => { e.target.style.borderColor = colors.accent; e.target.style.background = 'rgba(255,255,255,0.1)' /* TODO: tokenize */ }}
+                onFocus={e => { e.target.style.borderColor = colors.accent; e.target.style.background = 'rgba(255,255,255,0.1)' }}
                 onBlur={e => { e.target.style.borderColor = colors.whiteAlpha15; e.target.style.background = colors.whiteAlpha8 }}
               />
-              {errors.website && <p style={{ color: '#ff4444' /* TODO: tokenize */, fontSize: fontSize.body, margin: 0 }}>{errors.website}</p>}
+              {errors.website && <p style={{ color: '#ff4444', fontSize: fontSize.body, margin: 0 }}>{errors.website}</p>}
               <button
                 onClick={analyzeWebsite}
                 disabled={detecting || !website.trim()}
@@ -678,7 +688,7 @@ export default function OnboardingWizard() {
               >
                 {detecting ? (
                   <>
-                    <span style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.3)' /* TODO: tokenize */, borderTopColor: colors.ink, borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                    <span style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.3)', borderTopColor: colors.ink, borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
                     Analyzing your site...
                   </>
                 ) : 'Build my funnel →'}
@@ -686,12 +696,13 @@ export default function OnboardingWizard() {
             </div>
 
             {/* Skip */}
-            <button onClick={skipToManual} style={{ background: 'none', border: 'none', fontSize: fontSize.body, color: 'rgba(255,255,255,0.55)' /* TODO: tokenize */, cursor: 'pointer', marginTop: 16, padding: 0 }}>
+            <button onClick={skipToManual} style={{ background: 'none', border: 'none', fontSize: fontSize.body, color: 'rgba(255,255,255,0.55)', cursor: 'pointer', marginTop: 16, padding: 0 }}>
               or set up manually →
             </button>
           </div>
         </>
       )}
+
 
       {/* STATE B + Steps 1-2: White card */}
       {!isHeroState && (step > 0 || detected) && (

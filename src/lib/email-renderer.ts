@@ -31,6 +31,7 @@ export interface BrandEmailData {
   accentColor: string
   bgColor: string
   headingFont: string
+  headingTransform?: string
   products: Array<{ name: string; price: string; image: string; url: string }>
   lifestyleImages?: string[]
 }
@@ -48,6 +49,7 @@ export function renderEmail(
   blocksOverride?: Record<string, boolean>
 ): string {
   const { primaryColor, accentColor, bgColor, headingFont } = brand
+  const hTransform = brand.headingTransform && brand.headingTransform !== 'none' ? `text-transform:${brand.headingTransform};` : ''
   const textOnPrimary = isLight(primaryColor) ? '#000' : '#fff'
   const lifestyleImgs = brand.lifestyleImages || []
 
@@ -77,8 +79,8 @@ export function renderEmail(
     const heroText = lifestyleImgs[0] ? '#fff' : textOnPrimary
     blocks.push(`
       <tr><td style="${heroBg};padding:56px 32px;text-align:center">
-        ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${brand.name}" style="height:32px;margin-bottom:24px;display:inline-block" />` : `<div style="font-family:${headingFont};font-size:20px;font-weight:900;color:${heroText};margin-bottom:24px">${brand.name}</div>`}
-        <div style="font-family:${headingFont};font-size:36px;font-weight:900;color:${heroText};line-height:1.1;margin-bottom:14px">${content.heroHeadline}</div>
+        ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${brand.name}" style="height:32px;margin-bottom:24px;display:inline-block" />` : `<div style="font-family:${headingFont};font-size:20px;font-weight:900;color:${heroText};margin-bottom:24px;${hTransform}">${brand.name}</div>`}
+        <div style="font-family:${headingFont};font-size:36px;font-weight:900;color:${heroText};line-height:1.1;margin-bottom:14px;${hTransform}">${content.heroHeadline}</div>
         <div style="font-size:16px;color:${heroText};opacity:0.8;margin-bottom:28px;max-width:420px;margin-left:auto;margin-right:auto;line-height:1.6">${content.heroSubheadline}</div>
         <a href="${content.heroCtaUrl || brand.website}" style="display:inline-block;background:${accentColor};color:${isLight(accentColor) ? '#000' : '#fff'};font-family:${headingFont};font-weight:800;font-size:14px;padding:14px 36px;border-radius:999px;text-decoration:none">${content.heroCta}</a>
       </td></tr>`)
@@ -107,7 +109,7 @@ export function renderEmail(
       <tr><td style="padding:0 32px 32px">
         <div style="background:${primaryColor};border-radius:12px;padding:36px;text-align:center">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${textOnPrimary};opacity:0.5;margin-bottom:10px">${content.ctaEyebrow}</div>
-          <div style="font-family:${headingFont};font-size:24px;font-weight:900;color:${textOnPrimary};margin-bottom:10px">${content.ctaHeadline}</div>
+          <div style="font-family:${headingFont};font-size:24px;font-weight:900;color:${textOnPrimary};margin-bottom:10px;${hTransform}">${content.ctaHeadline}</div>
           <div style="font-size:15px;color:${textOnPrimary};opacity:0.7;margin-bottom:24px">${content.ctaBody}</div>
           <a href="${brand.website}" style="display:inline-block;background:${accentColor};color:${isLight(accentColor) ? '#000' : '#fff'};font-weight:800;font-size:14px;padding:14px 32px;border-radius:999px;text-decoration:none">${content.ctaButton}</a>
         </div>
@@ -149,7 +151,7 @@ export function renderEmail(
     blocks.push(`
       <tr><td style="padding:36px 32px;text-align:center">
         ${expImg ? `<img src="${expImg}" alt="Lifestyle" style="width:100%;border-radius:12px;margin-bottom:24px;display:block" />` : ''}
-        <div style="font-family:${headingFont};font-size:24px;font-weight:900;color:${primaryColor};margin-bottom:14px">${content.experienceHeadline}</div>
+        <div style="font-family:${headingFont};font-size:24px;font-weight:900;color:${primaryColor};margin-bottom:14px;${hTransform}">${content.experienceHeadline}</div>
         <div style="font-size:15px;color:#666;line-height:1.7;max-width:460px;margin:0 auto">${content.experienceBody}</div>
       </td></tr>`)
   }

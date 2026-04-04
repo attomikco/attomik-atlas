@@ -13,6 +13,7 @@ function isPublic(pathname: string): boolean {
   if (publicPaths.includes(pathname)) return true
   if (pathname.startsWith('/preview/')) return true
   if (pathname.startsWith('/api/')) return true
+  if (pathname.startsWith('/render')) return true
   return false
 }
 

@@ -1,56 +1,60 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useBrand } from '@/lib/brand-context'
 import EmailTemplateClient from '@/components/email/EmailTemplateClient'
 
-export default async function EmailPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ brand?: string }>
-}) {
-  const { brand: brandParam } = await searchParams
-  const supabase = await createClient()
+export default function EmailPage() {
+  const { activeBrandId } = useBrand()
+  const [brand, setBrand] = useState<any>(null)
+  const [initialConfig, setInitialConfig] = useState<any>(null)
+  const [emails, setEmails] = useState<any[]>([])
+  const [lifestyleImages, setLifestyleImages] = useState<string[]>([])
+  const [productImages, setProductImages] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const { data: brands } = await supabase
-    .from('brands')
-    .select('id, name, website, logo_url, primary_color, accent_color, font_primary, font_heading, products, notes')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
+  useEffect(() => {
+    if (!activeBrandId) return
+    setLoading(true)
+    const supabase = createClient()
 
-  if (!brands?.length) redirect('/onboarding')
+    Promise.all([
+      supabase.from('brands')
+        .select('id, name, website, logo_url, primary_color, accent_color, font_primary, font_heading, products, notes')
+        .eq('id', activeBrandId).single(),
+      supabase.from('brand_images').select('storage_path, tag')
+        .eq('brand_id', activeBrandId).order('created_at'),
+      supabase.from('generated_content').select('*, campaign:campaigns(id, name, goal)')
+        .eq('brand_id', activeBrandId).eq('type', 'email').order('created_at', { ascending: false }),
+    ]).then(([brandRes, imagesRes, emailsRes]) => {
+      const b = brandRes.data
+      if (!b) { setLoading(false); return }
+      setBrand(b)
 
-  const activeBrandId = brandParam || brands[0]?.id
-  const brand = brands.find(b => b.id === activeBrandId) || brands[0]
+      let emailConfig = null
+      try {
+        const notes = b.notes ? JSON.parse(b.notes) : {}
+        emailConfig = notes.email_config || null
+      } catch {}
+      setInitialConfig(emailConfig)
 
-  // Parse email config from notes
-  let emailConfig = null
-  try {
-    const notes = brand.notes ? JSON.parse(brand.notes) : {}
-    emailConfig = notes.email_config || null
-  } catch {}
+      setEmails(emailsRes.data ?? [])
 
-  // Fetch brand images for preview
-  const { data: brandImages } = await supabase
-    .from('brand_images')
-    .select('storage_path, tag')
-    .eq('brand_id', activeBrandId)
-    .order('created_at')
+      const lifestyle: string[] = []
+      const product: string[] = []
+      for (const img of imagesRes.data || []) {
+        const cleanPath = img.storage_path.replace(/^brand-images\//, '')
+        const { data: urlData } = supabase.storage.from('brand-images').getPublicUrl(cleanPath)
+        if (img.tag === 'lifestyle' || img.tag === 'background') lifestyle.push(urlData.publicUrl)
+        else if (img.tag === 'product') product.push(urlData.publicUrl)
+      }
+      setLifestyleImages(lifestyle)
+      setProductImages(product)
+      setLoading(false)
+    })
+  }, [activeBrandId])
 
-  const lifestyleImages: string[] = []
-  const productImages: string[] = []
-  for (const img of brandImages || []) {
-    const cleanPath = img.storage_path.replace(/^brand-images\//, '')
-    const { data: urlData } = supabase.storage.from('brand-images').getPublicUrl(cleanPath)
-    if (img.tag === 'lifestyle' || img.tag === 'background') lifestyleImages.push(urlData.publicUrl)
-    else if (img.tag === 'product') productImages.push(urlData.publicUrl)
-  }
+  if (loading || !brand) return null
 
-  // Fetch generated emails for this brand
-  const { data: emails } = await supabase
-    .from('generated_content')
-    .select('*, campaign:campaigns(id, name, goal)')
-    .eq('brand_id', activeBrandId)
-    .eq('type', 'email')
-    .order('created_at', { ascending: false })
-
-  return <EmailTemplateClient brand={brand} initialConfig={emailConfig} emails={emails || []} lifestyleImages={lifestyleImages} productImages={productImages} />
+  return <EmailTemplateClient brand={brand} initialConfig={initialConfig} emails={emails} lifestyleImages={lifestyleImages} productImages={productImages} />
 }

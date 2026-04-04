@@ -5,11 +5,13 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [authenticating, setAuthenticating] = useState(false)
   const [error, setError] = useState('')
   const [debug, setDebug] = useState('')
+  const [isLocalhost, setIsLocalhost] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -34,30 +36,38 @@ export default function LoginPage() {
       }
     }
 
-    function getPostAuthRedirect() {
-      const demoCampaignId = sessionStorage.getItem('attomik_demo_campaign_id')
-      if (demoCampaignId) {
-        sessionStorage.removeItem('attomik_demo_campaign_id')
-        sessionStorage.removeItem('attomik_demo_brand_id')
-        return `/preview/${demoCampaignId}`
+    async function claimAndRedirect(session: { user: { id: string; email?: string } }) {
+      const brandId = sessionStorage.getItem('attomik_demo_brand_id')
+      const campaignId = sessionStorage.getItem('attomik_demo_campaign_id')
+      if (brandId) {
+        const update: Record<string, string> = {}
+        if (session.user.email) update.client_email = session.user.email
+        update.user_id = session.user.id
+        await supabase.from('brands').update(update).eq('id', brandId)
       }
-      return new URLSearchParams(window.location.search).get('next') || '/dashboard'
+      sessionStorage.removeItem('attomik_demo_brand_id')
+      sessionStorage.removeItem('attomik_demo_campaign_id')
+      if (campaignId) {
+        window.location.href = `/preview/${campaignId}`
+      } else {
+        window.location.href = new URLSearchParams(window.location.search).get('next') || '/dashboard'
+      }
     }
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        window.location.href = getPostAuthRedirect()
+        claimAndRedirect(session)
       }
       if (event === 'TOKEN_REFRESHED' && session) {
-        window.location.href = getPostAuthRedirect()
+        claimAndRedirect(session)
       }
     })
 
     // Also check current session (might already be set by detectSessionInUrl)
     supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
       if (session) {
-        window.location.href = getPostAuthRedirect()
+        claimAndRedirect(session)
       } else if (search.includes('code=') && sessionError) {
         setAuthenticating(false)
         setError(sessionError.message)
@@ -74,6 +84,10 @@ export default function LoginPage() {
     return () => subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    setIsLocalhost(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  }, [])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -83,7 +97,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${location.origin}/login`,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
 
@@ -93,6 +107,15 @@ export default function LoginPage() {
       setSent(true)
     }
     setLoading(false)
+  }
+
+  async function handleDevLogin() {
+    if (!email.trim() || !password.trim()) { setError('Enter email and password'); return }
+    setLoading(true)
+    setError('')
+    const supabase = createClient()
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInErr) { setError(signInErr.message); setLoading(false) }
   }
 
   return (
@@ -133,17 +156,41 @@ export default function LoginPage() {
                 className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-ink transition-colors"
               />
 
+              {isLocalhost && (
+                <>
+                  <label className="form-label label block mb-2 mt-3">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-ink transition-colors"
+                  />
+                </>
+              )}
+
               {error && (
                 <p className="text-danger text-sm mt-2">{error}</p>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-dark w-full mt-4 bg-ink text-accent font-semibold rounded-btn px-4 py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {loading ? 'Sending...' : 'Send magic link'}
-              </button>
+              {isLocalhost ? (
+                <button
+                  type="button"
+                  onClick={handleDevLogin}
+                  disabled={loading}
+                  className="btn btn-dark w-full mt-4 bg-ink text-accent font-semibold rounded-btn px-4 py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {loading ? 'Signing in...' : 'Sign in'}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-dark w-full mt-4 bg-ink text-accent font-semibold rounded-btn px-4 py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {loading ? 'Sending...' : 'Send magic link'}
+                </button>
+              )}
             </form>
           )}
         </div>

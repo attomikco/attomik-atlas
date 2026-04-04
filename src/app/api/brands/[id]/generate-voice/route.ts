@@ -29,11 +29,17 @@ Generate a brand voice profile. Respond ONLY with valid JSON, no other text:
   "avoid_words": ["word1", "word2", "word3"]
 }`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 800,
-    messages: [{ role: 'user', content: prompt }],
-  })
+  let response
+  try {
+    response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }],
+    })
+  } catch (err) {
+    console.error('Anthropic API error:', err)
+    return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 })
+  }
 
   try {
     const text = response.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('').replace(/```json|```/g, '').trim()
@@ -48,7 +54,8 @@ Generate a brand voice profile. Respond ONLY with valid JSON, no other text:
     }).eq('id', id)
 
     return NextResponse.json({ voice })
-  } catch {
+  } catch (err) {
+    console.error('Voice parse error:', err)
     return NextResponse.json({ error: 'Failed to parse response' }, { status: 500 })
   }
 }

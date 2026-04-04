@@ -111,6 +111,19 @@ export default function PreviewClient({
   const [removedImageUrls, setRemovedImageUrls] = useState<Set<string>>(new Set())
   const [showAccountModal, setShowAccountModal] = useState(false)
 
+  // Listen for #signup hash (from layout "Get full access" button)
+  useEffect(() => {
+    const checkHash = () => {
+      if (window.location.hash === '#signup') {
+        setShowAccountModal(true)
+        history.replaceState(null, '', window.location.pathname)
+      }
+    }
+    checkHash()
+    window.addEventListener('hashchange', checkHash)
+    return () => window.removeEventListener('hashchange', checkHash)
+  }, [])
+
   async function requireAuth(onAuthed: () => void) {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) { onAuthed(); return }
@@ -144,7 +157,8 @@ export default function PreviewClient({
     await supabase.from('brands').update({ status: 'active' }).eq('id', brand.id)
     sessionStorage.removeItem('attomik_draft_brand_id')
     sessionStorage.removeItem('attomik_draft_campaign_id')
-    router.push('/dashboard')
+    localStorage.setItem('attomik_active_brand_id', brand.id)
+    router.push(`/dashboard?brand=${brand.id}`)
   }
 
   async function navigateWithActivation(href: string) {
@@ -154,6 +168,7 @@ export default function PreviewClient({
       sessionStorage.removeItem('attomik_draft_brand_id')
       sessionStorage.removeItem('attomik_draft_campaign_id')
     }
+    localStorage.setItem('attomik_active_brand_id', brand.id)
     router.push(href)
   }
 
@@ -282,7 +297,11 @@ export default function PreviewClient({
   async function generateEmail() {
     setGeneratingEmail(true)
     try {
-      const res = await fetch(`/api/campaigns/${campaign.id}/email`, { method: 'POST' })
+      const res = await fetch(`/api/campaigns/${campaign.id}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primaryColor: brandPrimary, accentColor: brandAccent, headingFont: fontFamily, headingTransform: brand.font_heading?.transform || 'none' }),
+      })
       const data = await res.json()
       if (data.html) { setEmailHtml(data.html); setEmailSubject(data.subject || ''); setEmailGenerated(true) }
     } catch {}
@@ -513,23 +532,43 @@ export default function PreviewClient({
     letterSpacing: fh?.letterSpacing === 'wide' ? letterSpacing.widest : fh?.letterSpacing === 'tight' ? letterSpacing.snug : 'normal',
   }
 
-  // Unified image pool — shopify first, then product, then lifestyle. Cycle for all 9 slots.
-  const imagePool = [
-    ...shopifyImageUrls,
-    ...productImageUrls,
-    ...lifestyleImageUrls,
-  ]
-  const getImg = (offset: number): string | null =>
-    imagePool.length > 0 ? imagePool[(activeImageIndex + offset) % imagePool.length] : null
-  const img0 = getImg(0)
-  const img1 = getImg(1)
-  const img2 = getImg(2)
-  const img3 = getImg(3)
-  const img4 = getImg(4)
-  const img5 = getImg(5)
-  const img6 = getImg(6)
-  const img7 = getImg(7)
-  const img8 = getImg(8)
+  // Unified image pool — deduped, seeded shuffle for variety per brand
+  const imagePool = (() => {
+    const seen = new Set<string>()
+    const pool: string[] = []
+    for (const url of [...shopifyImageUrls, ...productImageUrls, ...lifestyleImageUrls]) {
+      if (!seen.has(url)) { seen.add(url); pool.push(url) }
+    }
+    // Seeded shuffle based on campaign id for consistent but varied ordering
+    const seed = campaign.id.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
+    const shuffled = [...pool]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = (seed * (i + 1) + 7) % (i + 1)
+      const tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp
+    }
+    return shuffled
+  })()
+
+  const SLOTS = 9
+  const slotImages: (string | null)[] = (() => {
+    if (imagePool.length === 0) return Array(SLOTS).fill(null)
+    if (imagePool.length >= SLOTS) {
+      // Spread evenly across the pool — each slot picks from a different section
+      return Array.from({ length: SLOTS }, (_, i) =>
+        imagePool[Math.floor(i * imagePool.length / SLOTS)]
+      )
+    }
+    if (imagePool.length >= 4) {
+      // Use each image once, fill remaining from the end of the pool
+      const result = [...imagePool]
+      while (result.length < SLOTS) result.push(imagePool[imagePool.length - 1 - (result.length % imagePool.length)])
+      return result
+    }
+    // Fewer than 4 — cycle
+    return Array.from({ length: SLOTS }, (_, i) => imagePool[i % imagePool.length])
+  })()
+
+  const [img0, img1, img2, img3, img4, img5, img6, img7, img8] = slotImages
 
   // Template props for ad creative
   const templateProps = adVariation ? {
@@ -713,7 +752,7 @@ export default function PreviewClient({
             <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['3xl'], color: colors.paper, marginBottom: 6, textTransform: 'uppercase' }}><span style={{ color: colors.accent }}>✦</span> Make your creatives better</div>
             <div style={{ fontSize: fontSize.base, color: colors.whiteAlpha50, lineHeight: 1.6 }}>Add your brand voice, target audience and products to get more accurate copy and creatives.</div>
           </div>
-          <button onClick={() => requireAuth(() => router.push(`/brand-setup/${brand.id}`))} style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize.base, padding: '14px 28px', borderRadius: radius.pill, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Complete Brand Hub →</button>
+          <button onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/brand-setup/${brand.id}`) })} style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize.base, padding: '14px 28px', borderRadius: radius.pill, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Complete Brand Hub →</button>
         </div>
 
         {/* Brand control bar */}
@@ -807,7 +846,7 @@ export default function PreviewClient({
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
                     {brandTone.map((kw: string, i: number) => (
-                      <span key={i} style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, background: colors.accent, padding: '6px 16px', borderRadius: radius.pill }}>{kw}</span>
+                      <span key={i} style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, background: colors.accentLight, border: `1.5px solid ${colors.ink}`, padding: '6px 16px', borderRadius: radius.pill }}>{kw}</span>
                     ))}
                   </div>
                 </div>
@@ -824,7 +863,7 @@ export default function PreviewClient({
             <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 36, textTransform: 'uppercase', color: colors.ink, lineHeight: 1.1, marginBottom: 16 }}>
               Ad Creatives
             </div>
-            <button onClick={() => requireAuth(() => router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`))} style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize.base, padding: '14px 28px', borderRadius: radius.pill, border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`) })} style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize.base, padding: '14px 28px', borderRadius: radius.pill, border: 'none', cursor: 'pointer' }}>
               Customize in builder →
             </button>
           </div>
@@ -845,7 +884,7 @@ export default function PreviewClient({
               { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
               { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brandAccent },
               { label: 'Card', Comp: UGCTemplate, img: img4, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brandSecondary },
+              { label: 'Grid', Comp: GridTemplate, img: img5, secondImg: img6, variation: v0, tp: 'center' as const, bgColor: brandSecondary },
               { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center' as const, bgColor: brandAccent },
               { label: 'Split Alt', Comp: SplitTemplate, img: img7, variation: v0, tp: 'center' as const, bgColor: brandPrimary },
               { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
@@ -857,10 +896,10 @@ export default function PreviewClient({
               { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center' as const, bgColor: brandAccent },
               { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
               { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: img4, variation: v2, tp: 'center' as const, bgColor: brandPrimary },
-              { label: 'Story — Grid', Comp: GridTemplate, img: img5, variation: v0, tp: 'center' as const, bgColor: brandSecondary },
+              { label: 'Story — Grid', Comp: GridTemplate, img: img5, secondImg: img7, variation: v0, tp: 'center' as const, bgColor: brandSecondary },
             ]
 
-            function makeProps(card: { variation: typeof v0, img: string | null, tp: 'center' | 'bottom-left', bgColor: string }) {
+            function makeProps(card: { variation: typeof v0, img: string | null, secondImg?: string | null, tp: 'center' | 'bottom-left', bgColor: string }) {
               const hColor = card.img ? colors.paper : textOnPrimary
               return {
                 headline: card.variation?.headline || adVariation?.headline || '',
@@ -889,6 +928,7 @@ export default function PreviewClient({
                 bgColor: card.bgColor,
                 imageUrl: card.img,
                 textPosition: card.tp,
+                productImageUrl: card.secondImg || undefined,
               }
             }
 
@@ -1037,7 +1077,7 @@ export default function PreviewClient({
               background: colors.paper,
             }}>
               <iframe
-                src={`/api/campaigns/${campaign.id}/landing-html`}
+                src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
                 style={{
                   position: 'absolute',
                   top: 0, left: 0,
@@ -1065,7 +1105,7 @@ export default function PreviewClient({
                 display: 'flex', gap: 10,
               }}>
                 <a
-                  href={`/api/campaigns/${campaign.id}/landing-html`}
+                  href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -1208,7 +1248,7 @@ export default function PreviewClient({
               swap images, and download ad-ready assets.
             </div>
             <button
-              onClick={() => requireAuth(() => router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`))}
+              onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`) })}
               style={{
                 background: colors.accent, color: colors.ink,
                 fontFamily: font.heading,

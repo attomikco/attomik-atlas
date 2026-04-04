@@ -107,14 +107,19 @@ Respond ONLY with valid JSON:
     emailContent.faqItems = emailConfig.faq
   }
 
+  // Allow color/font overrides from request body (preview passes current settings)
+  let bodyOverrides: Record<string, string> = {}
+  try { bodyOverrides = await req.json() } catch {}
+
   const brandData: BrandEmailData = {
     name: brand.name,
     website: brand.website || '#',
     logoUrl: brand.logo_url || '',
-    primaryColor: emailConfig?.primaryColor || brand.primary_color || '#000000',
-    accentColor: emailConfig?.accentColor || brand.accent_color || brand.secondary_color || '#888888',
+    primaryColor: bodyOverrides.primaryColor || emailConfig?.primaryColor || brand.primary_color || '#000000',
+    accentColor: bodyOverrides.accentColor || emailConfig?.accentColor || brand.accent_color || brand.secondary_color || '#888888',
     bgColor: emailConfig?.bgColor || '#f5f5f5',
-    headingFont: emailConfig?.headingFont || brand.font_primary?.split('|')[0] || 'Georgia',
+    headingFont: bodyOverrides.headingFont || emailConfig?.headingFont || brand.font_primary?.split('|')[0] || 'Georgia',
+    headingTransform: bodyOverrides.headingTransform || brand.font_heading?.transform || 'none',
     products: (brand.products || []).slice(0, 3).map((p: any) => ({
       name: p.name || '', price: p.price_range || '',
       image: p.image || '', url: brand.website || '#',

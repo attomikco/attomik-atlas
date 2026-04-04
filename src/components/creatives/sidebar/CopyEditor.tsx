@@ -45,7 +45,7 @@ export default function CopyEditor({
         </div>
       </div>
       <input className={inputCls} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Headline" />
-      <textarea className={inputCls + ' resize-none'} rows={2} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Body text" />
+      <textarea className={inputCls} rows={2} style={{ minHeight: 60, resize: 'vertical' }} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Body text" />
       <div className="flex items-center gap-2">
         <input className={inputCls + (showCta ? '' : ' opacity-40')} value={ctaText}
           onChange={e => setCtaText(e.target.value)} placeholder="CTA text" disabled={!showCta} />

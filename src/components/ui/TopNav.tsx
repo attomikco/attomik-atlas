@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useBrand } from '@/lib/brand-context'
 import AttomikLogo from './AttomikLogo'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, layout } from '@/lib/design-tokens'
 
@@ -18,25 +19,23 @@ const NAV_LINKS = [
 export default function TopNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const [brands, setBrands] = useState<any[]>([])
-  const [activeBrand, setActiveBrand] = useState<any>(null)
+  const { activeBrandId, setActiveBrandId, brands } = useBrand()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const activeBrand = brands.find((b: any) => b.id === activeBrandId) || brands[0] || null
+
+  // Extract brandId from URL (e.g. /brand-setup/[brandId])
+  const urlBrandId = pathname.startsWith('/brand-setup/') ? pathname.split('/')[2] : null
+  const urlBrand = urlBrandId ? brands.find((b: any) => b.id === urlBrandId) : null
+  const displayBrand = urlBrand || activeBrand
+
+  // Sync activeBrand when URL has a brandId and brands are loaded
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from('brands')
-      .select('id, name, primary_color, logo_url')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (!data?.length) return
-        setBrands(data)
-        const savedId = localStorage.getItem('attomik_active_brand_id')
-        const found = data.find((b: any) => b.id === savedId) || data[0]
-        setActiveBrand(found)
-      })
-  }, [])
+    if (urlBrand && urlBrand.id !== activeBrandId) {
+      setActiveBrandId(urlBrand.id)
+    }
+  }, [pathname, brands])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -47,22 +46,22 @@ export default function TopNav() {
   }, [])
 
   function switchBrand(brand: any) {
-    setActiveBrand(brand)
-    localStorage.setItem('attomik_active_brand_id', brand.id)
+    setActiveBrandId(brand.id)
     setDropdownOpen(false)
+    // Server component pages need URL navigation; client pages re-fetch via context
     if (pathname.startsWith('/brand-setup')) router.push(`/brand-setup/${brand.id}`)
-    else if (pathname.startsWith('/creatives')) router.push(`/creatives?brand=${brand.id}`)
-    else if (pathname.startsWith('/copy')) router.push('/copy')
     else if (pathname === '/dashboard' || pathname === '/') router.push(`/dashboard?brand=${brand.id}`)
   }
 
   function getBrandNavHref(href: string) {
-    if (!activeBrand?.id) return href
-    if (href === '/brand-setup') return `/brand-setup/${activeBrand.id}`
-    if (href === '/creatives') return `/creatives?brand=${activeBrand.id}`
-    if (href === '/dashboard') return `/dashboard?brand=${activeBrand.id}`
-    if (href === '/campaigns') return `/campaigns?brand=${activeBrand.id}`
-    if (href === '/newsletter') return `/newsletter?brand=${activeBrand.id}`
+    const id = activeBrand?.id
+    if (!id) return href
+    if (href === '/brand-setup') return `/brand-setup/${id}`
+    if (href === '/creatives') return `/creatives?brand=${id}`
+    if (href === '/dashboard') return `/dashboard?brand=${id}`
+    if (href === '/campaigns') return `/campaigns?brand=${id}`
+    if (href === '/newsletter') return `/newsletter?brand=${id}`
+    if (href === '/copy') return `/copy?brand=${id}`
     return href
   }
 
@@ -80,7 +79,7 @@ export default function TopNav() {
 
       <div style={{ width: 1, height: 24, background: 'var(--border)', marginRight: 24, flexShrink: 0 }} />
 
-      {activeBrand && (
+      {displayBrand && (
         <div ref={dropdownRef} style={{ position: 'relative', marginRight: 24, flexShrink: 0 }}>
           <button onClick={() => setDropdownOpen(p => !p)} style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -88,14 +87,14 @@ export default function TopNav() {
             border: '1px solid', borderColor: dropdownOpen ? colors.gray450 : 'var(--border)',
             borderRadius: radius.lg, padding: '6px 12px 6px 8px', cursor: 'pointer', transition: `all ${transition.base}`,
           }}>
-            <div style={{ width: 28, height: 28, borderRadius: radius.md, background: activeBrand.primary_color || colors.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-              {activeBrand.logo_url ? (
-                <img src={activeBrand.logo_url} style={{ width: 20, height: 20, objectFit: 'contain', filter: isLight(activeBrand.primary_color || colors.paper) ? 'none' : 'brightness(0) invert(1)' }} alt="" />
+            <div style={{ width: 28, height: 28, borderRadius: radius.md, background: displayBrand.primary_color || colors.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+              {displayBrand.logo_url ? (
+                <img src={displayBrand.logo_url} style={{ width: 20, height: 20, objectFit: 'contain', filter: isLight(displayBrand.primary_color || colors.paper) ? 'none' : 'brightness(0) invert(1)' }} alt="" />
               ) : (
-                <span style={{ fontSize: fontSize.caption, fontWeight: fontWeight.heading, color: isLight(activeBrand.primary_color || colors.ink) ? colors.ink : colors.paper, fontFamily: font.heading }}>{activeBrand.name[0]}</span>
+                <span style={{ fontSize: fontSize.caption, fontWeight: fontWeight.heading, color: isLight(displayBrand.primary_color || colors.ink) ? colors.ink : colors.paper, fontFamily: font.heading }}>{displayBrand.name[0]}</span>
               )}
             </div>
-            <span style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeBrand.name}</span>
+            <span style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayBrand.name}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: `transform ${transition.normal}`, flexShrink: 0, opacity: 0.4 }}>
               <path d="M2 4L6 8L10 4" stroke={colors.ink} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -106,10 +105,10 @@ export default function TopNav() {
               {brands.map((b: any) => (
                 <button key={b.id} onClick={() => switchBrand(b)} style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: radius.md,
-                  border: 'none', cursor: 'pointer', background: b.id === activeBrand.id ? colors.gray200 : 'transparent', textAlign: 'left', transition: `background ${transition.fast}`,
+                  border: 'none', cursor: 'pointer', background: b.id === displayBrand.id ? colors.gray200 : 'transparent', textAlign: 'left', transition: `background ${transition.fast}`,
                 }}
-                  onMouseEnter={e => { if (b.id !== activeBrand.id) e.currentTarget.style.background = colors.gray100 }}
-                  onMouseLeave={e => { if (b.id !== activeBrand.id) e.currentTarget.style.background = 'transparent' }}>
+                  onMouseEnter={e => { if (b.id !== displayBrand.id) e.currentTarget.style.background = colors.gray100 }}
+                  onMouseLeave={e => { if (b.id !== displayBrand.id) e.currentTarget.style.background = 'transparent' }}>
                   <div style={{ width: 28, height: 28, borderRadius: radius.md, background: b.primary_color || colors.ink, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     {b.logo_url ? (
                       <img src={b.logo_url} style={{ width: 18, height: 18, objectFit: 'contain', filter: isLight(b.primary_color || colors.paper) ? 'none' : 'brightness(0) invert(1)' }} alt="" />
@@ -118,7 +117,7 @@ export default function TopNav() {
                     )}
                   </div>
                   <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, lineHeight: 1.2 }}>{b.name}</div>
-                  {b.id === activeBrand.id && (
+                  {b.id === displayBrand.id && (
                     <svg style={{ marginLeft: 'auto' }} width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <polyline points="2,7 5.5,10.5 12,3.5" stroke={colors.ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
@@ -126,7 +125,7 @@ export default function TopNav() {
                 </button>
               ))}
               <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0 0', paddingTop: 6 }}>
-                <Link href="/onboarding" onClick={() => setDropdownOpen(false)} style={{
+                <Link href="/new" onClick={() => setDropdownOpen(false)} style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: radius.md,
                   textDecoration: 'none', color: 'var(--muted)', fontSize: fontSize.caption, fontWeight: fontWeight.semibold,
                 }}>
@@ -157,7 +156,7 @@ export default function TopNav() {
           style={{ fontSize: fontSize.caption, fontWeight: fontWeight.semibold, color: 'var(--muted)', background: 'none', border: '1px solid var(--border)', borderRadius: radius.pill, padding: '6px 14px', cursor: 'pointer' }}>
           Log out
         </button>
-        <Link href="/onboarding" style={{
+        <Link href="/new" style={{
           background: colors.ink, color: colors.accent, fontFamily: font.heading,
           fontWeight: fontWeight.extrabold, fontSize: fontSize.body, padding: '9px 20px', borderRadius: radius.pill,
           textDecoration: 'none', whiteSpace: 'nowrap',

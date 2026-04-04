@@ -1,30 +1,29 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { useBrand } from '@/lib/brand-context'
 
-export default async function CampaignsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ brand?: string }>
-}) {
-  const { brand: brandParam } = await searchParams
-  const supabase = await createClient()
+export default function CampaignsPage() {
+  const { activeBrandId } = useBrand()
+  const [campaigns, setCampaigns] = useState<any[] | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const { data: brands } = await supabase
-    .from('brands').select('id')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-
-  const activeBrandId = brandParam || brands?.[0]?.id
-
-  let campaigns: any[] | null = null
-  if (activeBrandId) {
-    const { data } = await supabase
-      .from('campaigns')
+  useEffect(() => {
+    if (!activeBrandId) return
+    setLoading(true)
+    const supabase = createClient()
+    supabase.from('campaigns')
       .select('*, brand:brands(name, primary_color, logo_url)')
       .eq('brand_id', activeBrandId)
       .order('created_at', { ascending: false })
-    campaigns = data
-  }
+      .then(({ data }) => {
+        setCampaigns(data)
+        setLoading(false)
+      })
+  }, [activeBrandId])
+
+  if (loading) return null
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 1000, margin: '0 auto' }}>

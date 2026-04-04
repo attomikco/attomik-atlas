@@ -81,10 +81,11 @@ export async function GET(
   const img1 = pickByIndex(0)
   const product = brand.products?.[0]
 
-  // ── Colors
-  const primary = brand.primary_color || '#000000'
-  const secondary = brand.secondary_color || primary
-  const accent = brand.accent_color || secondary
+  // ── Colors (allow query param overrides from preview)
+  const searchParams = req.nextUrl.searchParams
+  const primary = searchParams.get('primary') || brand.primary_color || '#000000'
+  const secondary = searchParams.get('secondary') || brand.secondary_color || primary
+  const accent = searchParams.get('accent') || brand.accent_color || secondary
   const primaryIsLight = isLight(primary)
   const textOnDark = primaryIsLight ? '#000000' : '#ffffff'
   const textOnDarkSec = primaryIsLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.65)'
@@ -92,10 +93,10 @@ export async function GET(
   const bgAlt = mix(primary, 0.88)
   const bgCard = mix(primary, 0.96)
 
-  // ── Font
-  const fontFamily = brand.font_heading?.family || brand.font_primary?.split('|')[0] || 'system-ui'
+  // ── Font (allow query param override from preview)
+  const fontFamily = searchParams.get('font') || brand.font_heading?.family || brand.font_primary?.split('|')[0] || 'system-ui'
   const fontWeight = brand.font_heading?.weight || '700'
-  const fontTransform = brand.font_heading?.transform || 'none'
+  const fontTransform = searchParams.get('transform') || brand.font_heading?.transform || 'none'
   const fontUrl = fontFamily !== 'system-ui'
     ? `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700;800;900&display=swap`
     : null

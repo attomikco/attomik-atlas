@@ -19,6 +19,13 @@ export async function POST(
     tag: string; mime_type: string; alt_text?: string | null
   }[] = []
 
+  // Extract origin from the first scraped image URL for Referer header
+  let siteOrigin = ''
+  try {
+    const firstUrl = scrapedImages?.[0]?.url || productImageUrls?.[0] || logoUrl || ''
+    if (firstUrl) siteOrigin = new URL(firstUrl).origin
+  } catch {}
+
   async function proxyAndUpload(
     url: string,
     path: string,
@@ -27,24 +34,41 @@ export async function POST(
     try {
       const res = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0',
-          'Accept': 'image/*',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Referer': siteOrigin || url,
+          'Sec-Fetch-Dest': 'image',
+          'Sec-Fetch-Mode': 'no-cors',
+          'Sec-Fetch-Site': 'cross-site',
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(12000),
+        redirect: 'follow',
       })
-      if (!res.ok) return null
+      if (!res.ok) {
+        console.error(`[upload-scraped] fetch failed: ${res.status} ${res.statusText} for ${url.slice(0, 100)}`)
+        return null
+      }
       const blob = await res.arrayBuffer()
+      if (blob.byteLength < 100) {
+        console.error(`[upload-scraped] image too small (${blob.byteLength} bytes): ${url.slice(0, 100)}`)
+        return null
+      }
       const contentType = res.headers.get('content-type') || 'image/jpeg'
 
       const { error } = await supabase.storage
         .from(bucket)
         .upload(path, blob, { contentType, upsert: true })
 
-      if (error) return null
+      if (error) {
+        console.error(`[upload-scraped] storage upload failed: ${error.message} for ${path}`)
+        return null
+      }
 
       const { data } = supabase.storage.from(bucket).getPublicUrl(path)
       return { publicUrl: data.publicUrl, contentType }
-    } catch {
+    } catch (err) {
+      console.error(`[upload-scraped] exception for ${url.slice(0, 100)}:`, err)
       return null
     }
   }
@@ -117,8 +141,8 @@ export async function POST(
     }
   )
 
-  // Run in batches of 10
-  const BATCH_SIZE = 10
+  // Run in batches of 5 (fewer concurrent fetches = less likely to get rate-limited)
+  const BATCH_SIZE = 5
   for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
     await Promise.allSettled(tasks.slice(i, i + BATCH_SIZE))
   }
@@ -144,5 +168,6 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({ success: true, uploaded: imageRows.length })
+  console.log(`[upload-scraped] Done for ${brandId}: ${imageRows.length} images stored out of ${tasks.length} attempted`)
+  return NextResponse.json({ success: true, uploaded: imageRows.length, attempted: tasks.length })
 }

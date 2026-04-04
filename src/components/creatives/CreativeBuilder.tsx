@@ -9,7 +9,6 @@ import { TEMPLATES, SIZES } from './templates/registry'
 import type { Brand, GeneratedCopy, StyleSnapshot, Variation, Draft } from './types'
 import { useBrandSync, isLightColor } from './hooks/useBrandSync'
 import { useCreativeExport } from './hooks/useCreativeExport'
-import ImagePicker from './sidebar/ImagePicker'
 import CopyEditor from './sidebar/CopyEditor'
 import StylePanel from './sidebar/StylePanel'
 import InfographicSidebar from './sidebar/InfographicSidebar'
@@ -37,6 +36,12 @@ export default function CreativeBuilder({
   // ── State ──────────────────────────────────────────────────────────
   const initId = defaultBrandId || brands[0]?.id || ''
   const [brandId, setBrandId] = useState(initId)
+
+  useEffect(() => {
+    if (defaultBrandId && defaultBrandId !== brandId) {
+      setBrandId(defaultBrandId)
+    }
+  }, [defaultBrandId])
   const [images, setImages] = useState<BrandImage[]>([])
   const [recentCopy, setRecentCopy] = useState<GeneratedCopy[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
@@ -457,59 +462,26 @@ export default function CreativeBuilder({
     setShowOverlay(false); setOverlayOpacity(50); setTextBanner('none')
   }
 
+  // ── Derived image groups for left panel ────────────────────────────
+  const productImages = images.filter(i => i.tag === 'product')
+  const lifestyleImages = images.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
+  const otherImages = images.filter(i => i.tag !== 'product' && i.tag !== 'lifestyle' && i.tag !== 'background')
+
   // ── Render ─────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f5f5f5' }}>
 
-      {campaignId && (
-        <div style={{
-          background: '#000',
-          borderRadius: 16,
-          padding: '20px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}>
-          <div>
-            <div style={{
-              fontFamily: 'Barlow, sans-serif',
-              fontWeight: 900, fontSize: 18,
-              color: '#fff', textTransform: 'uppercase',
-              marginBottom: 4,
-            }}>
-              Make it yours.
-            </div>
-            <div style={{
-              fontSize: 13, color: 'rgba(255,255,255,0.45)',
-            }}>
-              Your AI-generated copy is pre-loaded. Pick a template, choose your image, download.
-            </div>
-          </div>
-          <a
-            href={`/preview/${campaignId}`}
-            style={{
-              fontSize: 12, color: 'rgba(255,255,255,0.4)',
-              textDecoration: 'none', fontWeight: 600,
-            }}
-          >
-            ← Back to funnel preview
-          </a>
-        </div>
-      )}
+      {/* ── TOPBAR ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', height: 48, minHeight: 48, background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+        {/* Size pills */}
+        {SIZES.map(s => (
+          <button key={s.id} onClick={() => setSizeId(s.id)} {...pill(sizeId === s.id)}>{s.label}</button>
+        ))}
 
-      {/* TOP BAR — Size selector */}
-      <div className="bg-paper border border-border rounded-card px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="flex gap-1 flex-shrink-0">
-          {SIZES.map(s => (
-            <button key={s.id} onClick={() => setSizeId(s.id)} {...pill(sizeId === s.id)}>{s.label}</button>
-          ))}
-        </div>
-      </div>
+        {/* Divider */}
+        <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
 
-      {/* TEMPLATE SELECTOR — full width row, larger pills */}
-      <div className="flex flex-wrap gap-1.5 overflow-x-auto">
+        {/* Template pills */}
         {TEMPLATES.map(t => (
           <button key={t.id}
             onClick={() => {
@@ -517,7 +489,6 @@ export default function CreativeBuilder({
               if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) }
               if (t.id === 'ugc') { setImagePosition('bottom') }
               if (t.id === 'testimonial') { setImagePosition('bottom') }
-              // Auto-pick best image orientation for template
               const portrait = images.filter(img => img.width && img.height && img.height > img.width)
               const landscape = images.filter(img => img.width && img.height && img.width > img.height)
               const square = images.filter(img => img.width && img.height && Math.abs(img.width - img.height) < img.width * 0.15)
@@ -531,92 +502,152 @@ export default function CreativeBuilder({
                 setSelectedProductImageId(shuffled[1].id)
               }
             }}
-            className="text-sm px-4 py-2 rounded-card border transition-all duration-150 font-semibold cursor-pointer"
-            style={templateId === t.id
-              ? { background: '#111', color: '#4ade80', border: '1px solid #111' }
-              : { background: '#fff', border: '1px solid #ddd', color: '#555' }
-            }>
+            {...pill(templateId === t.id)}
+            style={{
+              ...(templateId === t.id
+                ? { background: '#111', color: '#4ade80', border: 'none' }
+                : { background: '#fff', border: '1px solid #ddd', color: '#333' }),
+              whiteSpace: 'nowrap',
+            }}
+          >
             {t.label}
           </button>
         ))}
+
+        {campaignId && (
+          <>
+            <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+              <a href={`/preview/${campaignId}`} style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                ← Back to funnel
+              </a>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* GENERATED + SAVED — full width */}
-      <VariationStrip
-        variations={variations}
-        activeVariation={activeVariation}
-        loadVariation={loadVariation}
-        saveVariationAsDraft={saveVariationAsDraft}
-        savedDrafts={savedDrafts}
-        size={size}
-        images={images}
-        getPublicUrl={getPublicUrl}
-        thumbProps={thumbProps}
-        exportAllVariations={exportAllVariations}
-        exportingAll={exportingAll}
-        sizeId={sizeId}
-      />
+      {/* ── MAIN AREA ── */}
+      <div style={{ display: 'flex', alignItems: 'stretch' }}>
 
-      <DraftStrip
-        savedDrafts={savedDrafts}
-        activeDraft={activeDraft}
-        loadDraft={loadDraft}
-        removeDraft={removeDraft}
-        size={size}
-        images={images}
-        getPublicUrl={getPublicUrl}
-        thumbProps={thumbProps}
-        exportAllDrafts={exportAllDrafts}
-        exportingAll={exportingAll}
-      />
+        {/* ── LEFT COLUMN — Preview ── */}
+        <div ref={leftPanelRef} style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
+            <PreviewCanvas
+              templateLabel={template.label}
+              size={size}
+              previewW={previewW}
+              previewH={previewH}
+              scale={scale}
+              TemplateComponent={TemplateComponent}
+              templateProps={templateProps}
+              bodyFont={bodyFont}
+              bodyText={bodyText}
+              headline={headline}
+              ctaText={ctaText}
+              fbPrimaryText={fbPrimaryText}
+              fbHeadline={fbHeadline}
+              fbDescription={fbDescription}
+              saveCurrentAsDraft={saveCurrentAsDraft}
+              batchGenerating={batchGenerating}
+              batchCount={batchCount}
+              setBatchCount={setBatchCount}
+              generateBatch={generateBatch}
+              stopBatch={stopBatch}
+              variationsCount={variations.length}
+              imagesCount={images.length}
+              setExportToast={setExportToast}
+              exportPng={exportPng}
+              exportAllSizes={exportAllSizes}
+              exporting={exporting}
+              exportingAll={exportingAll}
+            />
 
-      {/* MAIN AREA: Preview+Style (left) + Images+Copy (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Draft strip */}
+            <div style={{ marginTop: 12 }}>
+              <DraftStrip
+                savedDrafts={savedDrafts}
+                activeDraft={activeDraft}
+                loadDraft={loadDraft}
+                removeDraft={removeDraft}
+                size={size}
+                images={images}
+                getPublicUrl={getPublicUrl}
+                thumbProps={thumbProps}
+                exportAllDrafts={exportAllDrafts}
+                exportingAll={exportingAll}
+              />
+            </div>
 
-        {/* LEFT: Preview + Images + Copy */}
-        <div className="lg:col-span-7 space-y-4 overflow-hidden" ref={leftPanelRef}>
-          <PreviewCanvas
-            templateLabel={template.label}
-            size={size}
-            previewW={previewW}
-            previewH={previewH}
-            scale={scale}
-            TemplateComponent={TemplateComponent}
-            templateProps={templateProps}
-            bodyFont={bodyFont}
-            bodyText={bodyText}
-            headline={headline}
-            ctaText={ctaText}
-            fbPrimaryText={fbPrimaryText}
-            fbHeadline={fbHeadline}
-            fbDescription={fbDescription}
-            saveCurrentAsDraft={saveCurrentAsDraft}
-            batchGenerating={batchGenerating}
-            batchCount={batchCount}
-            setBatchCount={setBatchCount}
-            generateBatch={generateBatch}
-            stopBatch={stopBatch}
-            variationsCount={variations.length}
-            imagesCount={images.length}
-            setExportToast={setExportToast}
-            exportPng={exportPng}
-            exportAllSizes={exportAllSizes}
-            exporting={exporting}
-            exportingAll={exportingAll}
-          />
-
-          <ImagePicker
-            images={images}
-            selectedImageId={selectedImageId}
-            setSelectedImageId={setSelectedImageId}
-            brandColor={brandColor}
-            getPublicUrl={getPublicUrl}
-          />
-
+            {/* Variation strip */}
+            <div style={{ marginTop: 12 }}>
+              <VariationStrip
+                variations={variations}
+                activeVariation={activeVariation}
+                loadVariation={loadVariation}
+                saveVariationAsDraft={saveVariationAsDraft}
+                savedDrafts={savedDrafts}
+                size={size}
+                images={images}
+                getPublicUrl={getPublicUrl}
+                thumbProps={thumbProps}
+                exportAllVariations={exportAllVariations}
+                exportingAll={exportingAll}
+                sizeId={sizeId}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* RIGHT SIDEBAR: Style + Copy + template-specific */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* ── CENTER COLUMN — Image Thumbnails ── */}
+        <div style={{ flex: 0.5, minWidth: 0 }}>
+          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
+            {productImages.length > 0 && (
+              <>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>PRODUCT</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {productImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {lifestyleImages.length > 0 && (
+              <>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>LIFESTYLE</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {lifestyleImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {otherImages.length > 0 && (
+              <>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>OTHER</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {otherImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {images.length === 0 && (
+              <div style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: '24px 0' }}>No images</div>
+            )}
+          </div>
+        </div>
+
+        {/* ── RIGHT COLUMN — Style & Copy ── */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
           <StylePanel
             templateId={templateId}
             brand={brand}
@@ -666,6 +697,7 @@ export default function CreativeBuilder({
             setCtaFontColor={setCtaFontColor}
           />
 
+          <div style={{ marginTop: 16 }}>
           <CopyEditor
             headline={headline}
             setHeadline={setHeadline}
@@ -681,6 +713,7 @@ export default function CreativeBuilder({
             generateCopy={generateCopy}
             generating={generating}
           />
+          </div>
 
           {/* Template-specific sidebars */}
           {templateId === 'infographic' && (
@@ -705,14 +738,13 @@ export default function CreativeBuilder({
           )}
 
           {templateId === 'grid' && images.length > 1 && (
-            <div className="bg-paper border border-border rounded-card p-4">
-              <label className="text-[10px] text-muted uppercase tracking-wide font-semibold block mb-1">Second image</label>
-              <div className="grid grid-cols-4 gap-1 max-h-[100px] overflow-y-auto">
+            <div style={{ padding: 16 }}>
+              <label style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'block', marginBottom: 4 }}>Second image</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
                 {images.map(img => (
                   <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
-                    className="aspect-square rounded-[3px] overflow-hidden border-2 transition-all"
-                    style={{ borderColor: selectedProductImageId === img.id ? '#4ade80' : '#e0e0e0' }}>
-                    <img src={getPublicUrl(img.storage_path)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? '#4ade80' : '#e0e0e0'}`, padding: 0, background: 'none', cursor: 'pointer' }}>
+                    <img src={getPublicUrl(img.storage_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                   </button>
                 ))}
               </div>
@@ -729,9 +761,10 @@ export default function CreativeBuilder({
               inputCls={inputCls}
             />
           )}
-
+          </div>
         </div>
-      </div>
+
+      </div>{/* end MAIN AREA */}
 
       {/* Hidden export container */}
       <div ref={exportRef} aria-hidden style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }} />
@@ -749,7 +782,6 @@ export default function CreativeBuilder({
           {exportToast}
         </div>
       )}
-      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

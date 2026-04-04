@@ -120,7 +120,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   ])
   const [logoDark, setLogoDark] = useState(brand.logo_url || '')
   const [logoLight, setLogoLight] = useState(tryParse(brand.notes)?.logo_url_light || '')
-  const [defaultCta, setDefaultCta] = useState(brand.default_cta || 'Shop Now')
+  const [defaultCta, setDefaultCta] = useState(tryParse(brand.notes)?.default_cta || brand.default_cta || 'Shop Now')
   const [products, setProducts] = useState<Array<{ name: string; description: string; price: string; image: string | null }>>(
     brand.products?.map((p: any) => ({
       name: p.name || '',
@@ -154,9 +154,9 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     targetAudience: brand.target_audience || '', brandVoice: brand.brand_voice || '',
     toneKeywords: JSON.stringify(brand.tone_keywords || []), avoidWords: JSON.stringify(brand.avoid_words || []),
     neverWords: JSON.stringify(tryParse(brand.notes)?.never_words || []),
-    defaultCta: brand.default_cta || 'Shop Now',
+    defaultCta: tryParse(brand.notes)?.default_cta || 'Shop Now',
     colors: JSON.stringify(colors), fonts: JSON.stringify(fonts),
-    products: JSON.stringify(brand.products || []),
+    products: JSON.stringify(brand.products?.map((p: any) => ({ name: p.name || '', description: p.description || '', price: p.price_range || p.price || '', image: p.image || null })) || [{ name: '', description: '', price: '', image: null }]),
   })
 
   useEffect(() => {
@@ -228,10 +228,18 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     }
   }, [])
 
+  const [voiceError, setVoiceError] = useState('')
   async function generateVoice() {
     setGeneratingVoice(true)
+    setVoiceError('')
     try {
       const res = await fetch(`/api/brands/${brand.id}/generate-voice`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+        setVoiceError(err.error || `Failed (${res.status})`)
+        setGeneratingVoice(false)
+        return
+      }
       const data = await res.json()
       if (data.voice) {
         if (data.voice.mission) setMission(data.voice.mission)
@@ -240,8 +248,13 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         if (data.voice.tone_keywords?.length) setToneKeywords(data.voice.tone_keywords)
         if (data.voice.avoid_words?.length) setAvoidWords(data.voice.avoid_words)
         setAiPrefilled(true)
+      } else {
+        setVoiceError('No voice data returned')
       }
-    } catch {}
+    } catch (err) {
+      console.error('generateVoice failed:', err)
+      setVoiceError('Network error — check console')
+    }
     setGeneratingVoice(false)
   }
 
@@ -251,7 +264,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     const savedProducts = products.filter(p => p.name.trim()).map(p => ({
       name: p.name.trim(), description: p.description.trim() || null, price_range: p.price.trim() || null, image: p.image || null,
     }))
-    await supabase.from('brands').update({
+    const { error } = await supabase.from('brands').update({
       name, website: website || null, mission: mission || null,
       target_audience: targetAudience || null, brand_voice: brandVoice || null,
       tone_keywords: toneKeywords.length ? toneKeywords : null,
@@ -268,10 +281,12 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         never_words: neverWords.length ? neverWords : null,
         extra_colors: colors.slice(3).map(c => ({ label: c.label, value: c.value })),
         klaviyo_api_key: klaviyoKey || null,
+        default_cta: defaultCta || null,
       }),
-      default_cta: defaultCta || null, products: savedProducts.length ? savedProducts : null,
+      products: savedProducts.length ? savedProducts : null,
     }).eq('id', brand.id)
     setSaving(false)
+    if (error) { console.error('Brand save failed:', error); return }
     setSaved(true)
     setIsDirty(false)
     initialRef.current = { name, website, mission, targetAudience, brandVoice, defaultCta, toneKeywords: JSON.stringify(toneKeywords), avoidWords: JSON.stringify(avoidWords), neverWords: JSON.stringify(neverWords), colors: JSON.stringify(colors), fonts: JSON.stringify(fonts), products: JSON.stringify(products) }
@@ -369,7 +384,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         const ghost = light ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'
         return (
           <div style={{ borderRadius: 16, background: pc, padding: '20px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, position: 'relative', overflow: 'hidden', flexWrap: 'wrap' }}>
-            <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: ghost, pointerEvents: 'none' }} />
+            {/* Left: logo + name + url */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, zIndex: 1 }}>
               {logoDark ? (
                 <img src={logoDark} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain', filter: light ? 'none' : 'brightness(0) invert(1)' }} alt={name} />
@@ -383,25 +398,42 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                 <div style={{ fontSize: 11, color: textSub, marginTop: 3 }}>{website?.replace(/https?:\/\//, '') || brand.website?.replace(/https?:\/\//, '') || '—'}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, zIndex: 1 }}>
-              {colors.slice(0, 4).filter(c => c.value).map((c, i) => (
-                <div key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: c.value, border: `2px solid ${border}`, flexShrink: 0 }} title={c.label} />
-              ))}
-              {fonts[0]?.family && (<><div style={{ width: 1, height: 24, background: divider }} /><div style={{ fontSize: 13, fontFamily: `${fonts[0].family}, sans-serif`, color: textMid, fontWeight: 600 }}>{fonts[0].family}</div></>)}
+            {/* Right: colors + font */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, zIndex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {colors.slice(0, 3).filter(c => c.value).map((c, i) => (
+                  <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', background: c.value, border: '3px solid #fff', flexShrink: 0 }} title={c.label} />
+                ))}
+              </div>
+              {fonts[0]?.family && (
+                <>
+                  <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', lineHeight: 1 }}>Font</div>
+                    <div style={{ fontSize: 13, color: '#fff', fontWeight: 600, fontFamily: `${fonts[0].family}, sans-serif`, lineHeight: 1.2, marginTop: 2 }}>{fonts[0].family}</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )
       })()}
 
+      {/* Page header */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
+        <div style={{ background: 'rgba(0,255,151,0.08)', border: '1px solid rgba(0,255,151,0.2)', borderRadius: 10, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <span style={{ color: '#00ff97', fontSize: 14 }}>✦</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.4 }}>The more you fill in, the better your creatives get.</span>
+        </div>
+      </div>
+
       {/* ── BRAND KNOWLEDGE SUMMARY ── */}
       {(brand.mission || brand.brand_voice || brand.target_audience) && (
         <div style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff97' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>What Attomik knows about {brand.name}</span>
-            </div>
-            {aiPrefilled && <span style={{ fontSize: 11, color: '#00a86b', fontWeight: 600 }}>✦ AI-generated from your website</span>}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--ink)', marginBottom: 4 }}>What Attomik knows about {brand.name}</div>
+            {aiPrefilled && <div style={{ fontSize: 14, color: '#00a86b', fontWeight: 700 }}>✦ AI-generated from your website</div>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
             {brand.mission && (
@@ -435,15 +467,6 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           </div>
         </div>
       )}
-
-      {/* Page header */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
-        <div style={{ background: 'rgba(0,255,151,0.08)', border: '1px solid rgba(0,255,151,0.2)', borderRadius: 10, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <span style={{ color: '#00ff97', fontSize: 14 }}>✦</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.4 }}>The more you fill in, the better your creatives get.</span>
-        </div>
-      </div>
 
       {/* ── SECTION 1: IDENTITY ── */}
       <SectionHeader title="Identity" subtitle="Basic brand info" />
@@ -646,6 +669,12 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         </div>
       )}
 
+      {voiceError && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#c00' }}>
+          AI-fill failed: {voiceError}
+        </div>
+      )}
+
       {aiPrefilled && !generatingVoice && (
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, background: 'rgba(0,255,151,0.06)', border: '1px solid rgba(0,255,151,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
           <div style={{ fontSize: 13, color: '#00a86b', lineHeight: 1.5 }}>
@@ -700,12 +729,12 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       {products.map((product, index) => (
         <div key={index} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: 16, marginBottom: 12, display: 'flex', gap: 16, alignItems: 'stretch', position: 'relative' }}>
           {/* LEFT: Product image */}
-          <div style={{ flexShrink: 0, display: 'flex', alignSelf: 'stretch' }}>
+          <div style={{ width: 180, flexShrink: 0, display: 'flex', alignSelf: 'stretch' }}>
             {(() => {
               const productImgs = images.filter(img => img.tag === 'product')
               const currentImg = product.image || (productImgs[index] ? getImageUrl(productImgs[index]) : null)
               return (
-                <label style={{ width: 120, flex: 1, borderRadius: 10, border: currentImg ? '1px solid var(--border)' : '2px dashed var(--border)', cursor: 'pointer', overflow: 'hidden', background: currentImg ? '#000' : '#fafafa', position: 'relative', display: 'block', minHeight: 120 }}>
+                <label style={{ width: '100%', height: '100%', borderRadius: 10, border: currentImg ? '1px solid var(--border)' : '2px dashed var(--border)', cursor: 'pointer', overflow: 'hidden', background: currentImg ? '#000' : '#fafafa', position: 'relative', display: 'block' }}>
                   {currentImg ? (
                     <>
                       <img src={currentImg} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
@@ -851,7 +880,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fbbf24', flexShrink: 0 }} />You have unsaved changes
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { setName(brand.name); setWebsite(brand.website || ''); setMission(brand.mission || ''); setTargetAudience(brand.target_audience || ''); setBrandVoice(brand.brand_voice || ''); setToneKeywords(brand.tone_keywords || []); setAvoidWords(brand.avoid_words || []); setDefaultCta(brand.default_cta || 'Shop Now'); setIsDirty(false) }}
+            <button onClick={() => { setName(brand.name); setWebsite(brand.website || ''); setMission(brand.mission || ''); setTargetAudience(brand.target_audience || ''); setBrandVoice(brand.brand_voice || ''); setToneKeywords(brand.tone_keywords || []); setAvoidWords(brand.avoid_words || []); setDefaultCta(tryParse(brand.notes)?.default_cta || 'Shop Now'); setIsDirty(false) }}
               style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)', borderRadius: 999, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Discard</button>
             <button onClick={saveAll} disabled={saving} style={{ background: saving ? '#555' : '#00ff97', color: '#000', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 13, padding: '9px 28px', borderRadius: 999, border: 'none', cursor: saving ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
               {saving ? 'Saving...' : 'Save changes'}
@@ -859,6 +888,9 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           </div>
         </div>
       )}
+
+      {/* ── Danger Zone ── */}
+      <DangerZone brandId={brand.id} brandName={brand.name} />
 
       {/* Floating save toast */}
       {saved && (
@@ -877,6 +909,90 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+    </div>
+  )
+}
+
+function DangerZone({ brandId, brandName }: { brandId: string; brandName: string }) {
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+
+  const canDelete = confirmText === brandName
+
+  async function handleDelete() {
+    if (!canDelete) return
+    setDeleting(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/brands/${brandId}/delete`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to delete brand')
+        setDeleting(false)
+        return
+      }
+      window.location.href = '/dashboard'
+    } catch {
+      setError('Network error')
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div style={{ borderTop: '1px solid rgba(255,0,0,0.1)', padding: '40px 0' }}>
+      <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: '#cc0000', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+        Danger zone
+      </div>
+      <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 18, color: '#111', marginBottom: 6 }}>
+        Delete this brand
+      </div>
+      <div style={{ fontSize: 14, color: '#666', lineHeight: 1.6, marginBottom: 16, maxWidth: 500 }}>
+        This will permanently delete the brand, all its campaigns, images, and generated content. This cannot be undone.
+      </div>
+
+      {!showConfirm ? (
+        <button
+          onClick={() => setShowConfirm(true)}
+          style={{ background: 'transparent', border: '1px solid #cc0000', color: '#cc0000', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Delete brand
+        </button>
+      ) : (
+        <div style={{ background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)', borderRadius: 12, padding: 20, maxWidth: 420, animation: 'fadeIn 0.2s ease' }}>
+          <div style={{ fontSize: 14, color: '#333', marginBottom: 10 }}>
+            Are you sure? Type <strong>{brandName}</strong> to confirm:
+          </div>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            placeholder={brandName}
+            style={{ width: '100%', border: '1.5px solid rgba(255,0,0,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 12 }}
+          />
+          {error && <div style={{ fontSize: 13, color: 'red', marginBottom: 10 }}>{error}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={handleDelete}
+              disabled={!canDelete || deleting}
+              style={{
+                background: canDelete ? 'rgba(255,0,0,0.8)' : 'rgba(255,0,0,0.2)',
+                color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600,
+                cursor: canDelete && !deleting ? 'pointer' : 'not-allowed', opacity: deleting ? 0.6 : 1,
+              }}
+            >
+              {deleting ? 'Deleting...' : 'Yes, delete permanently'}
+            </button>
+            <button
+              onClick={() => { setShowConfirm(false); setConfirmText(''); setError('') }}
+              style={{ background: 'none', border: 'none', color: '#999', fontSize: 14, cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

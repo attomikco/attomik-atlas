@@ -141,25 +141,6 @@ export default function PreviewCanvas({
             <TemplateComponent {...templateProps} width={size.w} height={size.h} />
           </div>
         </div>
-        {/* FB Ad copy preview */}
-        <div className="flex-1 min-w-0 text-sm space-y-3 pt-1" style={{ fontFamily: ff(bodyFont) }}>
-          {[
-            { label: 'Primary Text', value: fbPrimaryText || bodyText || 'Body text goes here' },
-            { label: 'Headline', value: fbHeadline || headline || 'Your headline here' },
-            { label: 'Description', value: fbDescription || ctaText || 'Shop Now' },
-          ].map(({ label, value }) => (
-            <div key={label} className={label !== 'Primary Text' ? 'border-t border-border pt-3' : ''}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-muted uppercase tracking-wide font-semibold">{label}</span>
-                <button onClick={() => { navigator.clipboard.writeText(value); setExportToast(`${label} copied`); setTimeout(() => setExportToast(null), 1500) }}
-                  className="text-[10px] text-muted hover:text-ink transition-colors font-medium px-1.5 py-0.5 rounded hover:bg-black/5">
-                  Copy
-                </button>
-              </div>
-              <p className="text-ink text-[13px] leading-relaxed">{value}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Preview label */}
