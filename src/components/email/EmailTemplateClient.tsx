@@ -37,17 +37,19 @@ function Section({ id, label, isOpen, onToggle, children }: { id: string; label:
   )
 }
 
-export default function EmailTemplateClient({ brand, initialConfig, emails, lifestyleImages = [], productImages = [] }: {
+export default function EmailTemplateClient({ brand, initialConfig, emails, lifestyleImages = [], productImages = [], campaignId = null }: {
   brand: Brand
   initialConfig: MasterEmailConfig | null
   emails: any[]
   lifestyleImages?: string[]
   productImages?: string[]
+  campaignId?: string | null
 }) {
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState<'Template' | 'Sent emails'>('Template')
   const [isDirty, setIsDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [previewWidth, setPreviewWidth] = useState(600)
   const [copied, setCopied] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['colors', 'hero']))
@@ -138,6 +140,29 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
     scheduleAutoSave()
   }
 
+  async function generateWithAI() {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/email/generate-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId: brand.id, campaignId }),
+      })
+      const data = await res.json()
+      if (data.config) {
+        // Preserve emailColors (those come from brand, not AI)
+        const { emailColors: _ignore, ...aiContent } = data.config
+        update(aiContent)
+        // Auto-save after generation
+        setTimeout(() => saveConfig(), 100)
+      }
+    } catch (e) {
+      console.error('AI generation failed:', e)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   async function saveConfig() {
     setSaving(true)
     const existingNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
@@ -171,7 +196,23 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
 
   const templatePanel = (
     <div>
-      <Section id="colors" label="🎨 Email Colors" isOpen={openSections.has("colors")} onToggle={toggleSection}>
+      {/* AI Generate button */}
+      <div style={{ padding: '0 16px 16px' }}>
+        <button onClick={generateWithAI} disabled={generating}
+          style={{
+            width: '100%', padding: '12px', background: generating ? '#333' : '#000',
+            color: '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 800,
+            fontSize: 13, borderRadius: 999, border: 'none', cursor: generating ? 'wait' : 'pointer',
+            letterSpacing: '0.04em', textTransform: 'uppercase', transition: 'all 0.15s',
+          }}>
+          {generating ? 'Generating...' : campaignId ? 'Generate from Campaign Brief' : 'Generate from Brand Hub'}
+        </button>
+        <div style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 6 }}>
+          {campaignId ? 'AI will use campaign brief + brand voice' : 'AI will use brand hub data + products'}
+        </div>
+      </div>
+
+      <Section id="colors" label="Email Colors" isOpen={openSections.has("colors")} onToggle={toggleSection}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {emailColorFields.map(({ key, label }) => {
             const value = currentEmailColors[key]

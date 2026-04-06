@@ -122,23 +122,64 @@ export async function POST(req: NextRequest) {
       colorCounts.set(hex, (colorCounts.get(hex) || 0) + 1)
     }
 
-    // Sort by frequency, pick top 3 distinct colors
+    // ── Smart color role classification ──
+    // Instead of blindly picking the 3 most frequent, classify into roles:
+    //   primary   = most frequent DARK, saturated color (brand hero)
+    //   secondary = most frequent LIGHT color (backgrounds, cards)
+    //   accent    = most frequent color that differs in hue from primary (CTAs, highlights)
     const colorDistance = (a: string, b2: string): number => {
       const r1 = parseInt(a.slice(1, 3), 16), g1 = parseInt(a.slice(3, 5), 16), b1 = parseInt(a.slice(5, 7), 16)
       const r2 = parseInt(b2.slice(1, 3), 16), g2 = parseInt(b2.slice(3, 5), 16), bv = parseInt(b2.slice(5, 7), 16)
       return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - bv) ** 2)
     }
 
+    const hexToHsl = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255
+      const g = parseInt(hex.slice(3, 5), 16) / 255
+      const b = parseInt(hex.slice(5, 7), 16) / 255
+      const max = Math.max(r, g, b), min = Math.min(r, g, b)
+      const l = (max + min) / 2
+      if (max === min) return { h: 0, s: 0, l }
+      const d = max - min
+      const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+      let h = 0
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+      else if (max === g) h = ((b - r) / d + 2) / 6
+      else h = ((r - g) / d + 4) / 6
+      return { h: h * 360, s, l }
+    }
+
     const sorted = Array.from(colorCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .map(([hex]) => hex)
+      .map(([hex, count]) => ({ hex, count, ...hexToHsl(hex) }))
 
+    // Pick primary: darkest saturated color with high frequency (l < 0.6 and s > 0.15)
+    // Falls back to most frequent color overall
+    const darkSaturated = sorted.filter(c => c.l < 0.6 && c.s > 0.15)
+    const primary = darkSaturated[0] || sorted[0]
+
+    // Pick secondary: lightest color (l > 0.7) that's distinct from primary
+    const lightColors = sorted.filter(c => c.l > 0.7 && colorDistance(c.hex, primary?.hex || '') > 60)
+    const secondary = lightColors[0] || null
+
+    // Pick accent: saturated color with hue distance > 30° from primary, distinct visually
+    const hueDist = (h1: number, h2: number) => Math.min(Math.abs(h1 - h2), 360 - Math.abs(h1 - h2))
+    const accentCandidates = sorted.filter(c =>
+      c.hex !== primary?.hex &&
+      c.hex !== secondary?.hex &&
+      c.s > 0.2 &&
+      colorDistance(c.hex, primary?.hex || '') > 50 &&
+      (primary ? hueDist(c.h, primary.h) > 30 || Math.abs(c.l - primary.l) > 0.25 : true)
+    )
+    const accent = accentCandidates[0] || sorted.find(c => c.hex !== primary?.hex && c.hex !== secondary?.hex) || null
+
+    // Return in order: [primary, secondary, accent] — matching brand setup mapping
     const colors: string[] = []
-    for (const hex of sorted) {
-      if (colors.length >= 3) break
-      if (colors.some(existing => colorDistance(hex, existing) < 40)) continue
-      colors.push(hex)
-    }
+    if (primary) colors.push(primary.hex)
+    if (secondary) colors.push(secondary.hex)
+    else if (primary) colors.push(primary.l < 0.5 ? '#f8f7f4' : '#1a1a1a') // synth light/dark counterpart
+    if (accent) colors.push(accent.hex)
+    else if (colors.length === 2) colors.push(colors[0]) // fallback accent = primary
 
     // ── Font ────────────────────────────────────────────────────────
     let font: string | null = null

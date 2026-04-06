@@ -282,6 +282,18 @@ function applyBlockColors(blockHtml: string, kind: BlockKind, p: EmailPalette, d
   h = h.split('background-color:#154734').join(`background-color:${bgColor}`)
   h = h.split('background-color:#76233F').join(`background-color:${bgColor}`)
   h = h.split('background-color:#E9E3D8').join(`background-color:${bgColor}`)
+  // Accent background-color (origin story image placeholder, featured product image bg) → accent
+  h = h.split('background-color:#BFA46D').join(`background-color:${p.accent}`)
+
+  // Hardcoded placeholder cream backgrounds → themed neutral
+  const placeholderBg = isDarkBlock ? lightenHex(p.darkBg, 10) : p.lightBg
+  h = h.split('background:#f5f0e8').join(`background:${placeholderBg}`)
+
+  // Inner card backgrounds (promo, referral) — always white/light regardless of block
+  // These are intentional white cards on light blocks
+  if (!isDarkBlock) {
+    h = h.split('background:#ffffff').join(`background:${lightenHex(p.lightBg, 5)}`)
+  }
 
   // Button color logic: contrast-safe per block kind.
   // - In LIGHT blocks: all buttons use brand primary (visible on light bg).
@@ -323,9 +335,9 @@ function applyBlockColors(blockHtml: string, kind: BlockKind, p: EmailPalette, d
     h = h.split('color:#E9E3D8').join(`color:${textColor}`)
   }
 
-  // Catch hardcoded black headings in dark blocks (some blocks hardcode color:#000000)
+  // Catch hardcoded black text in dark blocks — applies to ALL elements, not just headings
   if (isDarkBlock) {
-    h = h.replace(/(<h[1-6][^>]*style="[^"]*?)color:#000000/g, `$1color:${textColor}`)
+    h = h.replace(/(<(?:h[1-6]|p|span|div|a|td)[^>]*style="[^"]*?)color:#000000/g, `$1color:${textColor}`)
   }
   // Accent text (labels, stars) stays accent
   h = h.split('color:#BFA46D').join(`color:${p.accent}`)

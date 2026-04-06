@@ -70,5 +70,5 @@ export default function EmailPage() {
 
   if (loading || !brand) return null
 
-  return <EmailTemplateClient brand={brand} initialConfig={initialConfig} emails={emails} lifestyleImages={lifestyleImages} productImages={productImages} />
+  return <EmailTemplateClient brand={brand} initialConfig={initialConfig} emails={emails} lifestyleImages={lifestyleImages} productImages={productImages} campaignId={activeCampaign?.id || null} />
 }
