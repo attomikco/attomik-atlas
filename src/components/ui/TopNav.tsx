@@ -60,7 +60,7 @@ export default function TopNav() {
     if (href === '/campaigns') return `/campaigns?brand=${id}`
     if (href === '/newsletter') return `/newsletter?brand=${id}`
     if (href === '/copy') return `/copy?brand=${id}`
-    if (href === '/landing-page') return `/campaigns?brand=${id}`
+    if (href === '/landing-page') return `/landing-page?brand=${id}`
     return href
   }
 

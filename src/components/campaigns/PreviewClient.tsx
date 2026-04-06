@@ -280,6 +280,24 @@ export default function PreviewClient({
     router.push(`/brand-setup/${brand.id}`)
   }
 
+  // Auto-save brand colors/font on change (debounced) so brand hub stays in sync
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const initialRender = useRef(true)
+  useEffect(() => {
+    // Skip auto-save on initial mount (values come from DB, no change)
+    if (initialRender.current) { initialRender.current = false; return }
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
+    autoSaveRef.current = setTimeout(() => {
+      supabase.from('brands').update({
+        primary_color: brandPrimary,
+        secondary_color: brandSecondary,
+        accent_color: brandAccent,
+        font_primary: fontFamily || null,
+      }).eq('id', brand.id).then(() => {})
+    }, 1500)
+    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current) }
+  }, [brandPrimary, brandSecondary, brandAccent, fontFamily])
+
   // Fetch existing email on mount — auto-generate if none exists
   useEffect(() => {
     fetch(`/api/campaigns/${campaign.id}/email`)

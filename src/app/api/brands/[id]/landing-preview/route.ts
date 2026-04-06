@@ -30,12 +30,12 @@ export async function GET(
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: campaign } = await supabase
-    .from('campaigns').select('*, brand:brands(*)')
+  const { data: brand } = await supabase
+    .from('brands').select('*')
     .eq('id', id).single()
-  if (!campaign) return new NextResponse('Not found', { status: 404 })
+  if (!brand) return new NextResponse('Not found', { status: 404 })
 
-  // Accept brief from URL param (base64 JSON) for live preview, otherwise load from DB
+  // Brief from URL param (base64 JSON) or from DB
   const briefParam = req.nextUrl.searchParams.get('brief')
   let brief: any = null
   if (briefParam) {
@@ -53,14 +53,12 @@ export async function GET(
   if (!brief) {
     const { data: contentRow } = await supabase
       .from('generated_content').select('*')
-      .eq('campaign_id', id).eq('type', 'landing_brief')
+      .eq('brand_id', id).eq('type', 'landing_brief')
       .order('created_at', { ascending: false }).limit(1).single()
     if (!contentRow) return new NextResponse('No brief', { status: 404 })
     try { brief = JSON.parse(contentRow.content) }
     catch { return new NextResponse('Invalid brief', { status: 500 }) }
   }
-
-  const brand = campaign.brand
 
   // ── Images
   const { data: allImages } = await supabase
@@ -70,20 +68,20 @@ export async function GET(
   const getUrl = (path: string) =>
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/brand-images/${path}`
 
-  const products = (allImages || []).filter(i => i.tag === 'product')
-  const lifestyle = (allImages || []).filter(i => i.tag === 'lifestyle' || i.tag === 'background')
+  const products = (allImages || []).filter((i: any) => i.tag === 'product')
+  const lifestyle = (allImages || []).filter((i: any) => i.tag === 'lifestyle' || i.tag === 'background')
   const all = allImages || []
-
-  function pickLandscape(fallback?: string) {
-    const candidates = [...lifestyle, ...products, ...all]
-    const landscape = candidates.find(i => i.width && i.height && i.width > i.height * 1.2)
-    return landscape ? getUrl(landscape.storage_path) : (candidates[0] ? getUrl(candidates[0].storage_path) : fallback || '')
-  }
 
   function pickPortrait(fallback?: string) {
     const candidates = [...products, ...all]
-    const portrait = candidates.find(i => i.width && i.height && i.height >= i.width)
+    const portrait = candidates.find((i: any) => i.width && i.height && i.height >= i.width)
     return portrait ? getUrl(portrait.storage_path) : (candidates[0] ? getUrl(candidates[0].storage_path) : fallback || '')
+  }
+
+  function pickLandscape(fallback?: string) {
+    const candidates = [...lifestyle, ...products, ...all]
+    const landscape = candidates.find((i: any) => i.width && i.height && i.width > i.height * 1.2)
+    return landscape ? getUrl(landscape.storage_path) : (candidates[0] ? getUrl(candidates[0].storage_path) : fallback || '')
   }
 
   function pickByIndex(n: number) {
@@ -96,7 +94,7 @@ export async function GET(
   const img1 = pickByIndex(0)
   const product = brand.products?.[0]
 
-  // ── Colors (allow query param overrides from preview)
+  // ── Colors
   const searchParams = req.nextUrl.searchParams
   const primary = searchParams.get('primary') || brand.primary_color || '#000000'
   const secondary = searchParams.get('secondary') || brand.secondary_color || primary
@@ -108,7 +106,7 @@ export async function GET(
   const bgAlt = mix(primary, 0.88)
   const bgCard = mix(primary, 0.96)
 
-  // ── Font (allow query param override from preview)
+  // ── Font
   const fontFamily = searchParams.get('font') || brand.font_heading?.family || brand.font_primary?.split('|')[0] || 'system-ui'
   const fontWeight = brand.font_heading?.weight || '700'
   const fontTransform = searchParams.get('transform') || brand.font_heading?.transform || 'none'
@@ -134,7 +132,7 @@ export async function GET(
     </div>
   `).join('')
 
-  const photoStripHtml = all.slice(0, 6).map(img =>
+  const photoStripHtml = all.slice(0, 6).map((img: any) =>
     `<img src="${getUrl(img.storage_path)}" alt="${brand.name}" loading="lazy">`
   ).join('')
 
@@ -142,9 +140,7 @@ export async function GET(
   const tplPath = join(process.cwd(), 'src/lib/landing-template.html')
   let html = readFileSync(tplPath, 'utf-8')
 
-  // ══════════════════════════════════════════════════════════
   // 1. BRAND THEME CSS
-  // ══════════════════════════════════════════════════════════
   const themeCSS = `
 ${fontUrl ? `<link rel="stylesheet" href="${fontUrl}">` : ''}
 <style id="brand-override">
@@ -162,23 +158,17 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
 </style>`
   html = html.replace('</head>', `${themeCSS}\n</head>`)
 
-  // ══════════════════════════════════════════════════════════
   // 2. TITLE + META
-  // ══════════════════════════════════════════════════════════
   html = html.replace(/<title>[^<]*<\/title>/, `<title>${brand.name} | ${brief.hero.headline}</title>`)
   html = html.replace(/<meta name="description" content="[^"]*"/, `<meta name="description" content="${brief.hero.subheadline}"`)
 
-  // ══════════════════════════════════════════════════════════
   // 3. ANNOUNCEMENT BAR
-  // ══════════════════════════════════════════════════════════
   const announcementText = product?.price_range
     ? `Free Shipping On Orders Over $50 · ${brand.name} — From $${product.price_range}`
     : `Free Shipping On Orders · ${brief.hero.cta_text}`
   html = html.replace(/(<div[^>]*class="announcement"[^>]*>)[^<]*/, `$1${announcementText}`)
 
-  // ══════════════════════════════════════════════════════════
   // 4. LOGO
-  // ══════════════════════════════════════════════════════════
   const notesData = (() => { try { return brand.notes ? JSON.parse(brand.notes) : null } catch { return null } })()
   const logoLight = notesData?.logo_url_light
   const logoToUse = logoLight || brand.logo_url
@@ -187,34 +177,24 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     : `<span style="font-family:'${fontFamily}',sans-serif;font-weight:900;font-size:20px;color:${textOnDark};letter-spacing:-0.02em;text-transform:${fontTransform}">${brand.name}</span>`
   html = html.replace(/<img[^>]*class="hero-logo"[^>]*>/, logoHtml)
 
-  // ══════════════════════════════════════════════════════════
   // 5. HERO BADGE
-  // ══════════════════════════════════════════════════════════
-  html = html.replace(/(<span[^>]*class="badge-text"[^>]*>)[^<]*/, `$1${brief.social_proof.stat} — ${brand.name}`)
+  html = html.replace(/(<span[^>]*class="badge-text"[^>]*>)[^<]*/, `$1${brief.social_proof?.stat || ''} — ${brand.name}`)
 
-  // ══════════════════════════════════════════════════════════
   // 6. HERO COPY
-  // ══════════════════════════════════════════════════════════
   html = html.replace(/(<h1[^>]*class="[^"]*hero-headline[^"]*"[^>]*>)[\s\S]*?(<\/h1>)/, `$1${brief.hero.headline}$2`)
   html = html.replace(/(<p[^>]*class="[^"]*hero-sub[^"]*"[^>]*>)[^<]*/, `$1${brief.hero.subheadline}`)
 
-  // ══════════════════════════════════════════════════════════
   // 7. HERO CTA BUTTON
-  // ══════════════════════════════════════════════════════════
   html = html.replace(/(<a[^>]*class="[^"]*btn-primary[^"]*"[^>]*>)[^<]*(<svg)/, `$1${brief.hero.cta_text} $2`)
 
-  // ══════════════════════════════════════════════════════════
   // 8. HERO MICRO TRUST ICONS
-  // ══════════════════════════════════════════════════════════
   const microBenefits = (brief.benefits || []).slice(0, 3)
   const microHtml = microBenefits.map((b: any) => `
     <span><svg viewBox="0 0 24 24" stroke-linecap="round" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg> ${b.headline}</span>
   `).join('')
   html = html.replace(/(<div[^>]*class="hero-micro"[^>]*>)[\s\S]*?(<\/div>)/, `$1${microHtml}$2`)
 
-  // ══════════════════════════════════════════════════════════
   // 9. HERO PRODUCT IMAGE
-  // ══════════════════════════════════════════════════════════
   if (heroImg) {
     html = html.replace(
       /(<div[^>]*class="[^"]*hero-image[^"]*"[^>]*>\s*)<img[^>]*src="[^"]*"/,
@@ -222,17 +202,13 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     )
   }
 
-  // ══════════════════════════════════════════════════════════
   // 10. PROOF STRIP
-  // ══════════════════════════════════════════════════════════
   const proofHtml = (brief.benefits || []).slice(0, 4).map((b: any) => `
     <div class="proof-item"><svg viewBox="0 0 24 24" stroke-linecap="round" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg> ${b.headline}</div>
   `).join('')
   html = html.replace(/(<div[^>]*class="[^"]*proof-strip[^"]*"[^>]*>)[\s\S]*?(<\/div>)/, `$1${proofHtml}$2`)
 
-  // ══════════════════════════════════════════════════════════
-  // 11. LIFESTYLE / PROBLEM SECTION
-  // ══════════════════════════════════════════════════════════
+  // 11. LIFESTYLE / PROBLEM
   if (brief.problem) {
     html = html.replace(
       /(<section[^>]*class="[^"]*lifestyle[^"]*"[\s\S]*?<p[^>]*class="section-label"[^>]*>)[^<]*/,
@@ -255,9 +231,7 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     )
   }
 
-  // ══════════════════════════════════════════════════════════
-  // 12. INGREDIENTS → SOLUTION SECTION
-  // ══════════════════════════════════════════════════════════
+  // 12. SOLUTION
   if (brief.solution) {
     html = html.replace(
       /(<section[^>]*class="[^"]*ingredients[^"]*"[\s\S]*?<p[^>]*class="section-label"[^>]*>)[^<]*/,
@@ -287,23 +261,17 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     `$1${ingredientCardsHtml}$2`
   )
 
-  // ══════════════════════════════════════════════════════════
   // 13. BENEFITS GRID
-  // ══════════════════════════════════════════════════════════
   if (benefitsHtml) {
     html = html.replace(/(<div[^>]*class="[^"]*benefits-grid[^"]*"[^>]*>)[\s\S]*?(<\/div>)/, `$1${benefitsHtml}$2`)
   }
 
-  // ══════════════════════════════════════════════════════════
   // 14. PHOTO STRIP
-  // ══════════════════════════════════════════════════════════
   if (photoStripHtml) {
     html = html.replace(/(<div[^>]*class="[^"]*photo-strip[^"]*"[^>]*>)[\s\S]*?(<\/div>)/, `$1${photoStripHtml}$2`)
   }
 
-  // ══════════════════════════════════════════════════════════
-  // 15. FOUNDER / BRAND STORY
-  // ══════════════════════════════════════════════════════════
+  // 15. FOUNDER
   const brandStory = brand.mission || brand.brand_voice?.slice(0, 200) || brief.solution?.body || ''
   html = html.replace(
     /(<section[^>]*class="[^"]*founder[^"]*"[\s\S]*?<p[^>]*class="section-label"[^>]*>)[^<]*/,
@@ -324,18 +292,14 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     )
   }
 
-  // ══════════════════════════════════════════════════════════
-  // 16. SOCIAL PROOF STAT
-  // ══════════════════════════════════════════════════════════
+  // 16. SOCIAL PROOF
   if (brief.social_proof) {
     html = html.replace(/(<span[^>]*class="[^"]*stat-number[^"]*"[^>]*>)[^<]*/g, `$1${brief.social_proof.stat}`)
     html = html.replace(/(<blockquote[^>]*>\s*<p>)[^<]*/, `$1"${brief.social_proof.testimonial}"`)
     html = html.replace(/(<cite[^>]*>)[^<]*/, `$1— ${brief.social_proof.attribution}`)
   }
 
-  // ══════════════════════════════════════════════════════════
-  // 17. TESTIMONIALS / REVIEWS
-  // ══════════════════════════════════════════════════════════
+  // 17. TESTIMONIALS
   const reviewCards = [
     { text: brief.social_proof?.testimonial || '', author: brief.social_proof?.attribution || 'Verified Customer' },
     { text: `${brief.hero.subheadline} — exactly what I was looking for.`, author: 'Verified Customer' },
@@ -357,9 +321,7 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     `$1${reviewCards}$2`
   )
 
-  // ══════════════════════════════════════════════════════════
   // 18. HOW IT WORKS
-  // ══════════════════════════════════════════════════════════
   const hiwSteps = [
     { num: '1', title: 'Discover', desc: brief.hero.subheadline.slice(0, 80) },
     { num: '2', title: 'Experience', desc: (brief.solution?.body || '').slice(0, 80) },
@@ -373,9 +335,7 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     `$1${hiwHtml}$2`
   )
 
-  // ══════════════════════════════════════════════════════════
-  // 19. PRESS → BENEFIT BAR
-  // ══════════════════════════════════════════════════════════
+  // 19. PRESS BAR
   const pressBenefitBar = (brief.benefits || []).slice(0, 5).map((b: any) => `
     <span style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 24px;border-right:1px solid var(--border);">${b.headline}</span>
   `).join('')
@@ -384,9 +344,7 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     `$1<div style="max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;">${pressBenefitBar}</div>$2`
   )
 
-  // ══════════════════════════════════════════════════════════
   // 20. PRODUCT SHOWCASE
-  // ══════════════════════════════════════════════════════════
   if (product) {
     const productShowcase = `
       <div class="flavor-card fade-in" style="max-width:360px;margin:0 auto;">
@@ -402,16 +360,12 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     )
   }
 
-  // ══════════════════════════════════════════════════════════
   // 21. FAQ
-  // ══════════════════════════════════════════════════════════
   if (faqHtml) {
     html = html.replace(/(<div[^>]*class="[^"]*faq-list[^"]*"[^>]*>)[\s\S]*?(<\/div>\s*<\/section>)/, `$1${faqHtml}$2`)
   }
 
-  // ══════════════════════════════════════════════════════════
   // 22. FINAL CTA
-  // ══════════════════════════════════════════════════════════
   if (brief.final_cta) {
     html = html.replace(
       /(<section[^>]*class="[^"]*final-cta[^"]*"[\s\S]*?<h2[^>]*class="[^"]*section-headline[^"]*"[^>]*>)[\s\S]*?(<\/h2>)/,
@@ -425,23 +379,17 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     `$1<p class="final-offer-text heading">${productName}${productPrice ? ` — ${productPrice}` : ''}</p><p class="final-offer-sub">${brief.final_cta?.body || brief.hero.subheadline}</p>$2`
   )
 
-  // ══════════════════════════════════════════════════════════
   // 23. GUARANTEE BADGES
-  // ══════════════════════════════════════════════════════════
   const guaranteeHtml = (brief.benefits || []).slice(0, 3).map((b: any) => `
     <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> ${b.headline}</span>
   `).join('')
   html = html.replace(/(<div[^>]*class="guarantee"[^>]*>)[\s\S]*?(<\/div>)/, `$1${guaranteeHtml}$2`)
 
-  // ══════════════════════════════════════════════════════════
-  // 24. FLOATING CTA + ALL CTA BUTTONS
-  // ══════════════════════════════════════════════════════════
+  // 24. CTA BUTTONS
   html = html.replace(/>Try Afterdream[^<]*</g, `>${brief.hero.cta_text} →<`)
   html = html.replace(/>Get the Discovery Set[^<]*/g, `>${brief.final_cta?.cta_text || brief.hero.cta_text}`)
 
-  // ══════════════════════════════════════════════════════════
-  // 25. FOOTER + GLOBAL REPLACEMENTS
-  // ══════════════════════════════════════════════════════════
+  // 25. FOOTER + GLOBAL
   html = html.replace(/© \d+ [^<]*/, `© ${new Date().getFullYear()} ${brand.name}. All Rights Reserved.`)
   // Replace "Afterdream" in src/href URLs with URL-encoded name (spaces → %20)
   const urlSafeName = encodeURIComponent(brand.name).replace(/%20/g, '%20')
@@ -450,15 +398,10 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
   html = html.replace(/Afterdream/g, brand.name)
   html = html.replace(/drinkafterdream\.com/g, brand.website?.replace(/https?:\/\//, '') || brand.name.toLowerCase().replace(/\s+/g, '-') + '.com')
 
-  // ══════════════════════════════════════════════════════════
-  // 26. REMOVE TRACKING IDS
-  // ══════════════════════════════════════════════════════════
+  // 26. REMOVE TRACKING
   html = html.replace(/G-[A-Z0-9]{8,}/g, '').replace(/pixel_id:\s*'[^']*'/g, "pixel_id: ''").replace(/'1199920381791227'/g, "''")
 
   return new NextResponse(html, {
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
-    }
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
   })
 }

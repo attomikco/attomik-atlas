@@ -181,6 +181,14 @@ export async function POST(req: NextRequest) {
     if (accent) colors.push(accent.hex)
     else if (colors.length === 2) colors.push(colors[0]) // fallback accent = primary
 
+    // Full palette: top 12 visually distinct scraped colors for the picker
+    const allColors: string[] = []
+    for (const c of sorted) {
+      if (allColors.length >= 12) break
+      if (allColors.some(existing => colorDistance(c.hex, existing) < 35)) continue
+      allColors.push(c.hex)
+    }
+
     // ── Font ────────────────────────────────────────────────────────
     let font: string | null = null
     const systemFonts = new Set(['arial', 'helvetica', 'verdana', 'georgia', 'times', 'times new roman', 'courier', 'courier new', 'sans-serif', 'serif', 'monospace', 'system-ui', '-apple-system', 'blinkmacsystemfont', 'segoe ui', 'roboto', 'inherit', 'initial'])
@@ -863,7 +871,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ name, colors, font, fontTransform, letterSpacing, ogImage: finalOgImage, logo: finalLogo, platform, products, images, businessType, offerings })
+    return NextResponse.json({ name, colors, allColors, font, fontTransform, letterSpacing, ogImage: finalOgImage, logo: finalLogo, platform, products, images, businessType, offerings })
   } catch (e) {
     console.error('[detect-website] outer catch:', e)
     return NextResponse.json({ name: null, colors: [], font: null, fontTransform: 'none', letterSpacing: 'normal', ogImage: null, logo: null, platform: 'other', products: [], images: [] })

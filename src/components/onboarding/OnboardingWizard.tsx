@@ -47,6 +47,19 @@ export default function OnboardingWizard() {
   const [primaryColor, setPrimaryColor] = useState('#000000')
   const [secondaryColor, setSecondaryColor] = useState('#ffffff')
   const [accentColor, setAccentColor] = useState('#00ff97')
+  const [scrapedPalette, setScrapedPalette] = useState<string[]>([])
+  const [activeColorField, setActiveColorField] = useState<string | null>(null)
+
+  // Close color palette picker on outside click
+  useEffect(() => {
+    if (!activeColorField) return
+    function handleClick(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest('.wiz-color-grid')) setActiveColorField(null)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [activeColorField])
 
   // Business type
   type BusinessType = 'shopify' | 'ecommerce' | 'saas' | 'restaurant' | 'service' | 'brand'
@@ -109,6 +122,7 @@ export default function OnboardingWizard() {
       if (data.colors?.[0]) setPrimaryColor(data.colors[0])
       if (data.colors?.[1]) setSecondaryColor(data.colors[1])
       if (data.colors?.[2]) setAccentColor(data.colors[2])
+      if (data.allColors?.length) setScrapedPalette(data.allColors)
       if (data.font) setBrandFont(data.font)
       if (data.fontTransform && data.fontTransform !== 'none') setFontTransform(data.fontTransform)
       if (data.letterSpacing && data.letterSpacing !== 'normal') setFontLetterSpacing(data.letterSpacing)
@@ -427,26 +441,70 @@ export default function OnboardingWizard() {
         </div>
       </div>
 
-      {/* Color inputs — 3 swatches */}
+      {/* Color inputs — 3 swatches with unified palette picker */}
       <div className="wiz-color-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 4 }}>
         {[
           { label: 'Primary', value: primaryColor, set: setPrimaryColor, id: 'color-primary' },
           { label: 'Secondary', value: secondaryColor, set: setSecondaryColor, id: 'color-secondary' },
           { label: 'Accent', value: accentColor, set: setAccentColor, id: 'color-accent' },
         ].map(({ label, value, set, id }) => (
-          <div key={id}>
+          <div key={id} style={{ position: 'relative' }}>
             <label style={{ display: 'block', marginBottom: 6, fontSize: fontSize.caption, fontWeight: fontWeight.semibold, color: colors.gray800, letterSpacing: letterSpacing.label, textTransform: 'uppercase' }}>{label}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: radius.sm,
-                background: value || colors.ink, border: '1px solid var(--border)',
-                flexShrink: 0, cursor: 'pointer',
-              }} onClick={() => (document.getElementById(id) as HTMLInputElement)?.click()} />
-              <input id={id} type="color" value={value || '#000000'} onChange={e => set(e.target.value)}
-                style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }} />
+                background: value || colors.ink,
+                border: activeColorField === id ? '2px solid #000' : '1px solid var(--border)',
+                flexShrink: 0, cursor: 'pointer', transition: 'border-color 0.15s',
+              }} onClick={() => setActiveColorField(activeColorField === id ? null : id)} />
               <input className={inputCls + ' font-mono'} style={{ fontSize: fontSize.caption, padding: '6px 8px' }}
-                value={value} placeholder="#000000" onChange={e => set(e.target.value)} />
+                value={value} placeholder="#000000"
+                onChange={e => { const v = e.target.value; if (/^#[0-9a-fA-F]{0,6}$/.test(v)) set(v) }}
+                onFocus={() => setActiveColorField(id)}
+                onBlur={e => { if (!/^#[0-9a-fA-F]{6}$/.test(e.target.value)) set(value) }} />
             </div>
+            {/* Unified color picker dropdown */}
+            {activeColorField === id && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, zIndex: 50,
+                marginTop: 6, background: '#fff', border: '1px solid #e0e0e0',
+                borderRadius: 12, padding: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                width: 200,
+              }}>
+                {scrapedPalette.length > 0 && (<>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
+                    From your website
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                    {scrapedPalette.map(color => (
+                      <div key={color} onClick={() => { set(color); setActiveColorField(null) }}
+                        style={{
+                          width: 28, height: 28, borderRadius: 6, background: color, cursor: 'pointer',
+                          border: color === value ? '2.5px solid #000' : '1.5px solid #e0e0e0',
+                          transition: 'transform 0.1s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)' }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ borderTop: '1px solid #eee', paddingTop: 8, marginBottom: 2 }} />
+                </>)}
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999', marginBottom: 6 }}>
+                  Pick custom color
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input type="color" value={value || '#000000'} onChange={e => { set(e.target.value); setActiveColorField(null) }}
+                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #e0e0e0', cursor: 'pointer', padding: 1, background: 'none', flexShrink: 0 }} />
+                  <input className={inputCls + ' font-mono'} style={{ fontSize: fontSize.caption, padding: '6px 8px', flex: 1 }}
+                    value={value} placeholder="#000000"
+                    onChange={e => { const v = e.target.value; if (/^#[0-9a-fA-F]{0,6}$/.test(v)) set(v) }}
+                    onBlur={e => { if (!/^#[0-9a-fA-F]{6}$/.test(e.target.value)) set(value) }}
+                    onKeyDown={e => { if (e.key === 'Enter') setActiveColorField(null) }} />
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

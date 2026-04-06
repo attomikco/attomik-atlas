@@ -111,10 +111,19 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
       const b = Math.max(0, (n & 0xff) - Math.round(2.55 * pct))
       return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
     }
+    const lighten = (hex: string, pct: number) => {
+      const n = parseInt(hex.replace('#', ''), 16)
+      const r = Math.min(255, (n >> 16) + Math.round(2.55 * pct))
+      const g = Math.min(255, ((n >> 8) & 0xff) + Math.round(2.55 * pct))
+      const b = Math.min(255, (n & 0xff) + Math.round(2.55 * pct))
+      return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+    }
+    const lum = getLum(primary)
+    const altPrimaryBg = lum < 0.15 ? lighten(primary, 15) : lum < 0.35 ? darken(primary, 10) : darken(primary, 20)
     return {
       primaryBg: primary,
       primaryText,
-      altPrimaryBg: darken(primary, 20),
+      altPrimaryBg,
       altPrimaryText: primaryText,
       accentColor: accent,
       neutralBg: lightBg,

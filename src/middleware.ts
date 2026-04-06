@@ -67,5 +67,6 @@ export const config = {
     '/copy/:path*',
     '/campaigns/:path*',
     '/newsletter/:path*',
+    '/landing-page/:path*',
   ],
 }

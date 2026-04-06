@@ -220,8 +220,19 @@ function buildEmailPalette(brand: BrandData, emailColors?: EmailColors | null): 
   // Light background — ALWAYS near-white, never dark. Only use brand.secondary if it's actually light.
   const lightBg = getLuminance(secondary) > 0.7 ? secondary : '#f8f7f4'
 
-  // Dark variant is always darker than primary → always needs white text
-  const darkVariant = darkenHex(primary, 20)
+  // Dark variant — smart adjust based on how dark the primary already is
+  const luminance = getLuminance(primary)
+  let darkVariant: string
+  if (luminance < 0.15) {
+    // Primary is already very dark — lighten slightly instead of darkening
+    darkVariant = lightenHex(primary, 15)
+  } else if (luminance < 0.35) {
+    // Dark but not too dark — darken just a little
+    darkVariant = darkenHex(primary, 10)
+  } else {
+    // Medium/light primary — darken normally
+    darkVariant = darkenHex(primary, 20)
+  }
 
   return {
     darkBg: primary,
@@ -390,10 +401,12 @@ export function deriveEmailColorsFromBrand(brand: BrandData): EmailColors {
   const secondary = brand.secondary_color || '#E9E3D8'
   const primaryText = isDark(primary) ? '#ffffff' : '#000000'
   const neutralBg = getLuminance(secondary) > 0.7 ? secondary : '#f8f7f4'
+  const lum = getLuminance(primary)
+  const altPrimaryBg = lum < 0.15 ? lightenHex(primary, 15) : lum < 0.35 ? darkenHex(primary, 10) : darkenHex(primary, 20)
   return {
     primaryBg: primary,
     primaryText,
-    altPrimaryBg: darkenHex(primary, 20),
+    altPrimaryBg,
     altPrimaryText: '#ffffff',
     accentColor: accent,
     neutralBg,
