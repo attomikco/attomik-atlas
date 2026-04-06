@@ -42,6 +42,7 @@ export interface GeneratedCopy {
   content: string
   type: string
   created_at: string
+  campaign_id?: string | null
 }
 
 export type StyleSnapshot = {

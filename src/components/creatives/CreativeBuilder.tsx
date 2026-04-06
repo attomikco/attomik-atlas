@@ -170,7 +170,7 @@ export default function CreativeBuilder({
 
   // ── Brand sync (font loading, brand switching, data fetch) ────────
   useBrandSync({
-    brandId, brands,
+    brandId, brands, campaignId, preloadedCopy,
     setImages, setSelectedImageId, setRecentCopy,
     setHeadline, setBodyText, setCtaText,
     setHeadlineFont, setHeadlineWeight, setHeadlineTransform,

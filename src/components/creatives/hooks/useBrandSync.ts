@@ -21,6 +21,8 @@ function isLightColor(hex: string) {
 interface UseBrandSyncOptions {
   brandId: string
   brands: Brand[]
+  campaignId?: string
+  preloadedCopy?: { headline?: string; primary_text?: string; description?: string } | null
   setImages: (imgs: BrandImage[]) => void
   setSelectedImageId: (id: string | null) => void
   setRecentCopy: (copy: GeneratedCopy[]) => void
@@ -53,7 +55,7 @@ interface UseBrandSyncOptions {
 
 export function useBrandSync(opts: UseBrandSyncOptions) {
   const {
-    brandId, brands,
+    brandId, brands, campaignId, preloadedCopy,
     setImages, setSelectedImageId, setRecentCopy,
     setHeadline, setBodyText, setCtaText,
     setHeadlineFont, setHeadlineWeight, setHeadlineTransform,
@@ -66,6 +68,8 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
   } = opts
 
   const brand = brands.find(b => b.id === brandId)
+  // Track whether campaign copy has been applied so async fetches don't overwrite it
+  const hasCampaignCopy = !!(campaignId && preloadedCopy && (preloadedCopy.headline || preloadedCopy.primary_text))
 
   // Font loading
   useEffect(() => {
@@ -108,21 +112,29 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     }
     setBgColor(nbBg)
     setTextBannerColor(nb?.bg_accent || nb?.bg_secondary || nbBg)
-    // Copy
-    setHeadline(nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`)
-    const audience = nb?.target_audience?.split(/[;,]/)[0]?.trim() || 'you'
-    // Trim body text to 80-90 chars so it fits the creative layout
-    const storedBody = nb?.default_body_text || ''
-    const fallbackBody = `Premium quality crafted for ${audience} — designed to elevate every moment`
-    let body = storedBody || fallbackBody
-    if (body.length > 90) {
-      // Cut at nearest word boundary within 80-90 char range
-      const cut = body.slice(0, 90)
-      const lastSpace = cut.lastIndexOf(' ')
-      body = (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()
+    // Copy — campaign preloaded copy takes priority over brand defaults
+    if (hasCampaignCopy) {
+      if (preloadedCopy!.headline) setHeadline(preloadedCopy!.headline)
+      if (preloadedCopy!.primary_text) {
+        const t = preloadedCopy!.primary_text
+        if (t.length <= 90) setBodyText(t)
+        else { const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' '); setBodyText((ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()) }
+      }
+      setCtaText(preloadedCopy!.description || nb?.default_cta || 'Shop Now')
+    } else {
+      setHeadline(nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`)
+      const audience = nb?.target_audience?.split(/[;,]/)[0]?.trim() || 'you'
+      const storedBody = nb?.default_body_text || ''
+      const fallbackBody = `Premium quality crafted for ${audience} — designed to elevate every moment`
+      let body = storedBody || fallbackBody
+      if (body.length > 90) {
+        const cut = body.slice(0, 90)
+        const lastSpace = cut.lastIndexOf(' ')
+        body = (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()
+      }
+      setBodyText(body)
+      setCtaText(nb?.default_cta || 'Shop Now')
     }
-    setBodyText(body)
-    setCtaText(nb?.default_cta || 'Shop Now')
     // Reset style to defaults on brand switch
     setHeadlineSizeMul(1); setBodySizeMul(1)
     setShowOverlay(false); setOverlayOpacity(10)
@@ -132,7 +144,7 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setCtaColor(nb?.btn_primary || nb?.accent_color || nb?.primary_color || '#00ff97')
     setCtaFontColor(nb?.btn_primary_text || nb?.accent_font_color || '#000000')
     setVariations([]); setActiveVariation(null); setActiveDraft(null)
-  }, [brandId, brands])
+  }, [brandId, brands, campaignId, hasCampaignCopy])
 
   // Fetch images + recent copy (with cache)
   useEffect(() => {
@@ -155,23 +167,38 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     }
 
     // Copy — serve from cache if available
+    // When a campaign is active with preloaded copy, prefer campaign-specific fb_ads
+    // and never overwrite campaign copy with generic brand copy
     const cachedCopy = copyCache.get(brandId)
+    const applyCopyFromAd = (ad: GeneratedCopy) => {
+      try {
+        const parsed = JSON.parse(ad.content)
+        const v = parsed.variations?.[0] || parsed
+        if (v.headline) setHeadline(v.headline)
+        if (v.primary_text) {
+          const t = v.primary_text
+          if (t.length <= 90) setBodyText(t)
+          else { const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' '); setBodyText((ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()) }
+        }
+        if (v.description) setCtaText(v.description)
+      } catch {}
+    }
+
+    const pickBestAd = (copy: GeneratedCopy[]) => {
+      // If campaign active, prefer a campaign-specific fb_ad
+      if (campaignId) {
+        const campaignAd = copy.find(c => c.type === 'fb_ad' && c.campaign_id === campaignId)
+        if (campaignAd) return campaignAd
+      }
+      // Skip auto-populating with generic brand copy when campaign has preloaded content
+      if (hasCampaignCopy) return null
+      return copy.find(c => c.type === 'fb_ad') || null
+    }
+
     if (cachedCopy) {
       setRecentCopy(cachedCopy)
-      const latestAd = cachedCopy.find(c => c.type === 'fb_ad')
-      if (latestAd) {
-        try {
-          const parsed = JSON.parse(latestAd.content)
-          const v = parsed.variations?.[0] || parsed
-          if (v.headline) setHeadline(v.headline)
-          if (v.primary_text) {
-                const t = v.primary_text
-                if (t.length <= 90) setBodyText(t)
-                else { const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' '); setBodyText((ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()) }
-              }
-          if (v.description) setCtaText(v.description)
-        } catch {}
-      }
+      const bestAd = pickBestAd(cachedCopy)
+      if (bestAd) applyCopyFromAd(bestAd)
     } else {
       const supabase = createClient()
       supabase.from('generated_content').select('id, content, type, created_at, campaign_id').eq('brand_id', brandId)
@@ -180,21 +207,8 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
           const copy = (data as GeneratedCopy[]) ?? []
           copyCache.set(brandId, copy)
           setRecentCopy(copy)
-          // Auto-populate copy fields from latest fb_ad
-          const latestAd = copy.find(c => c.type === 'fb_ad')
-          if (latestAd) {
-            try {
-              const parsed = JSON.parse(latestAd.content)
-              const v = parsed.variations?.[0] || parsed
-              if (v.headline) setHeadline(v.headline)
-              if (v.primary_text) {
-                const t = v.primary_text
-                if (t.length <= 90) setBodyText(t)
-                else { const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' '); setBodyText((ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()) }
-              }
-              if (v.description) setCtaText(v.description)
-            } catch {}
-          }
+          const bestAd = pickBestAd(copy)
+          if (bestAd) applyCopyFromAd(bestAd)
         })
     }
   }, [brandId])
