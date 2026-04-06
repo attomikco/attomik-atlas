@@ -39,6 +39,7 @@ export interface TemplateProps {
   subtitle?: string
   brandLogoUrl?: string | null
   productImageUrl?: string | null
+  ctaSizeMul?: number
   isExporting?: boolean
 }
 

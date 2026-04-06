@@ -63,6 +63,9 @@ export type StyleSnapshot = {
   textPosition: TextPosition
   showCta: boolean
   imagePosition: string
+  ctaColor?: string
+  ctaFontColor?: string
+  ctaSizeMul?: number
 }
 
 export type Variation = {
@@ -77,4 +80,20 @@ export type Variation = {
   fbDescription?: string
 }
 
-export type Draft = Variation & { sizeId: string }
+export type Draft = Variation & { sizeId: string; dbId?: string; imageUrl?: string | null }
+
+export type SavedCreative = {
+  id: string
+  created_at: string
+  brand_id: string
+  campaign_id: string | null
+  template_id: string
+  size_id: string
+  image_url: string | null
+  headline: string
+  body_text: string
+  cta_text: string
+  style_snapshot: StyleSnapshot
+  thumbnail_url: string | null
+  name: string | null
+}

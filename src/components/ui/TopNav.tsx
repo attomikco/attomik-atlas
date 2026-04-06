@@ -12,8 +12,9 @@ const NAV_LINKS = [
   { href: '/brand-setup', label: 'Brand Hub' },
   { href: '/creatives', label: 'Creative Studio' },
   { href: '/copy', label: 'Copy Creator' },
-  { href: '/campaigns', label: 'Campaigns' },
   { href: '/newsletter', label: 'Email' },
+  { href: '/landing-page', label: 'Landing Page' },
+  { href: '/campaigns', label: 'Campaigns' },
 ]
 
 export default function TopNav() {
@@ -23,19 +24,15 @@ export default function TopNav() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const activeBrand = brands.find((b: any) => b.id === activeBrandId) || brands[0] || null
-
-  // Extract brandId from URL (e.g. /brand-setup/[brandId])
+  // On /brand-setup/[brandId], the URL defines the brand. Sync context to match.
   const urlBrandId = pathname.startsWith('/brand-setup/') ? pathname.split('/')[2] : null
-  const urlBrand = urlBrandId ? brands.find((b: any) => b.id === urlBrandId) : null
-  const displayBrand = urlBrand || activeBrand
-
-  // Sync activeBrand when URL has a brandId and brands are loaded
   useEffect(() => {
-    if (urlBrand && urlBrand.id !== activeBrandId) {
-      setActiveBrandId(urlBrand.id)
-    }
-  }, [pathname, brands])
+    if (urlBrandId && urlBrandId !== activeBrandId) setActiveBrandId(urlBrandId)
+  }, [urlBrandId])
+
+  // Single source of truth: context's activeBrandId
+  const activeBrand = brands.find((b: any) => b.id === activeBrandId) || null
+  const displayBrand = activeBrand
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -48,13 +45,14 @@ export default function TopNav() {
   function switchBrand(brand: any) {
     setActiveBrandId(brand.id)
     setDropdownOpen(false)
-    // Server component pages need URL navigation; client pages re-fetch via context
+    // Server pages need URL navigation to re-render with new brand data
     if (pathname.startsWith('/brand-setup')) router.push(`/brand-setup/${brand.id}`)
     else if (pathname === '/dashboard' || pathname === '/') router.push(`/dashboard?brand=${brand.id}`)
+    // Client pages (creatives, copy, campaigns, newsletter) re-fetch via context automatically
   }
 
   function getBrandNavHref(href: string) {
-    const id = activeBrand?.id
+    const id = activeBrandId
     if (!id) return href
     if (href === '/brand-setup') return `/brand-setup/${id}`
     if (href === '/creatives') return `/creatives?brand=${id}`
@@ -62,6 +60,7 @@ export default function TopNav() {
     if (href === '/campaigns') return `/campaigns?brand=${id}`
     if (href === '/newsletter') return `/newsletter?brand=${id}`
     if (href === '/copy') return `/copy?brand=${id}`
+    if (href === '/landing-page') return `/campaigns?brand=${id}`
     return href
   }
 
@@ -78,6 +77,19 @@ export default function TopNav() {
       </Link>
 
       <div style={{ width: 1, height: 24, background: 'var(--border)', marginRight: 24, flexShrink: 0 }} />
+
+      {!displayBrand && (!!activeBrandId || pathname.includes('/brand-setup')) && (
+        <div style={{ marginRight: 24, flexShrink: 0 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: colors.gray150, border: '1px solid var(--border)',
+            borderRadius: radius.lg, padding: '6px 12px 6px 8px',
+            width: 140, height: 40,
+            animation: 'pulse 1.5s ease-in-out infinite',
+          }} />
+          <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}`}</style>
+        </div>
+      )}
 
       {displayBrand && (
         <div ref={dropdownRef} style={{ position: 'relative', marginRight: 24, flexShrink: 0 }}>

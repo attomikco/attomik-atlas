@@ -19,7 +19,7 @@ export default function OverlayTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform, headlineColor,
   bodyFont, bodyWeight, bodyTransform, bodyColor, headlineSizeMul, bodySizeMul,
-  ctaColor, ctaFontColor, bgColor, textPosition,
+  ctaColor, ctaFontColor, ctaSizeMul, bgColor, textPosition,
   showOverlay, overlayOpacity, textBanner, textBannerColor, imagePosition, isExporting,
 }: TemplateProps) {
   const p = px(EDGE_PAD, width)
@@ -137,7 +137,7 @@ export default function OverlayTemplate({
                 borderRadius: CTA_RADIUS,
                 whiteSpace: 'nowrap' as const,
                 color: ctaFontColor || '#000',
-                fontSize: px(CTA_SIZE, width) * bodySizeMul,
+                fontSize: px(CTA_SIZE, width) * (ctaSizeMul ?? 1),
                 fontWeight: 700,
                 fontFamily: ff(headlineFont),
                 textAlign: 'center' as const,

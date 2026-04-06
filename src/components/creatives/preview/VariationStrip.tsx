@@ -1,5 +1,6 @@
 'use client'
 import { Bookmark } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { TEMPLATES } from '../templates/registry'
 import type { Variation, Draft } from '../types'
 import type { BrandImage } from '@/types'
@@ -23,6 +24,24 @@ export default function VariationStrip({
   variations, activeVariation, loadVariation, saveVariationAsDraft, savedDrafts,
   size, images, getPublicUrl, thumbProps, exportAllVariations, exportingAll, sizeId,
 }: VariationStripProps) {
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const [thumbW, setThumbW] = useState(100)
+
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const GAP = 8
+    const COLS = 5
+    const measure = () => {
+      const w = el.clientWidth
+      setThumbW(Math.floor((w - GAP * (COLS - 1)) / COLS))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   if (variations.length === 0) return null
 
   return (
@@ -47,13 +66,12 @@ export default function VariationStrip({
           ) : `↓ Download all ${variations.length}`}
         </button>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div ref={gridRef} style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
         {variations.map((v, i) => {
           const vImg = images.find(img => img.id === v.imageId)
           const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
           const VTemplate = TEMPLATES.find(t => t.id === v.templateId)!.component
           const isSaved = savedDrafts.some(d => d.headline === v.headline && d.imageId === v.imageId)
-          const thumbW = 100
           const thumbScale = thumbW / size.w
           const thumbH = Math.round(size.h * thumbScale)
           return (

@@ -173,11 +173,47 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
 
   const exportAllSizes = useCallback(async () => {
     setExportingAll(true)
+    const ts = Date.now()
     try {
       const zip = new JSZip()
-      for (const s of SIZES) { const dataUrl = await renderAndCapture(TemplateComponent, templateProps, s.w, s.h); zip.file(`${brandSlug}-${templateId}-${s.id}-${s.w}x${s.h}.png`, dataUrl.split(',')[1], { base64: true }) }
+      for (const s of SIZES) {
+        const fileName = `${brandSlug}-${templateId}-${s.id}-${ts}.png`
+        let added = false
+        // Try Puppeteer first
+        try {
+          const serializableProps = Object.fromEntries(
+            Object.entries(templateProps).filter(([, v]) => {
+              try { JSON.stringify(v); return true } catch { return false }
+            })
+          )
+          const storeRes = await fetch('/api/export/props', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ props: serializableProps }),
+          })
+          const { id } = await storeRes.json()
+          const renderUrl = `${window.location.origin}/render?template=${templateId}&width=${s.w}&height=${s.h}&propsId=${id}`
+          const res = await fetch('/api/export/png', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ renderUrl, width: s.w, height: s.h, filename: fileName }),
+          })
+          if (res.ok) {
+            const buf = await res.arrayBuffer()
+            zip.file(fileName, buf)
+            added = true
+          }
+        } catch (err) {
+          console.warn(`Puppeteer failed for ${s.id}, falling back to html2canvas:`, err)
+        }
+        // Fallback to html2canvas
+        if (!added) {
+          const dataUrl = await renderAndCapture(TemplateComponent, templateProps, s.w, s.h)
+          zip.file(fileName, dataUrl.split(',')[1], { base64: true })
+        }
+      }
       const blob = await zip.generateAsync({ type: 'blob' }); const link = document.createElement('a')
-      link.download = `${brandSlug}-${templateId}-all-sizes-${Date.now()}.zip`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)
+      link.download = `${brandSlug}-${templateId}-all-sizes-${ts}.zip`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)
       setExportToast(`Downloaded ${SIZES.length} creatives`); setTimeout(() => setExportToast(null), 3000)
     } catch (err) { console.error('Export all failed:', err) }
     setExportingAll(false)
@@ -186,19 +222,34 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
   const exportAllVariations = useCallback(async () => {
     if (variations.length === 0) return
     setExportingAll(true)
+    const ts = Date.now()
     try {
       const zip = new JSZip()
       for (let i = 0; i < variations.length; i++) {
         const v = variations[i]
-        const VComp = TEMPLATES.find(t => t.id === v.templateId)!.component
         const vImg = images.find(img => img.id === v.imageId)
         const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
         const props = thumbProps(v, vImgUrl)
-        const dataUrl = await renderAndCapture(VComp, props, size.w, size.h)
-        zip.file(`${brandSlug}-${v.templateId}-${sizeId}-${i + 1}.png`, dataUrl.split(',')[1], { base64: true })
+        const fileName = `${brandSlug}-${v.templateId}-${sizeId}-${i + 1}.png`
+        let added = false
+        try {
+          const serializableProps = Object.fromEntries(
+            Object.entries(props).filter(([, val]) => { try { JSON.stringify(val); return true } catch { return false } })
+          )
+          const storeRes = await fetch('/api/export/props', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ props: serializableProps }) })
+          const { id } = await storeRes.json()
+          const renderUrl = `${window.location.origin}/render?template=${v.templateId}&width=${size.w}&height=${size.h}&propsId=${id}`
+          const res = await fetch('/api/export/png', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ renderUrl, width: size.w, height: size.h, filename: fileName }) })
+          if (res.ok) { zip.file(fileName, await res.arrayBuffer()); added = true }
+        } catch (err) { console.warn(`Puppeteer failed for variation ${i + 1}, falling back:`, err) }
+        if (!added) {
+          const VComp = TEMPLATES.find(t => t.id === v.templateId)!.component
+          const dataUrl = await renderAndCapture(VComp, props, size.w, size.h)
+          zip.file(fileName, dataUrl.split(',')[1], { base64: true })
+        }
       }
       const blob = await zip.generateAsync({ type: 'blob' }); const link = document.createElement('a')
-      link.download = `${brandSlug}-variations-${sizeId}-${Date.now()}.zip`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)
+      link.download = `${brandSlug}-variations-${sizeId}-${ts}.zip`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)
       setExportToast(`Downloaded ${variations.length} variations`); setTimeout(() => setExportToast(null), 3000)
     } catch (err) { console.error('Export variations failed:', err) }
     setExportingAll(false)
@@ -207,20 +258,35 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
   const exportAllDrafts = useCallback(async () => {
     if (savedDrafts.length === 0) return
     setExportingAll(true)
+    const ts = Date.now()
     try {
       const zip = new JSZip()
       for (let i = 0; i < savedDrafts.length; i++) {
         const d = savedDrafts[i]
-        const DComp = TEMPLATES.find(t => t.id === d.templateId)!.component
         const dImg = images.find(img => img.id === d.imageId)
         const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
         const dSize = SIZES.find(s => s.id === d.sizeId) || size
         const props = thumbProps(d, dImgUrl, dSize.w, dSize.h)
-        const dataUrl = await renderAndCapture(DComp, props, dSize.w, dSize.h)
-        zip.file(`${brandSlug}-${d.templateId}-${d.sizeId}-${i + 1}.png`, dataUrl.split(',')[1], { base64: true })
+        const fileName = `${brandSlug}-${d.templateId}-${d.sizeId}-${i + 1}.png`
+        let added = false
+        try {
+          const serializableProps = Object.fromEntries(
+            Object.entries(props).filter(([, val]) => { try { JSON.stringify(val); return true } catch { return false } })
+          )
+          const storeRes = await fetch('/api/export/props', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ props: serializableProps }) })
+          const { id } = await storeRes.json()
+          const renderUrl = `${window.location.origin}/render?template=${d.templateId}&width=${dSize.w}&height=${dSize.h}&propsId=${id}`
+          const res = await fetch('/api/export/png', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ renderUrl, width: dSize.w, height: dSize.h, filename: fileName }) })
+          if (res.ok) { zip.file(fileName, await res.arrayBuffer()); added = true }
+        } catch (err) { console.warn(`Puppeteer failed for draft ${i + 1}, falling back:`, err) }
+        if (!added) {
+          const DComp = TEMPLATES.find(t => t.id === d.templateId)!.component
+          const dataUrl = await renderAndCapture(DComp, props, dSize.w, dSize.h)
+          zip.file(fileName, dataUrl.split(',')[1], { base64: true })
+        }
       }
       const blob = await zip.generateAsync({ type: 'blob' }); const link = document.createElement('a')
-      link.download = `${brandSlug}-drafts-${Date.now()}.zip`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)
+      link.download = `${brandSlug}-drafts-${ts}.zip`; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)
       setExportToast(`Downloaded ${savedDrafts.length} drafts`); setTimeout(() => setExportToast(null), 3000)
     } catch (err) { console.error('Export drafts failed:', err) }
     setExportingAll(false)

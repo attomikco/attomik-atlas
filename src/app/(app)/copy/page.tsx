@@ -7,16 +7,10 @@ import CopyCreatorClient from './CopyCreatorClient'
 
 export default function CopyPage() {
   const searchParams = useSearchParams()
-  const campaignParam = searchParams.get('campaign') || ''
-  const brandParam = searchParams.get('brand')
-  const { activeBrandId, setActiveBrandId } = useBrand()
-
-  // URL brand param overrides context (e.g. navigating from preview)
-  useEffect(() => {
-    if (brandParam && brandParam !== activeBrandId) {
-      setActiveBrandId(brandParam)
-    }
-  }, [brandParam])
+  const urlCampaignParam = searchParams.get('campaign') || ''
+  const { activeBrandId, activeCampaignId } = useBrand()
+  // Campaign mode overrides URL param
+  const campaignParam = activeCampaignId || urlCampaignParam
 
   const [brands, setBrands] = useState<any[]>([])
   const [campaigns, setCampaigns] = useState<any[]>([])
@@ -24,6 +18,7 @@ export default function CopyPage() {
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
   const [brandAudience, setBrandAudience] = useState('')
   const [brandVoice, setBrandVoice] = useState('')
+  const [brandProducts, setBrandProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -35,7 +30,7 @@ export default function CopyPage() {
       supabase.from('brands').select('*').eq('status', 'active').order('name'),
       supabase.from('campaigns').select('*, brand:brands(name, primary_color)')
         .eq('brand_id', activeBrandId).order('created_at', { ascending: false }),
-      supabase.from('brands').select('target_audience, brand_voice').eq('id', activeBrandId).single(),
+      supabase.from('brands').select('target_audience, brand_voice, products').eq('id', activeBrandId).single(),
     ]).then(async ([brandsRes, campaignsRes, brandDataRes]) => {
       const b = brandsRes.data ?? []
       const c = campaignsRes.data ?? []
@@ -43,6 +38,7 @@ export default function CopyPage() {
       setCampaigns(c)
       setBrandAudience(brandDataRes.data?.target_audience || '')
       setBrandVoice(brandDataRes.data?.brand_voice || '')
+      setBrandProducts(Array.isArray(brandDataRes.data?.products) ? brandDataRes.data.products : [])
 
       const cid = campaignParam || c[0]?.id || ''
       const selected = c.find((x: any) => x.id === cid) || null
@@ -82,6 +78,7 @@ export default function CopyPage() {
       selectedCampaign={selectedCampaign}
       brandAudience={brandAudience}
       brandVoice={brandVoice}
+      brandProducts={brandProducts}
     />
   )
 }

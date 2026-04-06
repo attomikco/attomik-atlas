@@ -17,14 +17,16 @@ export default function NewFunnelForm() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 480 }}>
       <input
         value={url}
-        onChange={e => setUrl(e.target.value)}
+        onChange={e => setUrl(e.target.value.toLowerCase())}
         onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-        placeholder="https://yourbrand.com"
+        placeholder="yourbrand.com"
         autoFocus
+        autoCapitalize="none"
+        autoCorrect="off"
         style={{
           width: '100%', padding: '14px 18px', fontSize: 16, fontWeight: 500,
           background: '#fff', border: '2px solid #e0e0e0', borderRadius: 12,
-          color: '#000', outline: 'none', textAlign: 'center',
+          color: '#000', outline: 'none', textAlign: 'center', textTransform: 'lowercase' as any,
         }}
         onFocus={e => { e.target.style.borderColor = '#000' }}
         onBlur={e => { e.target.style.borderColor = '#e0e0e0' }}

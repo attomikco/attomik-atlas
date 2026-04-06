@@ -112,7 +112,13 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
         font_body: fontBody.family ? fontBody : null,
         custom_fonts_css: customFontsCss || null,
         default_headline: defaultCopy.default_headline || null,
-        default_body_text: defaultCopy.default_body_text || null,
+        default_body_text: (() => {
+          const t = defaultCopy.default_body_text?.trim() || ''
+          if (!t) return null
+          if (t.length <= 90) return t
+          const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' ')
+          return (ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()
+        })(),
         default_cta: defaultCopy.default_cta || null,
       }).eq('id', brand.id).then(({ error }) => {
         if (error) console.warn('Step 2 failed:', error.message)
@@ -300,9 +306,14 @@ export default function BrandVoiceEditor({ brand }: { brand: Brand }) {
             <input className={inputCls} value={defaultCopy.default_headline}
               onChange={e => setDefaultCopy(f => ({ ...f, default_headline: e.target.value }))}
               placeholder="Default headline — e.g. Discover Your Brand" />
-            <textarea className={inputCls + ' resize-none'} rows={2} value={defaultCopy.default_body_text}
-              onChange={e => setDefaultCopy(f => ({ ...f, default_body_text: e.target.value }))}
-              placeholder="Default body text — e.g. Premium quality crafted for you" />
+            <div className="relative">
+              <textarea className={inputCls + ' resize-none'} rows={2} maxLength={90} value={defaultCopy.default_body_text}
+                onChange={e => setDefaultCopy(f => ({ ...f, default_body_text: e.target.value }))}
+                placeholder="Default body text — e.g. Premium quality crafted for you" />
+              <span className={`absolute bottom-1 right-2 text-[10px] font-mono ${defaultCopy.default_body_text.length > 90 ? 'text-danger' : defaultCopy.default_body_text.length < 80 && defaultCopy.default_body_text.length > 0 ? 'text-muted' : 'text-muted'}`}>
+                {defaultCopy.default_body_text.length}/90
+              </span>
+            </div>
             <input className={inputCls} value={defaultCopy.default_cta}
               onChange={e => setDefaultCopy(f => ({ ...f, default_cta: e.target.value }))}
               placeholder="Default CTA — e.g. Shop Now" />

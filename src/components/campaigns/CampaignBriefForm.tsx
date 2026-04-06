@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useBrand } from '@/lib/brand-context'
 
 const CAMPAIGN_TYPES = [
   { id: 'new_product', icon: '✦', label: 'New product launch', description: 'Introduce a new product to your audience', color: '#a78bfa' },
@@ -62,11 +63,12 @@ interface Brand {
 export default function CampaignBriefForm({ brands, defaultBrandId }: { brands: Brand[]; defaultBrandId?: string }) {
   const supabase = createClient()
   const router = useRouter()
+  const { activeBrandId, setActiveBrandId, setActiveCampaignId } = useBrand()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
 
-  const initialBrand = brands.find(b => b.id === defaultBrandId) || brands[0]
-  const [brandId, setBrandId] = useState(initialBrand?.id || '')
+  // Brand comes from context — no selection UI
+  const brandId = activeBrandId || defaultBrandId || brands[0]?.id || ''
   const [campaignType, setCampaignType] = useState('')
   const [hook, setHook] = useState('')
   const [angle, setAngle] = useState('problem')
@@ -102,35 +104,44 @@ export default function CampaignBriefForm({ brands, defaultBrandId }: { brands: 
       ? products.map((p: any) => p.name).join(', ')
       : products.find((p: any) => p.name === productFocus)?.name || ''
 
+    const payload = {
+      brand_id: brandId,
+      name: suggestedName,
+      type: 'funnel',
+      status: 'draft',
+      goal: typeConfig?.label || campaignType,
+      angle: angle,
+      key_message: hook.trim() || null,
+      offer: offerContext || null,
+      audience_notes: audienceOverride || brand?.target_audience || null,
+    }
+    console.log('[Campaign create] payload:', payload)
+
     const { data: campaign, error } = await supabase
       .from('campaigns')
-      .insert({
-        brand_id: brandId,
-        name: suggestedName,
-        type: 'funnel',
-        status: 'active',
-        goal: typeConfig?.label || campaignType,
-        angle: angle,
-        key_message: hook.trim() || null,
-        offer: offerContext || null,
-        audience_notes: audienceOverride || brand?.target_audience || null,
-      })
+      .insert(payload)
       .select('id')
       .single()
 
     if (error || !campaign) {
+      console.error('Campaign create failed:', JSON.stringify(error, null, 2), 'payload was:', payload)
+      alert(`Couldn't create campaign: ${error?.message || error?.code || 'Unknown error. Check console.'}`)
       setSaving(false)
       setStep(1)
       return
     }
 
+    // Fire-and-forget generation (runs in background)
     Promise.all([
       fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' }),
       fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' }),
       fetch(`/api/campaigns/${campaign.id}/email`, { method: 'POST' }),
     ]).catch(() => {})
 
-    router.push(`/preview/${campaign.id}`)
+    // Enter campaign mode and go to Creative Studio
+    setActiveBrandId(brandId)
+    setActiveCampaignId(campaign.id)
+    router.push('/creatives')
   }
 
   // Step 0 — Campaign type selector
@@ -139,21 +150,13 @@ export default function CampaignBriefForm({ brands, defaultBrandId }: { brands: 
       <div style={{ marginBottom: 32 }}>
         <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 8 }}>New campaign.</div>
         <div style={{ fontSize: 15, color: 'var(--muted)' }}>What&apos;s this campaign for?</div>
-      </div>
-
-      {brands.length > 1 && (
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Brand</label>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {brands.map((b) => (
-              <button key={b.id} onClick={() => setBrandId(b.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 999, border: brandId === b.id ? '2px solid #000' : '1.5px solid var(--border)', background: brandId === b.id ? '#000' : '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: brandId === b.id ? '#fff' : 'var(--ink)' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: b.primary_color || '#000' }} />
-                {b.name}
-              </button>
-            ))}
+        {brand && (
+          <div style={{ fontSize: 14, color: 'var(--muted)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: brand.primary_color || '#000' }} />
+            Creating campaign for <strong style={{ color: 'var(--ink)', fontWeight: 700 }}>{brand.name}</strong>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 32 }}>
         {CAMPAIGN_TYPES.map(type => (
@@ -308,7 +311,7 @@ export default function CampaignBriefForm({ brands, defaultBrandId }: { brands: 
             style={{ width: '100%', padding: '16px', background: saving ? '#e0e0e0' : '#000', color: saving ? '#999' : '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', borderRadius: 14, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all 0.15s' }}>
             {saving ? (
               <><div style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#666', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Building your funnel...</>
-            ) : 'Generate funnel →'}
+            ) : '⚡ Enter Campaign Mode'}
           </button>
           <div style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', marginTop: 10 }}>Generates ad copy, landing page brief, and creatives for this campaign.</div>
         </div>

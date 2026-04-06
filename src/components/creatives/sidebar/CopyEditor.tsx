@@ -37,7 +37,13 @@ export default function CopyEditor({
             {generating ? 'Writing...' : 'AI Copy'}
           </button>
           <button onClick={async () => {
-            await supabase.from('brands').update({ default_headline: headline, default_body_text: bodyText, default_cta: ctaText }).eq('id', brandId)
+            // Trim body text to 80-90 chars at word boundary
+            let trimmedBody = bodyText.trim()
+            if (trimmedBody.length > 90) {
+              const cut = trimmedBody.slice(0, 90); const ls = cut.lastIndexOf(' ')
+              trimmedBody = (ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()
+            }
+            await supabase.from('brands').update({ default_headline: headline, default_body_text: trimmedBody, default_cta: ctaText }).eq('id', brandId)
             setExportToast('Saved as default'); setTimeout(() => setExportToast(null), 1500)
           }} className="text-[10px] text-muted hover:text-ink transition-colors font-semibold uppercase tracking-wide">
             Save as default

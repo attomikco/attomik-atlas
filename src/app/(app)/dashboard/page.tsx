@@ -119,8 +119,6 @@ export default async function DashboardPage({
               <span style={{ fontSize: 12, color: 'var(--muted)' }}>{brand.website?.replace(/https?:\/\//, '') || '—'}</span>
               <span style={{ fontSize: 10, color: '#ddd' }}>·</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{campaigns?.length || 0} campaign{(campaigns?.length || 0) !== 1 ? 's' : ''}</span>
-              <span style={{ fontSize: 10, color: '#ddd' }}>·</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{imageCount || 0} images</span>
             </div>
           </div>
         </div>
@@ -188,7 +186,7 @@ export default async function DashboardPage({
       )}
 
       {/* Three pillars */}
-      <div className="pv-dash-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, marginBottom: 32, alignItems: 'stretch' }}>
+      <div className="pv-dash-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 32, alignItems: 'stretch' }}>
 
         {/* Brand Hub */}
         <Link href={`/brand-setup/${brand.id}`} style={{ textDecoration: 'none' }}>
@@ -246,6 +244,42 @@ export default async function DashboardPage({
           </div>
         </Link>
 
+        {/* Copy Creator */}
+        <Link href={`/copy?brand=${brand.id}`} style={{ textDecoration: 'none' }}>
+          <div className="dash-card" style={{
+            background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%',
+            cursor: 'pointer',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>✎</div>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#000', marginBottom: 10 }}>Copy Creator</div>
+            <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>
+              AI-generated ad copy variations. Headlines, body text, and CTAs tailored to your brand voice.
+            </div>
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Multiple angles</div>
+          </div>
+        </Link>
+
+        {/* Email */}
+        <Link href="/newsletter" style={{ textDecoration: 'none' }}>
+          <div className="dash-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>✉</div>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#000', marginBottom: 10 }}>Email</div>
+            <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>Generate campaign emails from your brief. Export HTML or push directly to Klaviyo.</div>
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Klaviyo ready</div>
+          </div>
+        </Link>
+
+        {/* Landing Page */}
+        <Link href={latestCampaign ? `/preview/${latestCampaign.id}` : `/campaigns/new`} style={{ textDecoration: 'none' }}>
+          <div className="dash-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(251,113,133,0.12)', border: '1px solid rgba(251,113,133,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>▤</div>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#000', marginBottom: 10 }}>Landing Page</div>
+            <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>AI-generated landing pages from your campaign brief. Conversion-ready HTML.</div>
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Hero · Features · CTA</div>
+          </div>
+        </Link>
+
         {/* Campaigns */}
         <Link href="/campaigns" style={{ textDecoration: 'none' }}>
           <div className="dash-card" style={{
@@ -273,16 +307,6 @@ export default async function DashboardPage({
                 <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>No campaigns yet — create your first</div>
               )}
             </div>
-          </div>
-        </Link>
-
-        {/* Email */}
-        <Link href="/newsletter" style={{ textDecoration: 'none' }}>
-          <div className="dash-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px', height: '100%', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 22 }}>✉</div>
-            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.02em', color: '#000', marginBottom: 10 }}>Email</div>
-            <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24, flex: 1 }}>Generate campaign emails from your brief. Export HTML or push directly to Klaviyo.</div>
-            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Klaviyo ready</div>
           </div>
         </Link>
       </div>

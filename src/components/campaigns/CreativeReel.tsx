@@ -41,9 +41,12 @@ export default function CreativeReel({ brand, adVariation, imageUrl, allImageUrl
   ]
 
   const fontFamily = brand.font_heading?.family || brand.font_primary?.split('|')[0] || ''
-  const reelImages = (allImageUrls && allImageUrls.length > 0 ? allImageUrls : []).slice(0, 5)
+  // Dedup by URL, cap at 8
+  const reelImages = allImageUrls && allImageUrls.length > 0
+    ? Array.from(new Set(allImageUrls)).slice(0, 8)
+    : []
   const getImg = (i: number): string | null =>
-    i < reelImages.length ? reelImages[i] : reelImages.length > 0 ? reelImages[0] : null
+    reelImages.length > 0 ? reelImages[i % reelImages.length] : null
   const getVariation = (i: number): AdVariation => {
     if (!adVariations || adVariations.length === 0) return adVariation
     // For cards beyond the variation count, remix the copy to avoid looking identical

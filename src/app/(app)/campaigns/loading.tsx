@@ -1,6 +1,6 @@
 export default function CampaignsLoading() {
   return (
-    <div className="p-4 md:p-10 max-w-5xl animate-pulse">
+    <div className="p-4 md:p-10 max-w-5xl mx-auto animate-pulse">
       <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
           <div className="h-8 w-40 bg-border/50 rounded-btn" />

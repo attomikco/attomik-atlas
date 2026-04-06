@@ -111,7 +111,17 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     // Copy
     setHeadline(nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`)
     const audience = nb?.target_audience?.split(/[;,]/)[0]?.trim() || 'you'
-    setBodyText(nb?.default_body_text || `Premium quality crafted for ${audience}`)
+    // Trim body text to 80-90 chars so it fits the creative layout
+    const storedBody = nb?.default_body_text || ''
+    const fallbackBody = `Premium quality crafted for ${audience} — designed to elevate every moment`
+    let body = storedBody || fallbackBody
+    if (body.length > 90) {
+      // Cut at nearest word boundary within 80-90 char range
+      const cut = body.slice(0, 90)
+      const lastSpace = cut.lastIndexOf(' ')
+      body = (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()
+    }
+    setBodyText(body)
     setCtaText(nb?.default_cta || 'Shop Now')
     // Reset style to defaults on brand switch
     setHeadlineSizeMul(1); setBodySizeMul(1)
@@ -154,7 +164,11 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
           const parsed = JSON.parse(latestAd.content)
           const v = parsed.variations?.[0] || parsed
           if (v.headline) setHeadline(v.headline)
-          if (v.primary_text) setBodyText(v.primary_text.slice(0, 150))
+          if (v.primary_text) {
+                const t = v.primary_text
+                if (t.length <= 90) setBodyText(t)
+                else { const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' '); setBodyText((ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()) }
+              }
           if (v.description) setCtaText(v.description)
         } catch {}
       }
@@ -173,7 +187,11 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
               const parsed = JSON.parse(latestAd.content)
               const v = parsed.variations?.[0] || parsed
               if (v.headline) setHeadline(v.headline)
-              if (v.primary_text) setBodyText(v.primary_text.slice(0, 150))
+              if (v.primary_text) {
+                const t = v.primary_text
+                if (t.length <= 90) setBodyText(t)
+                else { const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' '); setBodyText((ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()) }
+              }
               if (v.description) setCtaText(v.description)
             } catch {}
           }

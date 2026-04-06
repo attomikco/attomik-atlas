@@ -9,6 +9,16 @@ interface Variation {
   description: string
   created_at?: string
   angle?: string
+  product?: string
+  audience?: string
+}
+
+const ANGLE_LABELS: Record<string, string> = {
+  'problem-solution': 'Problem → Solution',
+  'social-proof': 'Social Proof',
+  'curiosity': 'Curiosity Hook',
+  'direct-offer': 'Direct Offer',
+  'story': 'Story',
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 6, display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' }
@@ -33,14 +43,41 @@ function VariationCard({ variation, index, isStarred, onStar, onUpdate, onDelete
       borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column',
       transition: 'border-color 0.15s', position: 'relative',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#bbb' }}>Variation {index + 1}</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onStar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: isStarred ? '#f59e0b' : '#ddd', padding: 0, transition: 'color 0.15s' }}>★</button>
           <button onClick={copyAll} style={{ background: copied ? '#00ff97' : '#f0f0f0', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: copied ? '#000' : '#666', transition: 'all 0.15s' }}>{copied ? '✓ Copied' : 'Copy all'}</button>
-          <button onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#ddd', padding: 0 }}>×</button>
+          <button onClick={() => { if (confirm('Delete this variation?')) onDelete() }}
+            title="Delete variation"
+            style={{ background: '#fee', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#dc2626', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 4 }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = '#fff' }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#fee'; e.currentTarget.style.color = '#dc2626' }}>
+            × Delete
+          </button>
         </div>
       </div>
+
+      {/* Context pills */}
+      {(variation.angle || variation.product || variation.audience) && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          {variation.angle && (
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: 'rgba(167,139,250,0.1)', color: '#7c3aed', border: '1px solid rgba(167,139,250,0.25)' }}>
+              {ANGLE_LABELS[variation.angle] || variation.angle}
+            </span>
+          )}
+          {variation.product && (
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: 'rgba(244,114,182,0.1)', color: '#db2777', border: '1px solid rgba(244,114,182,0.25)' }}>
+              {variation.product}
+            </span>
+          )}
+          {variation.audience && (
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: 'rgba(96,165,250,0.1)', color: '#2563eb', border: '1px solid rgba(96,165,250,0.25)' }}>
+              {variation.audience}
+            </span>
+          )}
+        </div>
+      )}
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#bbb', marginBottom: 5 }}>Headline</div>
@@ -90,8 +127,8 @@ const ANGLES = [
   { value: 'custom', label: 'Custom...', desc: 'Write your own angle' },
 ]
 
-export default function CopyCreatorClient({ campaigns, initialCampaignId, initialVariations, selectedCampaign, brandAudience = '', brandVoice = '' }: {
-  brands: any[]; campaigns: any[]; initialCampaignId: string; initialVariations: any[]; selectedCampaign: any; brandAudience?: string; brandVoice?: string
+export default function CopyCreatorClient({ campaigns, initialCampaignId, initialVariations, selectedCampaign, brandAudience = '', brandVoice = '', brandProducts = [] }: {
+  brands: any[]; campaigns: any[]; initialCampaignId: string; initialVariations: any[]; selectedCampaign: any; brandAudience?: string; brandVoice?: string; brandProducts?: any[]
 }) {
   const router = useRouter()
   const [campaignId, setCampaignId] = useState(initialCampaignId)
@@ -100,6 +137,7 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
   const [customAngle, setCustomAngle] = useState('')
   const [count, setCount] = useState(3)
   const [audienceOverride, setAudienceOverride] = useState('')
+  const [selectedProductIdx, setSelectedProductIdx] = useState<number | null>(null)
   const [generating, setGenerating] = useState(false)
   const [starred, setStarred] = useState<number[]>([])
   const [loadingPhrase, setLoadingPhrase] = useState(0)
@@ -128,10 +166,22 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
       if (angle && angle !== 'custom') body.angle = angle
       if (angle === 'custom' && customAngle) body.angle = customAngle
       body.audience = audienceOverride || ''
+      if (selectedProductIdx !== null && brandProducts[selectedProductIdx]) {
+        body.product = brandProducts[selectedProductIdx]
+      }
       const res = await fetch(`/api/campaigns/${campaignId}/ad-copy`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (data.variations) {
-        setVariations(prev => [...data.variations.map((v: any) => ({ ...v, angle })), ...prev])
+        const productName = selectedProductIdx !== null && brandProducts[selectedProductIdx]
+          ? (brandProducts[selectedProductIdx].name || brandProducts[selectedProductIdx].title || '')
+          : ''
+        const audienceLabel = audienceOverride ? audienceOverride.slice(0, 40) : ''
+        const ctx = {
+          angle: angle === 'custom' ? (customAngle ? 'custom' : undefined) : angle,
+          product: productName || undefined,
+          audience: audienceLabel || undefined,
+        }
+        setVariations(prev => [...data.variations.map((v: any) => ({ ...v, ...ctx })), ...prev])
       }
     } catch (e) { console.error('Copy generation failed:', e) }
     finally { clearInterval(phraseInterval); setGenerating(false) }
@@ -148,14 +198,6 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
         {/* Left panel */}
         <div style={{ width: 320, flexShrink: 0, position: 'sticky', top: 104 }}>
           <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }}>
-            <div style={{ marginBottom: 24 }}>
-              <label style={labelStyle}>Campaign</label>
-              <select value={campaignId} onChange={e => { setCampaignId(e.target.value); router.push(`/copy?campaign=${e.target.value}`) }}
-                style={{ ...inputStyle, cursor: 'pointer' }}>
-                {campaigns.map((c: any) => <option key={c.id} value={c.id}>{c.brand?.name} — {c.name}</option>)}
-              </select>
-            </div>
-
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Angle</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -192,6 +234,39 @@ export default function CopyCreatorClient({ campaigns, initialCampaignId, initia
                 ))}
               </div>
             </div>
+
+            {brandProducts.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>Product focus <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 10 }}>optional</span></label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <button onClick={() => setSelectedProductIdx(null)} style={{
+                    padding: '10px 14px', borderRadius: 10, textAlign: 'left',
+                    border: selectedProductIdx === null ? '2px solid #000' : '1.5px solid #e0e0e0',
+                    background: selectedProductIdx === null ? '#000' : '#fff',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: selectedProductIdx === null ? '#00ff97' : '#000' }}>All products</span>
+                    <div style={{ fontSize: 11, color: selectedProductIdx === null ? 'rgba(255,255,255,0.5)' : '#999', marginTop: 1 }}>Generic brand copy</div>
+                  </button>
+                  {brandProducts.slice(0, 6).map((p: any, i: number) => {
+                    const name = p.name || p.title || `Product ${i + 1}`
+                    return (
+                      <button key={i} onClick={() => setSelectedProductIdx(i)} style={{
+                        padding: '10px 14px', borderRadius: 10, textAlign: 'left',
+                        border: selectedProductIdx === i ? '2px solid #000' : '1.5px solid #e0e0e0',
+                        background: selectedProductIdx === i ? '#000' : '#fff',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: selectedProductIdx === i ? '#00ff97' : '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{name}</span>
+                        {p.description && (
+                          <div style={{ fontSize: 11, color: selectedProductIdx === i ? 'rgba(255,255,255,0.5)' : '#999', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.description}</div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             <div style={{ marginBottom: 24 }}>
               <label style={labelStyle}>Audience focus <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 10 }}>optional override</span></label>

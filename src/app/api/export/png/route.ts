@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium-min'
+import { mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
@@ -40,11 +43,27 @@ export async function POST(req: NextRequest) {
     }
     console.log('[PNG Export] Using Chrome at:', executablePath)
 
+    // Create a fresh temp profile dir so no extensions load
+    const userDataDir = mkdtempSync(join(tmpdir(), 'puppeteer-'))
+
     const browser = await puppeteer.launch({
-      args: isLocal ? ['--no-sandbox', '--disable-setuid-sandbox'] : chromium.args,
+      args: isLocal
+        ? [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-extensions',
+            '--disable-plugins',
+            `--user-data-dir=${userDataDir}`,
+          ]
+        : chromium.args,
       defaultViewport: { width, height },
       executablePath,
       headless: true,
+    })
+
+    // Clean up temp dir after browser closes
+    browser.on('disconnected', () => {
+      try { rmSync(userDataDir, { recursive: true, force: true }) } catch {}
     })
 
     const page = await browser.newPage()
@@ -59,8 +78,27 @@ export async function POST(req: NextRequest) {
       return Array.from(imgs).every(img => img.complete && img.naturalHeight > 0)
     }, { timeout: 10000 }).catch(() => {}) // don't fail if timeout
 
-    // Extra buffer for fonts/rendering
+    // Wait for the render page to signal fonts are ready
+    await page.waitForSelector('[data-fonts-ready="true"]', { timeout: 8000 }).catch(() => {})
+
+    // Wait for browser's font loading API to settle
+    await page.evaluate(async () => {
+      // @ts-ignore
+      if (document.fonts?.ready) { try { await document.fonts.ready } catch {} }
+    })
+
+    // Extra buffer for layout/paint after fonts swap in
     await new Promise(r => setTimeout(r, 500))
+
+    // Hide Next.js dev toolbar and overlays
+    await page.evaluate(() => {
+      const nextToolbar = document.querySelector('nextjs-portal')
+      if (nextToolbar) (nextToolbar as HTMLElement).style.display = 'none'
+      document.querySelectorAll('[data-nextjs-dialog-overlay], [data-nextjs-toast], nextjs-portal, #__next-build-indicator').forEach(el => {
+        (el as HTMLElement).style.display = 'none'
+      })
+    })
+    await new Promise(r => setTimeout(r, 100))
 
     const screenshot = await page.screenshot({
       type: 'png',

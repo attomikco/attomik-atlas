@@ -47,6 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const variationCount = body.count || 3
   const angleOverride = body.angle || ''
   const audienceOverride = body.audience || ''
+  const product = body.product || null
 
   const audience = audienceOverride || campaign.audience_notes || brand.target_audience || 'their target audience'
   const angle = angleOverride ? `Use this specific angle: ${angleOverride}` : campaign.angle ? `Copy angle: ${campaign.angle}` : ''
@@ -62,9 +63,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     new_audience___cold_traffic: 'This is a COLD TRAFFIC campaign. Assume zero brand awareness. Hook with the problem or outcome.',
   } as Record<string, string>)[goalKey] || ''
 
+  const productContext = product
+    ? `\n\nPRODUCT FOCUS — center every variation on this specific product:\n- Product name: ${product.name || product.title || 'Unnamed product'}${product.description ? `\n- Description: ${product.description}` : ''}${product.price ? `\n- Price: ${product.price}` : ''}${product.benefits ? `\n- Key benefits: ${product.benefits}` : ''}\nWrite copy that specifically promotes THIS product, not generic brand messaging.`
+    : ''
+
   const userPrompt = `Write ${variationCount} distinct Facebook ad variations for ${brand.name}, which is ${offeringContext}.
 
-${campaignTypeContext}
+${campaignTypeContext}${productContext}
 
 CAMPAIGN BRIEF:
 - Campaign: ${campaign.name}

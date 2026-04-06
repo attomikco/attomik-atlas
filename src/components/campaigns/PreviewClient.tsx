@@ -108,7 +108,6 @@ export default function PreviewClient({
   const router = useRouter()
   const supabase = createClient()
   const [activating, setActivating] = useState(false)
-  const [removedImageUrls, setRemovedImageUrls] = useState<Set<string>>(new Set())
   const [showAccountModal, setShowAccountModal] = useState(false)
 
   // Listen for #signup hash (from layout "Get full access" button)
@@ -130,21 +129,21 @@ export default function PreviewClient({
     setShowAccountModal(true)
   }
 
+  async function deleteBrandImageByUrl(url: string) {
+    const { data: brandImgs } = await supabase
+      .from('brand_images').select('id, storage_path').eq('brand_id', brand.id)
+    if (!brandImgs) return
+    const match = brandImgs.find(img => {
+      const cleanPath = img.storage_path.replace(/^brand-images\//, '')
+      const publicUrl = supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
+      return publicUrl === url
+    })
+    if (!match) return
+    await supabase.from('brand_images').delete().eq('id', match.id)
+    await supabase.storage.from('brand-images').remove([match.storage_path]).catch(() => {})
+  }
+
   async function syncBrandChanges() {
-    if (removedImageUrls.size > 0) {
-      const { data: brandImgs } = await supabase.from('brand_images').select('id, storage_path').eq('brand_id', brand.id)
-      if (brandImgs) {
-        const toDelete = brandImgs.filter(img => {
-          const cleanPath = img.storage_path.replace(/^brand-images\//, '')
-          const url = supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
-          return removedImageUrls.has(url)
-        })
-        if (toDelete.length > 0) {
-          await supabase.from('brand_images').delete().in('id', toDelete.map(i => i.id))
-          await Promise.allSettled(toDelete.map(img => supabase.storage.from('brand-images').remove([img.storage_path])))
-        }
-      }
-    }
     await supabase.from('brands').update({
       primary_color: brandPrimary, secondary_color: brandSecondary,
       accent_color: brandAccent, font_primary: fontFamily || null,
@@ -277,6 +276,8 @@ export default function PreviewClient({
       font_primary: fontFamily,
     }).eq('id', brand.id)
     setSavingBrand(false)
+    localStorage.setItem('attomik_active_brand_id', brand.id)
+    router.push(`/brand-setup/${brand.id}`)
   }
 
   // Fetch existing email on mount — auto-generate if none exists
@@ -624,7 +625,7 @@ export default function PreviewClient({
         brand={brand}
         adVariation={adVariations[0] || adVariation || { headline: brand.name, primary_text: '', description: '' }}
         imageUrl={img0}
-        allImageUrls={shopifyImageUrls.length > 0 ? shopifyImageUrls : productImageUrls.length > 0 ? productImageUrls : lifestyleImageUrls}
+        allImageUrls={[...shopifyImageUrls, ...productImageUrls, ...lifestyleImageUrls]}
         adVariations={adVariations}
         isActive={showReel}
         onComplete={() => { setShowReel(false); setShowReadyModal(true) }}
@@ -789,16 +790,14 @@ export default function PreviewClient({
             setProductImageUrls(prev => [...prev, ...newUrls])
           }}
           onRemoveImage={(url: string) => {
-            setRemovedImageUrls(prev => {
-              const next = new Set(Array.from(prev))
-              next.add(url)
-              return next
-            })
             setAllImageUrls(prev => prev.filter(u => u !== url))
             setShopifyImageUrls(prev => prev.filter(u => u !== url))
             setProductImageUrls(prev => prev.filter(u => u !== url))
             setLifestyleImageUrls(prev => prev.filter(u => u !== url))
+            setLogoImageUrls(prev => prev.filter(u => u !== url))
             setActiveImageIndex(0)
+            // Delete immediately from brand_images + storage
+            void deleteBrandImageByUrl(url)
           }}
           onSave={() => requireAuth(saveBrandColors)}
           saving={savingBrand}
@@ -1134,7 +1133,7 @@ export default function PreviewClient({
               ✦ Campaign email · Klaviyo ready
             </div>
             <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 36, textTransform: 'uppercase', color: colors.ink, lineHeight: 1.1 }}>
-              Email
+              Email Master Template
             </div>
           </div>
 
@@ -1163,20 +1162,8 @@ export default function PreviewClient({
             </div>
           ) : (
             <div>
-              {emailSubject && (
-                <div style={{ background: colors.paper, border: `1px solid ${colors.border}`, borderRadius: radius.lg, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.muted, textTransform: 'uppercase', letterSpacing: letterSpacing.wider, flexShrink: 0 }}>Subject:</span>
-                  <span style={{ fontSize: fontSize.md, color: colors.ink, fontWeight: fontWeight.medium }}>{emailSubject}</span>
-                </div>
-              )}
               <div style={{ border: `1px solid ${colors.border}`, borderRadius: radius.xl, overflow: 'hidden', background: colors.paper }}>
                 <iframe srcDoc={emailHtml || ''} style={{ width: '100%', height: 900, border: 'none', display: 'block' }} title="Email preview" />
-              </div>
-              <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <button onClick={generateEmail} disabled={generatingEmail}
-                  style={{ background: 'none', border: `1px solid ${colors.border}`, color: colors.muted, borderRadius: radius.pill, padding: '7px 16px', fontSize: fontSize.md, fontWeight: fontWeight.semibold, cursor: 'pointer' }}>
-                  {generatingEmail ? 'Regenerating...' : '↺ Regenerate email'}
-                </button>
               </div>
             </div>
           )}

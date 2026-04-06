@@ -63,6 +63,8 @@ interface StylePanelProps {
   setCtaColor: (v: string) => void
   ctaFontColor: string
   setCtaFontColor: (v: string) => void
+  ctaSizeMul: number
+  setCtaSizeMul: (v: number) => void
 }
 
 const sectionCls = "rounded-lg p-3 space-y-2.5"
@@ -78,7 +80,7 @@ export default function StylePanel({
   headlineFont, setHeadlineFont, headlineColor, setHeadlineColor, headlineSizeMul, setHeadlineSizeMul,
   bodyFont, setBodyFont, bodyColor, setBodyColor, bodySizeMul, setBodySizeMul,
   brandColors, pill, onReset,
-  ctaColor, setCtaColor, ctaFontColor, setCtaFontColor,
+  ctaColor, setCtaColor, ctaFontColor, setCtaFontColor, ctaSizeMul, setCtaSizeMul,
 }: StylePanelProps) {
   const f = FEATURES[templateId] || FEATURES.overlay
 
@@ -258,6 +260,13 @@ export default function StylePanel({
                       style={{ ...swatchSize, background: c.value, border: `2px solid ${ctaFontColor === c.value ? '#111' : '#ddd'}`, cursor: 'pointer' }} />
                   ))}
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={labelCls} style={{ ...labelStyle }}>Size</span>
+                <input type="range" min={0.6} max={2} step={0.05} value={ctaSizeMul}
+                  onChange={e => setCtaSizeMul(parseFloat(e.target.value))}
+                  className="flex-1 min-w-0" style={{ accentColor: '#888' }} />
+                <span className="text-[11px] font-mono text-muted w-10 text-right flex-shrink-0">{Math.round(ctaSizeMul * 100)}%</span>
               </div>
             </div>
           )}

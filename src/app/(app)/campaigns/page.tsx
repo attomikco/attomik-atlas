@@ -1,11 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
 
 export default function CampaignsPage() {
-  const { activeBrandId } = useBrand()
+  const { activeBrandId, setActiveBrandId, setActiveCampaignId } = useBrand()
+  const router = useRouter()
+
+  function enterCampaignMode(campaignId: string, brandId: string) {
+    setActiveBrandId(brandId)
+    setActiveCampaignId(campaignId)
+    router.push('/creatives')
+  }
   const [campaigns, setCampaigns] = useState<any[] | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -64,8 +72,8 @@ export default function CampaignsPage() {
             </div>
             <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: c.status === 'active' ? 'rgba(0,255,151,0.1)' : '#f5f5f5', color: c.status === 'active' ? '#00a86b' : 'var(--muted)' }}>{c.status}</span>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button onClick={() => enterCampaignMode(c.id, c.brand_id)} style={{ fontSize: 12, fontWeight: 700, color: '#000', border: '1px solid #000', borderRadius: 999, padding: '6px 14px', background: '#fff', cursor: 'pointer' }}>⚡ Work on this</button>
               <Link href={`/preview/${c.id}`} style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none', padding: '6px 14px', border: '1px solid var(--border)', borderRadius: 999, background: '#fff' }}>View funnel</Link>
-              <Link href={`/creatives?brand=${c.brand_id}&campaign=${c.id}`} style={{ fontSize: 12, fontWeight: 700, color: '#000', textDecoration: 'none', padding: '6px 14px', background: '#f0f0f0', borderRadius: 999 }}>Creatives →</Link>
             </div>
           </div>
         ))}

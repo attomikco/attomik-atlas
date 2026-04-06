@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="p-4 md:p-10 max-w-5xl animate-pulse">
+    <div className="p-4 md:p-10 max-w-5xl mx-auto animate-pulse">
       {/* Header skeleton */}
       <div className="mb-8">
         <div className="h-8 w-48 bg-border/50 rounded-btn" />

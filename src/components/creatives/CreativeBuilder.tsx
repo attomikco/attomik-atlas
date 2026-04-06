@@ -123,6 +123,7 @@ export default function CreativeBuilder({
   const brandColor = brand?.primary_color || '#00ff97'
   const [ctaColor, setCtaColor] = useState(brand?.accent_color || brandColor)
   const [ctaFontColor, setCtaFontColor] = useState(brand?.accent_font_color || '#000000')
+  const [ctaSizeMul, setCtaSizeMul] = useState(1)
   // Build color palette from all brand colors (deduped)
   const allColors: { label: string; value: string }[] = []
   const seen = new Set<string>()
@@ -153,6 +154,9 @@ export default function CreativeBuilder({
   addColor('Btn secondary text', brand?.btn_secondary_text)
   addColor('Btn tertiary', brand?.btn_tertiary)
   addColor('Btn tertiary text', brand?.btn_tertiary_text)
+  // Always include black and white
+  addColor('Black', '#000000')
+  addColor('White', '#ffffff')
   const brandColors = allColors
   const size = SIZES.find(s => s.id === sizeId)!
   const template = TEMPLATES.find(t => t.id === templateId)!
@@ -183,7 +187,7 @@ export default function CreativeBuilder({
   }
 
   function captureStyle(): StyleSnapshot {
-    return { headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta, imagePosition }
+    return { headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta, imagePosition, ctaColor, ctaFontColor, ctaSizeMul }
   }
 
   function applyStyle(s: StyleSnapshot) {
@@ -195,6 +199,9 @@ export default function CreativeBuilder({
     setTextBanner(s.textBanner); setTextBannerColor(s.textBannerColor)
     setTextPosition(s.textPosition); setShowCta(s.showCta)
     setImagePosition(s.imagePosition || 'center')
+    if (s.ctaColor !== undefined) setCtaColor(s.ctaColor)
+    if (s.ctaFontColor !== undefined) setCtaFontColor(s.ctaFontColor)
+    if (s.ctaSizeMul !== undefined) setCtaSizeMul(s.ctaSizeMul)
   }
 
   // ── AI Generate ────────────────────────────────────────────────────
@@ -206,7 +213,7 @@ export default function CreativeBuilder({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandId, tool: 'ad_copy', tone: 'on-brand', platform: 'creative', subtype: 'image ad',
-          brief: `Generate copy for a visual ad creative AND separate Facebook ad copy. Same message, different wording.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <short image headline, under 8 words>\nBODY: <image body line, under 20 words>\nCTA: <call to action, 2-3 words>\nFB_PRIMARY: <Facebook primary text, 1-2 sentences, conversational>\nFB_HEADLINE: <Facebook headline, under 10 words, punchy>\nFB_DESCRIPTION: <Facebook description, under 15 words>\nNothing else.`,
+          brief: `Generate copy for a visual ad creative AND separate Facebook ad copy. Same message, different wording.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <short image headline, under 8 words>\nBODY: <image body line, 80-90 characters including spaces — count carefully>\nCTA: <call to action, 2-3 words>\nFB_PRIMARY: <Facebook primary text, 1-2 sentences, conversational>\nFB_HEADLINE: <Facebook headline, under 10 words, punchy>\nFB_DESCRIPTION: <Facebook description, under 15 words>\nNothing else.`,
         }),
       })
       let full = ''
@@ -313,7 +320,7 @@ export default function CreativeBuilder({
           method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: abort.signal,
           body: JSON.stringify({
             brandId, tool: 'ad_copy', tone: 'on-brand', platform: 'creative', subtype: 'image ad',
-            brief: `Generate unique copy for a visual ad creative AND separate Facebook ad copy. Variation ${i + 1} of ${batchCount} — make each distinct.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <short image headline, under 8 words>\nBODY: <image body line, under 20 words>\nCTA: <call to action, 2-3 words>\nFB_PRIMARY: <Facebook primary text, 1-2 sentences, conversational>\nFB_HEADLINE: <Facebook headline, under 10 words, punchy>\nFB_DESCRIPTION: <Facebook description, under 15 words>\nNothing else.`,
+            brief: `Generate unique copy for a visual ad creative AND separate Facebook ad copy. Variation ${i + 1} of ${batchCount} — make each distinct.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <short image headline, under 8 words>\nBODY: <image body line, 80-90 characters including spaces — count carefully>\nCTA: <call to action, 2-3 words>\nFB_PRIMARY: <Facebook primary text, 1-2 sentences, conversational>\nFB_HEADLINE: <Facebook headline, under 10 words, punchy>\nFB_DESCRIPTION: <Facebook description, under 15 words>\nNothing else.`,
           }),
         })
         let full = ''
@@ -324,7 +331,7 @@ export default function CreativeBuilder({
         console.log(`[Batch ${i+1}] AI response:`, full.substring(0, 300))
         const nb = brand
         const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
-        const defB = nb?.default_body_text || 'Premium quality crafted for you'
+        const defB = nb?.default_body_text || 'Premium quality crafted for you — designed to elevate every moment of your day'
         const defC = nb?.default_cta || 'Shop Now'
         const v = { headline: hm?.[1]?.trim() || defH, body: bm?.[1]?.trim() || defB, cta: cm?.[1]?.trim() || defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid), fbPrimaryText: fp?.[1]?.trim() || '', fbHeadline: fh?.[1]?.trim() || '', fbDescription: fd?.[1]?.trim() || '' }
         results.push(v)
@@ -338,7 +345,7 @@ export default function CreativeBuilder({
         console.error(`[Batch ${i+1}] Failed:`, err)
         const nb = brand
         const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
-        const defB = nb?.default_body_text || 'Premium quality crafted for you'
+        const defB = nb?.default_body_text || 'Premium quality crafted for you — designed to elevate every moment of your day'
         const defC = nb?.default_cta || 'Shop Now'
         const v = { headline: defH, body: defB, cta: defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) }
         results.push(v)
@@ -353,12 +360,85 @@ export default function CreativeBuilder({
 
   // ── Variation / Draft helpers ──────────────────────────────────────
   function loadVariation(i: number) { const v = variations[i]; if (!v) return; setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta); setSelectedImageId(v.imageId); setTemplateId(v.templateId); applyStyle(v.style); setFbPrimaryText(v.fbPrimaryText || ''); setFbHeadline(v.fbHeadline || ''); setFbDescription(v.fbDescription || ''); setActiveVariation(i); setActiveDraft(null) }
-  function saveVariationAsDraft(i: number) { const v = variations[i]; if (!v) return; setSavedDrafts(prev => [...prev, { ...v, sizeId }]) }
-  function saveCurrentAsDraft() {
-    setSavedDrafts(prev => [...prev, { headline, body: bodyText, cta: ctaText, imageId: selectedImageId, templateId, style: captureStyle(), sizeId }])
+  function saveVariationAsDraft(i: number) { const v = variations[i]; if (!v) return; saveNewDraftToDB({ ...v, sizeId }) }
+
+  function buildCurrentDraft(): Draft & { imageUrl?: string | null } {
+    return { headline, body: bodyText, cta: ctaText, imageId: selectedImageId, templateId, style: captureStyle(), sizeId, imageUrl }
   }
-  function loadDraft(i: number) { const d = savedDrafts[i]; if (!d) return; setHeadline(d.headline); setBodyText(d.body); setCtaText(d.cta); setSelectedImageId(d.imageId); setTemplateId(d.templateId); setSizeId(d.sizeId); applyStyle(d.style); setActiveDraft(i); setActiveVariation(null) }
-  function removeDraft(i: number) { setSavedDrafts(prev => prev.filter((_, j) => j !== i)); if (activeDraft === i) setActiveDraft(null); else if (activeDraft !== null && activeDraft > i) setActiveDraft(activeDraft - 1) }
+
+  async function saveCurrentAsDraft() {
+    await saveNewDraftToDB(buildCurrentDraft())
+  }
+
+  async function updateCurrentDraft() {
+    if (activeDraft === null) return
+    const d = savedDrafts[activeDraft]
+    if (!d?.dbId) return
+    const draft = buildCurrentDraft()
+    const res = await fetch(`/api/creatives/${d.dbId}/update`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        template_id: draft.templateId,
+        size_id: draft.sizeId,
+        image_url: draft.imageUrl || null,
+        headline: draft.headline,
+        body_text: draft.body,
+        cta_text: draft.cta,
+        style_snapshot: draft.style,
+      }),
+    })
+    if (res.ok) {
+      setSavedDrafts(prev => prev.map((dd, i) => i === activeDraft ? { ...draft, dbId: d.dbId, imageUrl: draft.imageUrl } : dd))
+      setExportToast('Updated!'); setTimeout(() => setExportToast(null), 2000)
+    }
+  }
+
+  async function saveNewDraftToDB(draft: Draft & { imageUrl?: string | null }) {
+    const res = await fetch('/api/creatives/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand_id: brandId,
+        campaign_id: campaignId || null,
+        template_id: draft.templateId,
+        size_id: draft.sizeId,
+        image_url: draft.imageUrl || null,
+        headline: draft.headline,
+        body_text: draft.body,
+        cta_text: draft.cta,
+        style_snapshot: draft.style,
+      }),
+    })
+    if (res.ok) {
+      const saved = await res.json()
+      const newDraft = { ...draft, dbId: saved.id, imageUrl: draft.imageUrl }
+      setSavedDrafts(prev => [newDraft, ...prev])
+      setActiveDraft(0)
+      setExportToast('Saved!'); setTimeout(() => setExportToast(null), 2000)
+    }
+  }
+
+  function loadDraft(i: number) {
+    const d = savedDrafts[i]; if (!d) return
+    setHeadline(d.headline); setBodyText(d.body); setCtaText(d.cta)
+    if (d.imageId) { setSelectedImageId(d.imageId) }
+    else if (d.imageUrl) {
+      const match = images.find(img => getPublicUrl(img.storage_path) === d.imageUrl)
+      if (match) setSelectedImageId(match.id)
+    }
+    setTemplateId(d.templateId); setSizeId(d.sizeId); applyStyle(d.style); setActiveDraft(i); setActiveVariation(null)
+  }
+
+  function clearActiveDraft() { setActiveDraft(null); setActiveVariation(null) }
+
+  async function removeDraft(i: number) {
+    const d = savedDrafts[i]
+    if (d?.dbId) { fetch(`/api/creatives/${d.dbId}/delete`, { method: 'DELETE' }) }
+    setSavedDrafts(prev => prev.filter((_, j) => j !== i))
+    if (activeDraft === i) setActiveDraft(null)
+    else if (activeDraft !== null && activeDraft > i) setActiveDraft(activeDraft - 1)
+  }
 
   // ── Auto-sync edits back to active variation/draft ─────────────────
   useEffect(() => {
@@ -369,13 +449,40 @@ export default function CreativeBuilder({
     if (activeDraft !== null) {
       setSavedDrafts(prev => prev.map((d, i) => i === activeDraft ? { ...d, ...snapshot } : d))
     }
-  }, [headline, bodyText, ctaText, selectedImageId, templateId, headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta, imagePosition])
+  }, [headline, bodyText, ctaText, selectedImageId, templateId, headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform, bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul, showOverlay, overlayOpacity, textBanner, textBannerColor, textPosition, showCta, imagePosition, ctaColor, ctaFontColor, ctaSizeMul])
 
   useEffect(() => {
     if (preloadedCopy?.headline) setHeadline(preloadedCopy.headline)
-    if (preloadedCopy?.primary_text) setBodyText(preloadedCopy.primary_text.slice(0, 150))
+    if (preloadedCopy?.primary_text) {
+      const t = preloadedCopy.primary_text
+      if (t.length <= 90) setBodyText(t)
+      else { const cut = t.slice(0, 90); const ls = cut.lastIndexOf(' '); setBodyText((ls > 80 ? cut.slice(0, ls) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()) }
+    }
     if (preloadedCopy?.description) setCtaText(preloadedCopy.description || 'Shop Now')
-  }, [])
+  }, [preloadedCopy])
+
+  // Load saved creatives from DB
+  useEffect(() => {
+    if (!brandId) return
+    fetch(`/api/creatives/by-brand/${brandId}`)
+      .then(r => r.json())
+      .then((rows: any[]) => {
+        if (!Array.isArray(rows)) return
+        const drafts: Draft[] = rows.map(r => ({
+          headline: r.headline || '',
+          body: r.body_text || '',
+          cta: r.cta_text || '',
+          imageId: null,
+          templateId: r.template_id,
+          sizeId: r.size_id || 'feed',
+          style: r.style_snapshot || {},
+          dbId: r.id,
+          imageUrl: r.image_url,
+        }))
+        setSavedDrafts(drafts)
+      })
+      .catch(() => {})
+  }, [brandId])
 
   useEffect(() => {
     const el = leftPanelRef.current
@@ -390,8 +497,9 @@ export default function CreativeBuilder({
     imageUrl, headline, bodyText, ctaText, brandColor, brandName: brand?.name || '',
     textPosition, showCta, headlineColor, bodyColor, headlineFont, headlineWeight, headlineTransform,
     bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul,
-    showOverlay, overlayOpacity: overlayOpacity / 100, textBanner, textBannerColor, ctaColor, ctaFontColor, imagePosition,
+    showOverlay, overlayOpacity: overlayOpacity / 100, textBanner, textBannerColor, ctaColor, ctaFontColor, ctaSizeMul, imagePosition,
     callouts, statStripText, oldWayItems, newWayItems, subtitle, brandLogoUrl, productImageUrl,
+    customFontsCss: brand?.custom_fonts_css || '',
   }
 
   const thumbProps = useCallback((v: Variation, imgUrl: string | null, w?: number, h?: number) => ({
@@ -403,8 +511,9 @@ export default function CreativeBuilder({
     brandName: brand?.name || '',
     width: w ?? size.w,
     height: h ?? size.h,
-    ctaColor,
-    ctaFontColor,
+    ctaColor: v.style.ctaColor ?? ctaColor,
+    ctaFontColor: v.style.ctaFontColor ?? ctaFontColor,
+    ctaSizeMul: v.style.ctaSizeMul ?? 1,
     headlineColor: v.style.headlineColor,
     bodyColor: v.style.bodyColor,
     headlineFont: v.style.headlineFont,
@@ -423,7 +532,8 @@ export default function CreativeBuilder({
     textPosition: v.style.textPosition,
     showCta: v.style.showCta,
     imagePosition: v.style.imagePosition || 'center',
-  }), [brandColor, brand?.name, size.w, size.h, ctaColor, ctaFontColor])
+    customFontsCss: brand?.custom_fonts_css || '',
+  }), [brandColor, brand?.name, size.w, size.h, ctaColor, ctaFontColor, brand?.custom_fonts_css])
 
   // ── Export hook ────────────────────────────────────────────────────
   const { exportRef, exportPng, exportAllSizes, exportAllVariations, exportAllDrafts } = useCreativeExport({
@@ -472,7 +582,8 @@ export default function CreativeBuilder({
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f5f5f5' }}>
 
       {/* ── TOPBAR ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', height: 48, minHeight: 48, background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+      <div className="creative-topbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', height: 48, minHeight: 48, background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+        <style>{`@media(max-width:767px){.creative-topbar{overflow-x:auto;white-space:nowrap;scrollbar-width:none;-ms-overflow-style:none}.creative-topbar::-webkit-scrollbar{display:none}}`}</style>
         {/* Size pills */}
         {SIZES.map(s => (
           <button key={s.id} onClick={() => setSizeId(s.id)} {...pill(sizeId === s.id)}>{s.label}</button>
@@ -526,10 +637,10 @@ export default function CreativeBuilder({
       </div>
 
       {/* ── MAIN AREA ── */}
-      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+      <div className="flex flex-col md:flex-row" style={{ alignItems: 'stretch' }}>
 
-        {/* ── LEFT COLUMN — Preview ── */}
-        <div ref={leftPanelRef} style={{ flex: 1, minWidth: 0 }}>
+        {/* ── PREVIEW PANEL ── */}
+        <div ref={leftPanelRef} className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
           <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
             <PreviewCanvas
               templateLabel={template.label}
@@ -547,6 +658,9 @@ export default function CreativeBuilder({
               fbHeadline={fbHeadline}
               fbDescription={fbDescription}
               saveCurrentAsDraft={saveCurrentAsDraft}
+              updateCurrentDraft={updateCurrentDraft}
+              clearActiveDraft={clearActiveDraft}
+              isEditingDraft={activeDraft !== null && !!savedDrafts[activeDraft]?.dbId}
               batchGenerating={batchGenerating}
               batchCount={batchCount}
               setBatchCount={setBatchCount}
@@ -559,6 +673,26 @@ export default function CreativeBuilder({
               exportAllSizes={exportAllSizes}
               exporting={exporting}
               exportingAll={exportingAll}
+              afterBatchSlot={
+                variations.length > 0 ? (
+                  <div style={{ marginTop: 12 }}>
+                    <VariationStrip
+                      variations={variations}
+                      activeVariation={activeVariation}
+                      loadVariation={loadVariation}
+                      saveVariationAsDraft={saveVariationAsDraft}
+                      savedDrafts={savedDrafts}
+                      size={size}
+                      images={images}
+                      getPublicUrl={getPublicUrl}
+                      thumbProps={thumbProps}
+                      exportAllVariations={exportAllVariations}
+                      exportingAll={exportingAll}
+                      sizeId={sizeId}
+                    />
+                  </div>
+                ) : null
+              }
             />
 
             {/* Draft strip */}
@@ -577,28 +711,11 @@ export default function CreativeBuilder({
               />
             </div>
 
-            {/* Variation strip */}
-            <div style={{ marginTop: 12 }}>
-              <VariationStrip
-                variations={variations}
-                activeVariation={activeVariation}
-                loadVariation={loadVariation}
-                saveVariationAsDraft={saveVariationAsDraft}
-                savedDrafts={savedDrafts}
-                size={size}
-                images={images}
-                getPublicUrl={getPublicUrl}
-                thumbProps={thumbProps}
-                exportAllVariations={exportAllVariations}
-                exportingAll={exportingAll}
-                sizeId={sizeId}
-              />
-            </div>
           </div>
         </div>
 
-        {/* ── CENTER COLUMN — Image Thumbnails ── */}
-        <div style={{ flex: 0.5, minWidth: 0 }}>
+        {/* ── IMAGES PANEL ── */}
+        <div className="w-full md:w-auto" style={{ flex: 0.5, minWidth: 0 }}>
           <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
             {productImages.length > 0 && (
               <>
@@ -645,8 +762,8 @@ export default function CreativeBuilder({
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN — Style & Copy ── */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        {/* ── STYLE & COPY PANEL ── */}
+        <div className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
           <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
           <StylePanel
             templateId={templateId}
@@ -695,6 +812,8 @@ export default function CreativeBuilder({
             setCtaColor={setCtaColor}
             ctaFontColor={ctaFontColor}
             setCtaFontColor={setCtaFontColor}
+            ctaSizeMul={ctaSizeMul}
+            setCtaSizeMul={setCtaSizeMul}
           />
 
           <div style={{ marginTop: 16 }}>

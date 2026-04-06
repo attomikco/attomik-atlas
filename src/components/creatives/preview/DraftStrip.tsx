@@ -34,8 +34,8 @@ export default function DraftStrip({
       </div>
       <div className="flex flex-wrap gap-2">
         {savedDrafts.map((d, i) => {
-          const dImg = images.find(img => img.id === d.imageId)
-          const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
+          const dImg = d.imageId ? images.find(img => img.id === d.imageId) : null
+          const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : (d as any).imageUrl || null
           const DTemplate = TEMPLATES.find(t => t.id === d.templateId)!.component
           const dSize = SIZES.find(s => s.id === d.sizeId) || size
           const dSizeLabel = SIZES.find(s => s.id === d.sizeId)?.label || d.sizeId

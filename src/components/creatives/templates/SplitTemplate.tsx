@@ -18,7 +18,7 @@ export default function SplitTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform,
   bodyFont, bodyWeight, bodyTransform, bgColor, headlineSizeMul, bodySizeMul,
-  headlineColor, bodyColor, ctaColor, ctaFontColor, textPosition, imagePosition, isExporting,
+  headlineColor, bodyColor, ctaColor, ctaFontColor, ctaSizeMul, textPosition, imagePosition, isExporting,
 }: TemplateProps) {
   const imgW = Math.round(width * IMAGE_RATIO)
   const panelW = width - imgW
@@ -91,7 +91,7 @@ export default function SplitTemplate({
               borderRadius: 6,
               whiteSpace: 'nowrap' as const,
               color: ctaFontColor || '#000',
-              fontSize: px(CTA_SIZE, width) * bodySizeMul,
+              fontSize: px(CTA_SIZE, width) * (ctaSizeMul ?? 1),
               fontWeight: 700,
               fontFamily: ff(headlineFont),
               textAlign: 'center' as const,

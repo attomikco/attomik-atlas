@@ -12,7 +12,7 @@ export default function GridTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform, headlineColor,
   bodyFont, bodyWeight, bodyTransform, bodyColor, headlineSizeMul, bodySizeMul,
-  ctaColor, ctaFontColor, bgColor, imagePosition, productImageUrl, isExporting,
+  ctaColor, ctaFontColor, ctaSizeMul, bgColor, imagePosition, productImageUrl, isExporting,
 }: TemplateProps) {
   const gap = px(GAP, width)
   const cellW = (width - gap) / 2
@@ -93,7 +93,7 @@ export default function GridTemplate({
                 borderRadius: 6,
                 whiteSpace: 'nowrap' as const,
                 color: ctaFontColor || '#000',
-                fontSize: px(CTA_SIZE, width),
+                fontSize: px(CTA_SIZE, width) * (ctaSizeMul ?? 1),
                 fontWeight: 700,
                 fontFamily: ff(headlineFont),
                 textAlign: 'center' as const,

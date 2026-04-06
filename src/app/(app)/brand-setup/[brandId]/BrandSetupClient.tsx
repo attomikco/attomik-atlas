@@ -293,25 +293,67 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     setTimeout(() => setSaved(false), 3000)
   }
 
+  async function makeWhiteLogo(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error('no ctx')); return }
+        ctx.drawImage(img, 0, 0)
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const data = imageData.data
+        // Convert all non-transparent pixels to white, preserve alpha
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 10) {
+            data[i] = 255
+            data[i + 1] = 255
+            data[i + 2] = 255
+          }
+        }
+        ctx.putImageData(imageData, 0, 0)
+        canvas.toBlob(blob => {
+          URL.revokeObjectURL(url)
+          if (blob) resolve(blob); else reject(new Error('toBlob failed'))
+        }, 'image/png')
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')) }
+      img.src = url
+    })
+  }
+
+  async function uploadToStorage(path: string, body: Blob | File, contentType: string): Promise<string | null> {
+    const { error } = await supabase.storage.from('brand-assets').upload(path, body, { contentType, upsert: true })
+    if (!error) return supabase.storage.from('brand-assets').getPublicUrl(path).data.publicUrl
+    const { error: error2 } = await supabase.storage.from('brand-images').upload(`logos/${path}`, body, { contentType, upsert: true })
+    if (error2) return null
+    return supabase.storage.from('brand-images').getPublicUrl(`logos/${path}`).data.publicUrl
+  }
+
   async function uploadLogo(file: File, variant: 'dark' | 'light') {
     const ext = file.name.split('.').pop() || 'png'
     const path = `${brand.id}/logo_${variant}.${ext}`
-    let url: string | null = null
-
-    const { error } = await supabase.storage.from('brand-assets').upload(path, file, { contentType: file.type, upsert: true })
-    if (!error) {
-      url = supabase.storage.from('brand-assets').getPublicUrl(path).data.publicUrl
-    } else {
-      // Fallback to brand-images bucket
-      const { error: error2 } = await supabase.storage.from('brand-images').upload(`logos/${path}`, file, { contentType: file.type, upsert: true })
-      if (error2) return
-      url = supabase.storage.from('brand-images').getPublicUrl(`logos/${path}`).data.publicUrl
-    }
-
+    const url = await uploadToStorage(path, file, file.type)
     if (!url) return
+
     if (variant === 'dark') {
       setLogoDark(url)
-      await supabase.from('brands').update({ logo_url: url }).eq('id', brand.id)
+      // Auto-generate a white version from the uploaded color logo
+      let whiteUrl: string | null = null
+      try {
+        const whiteBlob = await makeWhiteLogo(file)
+        whiteUrl = await uploadToStorage(`${brand.id}/logo_light.png`, whiteBlob, 'image/png')
+      } catch {}
+      const prevNotes = tryParse(brand.notes) || {}
+      const nextNotes = whiteUrl ? { ...prevNotes, logo_url_light: whiteUrl } : prevNotes
+      await supabase.from('brands').update({
+        logo_url: url,
+        ...(whiteUrl ? { notes: JSON.stringify(nextNotes) } : {}),
+      }).eq('id', brand.id)
+      if (whiteUrl) setLogoLight(whiteUrl)
     } else {
       setLogoLight(url)
       await supabase.from('brands').update({ notes: JSON.stringify({ ...tryParse(brand.notes), logo_url_light: url }) }).eq('id', brand.id)
@@ -517,7 +559,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           {/* White logo */}
           <div>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>
-              White logo <span style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>for dark backgrounds</span>
+              White logo <span style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>auto-generated, upload to override</span>
             </div>
             <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 110, borderRadius: 12, border: '2px dashed #d0d0d0', background: logoLight ? 'repeating-conic-gradient(#e0e0e0 0% 25%, #f5f5f5 0% 50%) 0 0 / 16px 16px' : '#f0f0f0', cursor: 'pointer', overflow: 'hidden', transition: 'border-color 0.15s', position: 'relative' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = '#d0d0d0')}>

@@ -19,6 +19,9 @@ interface PreviewCanvasProps {
   fbHeadline: string
   fbDescription: string
   saveCurrentAsDraft: () => void
+  updateCurrentDraft?: () => void
+  clearActiveDraft?: () => void
+  isEditingDraft?: boolean
   // Batch controls
   batchGenerating: boolean
   batchCount: number
@@ -33,16 +36,17 @@ interface PreviewCanvasProps {
   exportAllSizes: () => void
   exporting: boolean
   exportingAll: boolean
+  afterBatchSlot?: React.ReactNode
 }
 
 export default function PreviewCanvas({
   templateLabel, size, previewW, previewH, scale,
   TemplateComponent, templateProps, bodyFont, bodyText, headline, ctaText,
   fbPrimaryText, fbHeadline, fbDescription,
-  saveCurrentAsDraft,
+  saveCurrentAsDraft, updateCurrentDraft, clearActiveDraft, isEditingDraft,
   batchGenerating, batchCount, setBatchCount, generateBatch, stopBatch, variationsCount, imagesCount,
   setExportToast,
-  exportPng, exportAllSizes, exporting, exportingAll,
+  exportPng, exportAllSizes, exporting, exportingAll, afterBatchSlot,
 }: PreviewCanvasProps) {
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -131,6 +135,9 @@ export default function PreviewCanvas({
         )}
       </div>
 
+      {/* Variation strip slot */}
+      {afterBatchSlot}
+
       {/* Divider */}
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
 
@@ -143,14 +150,44 @@ export default function PreviewCanvas({
         </div>
       </div>
 
-      {/* Preview label */}
-      <div className="flex items-center gap-2 mt-3">
+      {/* Editing indicator */}
+      {isEditingDraft && (
+        <div className="flex items-center gap-2 mt-3 mb-1">
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', background: 'rgba(0,255,151,0.1)', padding: '3px 10px', borderRadius: 999, border: '1px solid rgba(0,255,151,0.2)' }}>
+            Editing saved creative
+          </span>
+          <button onClick={clearActiveDraft}
+            style={{ fontSize: 11, color: '#999', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+            Start new
+          </button>
+        </div>
+      )}
+
+      {/* Preview label + actions */}
+      <div className="flex items-center gap-2 mt-2">
         <span className="text-xs text-muted">{templateLabel} &middot; {size.w}&times;{size.h}</span>
-        <button onClick={saveCurrentAsDraft}
-          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill transition-all hover:opacity-80"
-          style={{ background: '#111', color: '#4ade80' }}>
-          <Bookmark size={11} /> Save
-        </button>
+
+        {isEditingDraft ? (
+          <>
+            <button onClick={updateCurrentDraft}
+              className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill transition-all hover:opacity-80"
+              style={{ background: '#111', color: '#4ade80' }}>
+              <Bookmark size={11} /> Update
+            </button>
+            <button onClick={saveCurrentAsDraft}
+              className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill transition-all hover:opacity-80"
+              style={{ border: '1px solid #ddd', color: '#333' }}>
+              <Bookmark size={11} /> Save as new
+            </button>
+          </>
+        ) : (
+          <button onClick={saveCurrentAsDraft}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill transition-all hover:opacity-80"
+            style={{ background: '#111', color: '#4ade80' }}>
+            <Bookmark size={11} /> Save
+          </button>
+        )}
+
         <button onClick={exportPng} disabled={exporting || exportingAll}
           className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-pill hover:border-ink transition-all disabled:opacity-40"
           style={{ border: '1px solid #ddd', color: '#333' }}>

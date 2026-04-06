@@ -15,7 +15,7 @@ export default function CardTemplate({
   imageUrl, headline, bodyText, ctaText, brandColor, brandName, width, height,
   showCta, headlineFont, headlineWeight, headlineTransform, headlineColor,
   bodyFont, bodyWeight, bodyTransform, bodyColor, headlineSizeMul, bodySizeMul,
-  ctaColor, ctaFontColor, bgColor, imagePosition, isExporting,
+  ctaColor, ctaFontColor, ctaSizeMul, bgColor, imagePosition, isExporting,
 }: TemplateProps) {
   const imgH = Math.round(height * IMAGE_RATIO)
   const padH = px(PANEL_PAD_H, width)
@@ -75,7 +75,7 @@ export default function CardTemplate({
               borderRadius: 6,
               whiteSpace: 'nowrap' as const,
               color: ctaFontColor || '#000',
-              fontSize: px(CTA_SIZE, width) * bodySizeMul,
+              fontSize: px(CTA_SIZE, width) * (ctaSizeMul ?? 1),
               fontWeight: 700,
               fontFamily: ff(headlineFont),
               textAlign: 'center' as const,
