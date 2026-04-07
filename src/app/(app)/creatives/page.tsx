@@ -57,13 +57,37 @@ export default function CreativesPage() {
         } catch {}
       }
 
-      // Fallback: derive copy from campaign brief fields so the creative
-      // reflects the campaign even before any fb_ad has been generated
+      // Fallback: build usable creative copy from campaign brief fields
       if (campaign) {
+        // Headline: key_message is the hook, best for headline. Offer next.
         const headline = campaign.key_message || campaign.offer || campaign.name || ''
-        const primary_text = campaign.angle || campaign.offer || campaign.goal || ''
+
+        // Body: combine angle + offer into a real sentence, not raw field values
+        let primary_text = ''
+        if (campaign.angle && campaign.offer) {
+          primary_text = `${campaign.angle}. ${campaign.offer}`
+        } else if (campaign.angle) {
+          primary_text = campaign.angle
+        } else if (campaign.offer) {
+          primary_text = campaign.offer
+        } else if (campaign.key_message && campaign.name) {
+          primary_text = `${campaign.name} — ${campaign.key_message}`
+        }
+
+        // CTA: derive from goal type
+        const goalCtaMap: Record<string, string> = {
+          new_product_launch: 'Shop Now',
+          limited_offer___sale: 'Claim Offer',
+          seasonal___holiday: 'Shop the Collection',
+          brand_awareness: 'Learn More',
+          retargeting: 'Come Back',
+          new_audience___cold_traffic: 'Discover More',
+        }
+        const goalKey = campaign.goal?.toLowerCase().replace(/[^a-z]/g, '_').replace(/_+/g, '_') || ''
+        const description = goalCtaMap[goalKey] || 'Shop Now'
+
         if (headline || primary_text) {
-          setPreloadedCopy({ headline, primary_text })
+          setPreloadedCopy({ headline, primary_text, description })
         } else {
           setPreloadedCopy(null)
         }

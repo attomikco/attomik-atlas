@@ -12,6 +12,32 @@ function buildBrief(campaign: Campaign): string {
   return parts.join('\n')
 }
 
+function buildPreloadedCopy(campaign: Campaign) {
+  const headline = campaign.key_message || campaign.offer || campaign.name || ''
+  let primary_text = ''
+  if (campaign.angle && campaign.offer) {
+    primary_text = `${campaign.angle}. ${campaign.offer}`
+  } else if (campaign.angle) {
+    primary_text = campaign.angle
+  } else if (campaign.offer) {
+    primary_text = campaign.offer
+  } else if (campaign.key_message && campaign.name) {
+    primary_text = `${campaign.name} — ${campaign.key_message}`
+  }
+  const goalCtaMap: Record<string, string> = {
+    new_product_launch: 'Shop Now',
+    limited_offer___sale: 'Claim Offer',
+    seasonal___holiday: 'Shop the Collection',
+    brand_awareness: 'Learn More',
+    retargeting: 'Come Back',
+    new_audience___cold_traffic: 'Discover More',
+  }
+  const goalKey = campaign.goal?.toLowerCase().replace(/[^a-z]/g, '_').replace(/_+/g, '_') || ''
+  const description = goalCtaMap[goalKey] || 'Shop Now'
+  if (headline || primary_text) return { headline, primary_text, description }
+  return null
+}
+
 export default function CreativeTab({
   brand,
   brands,
@@ -30,6 +56,7 @@ export default function CreativeTab({
         defaultBrandId={brand.id}
         campaignId={campaign.id}
         campaignBrief={buildBrief(campaign)}
+        preloadedCopy={buildPreloadedCopy(campaign)}
       />
 
       {/* Saved campaign creatives */}
