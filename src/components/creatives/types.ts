@@ -35,6 +35,8 @@ export interface Brand {
   default_body_text: string | null
   default_cta: string | null
   logo_url: string | null
+  mission: string | null
+  products: any[] | null
 }
 
 export interface GeneratedCopy {
