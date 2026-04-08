@@ -9,7 +9,6 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const row = {
-    user_id: user.id,
     brand_id: body.brand_id,
     campaign_id: body.campaign_id || null,
     template_id: body.template_id,

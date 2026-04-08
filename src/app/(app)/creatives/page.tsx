@@ -8,7 +8,7 @@ import CreativeBuilder from '@/components/creatives/CreativeBuilder'
 export default function CreativesPage() {
   const searchParams = useSearchParams()
   const urlCampaignId = searchParams.get('campaign') || undefined
-  const { activeBrandId, activeCampaignId, activeCampaign } = useBrand()
+  const { activeBrandId, activeCampaignId, activeCampaign, brandsLoaded } = useBrand()
   // Campaign mode (context) takes priority over URL param
   const campaignId = activeCampaignId || urlCampaignId
 
@@ -108,7 +108,7 @@ export default function CreativesPage() {
     if (parts.length) setCampaignBrief(parts.join('. '))
   }, [activeCampaign])
 
-  if (loading) return null
+  if (loading || !brandsLoaded) return null
 
   return (
     <div className="p-4 md:p-10 max-w-[1600px]">

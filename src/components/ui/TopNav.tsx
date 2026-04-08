@@ -21,7 +21,7 @@ const NAV_LINKS = [
 export default function TopNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const { activeBrandId, setActiveBrandId, brands } = useBrand()
+  const { activeBrandId, setActiveBrandId, brands, brandsLoaded } = useBrand()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -153,7 +153,7 @@ export default function TopNav() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-        {NAV_LINKS.map(({ href, label }) => {
+        {(brandsLoaded && brands.length === 0 ? NAV_LINKS.filter(l => l.href === '/dashboard') : NAV_LINKS).map(({ href, label }) => {
           const active = href === '/dashboard' ? pathname === '/dashboard' || pathname === '/' : href === '/brand-setup' ? pathname.startsWith('/brand-setup') : pathname.startsWith(href)
           return (
             <Link key={href} href={getBrandNavHref(href)} style={{
