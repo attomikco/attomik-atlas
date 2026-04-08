@@ -28,7 +28,7 @@ export default function AccountModal({ isOpen, campaignId, onClose }: AccountMod
     const { error: authErr } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${location.origin}/login?next=/preview/${campaignId}`,
+        emailRedirectTo: `${location.origin}/auth/callback`,
       },
     })
 

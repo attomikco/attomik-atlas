@@ -22,8 +22,6 @@ export default function AuthConfirmPage() {
       }
     }
 
-    // With implicit flow, Supabase client auto-detects tokens in the URL hash
-    // and sets the session. We just listen for it.
     async function claimAndRedirect(session: { user: { id: string; email?: string } }) {
       const brandId = sessionStorage.getItem('attomik_demo_brand_id')
       const campaignId = sessionStorage.getItem('attomik_demo_campaign_id')
@@ -39,24 +37,25 @@ export default function AuthConfirmPage() {
       if (campaignId) {
         router.push(`/preview/${campaignId}`)
       } else {
-        router.push('/')
+        router.push('/dashboard')
       }
     }
 
+    // Session should already be set by the server-side code exchange
+    // in /auth/callback. Just check for it.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
         claimAndRedirect(session)
       }
     })
 
-    // Also check if session is already set
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         claimAndRedirect(session)
       }
     })
 
-    // Timeout fallback
+    // Timeout fallback — if session not detected after 8s, redirect to login
     const timeout = setTimeout(() => {
       router.push('/login?error=' + encodeURIComponent('Login failed. Please try again.'))
     }, 8000)
