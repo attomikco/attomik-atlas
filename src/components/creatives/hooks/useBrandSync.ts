@@ -5,9 +5,8 @@ import type { BrandImage } from '@/types'
 import type { Brand, GeneratedCopy } from '../types'
 import type { TextPosition } from '../templates/types'
 
-// In-memory cache so switching back to a brand is instant
-const imageCache = new Map<string, BrandImage[]>()
-const copyCache = new Map<string, GeneratedCopy[]>()
+// No cache — always fetch fresh images to reflect Brand Hub changes
+// Previously cached but caused stale images after uploads/deletes
 
 function isLightColor(hex: string) {
   const c = hex.replace('#', '')
@@ -147,30 +146,21 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setVariations([]); setActiveVariation(null); setActiveDraft(null)
   }, [brandId, brands, campaignId, hasCampaignCopy])
 
-  // Fetch images + recent copy (with cache)
+  // Fetch images + recent copy — always fresh from DB
   useEffect(() => {
     if (!brandId) return
 
-    // Images — serve from cache if available
-    const cachedImgs = imageCache.get(brandId)
-    if (cachedImgs) {
-      setImages(cachedImgs)
-      setSelectedImageId(cachedImgs.length > 0 ? cachedImgs[Math.floor(Math.random() * cachedImgs.length)].id : null)
-    } else {
-      const supabase = createClient()
-      supabase.from('brand_images').select('*').eq('brand_id', brandId).order('created_at')
-        .then(({ data }) => {
-          const imgs = data ?? []
-          imageCache.set(brandId, imgs)
-          setImages(imgs)
-          setSelectedImageId(imgs.length > 0 ? imgs[Math.floor(Math.random() * imgs.length)].id : null)
-        })
-    }
+    // Images — always fetch fresh to reflect Brand Hub changes
+    const supabase = createClient()
+    supabase.from('brand_images').select('*').eq('brand_id', brandId).order('created_at')
+      .then(({ data }) => {
+        const imgs = data ?? []
+        setImages(imgs)
+        setSelectedImageId(imgs.length > 0 ? imgs[Math.floor(Math.random() * imgs.length)].id : null)
+      })
 
-    // Copy — serve from cache if available
-    // When a campaign is active with preloaded copy, prefer campaign-specific fb_ads
-    // and never overwrite campaign copy with generic brand copy
-    const cachedCopy = copyCache.get(brandId)
+    // Copy
+    const cachedCopy: GeneratedCopy[] | undefined = undefined
     const applyCopyFromAd = (ad: GeneratedCopy) => {
       try {
         const parsed = JSON.parse(ad.content)
@@ -196,22 +186,14 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
       return copy.find(c => c.type === 'fb_ad') || null
     }
 
-    if (cachedCopy) {
-      setRecentCopy(cachedCopy)
-      const bestAd = pickBestAd(cachedCopy)
-      if (bestAd) applyCopyFromAd(bestAd)
-    } else {
-      const supabase = createClient()
-      supabase.from('generated_content').select('id, content, type, created_at, campaign_id').eq('brand_id', brandId)
-        .order('created_at', { ascending: false }).limit(20)
-        .then(({ data }) => {
-          const copy = (data as GeneratedCopy[]) ?? []
-          copyCache.set(brandId, copy)
-          setRecentCopy(copy)
-          const bestAd = pickBestAd(copy)
-          if (bestAd) applyCopyFromAd(bestAd)
-        })
-    }
+    supabase.from('generated_content').select('id, content, type, created_at, campaign_id').eq('brand_id', brandId)
+      .order('created_at', { ascending: false }).limit(20)
+      .then(({ data }) => {
+        const copy = (data as GeneratedCopy[]) ?? []
+        setRecentCopy(copy)
+        const bestAd = pickBestAd(copy)
+        if (bestAd) applyCopyFromAd(bestAd)
+      })
   }, [brandId])
 }
 
