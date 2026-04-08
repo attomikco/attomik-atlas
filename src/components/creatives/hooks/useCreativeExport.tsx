@@ -30,21 +30,20 @@ interface UseCreativeExportOptions {
   setExportToast: (v: string | null) => void
 }
 
-export const exportPngViaPuppeteer = async (
+// Core Puppeteer export — returns the PNG as an ArrayBuffer (for zip) or triggers download
+export const fetchPngViaPuppeteer = async (
   templateId: string,
   templateProps: Record<string, any>,
   width: number,
   height: number,
   filename: string
-) => {
-  // Filter out non-serializable props (functions, React nodes)
+): Promise<ArrayBuffer> => {
   const serializableProps = Object.fromEntries(
     Object.entries(templateProps).filter(([, v]) => {
       try { JSON.stringify(v); return true } catch { return false }
     })
   )
 
-  // Store props server-side to avoid URL length limits
   const storeRes = await fetch('/api/export/props', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -70,7 +69,19 @@ export const exportPngViaPuppeteer = async (
     throw new Error(details)
   }
 
-  const blob = await res.blob()
+  return res.arrayBuffer()
+}
+
+// Convenience wrapper that downloads directly
+export const exportPngViaPuppeteer = async (
+  templateId: string,
+  templateProps: Record<string, any>,
+  width: number,
+  height: number,
+  filename: string
+) => {
+  const buf = await fetchPngViaPuppeteer(templateId, templateProps, width, height, filename)
+  const blob = new Blob([buf], { type: 'image/png' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -174,39 +185,19 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
   const exportAllSizes = useCallback(async () => {
     setExportingAll(true)
     const ts = Date.now()
+    const campaignSlug = campaignId ? 'campaign' : 'brand'
     try {
       const zip = new JSZip()
       for (const s of SIZES) {
-        const fileName = `${brandSlug}-${templateId}-${s.id}-${ts}.png`
+        const fileName = `${brandSlug}-${campaignSlug}-${templateId}-${s.id}-${ts}.png`
         let added = false
-        // Try Puppeteer first
         try {
-          const serializableProps = Object.fromEntries(
-            Object.entries(templateProps).filter(([, v]) => {
-              try { JSON.stringify(v); return true } catch { return false }
-            })
-          )
-          const storeRes = await fetch('/api/export/props', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ props: serializableProps }),
-          })
-          const { id } = await storeRes.json()
-          const renderUrl = `${window.location.origin}/render?template=${templateId}&width=${s.w}&height=${s.h}&propsId=${id}`
-          const res = await fetch('/api/export/png', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ renderUrl, width: s.w, height: s.h, filename: fileName }),
-          })
-          if (res.ok) {
-            const buf = await res.arrayBuffer()
-            zip.file(fileName, buf)
-            added = true
-          }
+          const buf = await fetchPngViaPuppeteer(templateId, templateProps, s.w, s.h, fileName)
+          zip.file(fileName, buf)
+          added = true
         } catch (err) {
           console.warn(`Puppeteer failed for ${s.id}, falling back to html2canvas:`, err)
         }
-        // Fallback to html2canvas
         if (!added) {
           const dataUrl = await renderAndCapture(TemplateComponent, templateProps, s.w, s.h)
           zip.file(fileName, dataUrl.split(',')[1], { base64: true })
@@ -217,7 +208,7 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
       setExportToast(`Downloaded ${SIZES.length} creatives`); setTimeout(() => setExportToast(null), 3000)
     } catch (err) { console.error('Export all failed:', err) }
     setExportingAll(false)
-  }, [renderAndCapture, TemplateComponent, templateProps, brandSlug, templateId, setExportingAll, setExportToast])
+  }, [renderAndCapture, TemplateComponent, templateProps, brandSlug, templateId, campaignId, setExportingAll, setExportToast])
 
   const exportAllVariations = useCallback(async () => {
     if (variations.length === 0) return
@@ -230,17 +221,12 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
         const vImg = images.find(img => img.id === v.imageId)
         const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
         const props = thumbProps(v, vImgUrl)
-        const fileName = `${brandSlug}-${v.templateId}-${sizeId}-${i + 1}.png`
+        const fileName = `${brandSlug}-${v.templateId}-${sizeId}-v${i + 1}-${ts}.png`
         let added = false
         try {
-          const serializableProps = Object.fromEntries(
-            Object.entries(props).filter(([, val]) => { try { JSON.stringify(val); return true } catch { return false } })
-          )
-          const storeRes = await fetch('/api/export/props', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ props: serializableProps }) })
-          const { id } = await storeRes.json()
-          const renderUrl = `${window.location.origin}/render?template=${v.templateId}&width=${size.w}&height=${size.h}&propsId=${id}`
-          const res = await fetch('/api/export/png', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ renderUrl, width: size.w, height: size.h, filename: fileName }) })
-          if (res.ok) { zip.file(fileName, await res.arrayBuffer()); added = true }
+          const buf = await fetchPngViaPuppeteer(v.templateId, props, size.w, size.h, fileName)
+          zip.file(fileName, buf)
+          added = true
         } catch (err) { console.warn(`Puppeteer failed for variation ${i + 1}, falling back:`, err) }
         if (!added) {
           const VComp = TEMPLATES.find(t => t.id === v.templateId)!.component
@@ -267,17 +253,12 @@ export function useCreativeExport(opts: UseCreativeExportOptions) {
         const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : null
         const dSize = SIZES.find(s => s.id === d.sizeId) || size
         const props = thumbProps(d, dImgUrl, dSize.w, dSize.h)
-        const fileName = `${brandSlug}-${d.templateId}-${d.sizeId}-${i + 1}.png`
+        const fileName = `${brandSlug}-${d.templateId}-${d.sizeId}-d${i + 1}-${ts}.png`
         let added = false
         try {
-          const serializableProps = Object.fromEntries(
-            Object.entries(props).filter(([, val]) => { try { JSON.stringify(val); return true } catch { return false } })
-          )
-          const storeRes = await fetch('/api/export/props', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ props: serializableProps }) })
-          const { id } = await storeRes.json()
-          const renderUrl = `${window.location.origin}/render?template=${d.templateId}&width=${dSize.w}&height=${dSize.h}&propsId=${id}`
-          const res = await fetch('/api/export/png', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ renderUrl, width: dSize.w, height: dSize.h, filename: fileName }) })
-          if (res.ok) { zip.file(fileName, await res.arrayBuffer()); added = true }
+          const buf = await fetchPngViaPuppeteer(d.templateId, props, dSize.w, dSize.h, fileName)
+          zip.file(fileName, buf)
+          added = true
         } catch (err) { console.warn(`Puppeteer failed for draft ${i + 1}, falling back:`, err) }
         if (!added) {
           const DComp = TEMPLATES.find(t => t.id === d.templateId)!.component

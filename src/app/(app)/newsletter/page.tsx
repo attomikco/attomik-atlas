@@ -20,7 +20,7 @@ export default function EmailPage() {
 
     Promise.all([
       supabase.from('brands')
-        .select('id, name, website, logo_url, primary_color, accent_color, secondary_color, font_primary, font_heading, font_body, products, notes')
+        .select('id, name, website, logo_url, primary_color, accent_color, secondary_color, bg_base, text_on_dark, text_on_base, text_on_accent, font_primary, font_heading, font_body, products, notes')
         .eq('id', activeBrandId).single(),
       supabase.from('brand_images').select('storage_path, tag')
         .eq('brand_id', activeBrandId).order('created_at'),
@@ -37,7 +37,14 @@ export default function EmailPage() {
         emailConfig = notes.email_config || null
         logoLight = notes.logo_url_light || null
       } catch {}
-      setBrand({ ...b, logo_url_light: logoLight })
+      const font_heading = typeof b.font_heading === 'string' ? JSON.parse(b.font_heading) : b.font_heading
+      const font_body = typeof b.font_body === 'string' ? JSON.parse(b.font_body) : b.font_body
+      setBrand({
+        ...b,
+        font_heading: font_heading || null,
+        font_body: font_body || null,
+        logo_url_light: logoLight,
+      })
       // Campaign mode: pre-fill copy fields from active campaign
       if (activeCampaign) {
         emailConfig = {
@@ -50,6 +57,17 @@ export default function EmailPage() {
             : emailConfig?.heroCta || 'Shop Now',
         }
       }
+      // If no saved email config, try to load content from the latest generated email
+      if (!emailConfig) {
+        const latestEmail = emailsRes.data?.[0]
+        if (latestEmail) {
+          try {
+            const parsed = JSON.parse(latestEmail.content)
+            if (parsed.config) emailConfig = parsed.config
+          } catch {}
+        }
+      }
+
       setInitialConfig(emailConfig)
 
       setEmails(emailsRes.data ?? [])
@@ -59,8 +77,8 @@ export default function EmailPage() {
       for (const img of imagesRes.data || []) {
         const cleanPath = img.storage_path.replace(/^brand-images\//, '')
         const { data: urlData } = supabase.storage.from('brand-images').getPublicUrl(cleanPath)
-        if (img.tag === 'lifestyle' || img.tag === 'background') lifestyle.push(urlData.publicUrl)
-        else if (img.tag === 'product') product.push(urlData.publicUrl)
+        if (img.tag === 'product' || img.tag === 'shopify') product.push(urlData.publicUrl)
+        else if (img.tag !== 'logo' && img.tag !== 'press') lifestyle.push(urlData.publicUrl)
       }
       setLifestyleImages(lifestyle)
       setProductImages(product)

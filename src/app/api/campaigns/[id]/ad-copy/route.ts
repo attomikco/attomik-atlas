@@ -125,6 +125,16 @@ Respond ONLY with valid JSON in this exact format, no other text:
       content: JSON.stringify(parsed),
     })
 
+    // Save first variation as brand default copy for Creative Studio
+    const first = parsed.variations[0]
+    if (first) {
+      await supabase.from('brands').update({
+        default_headline: first.headline,
+        default_body_text: first.primary_text?.slice(0, 90) || null,
+        default_cta: first.description || 'Shop Now',
+      }).eq('id', brand.id)
+    }
+
     return NextResponse.json(parsed)
   } catch {
     return NextResponse.json({ error: 'Failed to parse response' }, { status: 500 })

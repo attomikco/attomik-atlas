@@ -68,5 +68,6 @@ export const config = {
     '/campaigns/:path*',
     '/newsletter/:path*',
     '/landing-page/:path*',
+    '/insights/:path*',
   ],
 }

@@ -16,6 +16,18 @@ export default function CampaignsPage() {
   }
   const [campaigns, setCampaigns] = useState<any[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
+
+  async function executeDeletion() {
+    if (!confirmDelete) return
+    setDeleting(confirmDelete.id)
+    setConfirmDelete(null)
+    const supabase = createClient()
+    await supabase.from('campaigns').delete().eq('id', confirmDelete.id)
+    setCampaigns(prev => prev?.filter(c => c.id !== confirmDelete.id) || [])
+    setDeleting(null)
+  }
 
   useEffect(() => {
     if (!activeBrandId) return
@@ -74,10 +86,27 @@ export default function CampaignsPage() {
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <button onClick={() => enterCampaignMode(c.id, c.brand_id)} style={{ fontSize: 12, fontWeight: 700, color: '#000', border: '1px solid #000', borderRadius: 999, padding: '6px 14px', background: '#fff', cursor: 'pointer' }}>⚡ Work on this</button>
               <Link href={`/preview/${c.id}`} style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none', padding: '6px 14px', border: '1px solid var(--border)', borderRadius: 999, background: '#fff' }}>View funnel</Link>
+              <button onClick={() => setConfirmDelete({ id: c.id, name: c.name })} disabled={deleting === c.id} style={{ fontSize: 12, fontWeight: 600, color: '#e53e3e', border: '1px solid #fed7d7', borderRadius: 999, padding: '6px 14px', background: '#fff', cursor: deleting === c.id ? 'not-allowed' : 'pointer', opacity: deleting === c.id ? 0.5 : 1 }}>{deleting === c.id ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div onClick={() => setConfirmDelete(null)} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', maxWidth: 400, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20, textTransform: 'uppercase', marginBottom: 8 }}>Delete campaign?</div>
+            <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
+              Are you sure you want to delete <strong style={{ color: 'var(--ink)' }}>{confirmDelete.name}</strong>? This action cannot be undone.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmDelete(null)} style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', border: '1px solid var(--border)', borderRadius: 999, padding: '9px 20px', background: '#fff', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={executeDeletion} style={{ fontSize: 13, fontWeight: 700, color: '#fff', border: 'none', borderRadius: 999, padding: '9px 20px', background: '#e53e3e', cursor: 'pointer' }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

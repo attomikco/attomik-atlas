@@ -1,8 +1,9 @@
 'use client'
 
-export default function AttomikLogo({ height = 38, color = '#ffffff' }: { height?: number; color?: string }) {
+export default function AttomikLogo({ height, width, color = '#ffffff' }: { height?: number; width?: number; color?: string }) {
+  const sizeStyle = width ? { width: `${width}px` } : { height: `${height ?? 38}px` }
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3162 909" style={{ height: `${height}px`, display: 'block' }} suppressHydrationWarning>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3162 909" style={{ ...sizeStyle, display: 'block' }} suppressHydrationWarning>
       <g transform="scale(8.11041548093341) translate(10, 10)">
         <g transform="matrix(1.0466,0,0,1.0466,-6.28,-6.28)" fill={color}>
           <g transform="translate(0,-952.36218)">

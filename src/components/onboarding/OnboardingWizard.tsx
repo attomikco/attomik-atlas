@@ -190,7 +190,7 @@ export default function OnboardingWizard() {
       font_primary: brandFont ? `${brandFont}|700|${fontTransform}` : null,
       font_heading: brandFont ? { family: brandFont, weight: '700', transform: fontTransform, letterSpacing: fontLetterSpacing } : null,
       logo_url: null,
-      notes: JSON.stringify({ business_type: businessType }),
+      notes: JSON.stringify({ business_type: businessType, scraped_colors: scrapedPalette.length > 0 ? scrapedPalette : null }),
       products: (() => {
         if (detectedProducts.length > 0) {
           return detectedProducts.map(p => ({

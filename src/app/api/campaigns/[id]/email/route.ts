@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildBrandSystemPrompt } from '@/lib/anthropic'
-import { renderEmail, type EmailContent, type BrandEmailData } from '@/lib/email-renderer'
+import { buildMasterEmail, DEFAULT_MASTER_CONFIG, type MasterEmailConfig } from '@/lib/email-master-template'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -21,23 +21,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const systemPrompt = buildBrandSystemPrompt(brand)
 
   const notesData = (() => { try { return JSON.parse(brand.notes || '{}') } catch { return {} } })()
-  const emailConfig = notesData?.email_config
-  const campaignType = campaign.goal?.toLowerCase().replace(/[^a-z]/g, '_').replace(/_+/g, '_') || 'awareness'
+  const savedConfig = notesData?.email_config as MasterEmailConfig | null
 
-  // Fetch lifestyle images for the email
+  // Fetch images
   const { data: brandImages } = await supabase
     .from('brand_images').select('storage_path, tag')
     .eq('brand_id', brand.id).order('created_at')
   const lifestyleImages: string[] = []
+  const productImages: string[] = []
   for (const img of brandImages || []) {
-    if (img.tag === 'lifestyle' || img.tag === 'background') {
-      const cleanPath = img.storage_path.replace(/^brand-images\//, '')
-      const { data: urlData } = supabase.storage.from('brand-images').getPublicUrl(cleanPath)
-      lifestyleImages.push(urlData.publicUrl)
-    }
+    const cleanPath = img.storage_path.replace(/^brand-images\//, '')
+    const { data: urlData } = supabase.storage.from('brand-images').getPublicUrl(cleanPath)
+    if (img.tag === 'product' || img.tag === 'shopify') productImages.push(urlData.publicUrl)
+    else if (img.tag !== 'logo' && img.tag !== 'press') lifestyleImages.push(urlData.publicUrl)
   }
 
-  const prompt = `Generate a complete email campaign for ${brand.name}.
+  const products = (brand.products || []).slice(0, 3)
+  const productList = products.map((p: any) => `${p.name}${p.price_range ? ` (${p.price_range})` : ''}: ${p.description || ''}`).join('\n') || 'No products specified'
+
+  const prompt = `Generate ALL content for a campaign email for ${brand.name}. Do NOT use any emoji anywhere in the output.
 
 CAMPAIGN:
 - Type: ${campaign.goal || 'Brand campaign'}
@@ -46,40 +48,67 @@ CAMPAIGN:
 - Angle: ${campaign.angle || 'Not specified'}
 - Audience: ${campaign.audience_notes || brand.target_audience || 'General'}
 
-Products: ${(brand.products || []).map((p: any) => p.name).join(', ') || 'Not specified'}
-Brand voice: ${brand.brand_voice || 'Not specified'}
+BRAND:
+- Website: ${brand.website || 'N/A'}
+- Mission: ${brand.mission || 'N/A'}
+- Voice: ${brand.brand_voice || 'N/A'}
+- Tone: ${brand.tone_keywords?.join(', ') || 'professional'}
 
-Generate compelling, on-brand email content. Use the brand's actual voice — not generic copy.
+PRODUCTS:
+${productList}
+
+Every section should be tailored to this campaign. The hero, CTA, testimonials — all should reinforce the campaign hook.
 Respond ONLY with valid JSON:
 {
-  "subject": "Subject line under 50 chars — specific, intriguing, no emojis",
-  "previewText": "Preview text under 90 chars",
-  "bannerText": "Top banner text under 40 chars (e.g. 'Free shipping on orders over $50')",
-  "heroHeadline": "Hero h1 — punchy, under 8 words, matches campaign hook",
-  "heroSubheadline": "1-2 sentences supporting the hero. Benefit-focused, brand voice.",
-  "heroCta": "CTA button text 2-4 words",
-  "ctaEyebrow": "Section eyebrow under 20 chars",
-  "ctaHeadline": "Secondary section headline under 8 words",
-  "ctaBody": "1 sentence supporting the CTA",
-  "ctaButton": "Button text 2-4 words",
-  "promoCode": ${campaign.key_message?.match(/\d+%/) ? '"CODE" or null' : 'null'},
-  "promoDiscount": ${campaign.key_message?.match(/\d+%/) ? '"discount amount" or null' : 'null'},
+  "announcementText": "Top banner text, under 40 chars. No emoji.",
+  "heroHeadline": "Hero headline, 3-7 words, matches campaign hook",
+  "heroBody": "3 sentences, about 60 words. Benefit-focused, specific to products.",
+  "heroCta": "CTA button text, 2-4 words",
+  "heroCtaUrl": "${brand.website || ''}",
+  "ctaBannerHeadline": "Secondary CTA headline, under 8 words",
+  "ctaBannerBody": "1 sentence supporting the CTA",
+  "ctaBannerCta": "Button text, 2-4 words",
+  "step1Title": "Step 1 title, 1-2 words",
+  "step1Body": "Step 1 description, 1 sentence",
+  "step2Title": "Step 2 title",
+  "step2Body": "Step 2 description",
+  "step3Title": "Step 3 title",
+  "step3Body": "Step 3 description",
+  "experienceHeadline": "Experience headline, 3-6 words",
+  "experienceBody": "3-4 sentences about the experience, sensory and emotional",
+  "experienceQuote": "Short italic quote capturing the feeling",
+  "experienceCta": "CTA button text",
+  "originHeadline": "Origin headline, 3-6 words",
+  "originBody": "1-2 sentences, about 25 words. Brand origin in a nutshell.",
+  "featuredProductLabel": "Label like 'Best Seller' or campaign-specific",
+  "featuredProductName": "${products[0]?.name || 'Featured Product'}",
+  "featuredProductBody": "1-2 sentences, about 25 words. Key product benefit.",
+  "featuredProductCta": "Button text",
+  "referralAmount": "$10",
+  "referralBody": "1-2 sentences about the referral program",
   "testimonials": [
-    {"quote": "Authentic customer testimonial 1-2 sentences", "author": "First Name L."},
-    {"quote": "Authentic customer testimonial 1-2 sentences", "author": "First Name L."}
+    {"quote": "Realistic testimonial 1-2 sentences", "author": "First L."},
+    {"quote": "Different angle testimonial", "author": "First L."},
+    {"quote": "Third testimonial", "author": "First L."}
   ],
-  "experienceHeadline": "Experience section headline under 6 words",
-  "experienceBody": "2 sentences describing the product experience in brand voice",
-  "faqItems": [
-    {"question": "Common customer question", "answer": "Clear helpful answer"},
-    {"question": "Common customer question", "answer": "Clear helpful answer"},
-    {"question": "Common customer question", "answer": "Clear helpful answer"}
-  ]
+  "reviewCount": "500+",
+  "socialProofQuote": "Standout customer quote",
+  "subscribeHeadline": "Subscribe headline",
+  "subscribePerks": ["Perk 1", "Perk 2", "Perk 3", "Perk 4"],
+  "subscribeCta": "Subscribe button text",
+  "promoPercent": "${campaign.key_message?.match(/(\d+%)/) ? campaign.key_message.match(/(\d+%)/)?.[1] : '15%'}",
+  "promoCode": "A catchy promo code in CAPS",
+  "blogPosts": [
+    {"category": "Category", "title": "Blog title", "excerpt": "1-2 sentence excerpt", "url": "${brand.website || ''}"},
+    {"category": "Category", "title": "Second blog title", "excerpt": "Excerpt", "url": "${brand.website || ''}"}
+  ],
+  "footerTagline": "Brand tagline, under 50 chars",
+  "instagramUrl": ""
 }`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 1500,
+    max_tokens: 4000,
     system: systemPrompt,
     messages: [{ role: 'user', content: prompt }],
   })
@@ -89,58 +118,39 @@ Respond ONLY with valid JSON:
     .map(b => (b as { type: 'text'; text: string }).text).join('')
     .replace(/```json|```/g, '').trim()
 
-  let emailContent: EmailContent
+  let generatedConfig: Partial<MasterEmailConfig>
   try {
-    emailContent = {
-      ...JSON.parse(text),
-      heroCtaUrl: brand.website || '#',
-    }
+    generatedConfig = JSON.parse(text)
   } catch {
     return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 })
   }
 
-  // Override with saved testimonials/FAQ from email config
-  if (emailConfig?.testimonials?.length > 0) {
-    emailContent.testimonials = emailConfig.testimonials
-  }
-  if (emailConfig?.faq?.length > 0) {
-    emailContent.faqItems = emailConfig.faq
-  }
+  // Merge: saved config > AI generated > defaults
+  const finalConfig: MasterEmailConfig = { ...DEFAULT_MASTER_CONFIG, ...savedConfig, ...generatedConfig, emailColors: null }
 
-  // Allow color/font overrides from request body (preview passes current settings)
-  let bodyOverrides: Record<string, string> = {}
-  try { bodyOverrides = await req.json() } catch {}
-
-  const brandData: BrandEmailData = {
-    name: brand.name,
-    website: brand.website || '#',
-    logoUrl: brand.logo_url || '',
-    primaryColor: bodyOverrides.primaryColor || emailConfig?.primaryColor || brand.primary_color || '#000000',
-    accentColor: bodyOverrides.accentColor || emailConfig?.accentColor || brand.accent_color || brand.secondary_color || '#888888',
-    bgColor: emailConfig?.bgColor || '#f5f5f5',
-    headingFont: bodyOverrides.headingFont || emailConfig?.headingFont || brand.font_primary?.split('|')[0] || 'Georgia',
-    headingTransform: bodyOverrides.headingTransform || brand.font_heading?.transform || 'none',
-    products: (brand.products || []).slice(0, 3).map((p: any) => ({
-      name: p.name || '', price: p.price_range || '',
-      image: p.image || '', url: brand.website || '#',
-    })),
-    lifestyleImages,
+  // Build brand data for the template
+  const logoLight = notesData?.logo_url_light || null
+  const brandData = {
+    ...brand,
+    logo_url_light: logoLight,
+    font_heading: typeof brand.font_heading === 'string' ? JSON.parse(brand.font_heading) : brand.font_heading,
+    font_body: typeof brand.font_body === 'string' ? JSON.parse(brand.font_body) : brand.font_body,
   }
 
-  const html = renderEmail(emailContent, brandData, campaignType, emailConfig?.blocks)
+  const html = buildMasterEmail(brandData, finalConfig, productImages, lifestyleImages)
+  const subject = (generatedConfig as any).subject || finalConfig.heroHeadline
 
   await supabase.from('generated_content').insert({
     campaign_id: id,
     brand_id: brand.id,
     type: 'email',
-    content: JSON.stringify({ emailContent, html, subject: emailContent.subject }),
+    content: JSON.stringify({ html, subject, config: finalConfig }),
   })
 
   return NextResponse.json({
     html,
-    subject: emailContent.subject,
-    previewText: emailContent.previewText,
-    emailContent,
+    subject,
+    config: finalConfig,
   })
 }
 

@@ -66,57 +66,82 @@ PRODUCTS:
 ${productList}
 ${campaignContext}
 
-Generate a COMPLETE JSON object with ALL of these fields. Every field must be filled with real, specific, on-brand content. No placeholder text. No "[Brand Name]" — use "${brand.name}" directly.
+Generate a COMPLETE JSON object with ALL of these fields. Every field must be filled with real, specific, on-brand content. No placeholder text. No "[Brand Name]" — use "${brand.name}" directly. Do NOT use any emoji anywhere in the output.
 
 {
-  "announcementText": "Top banner text, under 40 chars (shipping offer, sale, etc)",
+  "announcementText": "Top banner text, under 40 chars (shipping offer, sale, etc). No emoji.",
   "heroHeadline": "Hero headline, 3-7 words, powerful and on-brand",
-  "heroBody": "1-2 sentences supporting the hero. Benefit-focused, emotional.",
+  "heroBody": "3 sentences, about 60 words. Benefit-focused, emotional, specific to the brand's products and mission. Reference actual product names or features. Compelling but not too long.",
   "heroCta": "CTA button text, 2-4 words",
   "heroCtaUrl": "${brand.website || ''}",
+  "productsEyebrow": "Small label above products grid, 2-3 words",
+  "productsHeadline": "Products section headline, 3-5 words",
+  "productButtonText": "Product button text, 2-3 words like 'Add to Cart' or 'Shop Now'",
   "ctaBannerHeadline": "Secondary CTA headline, under 8 words",
   "ctaBannerBody": "1 sentence supporting the CTA",
   "ctaBannerCta": "Button text, 2-4 words",
-  "step1Title": "How it works step 1 title, 1-2 words",
+  "stepsEyebrow": "Small label above steps, 2-4 words",
+  "stepsHeadline": "Steps section headline, 3-5 words",
+  "step1Title": "Step 1 title, 1-2 words",
   "step1Body": "Step 1 description, 1 sentence",
   "step2Title": "Step 2 title",
   "step2Body": "Step 2 description",
   "step3Title": "Step 3 title",
   "step3Body": "Step 3 description",
+  "ingredientsEyebrow": "Small label above features, 2-4 words",
+  "ingredientsHeadline": "Features section headline, 3-5 words",
+  "ingredientCards": [
+    {"icon": "✦", "title": "Feature 1 title, 2-3 words", "body": "1 sentence, specific to brand"},
+    {"icon": "⇢", "title": "Feature 2 title", "body": "1 sentence"},
+    {"icon": "✓", "title": "Feature 3 title", "body": "1 sentence"},
+    {"icon": "♥", "title": "Feature 4 title", "body": "1 sentence"}
+  ],
+  "experienceEyebrow": "Small label above experience, 2-3 words",
   "experienceHeadline": "Experience section headline, 3-6 words",
-  "experienceBody": "2 sentences about the product/brand experience. Sensory, emotional.",
-  "experienceQuote": "A short italic quote that captures the feeling (not a testimonial)",
+  "experienceBody": "3-4 sentences (50-80 words) about the experience. Sensory, emotional, specific.",
+  "experienceQuote": "A short italic quote that captures the feeling",
   "experienceCta": "CTA button text",
+  "testimonialsEyebrow": "Small label above testimonials, 2-4 words",
+  "testimonialsHeadline": "Testimonials heading, 2-3 words",
+  "originEyebrow": "Small label above origin, 2-3 words",
   "originHeadline": "Founder/origin headline, 3-6 words",
-  "originBody": "2-3 sentences about the brand story/founding. Authentic, not corporate.",
-  "bundleHeadline": "Bundle section headline${products.length > 1 ? ` (you have ${products.length} products)` : ''}",
-  "bundlePrice": "${products.length > 1 ? 'bundle price or empty' : ''}",
-  "bundleBody": "1 sentence describing the bundle value",
-  "bundleCta": "Button text",
+  "originBody": "1-2 sentences, about 25 words. Brand origin in a nutshell.",
+  "originCta": "Origin button text, 2-3 words",
+  "subscribeEyebrow": "Small label above subscribe, 2-3 words",
+  "subscribeHeadline": "Subscribe headline, 3-5 words",
+  "subscribeTagline": "1 sentence tagline for subscribe section",
+  "subscribePerks": ["Perk 1 with specific benefit", "Perk 2", "Perk 3", "Perk 4"],
+  "subscribeCta": "Subscribe button text",
   "featuredProductLabel": "Label like 'Best Seller' or 'New'",
   "featuredProductName": "${products[0]?.name || 'Featured Product'}",
-  "featuredProductBody": "2 sentences about this specific product. Specific benefits.",
+  "featuredProductBody": "1-2 sentences, about 25 words. Key product benefit.",
   "featuredProductCta": "Button text",
+  "promoEyebrow": "Small label above promo, 2-3 words",
+  "promoPercent": "Discount percentage like '15%'",
+  "promoCode": "A catchy promo code in CAPS",
   "referralAmount": "Referral reward amount (e.g. $10)",
+  "referralHeadline": "Referral headline like 'Give $10, Get $10'",
   "referralBody": "1-2 sentences explaining the referral program",
   "testimonials": [
-    {"quote": "Realistic testimonial 1-2 sentences, specific to the product", "author": "First L."},
+    {"quote": "Realistic testimonial 1-2 sentences", "author": "First L."},
     {"quote": "Different angle testimonial", "author": "First L."},
-    {"quote": "Third testimonial, different benefit", "author": "First L."}
+    {"quote": "Third testimonial", "author": "First L."}
   ],
   "reviewCount": "Review count like '500+' or '2,000+'",
   "socialProofQuote": "A standout customer quote, 1 sentence",
-  "subscribeHeadline": "Subscribe & save headline",
-  "subscribePerks": ["Perk 1 with specific benefit", "Perk 2", "Perk 3", "Perk 4"],
-  "subscribeCta": "Subscribe button text",
-  "promoPercent": "Discount percentage like '15%'",
-  "promoCode": "A catchy promo code in CAPS",
-  "blogPosts": [
-    {"category": "Category", "title": "Blog title related to brand/product", "excerpt": "1-2 sentence excerpt", "url": "${brand.website || ''}"},
-    {"category": "Category", "title": "Second blog title", "excerpt": "Excerpt", "url": "${brand.website || ''}"},
-    {"category": "Category", "title": "Third blog title", "excerpt": "Excerpt", "url": "${brand.website || ''}"}
+  "faqEyebrow": "Small label above FAQ, 2-3 words",
+  "faqHeadline": "FAQ heading, 3-5 words",
+  "faqItems": [
+    {"question": "Common question about the product", "answer": "Clear helpful answer"},
+    {"question": "Another common question", "answer": "Clear helpful answer"}
   ],
-  "footerTagline": "Brand tagline or sign-off, under 50 chars",
+  "blogEyebrow": "Small label above blog, 2-3 words",
+  "blogHeadline": "Blog section heading, 3-4 words",
+  "blogPosts": [
+    {"category": "Category", "title": "Blog title related to brand", "excerpt": "1-2 sentence excerpt", "url": "${brand.website || ''}"},
+    {"category": "Category", "title": "Second blog title", "excerpt": "Excerpt", "url": "${brand.website || ''}"}
+  ],
+  "footerTagline": "Brand tagline, under 50 chars",
   "instagramUrl": ""
 }
 
@@ -124,7 +149,7 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 3000,
+    max_tokens: 4000,
     system: systemPrompt,
     messages: [{ role: 'user', content: prompt }],
   })

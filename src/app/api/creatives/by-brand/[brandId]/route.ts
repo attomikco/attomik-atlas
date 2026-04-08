@@ -10,7 +10,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ bran
     .select('*')
     .eq('brand_id', brandId)
     .order('created_at', { ascending: false })
+    .limit(50)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) {
+    console.error('[Load creatives] Supabase error:', error.message, error.details)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  return NextResponse.json(data || [])
 }

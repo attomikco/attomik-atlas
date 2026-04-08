@@ -1180,7 +1180,7 @@ export default function PreviewClient({
             </div>
           ) : (
             <div>
-              <div style={{ border: `1px solid ${colors.border}`, borderRadius: radius.xl, overflow: 'hidden', background: colors.paper }}>
+              <div style={{ border: `1px solid ${colors.border}`, borderRadius: radius.xl, overflow: 'hidden', background: colors.paper, width: 600, maxWidth: '100%', margin: '0 auto' }}>
                 <iframe srcDoc={emailHtml || ''} style={{ width: '100%', height: 900, border: 'none', display: 'block' }} title="Email preview" />
               </div>
             </div>

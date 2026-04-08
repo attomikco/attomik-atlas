@@ -68,9 +68,12 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Single load on mount: read localStorage, fetch brands, reconcile
+  // Single load on mount: check URL param first, then localStorage, then first brand
   useEffect(() => {
-    const saved = localStorage.getItem('attomik_active_brand_id')
+    // URL param takes priority over localStorage
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlBrandId = urlParams.get('brand')
+    const saved = urlBrandId || localStorage.getItem('attomik_active_brand_id')
     const savedCampaignId = localStorage.getItem('attomik_active_campaign_id')
 
     async function load() {

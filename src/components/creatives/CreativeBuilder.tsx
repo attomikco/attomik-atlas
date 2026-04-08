@@ -11,9 +11,6 @@ import { useBrandSync, isLightColor } from './hooks/useBrandSync'
 import { useCreativeExport } from './hooks/useCreativeExport'
 import CopyEditor from './sidebar/CopyEditor'
 import StylePanel from './sidebar/StylePanel'
-import InfographicSidebar from './sidebar/InfographicSidebar'
-import ComparisonSidebar from './sidebar/ComparisonSidebar'
-import MissionSidebar from './sidebar/MissionSidebar'
 import PreviewCanvas from './preview/PreviewCanvas'
 import VariationStrip from './preview/VariationStrip'
 import DraftStrip from './preview/DraftStrip'
@@ -213,7 +210,15 @@ export default function CreativeBuilder({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandId, tool: 'ad_copy', tone: 'on-brand', platform: 'creative', subtype: 'image ad',
-          brief: `Generate copy for a visual ad creative AND separate Facebook ad copy. Same message, different wording.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <short image headline, under 8 words>\nBODY: <image body line, 80-90 characters including spaces — count carefully>\nCTA: <call to action, 2-3 words>\nFB_PRIMARY: <Facebook primary text, 1-2 sentences, conversational>\nFB_HEADLINE: <Facebook headline, under 10 words, punchy>\nFB_DESCRIPTION: <Facebook description, under 15 words>\nNothing else.`,
+          brief: `Using ONLY the brand information provided above (products, mission, audience, voice), write ad copy. Do not invent any product names or features.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}
+
+Return EXACTLY this format, one line each, nothing else:
+HEADLINE: <3-5 words MAXIMUM, like a billboard>
+BODY: <One sentence, under 75 characters including spaces. Clear and punchy.>
+CTA: <2-3 words>
+FB_PRIMARY: <1-2 short sentences>
+FB_HEADLINE: <under 8 words>
+FB_DESCRIPTION: <under 12 words>`,
         }),
       })
       let full = ''
@@ -221,7 +226,9 @@ export default function CreativeBuilder({
       if (reader) { while (true) { const { done, value } = await reader.read(); if (done) break; const chunk = decoder.decode(value); for (const line of chunk.split('\n')) { if (line.startsWith('data: ') && line !== 'data: [DONE]') { try { full += JSON.parse(line.slice(6)).delta?.text || '' } catch {} } } } }
       const hm = full.match(/HEADLINE:\s*(.+)/i); const bm = full.match(/BODY:\s*(.+)/i); const cm = full.match(/CTA:\s*(.+)/i)
       const fp = full.match(/FB_PRIMARY:\s*(.+)/i); const fh = full.match(/FB_HEADLINE:\s*(.+)/i); const fd = full.match(/FB_DESCRIPTION:\s*(.+)/i)
-      if (hm) setHeadline(hm[1].trim()); if (bm) setBodyText(bm[1].trim()); if (cm) setCtaText(cm[1].trim())
+      if (hm) setHeadline(hm[1].trim())
+      if (bm) { let b = bm[1].trim(); if (b.length > 75) { b = b.slice(0, 75); const ls = b.lastIndexOf(' '); if (ls > 50) b = b.slice(0, ls); } setBodyText(b) }
+      if (cm) setCtaText(cm[1].trim())
       if (fp) setFbPrimaryText(fp[1].trim()); if (fh) setFbHeadline(fh[1].trim()); if (fd) setFbDescription(fd[1].trim())
     } catch (err) { console.error('Generate failed:', err) }
     setGenerating(false)
@@ -258,19 +265,28 @@ export default function CreativeBuilder({
       textBanner: 'none' as const, textBannerColor: brandBg,
     }
 
+    // Primary color + smart text-on for split/card/testimonial
+    const primary = nb?.primary_color || '#000000'
+    const secondary = nb?.secondary_color || '#ffffff'
+    const primaryIsLight = isLightColor(primary)
+    const secondaryIsLight = isLightColor(secondary)
+    const textOnPrimary = nb?.text_on_dark || (primaryIsLight ? '#000000' : '#ffffff')
+    const bodyOnPrimary = nb?.text_on_dark || (primaryIsLight ? '#1a1a1a' : '#ffffff')
+    const textOnSecondary = nb?.text_on_base || (secondaryIsLight ? '#000000' : '#ffffff')
+
     switch (tid) {
       case 'overlay':
-        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: '#000', showCta: true }
+        return { ...shared, headlineColor: '#ffffff', bodyColor: '#ffffff', textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: '#000', showCta: true }
       case 'stat':
-        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: true, overlayOpacity: 30, imagePosition: 'center', bgColor: '#000', showCta: false }
+        return { ...shared, headlineColor: '#ffffff', bodyColor: '#ffffff', textPosition: 'center', showOverlay: true, overlayOpacity: 30, imagePosition: 'center', bgColor: '#000', showCta: false }
       case 'split':
-        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: true }
+        return { ...shared, headlineColor: textOnPrimary, bodyColor: bodyOnPrimary, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: primary, showCta: true }
       case 'testimonial':
-        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: brandBg, showCta: true }
+        return { ...shared, headlineColor: textOnPrimary, bodyColor: bodyOnPrimary, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: primary, showCta: true }
       case 'ugc': // Card
-        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: brandBg, showCta: true }
+        return { ...shared, headlineColor: textOnPrimary, bodyColor: bodyOnPrimary, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'bottom', bgColor: primary, showCta: true }
       case 'grid':
-        return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: true }
+        return { ...shared, headlineColor: textOnSecondary, bodyColor: textOnPrimary, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: secondary, showCta: true }
       case 'mission':
         return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: true, overlayOpacity: 50, imagePosition: 'center', bgColor: '#000', showCta: false }
       case 'infographic':
@@ -280,6 +296,12 @@ export default function CreativeBuilder({
       default:
         return { ...shared, headlineColor: bgText, bodyColor: bgBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: true }
     }
+  }
+
+  function pickSecondImage(excludeId: string | null): string | null {
+    if (images.length < 2) return excludeId
+    const others = images.filter(img => img.id !== excludeId)
+    return others[Math.floor(Math.random() * others.length)]?.id || excludeId
   }
 
   function pickImageForTemplate(tid: string): string | null {
@@ -298,10 +320,8 @@ export default function CreativeBuilder({
       case 'ugc':
       case 'testimonial':
         return landscapes.length > 0 ? randomFrom(landscapes) : randomFrom(images)
-      case 'grid': {
-        const shuffled = [...images].sort(() => Math.random() - 0.5)
-        return shuffled[0]?.id || null
-      }
+      case 'grid':
+        return randomFrom(images)
       default:
         return randomFrom(images)
     }
@@ -320,7 +340,15 @@ export default function CreativeBuilder({
           method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: abort.signal,
           body: JSON.stringify({
             brandId, tool: 'ad_copy', tone: 'on-brand', platform: 'creative', subtype: 'image ad',
-            brief: `Generate unique copy for a visual ad creative AND separate Facebook ad copy. Variation ${i + 1} of ${batchCount} — make each distinct.${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}\n\nFormat as:\nHEADLINE: <short image headline, under 8 words>\nBODY: <image body line, 80-90 characters including spaces — count carefully>\nCTA: <call to action, 2-3 words>\nFB_PRIMARY: <Facebook primary text, 1-2 sentences, conversational>\nFB_HEADLINE: <Facebook headline, under 10 words, punchy>\nFB_DESCRIPTION: <Facebook description, under 15 words>\nNothing else.`,
+            brief: `Using ONLY the brand information provided above (products, mission, audience, voice), write ad copy. Variation ${i + 1} of ${batchCount} — each must be different. Do not invent any product names or features.${results.length > 0 ? `\n\nAlready used (write something different):\n${results.map((r, j) => `${j+1}. "${r.headline}" / "${r.body}"`).join('\n')}` : ''}${campaignBrief ? `\n\nCAMPAIGN CONTEXT:\n${campaignBrief}` : ''}
+
+Return EXACTLY this format, one line each, nothing else:
+HEADLINE: <3-5 words MAXIMUM, like a billboard>
+BODY: <One sentence, under 75 characters including spaces. Clear and punchy.>
+CTA: <2-3 words>
+FB_PRIMARY: <1-2 short sentences>
+FB_HEADLINE: <under 8 words>
+FB_DESCRIPTION: <under 12 words>`,
           }),
         })
         let full = ''
@@ -330,28 +358,35 @@ export default function CreativeBuilder({
         const fp = full.match(/FB_PRIMARY:\s*(.+)/i); const fh = full.match(/FB_HEADLINE:\s*(.+)/i); const fd = full.match(/FB_DESCRIPTION:\s*(.+)/i)
         console.log(`[Batch ${i+1}] AI response:`, full.substring(0, 300))
         const nb = brand
-        const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
-        const defB = nb?.default_body_text || 'Premium quality crafted for you — designed to elevate every moment of your day'
+        const firstProd = nb?.products?.[0]
+        const defH = nb?.default_headline || firstProd?.name || nb?.name || 'Your Brand'
+        const defB = nb?.default_body_text || nb?.mission?.slice(0, 80) || firstProd?.description?.slice(0, 80) || ''
         const defC = nb?.default_cta || 'Shop Now'
-        const v = { headline: hm?.[1]?.trim() || defH, body: bm?.[1]?.trim() || defB, cta: cm?.[1]?.trim() || defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid), fbPrimaryText: fp?.[1]?.trim() || '', fbHeadline: fh?.[1]?.trim() || '', fbDescription: fd?.[1]?.trim() || '' }
+        const imgId = pickImageForTemplate(tid)
+        let rawBody = bm?.[1]?.trim() || defB; if (rawBody.length > 75) { rawBody = rawBody.slice(0, 75); const ls = rawBody.lastIndexOf(' '); if (ls > 50) rawBody = rawBody.slice(0, ls) }
+        const v = { headline: hm?.[1]?.trim() || defH, body: rawBody, cta: cm?.[1]?.trim() || defC, imageId: imgId, templateId: tid, style: styleForTemplate(tid), fbPrimaryText: fp?.[1]?.trim() || '', fbHeadline: fh?.[1]?.trim() || '', fbDescription: fd?.[1]?.trim() || '' }
         results.push(v)
         setVariations([...results])
         // Load latest into preview
         setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta)
         setSelectedImageId(v.imageId); setTemplateId(v.templateId); applyStyle(v.style)
+        if (tid === 'grid') setSelectedProductImageId(pickSecondImage(imgId))
         setFbPrimaryText(v.fbPrimaryText || ''); setFbHeadline(v.fbHeadline || ''); setFbDescription(v.fbDescription || '')
         setActiveVariation(results.length - 1)
       } catch (err) {
         console.error(`[Batch ${i+1}] Failed:`, err)
         const nb = brand
-        const defH = nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`
-        const defB = nb?.default_body_text || 'Premium quality crafted for you — designed to elevate every moment of your day'
+        const firstProd = nb?.products?.[0]
+        const defH = nb?.default_headline || firstProd?.name || nb?.name || 'Your Brand'
+        const defB = nb?.default_body_text || nb?.mission?.slice(0, 80) || firstProd?.description?.slice(0, 80) || ''
         const defC = nb?.default_cta || 'Shop Now'
-        const v = { headline: defH, body: defB, cta: defC, imageId: pickImageForTemplate(tid), templateId: tid, style: styleForTemplate(tid) }
+        const fallbackImgId = pickImageForTemplate(tid)
+        const v = { headline: defH, body: defB, cta: defC, imageId: fallbackImgId, templateId: tid, style: styleForTemplate(tid) }
         results.push(v)
         setVariations([...results])
         setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta)
         setSelectedImageId(v.imageId); setTemplateId(v.templateId); applyStyle(v.style)
+        if (tid === 'grid') setSelectedProductImageId(pickSecondImage(fallbackImgId))
         setActiveVariation(results.length - 1)
       }
     }
@@ -395,20 +430,21 @@ export default function CreativeBuilder({
   }
 
   async function saveNewDraftToDB(draft: Draft & { imageUrl?: string | null }) {
+    const payload = {
+      brand_id: brandId,
+      campaign_id: campaignId || null,
+      template_id: draft.templateId,
+      size_id: draft.sizeId,
+      image_url: draft.imageUrl || null,
+      headline: draft.headline,
+      body_text: draft.body,
+      cta_text: draft.cta,
+      style_snapshot: draft.style,
+    }
     const res = await fetch('/api/creatives/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        brand_id: brandId,
-        campaign_id: campaignId || null,
-        template_id: draft.templateId,
-        size_id: draft.sizeId,
-        image_url: draft.imageUrl || null,
-        headline: draft.headline,
-        body_text: draft.body,
-        cta_text: draft.cta,
-        style_snapshot: draft.style,
-      }),
+      body: JSON.stringify(payload),
     })
     if (res.ok) {
       const saved = await res.json()
@@ -416,6 +452,10 @@ export default function CreativeBuilder({
       setSavedDrafts(prev => [newDraft, ...prev])
       setActiveDraft(0)
       setExportToast('Saved!'); setTimeout(() => setExportToast(null), 2000)
+    } else {
+      const err = await res.text()
+      console.error('[Save creative] Failed:', res.status, err)
+      setExportToast('Save failed'); setTimeout(() => setExportToast(null), 3000)
     }
   }
 
@@ -465,9 +505,13 @@ export default function CreativeBuilder({
   useEffect(() => {
     if (!brandId) return
     fetch(`/api/creatives/by-brand/${brandId}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) { console.error('[Load creatives] API error:', r.status); return [] }
+        return r.json()
+      })
       .then((rows: any[]) => {
-        if (!Array.isArray(rows)) return
+        if (!Array.isArray(rows)) { console.warn('[Load creatives] Unexpected response:', rows); return }
+        console.log(`[Load creatives] Loaded ${rows.length} saved creatives for brand ${brandId}`)
         const drafts: Draft[] = rows.map(r => ({
           headline: r.headline || '',
           body: r.body_text || '',
@@ -481,7 +525,7 @@ export default function CreativeBuilder({
         }))
         setSavedDrafts(drafts)
       })
-      .catch(() => {})
+      .catch(err => console.error('[Load creatives] Fetch failed:', err))
   }, [brandId])
 
   useEffect(() => {
@@ -637,7 +681,7 @@ export default function CreativeBuilder({
       </div>
 
       {/* ── MAIN AREA ── */}
-      <div className="flex flex-col md:flex-row" style={{ alignItems: 'stretch' }}>
+      <div className="flex flex-col md:flex-row" style={{ alignItems: 'flex-start' }}>
 
         {/* ── PREVIEW PANEL ── */}
         <div ref={leftPanelRef} className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
@@ -716,7 +760,7 @@ export default function CreativeBuilder({
 
         {/* ── IMAGES PANEL ── */}
         <div className="w-full md:w-auto" style={{ flex: 0.5, minWidth: 0 }}>
-          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
             {productImages.length > 0 && (
               <>
                 <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>PRODUCT</div>
@@ -834,28 +878,6 @@ export default function CreativeBuilder({
           />
           </div>
 
-          {/* Template-specific sidebars */}
-          {templateId === 'infographic' && (
-            <InfographicSidebar
-              callouts={callouts}
-              setCallouts={setCallouts}
-              statStripText={statStripText}
-              setStatStripText={setStatStripText}
-              inputCls={inputCls}
-            />
-          )}
-
-          {templateId === 'comparison' && (
-            <ComparisonSidebar
-              brandName={brand?.name || ''}
-              oldWayItems={oldWayItems}
-              setOldWayItems={setOldWayItems}
-              newWayItems={newWayItems}
-              setNewWayItems={setNewWayItems}
-              inputCls={inputCls}
-            />
-          )}
-
           {templateId === 'grid' && images.length > 1 && (
             <div style={{ padding: 16 }}>
               <label style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'block', marginBottom: 4 }}>Second image</label>
@@ -870,16 +892,6 @@ export default function CreativeBuilder({
             </div>
           )}
 
-          {templateId === 'mission' && (
-            <MissionSidebar
-              subtitle={subtitle}
-              setSubtitle={setSubtitle}
-              images={images}
-              selectedProductImageId={selectedProductImageId}
-              setSelectedProductImageId={setSelectedProductImageId}
-              inputCls={inputCls}
-            />
-          )}
           </div>
         </div>
 

@@ -99,19 +99,12 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setHeadlineFont(h?.family || hParts[0] || ''); setHeadlineWeight(h?.weight || hParts[1] || '700'); setHeadlineTransform(h?.transform || hParts[2] || 'none')
     const bo = nb?.font_body; const bParts = (nb?.font_secondary || '').split('|')
     setBodyFont(bo?.family || bParts[0] || ''); setBodyWeight(bo?.weight || bParts[1] || '400'); setBodyTransform(bo?.transform || bParts[2] || 'none')
-    // Background: prefer bg_dark > bg_base > primary_color
-    const nbBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || '#000000'
-    const light = isLightColor(nbBg)
-    // Text: match to bg brightness
-    if (light) {
-      setHeadlineColor(nb?.text_on_base || nb?.heading_color || '#000000')
-      setBodyColor(nb?.text_on_base || nb?.body_color || '#1a1a1a')
-    } else {
-      setHeadlineColor(nb?.text_on_dark || nb?.heading_color || '#ffffff')
-      setBodyColor(nb?.text_on_dark || nb?.body_color || '#ffffff')
-    }
-    setBgColor(nbBg)
-    setTextBannerColor(nb?.bg_accent || nb?.bg_secondary || nbBg)
+    // Default colors: white text, primary color background
+    // Overlay uses image over bg so primary is fine; split/card/testimonial use primary as visible bg
+    setHeadlineColor('#ffffff')
+    setBodyColor('#ffffff')
+    setBgColor(nb?.primary_color || '#000000')
+    setTextBannerColor(nb?.primary_color || '#000000')
     // Copy — campaign preloaded copy takes priority over brand defaults
     if (hasCampaignCopy) {
       if (preloadedCopy!.headline) setHeadline(preloadedCopy!.headline)
@@ -122,15 +115,22 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
       }
       setCtaText(preloadedCopy!.description || nb?.default_cta || 'Shop Now')
     } else {
-      setHeadline(nb?.default_headline || `Discover ${nb?.name || 'Our Brand'}`)
-      const audience = nb?.target_audience?.split(/[;,]/)[0]?.trim() || 'you'
+      // Build smart defaults from brand data
+      const firstProduct = nb?.products?.[0]
+      const fallbackHeadline = firstProduct?.name
+        ? `${firstProduct.name}`
+        : nb?.name || 'Your Brand'
+      setHeadline(nb?.default_headline || fallbackHeadline)
       const storedBody = nb?.default_body_text || ''
-      const fallbackBody = `Premium quality crafted for ${audience} — designed to elevate every moment`
+      const fallbackBody = nb?.mission
+        || firstProduct?.description
+        || `${nb?.name || 'We'} — built for ${nb?.target_audience?.split(/[;,]/)[0]?.trim() || 'you'}`
       let body = storedBody || fallbackBody
-      if (body.length > 90) {
-        const cut = body.slice(0, 90)
-        const lastSpace = cut.lastIndexOf(' ')
-        body = (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(/[.,;:!?—-]\s*$/, '').trim()
+      // Truncate at word boundary if too long for the creative canvas
+      if (body.length > 75) {
+        const cut = body.slice(0, 75)
+        const ls = cut.lastIndexOf(' ')
+        body = (ls > 50 ? cut.slice(0, ls) : cut).trim()
       }
       setBodyText(body)
       setCtaText(nb?.default_cta || 'Shop Now')
@@ -141,8 +141,9 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
     setTextBanner('none'); setTextPosition('center')
     setImagePosition('center')
     // CTA: prefer btn_primary > accent > primary
-    setCtaColor(nb?.btn_primary || nb?.accent_color || nb?.primary_color || '#00ff97')
-    setCtaFontColor(nb?.btn_primary_text || nb?.accent_font_color || '#000000')
+    const ctaBg = nb?.btn_primary || nb?.accent_color || nb?.primary_color || '#00ff97'
+    setCtaColor(ctaBg)
+    setCtaFontColor(nb?.text_on_accent || nb?.btn_primary_text || nb?.accent_font_color || (isLightColor(ctaBg) ? '#000000' : '#ffffff'))
     setVariations([]); setActiveVariation(null); setActiveDraft(null)
   }, [brandId, brands, campaignId, hasCampaignCopy])
 

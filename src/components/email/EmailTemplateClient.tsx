@@ -52,7 +52,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
   const [generating, setGenerating] = useState(false)
   const [previewWidth, setPreviewWidth] = useState(600)
   const [copied, setCopied] = useState(false)
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['colors', 'hero']))
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['hero']))
 
   const toggleSection = (name: string) => {
     setOpenSections(prev => {
@@ -64,11 +64,36 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
 
   const [config, setConfig] = useState<MasterEmailConfig>(() => {
     const base = { ...DEFAULT_MASTER_CONFIG }
-    base.heroHeadline = base.heroHeadline.replace('[Brand Name]', brand.name)
+    // Smart defaults from brand data
+    const p0 = brand.products?.[0]
+    const p1 = brand.products?.[1]
+    base.heroHeadline = `Welcome to ${brand.name}`
+    base.heroCta = 'Shop Now'
+    base.heroCtaUrl = brand.website || ''
+    base.instagramUrl = ''
+    base.footerTagline = `Crafted with care — ${brand.name}`
+    if (p0) {
+      base.products = [
+        { name: p0.name || p0.title || '', price: p0.price_range || p0.price || '', imageUrl: p0.image || '', url: brand.website || '' },
+        ...(p1 ? [{ name: p1.name || p1.title || '', price: p1.price_range || p1.price || '', imageUrl: p1.image || '', url: brand.website || '' }] : []),
+      ]
+      base.featuredProductName = p0.name || p0.title || ''
+      base.featuredProductBody = p0.description || ''
+    }
     return { ...base, ...initialConfig }
   })
 
-  const previewHtml = useMemo(() => buildMasterEmail(brand, config, productImages, lifestyleImages), [brand, config, productImages, lifestyleImages])
+  // Build email HTML — recomputes on every config/brand change
+  const previewHtml = buildMasterEmail(brand, config, productImages, lifestyleImages)
+
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  useEffect(() => {
+    const el = iframeRef.current
+    if (!el) return
+    const doc = el.contentDocument
+    if (doc) { doc.open(); doc.write(previewHtml); doc.close() }
+  })
+
 
   function update(partial: Partial<MasterEmailConfig>) {
     setConfig(prev => ({ ...prev, ...partial }))
@@ -189,18 +214,13 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
   }
 
   const emailColorFields: Array<{ key: keyof EmailColors; label: string }> = [
-    { key: 'primaryBg', label: 'Primary Background' },
+    { key: 'primaryBg', label: 'Primary' },
     { key: 'primaryText', label: 'Text on Primary' },
-    { key: 'altPrimaryBg', label: 'Alt Background (darker sections)' },
-    { key: 'altPrimaryText', label: 'Text on Alt Background' },
-    { key: 'accentColor', label: 'Accent / Highlight' },
+    { key: 'accentColor', label: 'Accent' },
     { key: 'neutralBg', label: 'Light Background' },
     { key: 'neutralText', label: 'Text on Light' },
-    { key: 'buttonBg', label: 'Button Background' },
+    { key: 'buttonBg', label: 'Button' },
     { key: 'buttonText', label: 'Button Text' },
-    { key: 'altButtonBg', label: 'Alt Button Background' },
-    { key: 'altButtonText', label: 'Alt Button Text' },
-    { key: 'headlineColor', label: 'Headline Color' },
   ]
 
   const templatePanel = (
@@ -213,7 +233,9 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
             color: '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 800,
             fontSize: 13, borderRadius: 999, border: 'none', cursor: generating ? 'wait' : 'pointer',
             letterSpacing: '0.04em', textTransform: 'uppercase', transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
+          {generating && <div style={{ width: 14, height: 14, border: '2px solid rgba(0,255,151,0.3)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />}
           {generating ? 'Generating...' : campaignId ? 'Generate from Campaign Brief' : 'Generate from Brand Hub'}
         </button>
         <div style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 6 }}>
@@ -221,36 +243,27 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
         </div>
       </div>
 
-      <Section id="colors" label="Email Colors" isOpen={openSections.has("colors")} onToggle={toggleSection}>
+      <Section id="colors" label="Template Colors" isOpen={openSections.has("colors")} onToggle={toggleSection}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {emailColorFields.map(({ key, label }) => {
             const value = currentEmailColors[key]
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <label style={{ position: 'relative', width: 36, height: 36, borderRadius: 8, border: '1.5px solid #e0e0e0', overflow: 'hidden', cursor: 'pointer', flexShrink: 0, background: value }}>
+                <label style={{ position: 'relative', width: 32, height: 32, borderRadius: 6, border: '1.5px solid #e0e0e0', overflow: 'hidden', cursor: 'pointer', flexShrink: 0, background: value }}>
                   <input type="color" value={value}
                     onChange={e => updateEmailColor(key, e.target.value)}
                     style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none' }} />
                 </label>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>{label}</div>
-                  <input type="text" value={value}
-                    onChange={e => {
-                      const v = e.target.value
-                      if (/^#[0-9a-fA-F]{0,6}$/.test(v)) updateEmailColor(key, v)
-                    }}
-                    onBlur={e => {
-                      const v = e.target.value
-                      if (!/^#[0-9a-fA-F]{6}$/.test(v)) updateEmailColor(key, value)
-                    }}
-                    style={{ width: '100%', border: '1px solid #e0e0e0', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontFamily: 'DM Mono, monospace', boxSizing: 'border-box' }} />
+                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 1 }}>{label}</div>
+                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#999' }}>{value}</div>
                 </div>
               </div>
             )
           })}
           <button onClick={resetEmailColors}
             style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-            ↺ Reset to brand colors
+            Reset to Brand Hub colors
           </button>
         </div>
       </Section>
@@ -444,12 +457,19 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
 
       {/* Right panel — live preview */}
       <div style={{ flex: 1, background: '#e0e0e0', borderRadius: 16, overflow: 'hidden', position: 'relative', minHeight: 600 }}>
+        {generating && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <div style={{ width: 32, height: 32, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+            <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'Barlow, sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Generating email...</div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Pulling from your Brand Hub</div>
+          </div>
+        )}
         <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: 8 }}>
           <button onClick={() => setPreviewWidth(600)} style={{ padding: '4px 10px', borderRadius: 6, background: previewWidth === 600 ? '#000' : '#fff', color: previewWidth === 600 ? '#fff' : '#666', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer' }}>Desktop</button>
           <button onClick={() => setPreviewWidth(375)} style={{ padding: '4px 10px', borderRadius: 6, background: previewWidth === 375 ? '#000' : '#fff', color: previewWidth === 375 ? '#fff' : '#666', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer' }}>Mobile</button>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 24px', height: '100%', overflowY: 'auto' }}>
-          <iframe srcDoc={previewHtml} style={{ width: previewWidth, height: 800, border: 'none', background: '#fff', borderRadius: 4, boxShadow: '0 4px 24px rgba(0,0,0,0.15)', transition: 'width 0.3s ease' }} title="Email preview" />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0', height: '100%', overflowY: 'auto' }}>
+          <iframe ref={iframeRef} style={{ width: previewWidth, height: 'calc(100vh - 140px)', border: 'none', background: '#fff', borderRadius: 0 }} title="Email preview" />
         </div>
       </div>
     </div>

@@ -58,6 +58,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
 
   const notesData = tryParse(brand.notes)
   const businessType = notesData?.business_type || 'brand'
+  const scrapedColors: string[] = notesData?.scraped_colors || []
   const offeringLabel: string = ({
     shopify: 'Products', ecommerce: 'Products',
     saas: 'Plans & Pricing', restaurant: 'Menu Items',
@@ -108,6 +109,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       { label: 'Primary', value: brand.primary_color || '#000000' },
       { label: 'Secondary', value: brand.secondary_color || '#ffffff' },
       { label: 'Accent', value: brand.accent_color || '#00ff97' },
+      { label: 'Light Background', value: brand.bg_base || '#f8f7f4' },
     ]
     const extra = tryParse(brand.notes)?.extra_colors || []
     return [...base, ...extra]
@@ -118,6 +120,12 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     { label: 'Heading', family: headingFamily, weight: brand.font_heading?.weight || '700', transform: brand.font_heading?.transform || 'none' },
     { label: 'Body', family: bodyFamily, weight: brand.font_body?.weight || '400', transform: brand.font_body?.transform || 'none' },
   ])
+  // Text-on colors: auto-derive from luminance, allow override
+  const autoTextOn = (hex: string) => isLight(hex) ? '#000000' : '#ffffff'
+  const [textOnPrimary, setTextOnPrimary] = useState(brand.text_on_dark || autoTextOn(brand.primary_color || '#000000'))
+  const [textOnSecondary, setTextOnSecondary] = useState(brand.text_on_base || autoTextOn(brand.secondary_color || '#ffffff'))
+  const [textOnAccent, setTextOnAccent] = useState(brand.text_on_accent || autoTextOn(brand.accent_color || '#00ff97'))
+
   const [logoDark, setLogoDark] = useState(brand.logo_url || '')
   const [logoLight, setLogoLight] = useState(tryParse(brand.notes)?.logo_url_light || '')
   const [defaultCta, setDefaultCta] = useState(tryParse(brand.notes)?.default_cta || brand.default_cta || 'Shop Now')
@@ -169,7 +177,13 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     setIsDirty(dirty)
   }, [name, website, mission, targetAudience, brandVoice, toneKeywords, avoidWords, neverWords, defaultCta, colors, fonts, products])
 
-  function updateColor(index: number, value: string) { setColors(prev => prev.map((c, i) => i === index ? { ...c, value } : c)) }
+  function updateColor(index: number, value: string) {
+    setColors(prev => prev.map((c, i) => i === index ? { ...c, value } : c))
+    // Auto-update text-on color when brand color changes
+    if (index === 0) setTextOnPrimary(autoTextOn(value))
+    if (index === 1) setTextOnSecondary(autoTextOn(value))
+    if (index === 2) setTextOnAccent(autoTextOn(value))
+  }
   function updateColorLabel(index: number, label: string) { setColors(prev => prev.map((c, i) => i === index ? { ...c, label } : c)) }
   function addColor() { setColors(prev => [...prev, { label: `Color ${prev.length + 1}`, value: '#000000' }]) }
   function removeColor(index: number) { if (colors.length <= 1) return; setColors(prev => prev.filter((_, i) => i !== index)) }
@@ -269,7 +283,8 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       target_audience: targetAudience || null, brand_voice: brandVoice || null,
       tone_keywords: toneKeywords.length ? toneKeywords : null,
       avoid_words: avoidWords.length ? avoidWords : null,
-      primary_color: colors[0]?.value || null, secondary_color: colors[1]?.value || null, accent_color: colors[2]?.value || null,
+      primary_color: colors[0]?.value || null, secondary_color: colors[1]?.value || null, accent_color: colors[2]?.value || null, bg_base: colors[3]?.value || null,
+      text_on_dark: textOnPrimary, text_on_base: textOnSecondary, text_on_accent: textOnAccent,
       font_primary: fonts[0]?.family ? `${fonts[0].family}|${fonts[0].weight}|none` : null,
       font_secondary: fonts[1]?.family ? `${fonts[1].family}|${fonts[1].weight || '400'}|none` : null,
       font_heading: fonts[0]?.family ? { family: fonts[0].family, weight: fonts[0].weight || '700', transform: fonts[0].transform || 'none', letterSpacing: 'normal' } : null,
@@ -279,7 +294,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         ...tryParse(brand.notes),
         logo_url_light: logoLight || null,
         never_words: neverWords.length ? neverWords : null,
-        extra_colors: colors.slice(3).map(c => ({ label: c.label, value: c.value })),
+        extra_colors: colors.slice(4).map(c => ({ label: c.label, value: c.value })),
         klaviyo_api_key: klaviyoKey || null,
         default_cta: defaultCta || null,
       }),
@@ -429,7 +444,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             {/* Left: logo + name + url */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, zIndex: 1 }}>
               {logoDark ? (
-                <img src={logoDark} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain', filter: light ? 'none' : 'brightness(0) invert(1)' }} alt={name} />
+                <img src={light ? logoDark : (logoLight || logoDark)} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain', filter: light ? 'none' : (logoLight ? 'none' : 'brightness(0) invert(1)') }} alt={name} />
               ) : (
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: ghost, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: textOn, flexShrink: 0 }}>
                   {name[0]?.toUpperCase()}
@@ -528,7 +543,8 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       {/* Logo */}
       <div style={{ marginTop: 16 }}>
         <label style={labelStyle}>Logo</label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+        <div className="logo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+          <style>{`@media(max-width:768px){.logo-grid{gridTemplateColumns:1fr !important;grid-template-columns:1fr !important}}`}</style>
           {/* Color logo */}
           <div>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>
@@ -606,7 +622,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                   <div ref={colorPickerRef} style={{ position: 'absolute', top: 48, left: 0, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 14, padding: 14, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 220 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Brand colors</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                      {[...colors.map(c => c.value), '#000000', '#ffffff', '#f5f5f5', '#1a1a1a'].filter((c, i, a) => c && a.indexOf(c) === i).map(swatch => (
+                      {[...colors.map(c => c.value), ...scrapedColors, '#000000', '#ffffff', '#f5f5f5', '#1a1a1a'].filter((c, i, a) => c && a.indexOf(c) === i).map(swatch => (
                         <div key={swatch} onClick={() => { updateColor(index, swatch); setOpenColorPicker(null) }} style={{ width: 28, height: 28, borderRadius: 8, background: swatch, border: color.value === swatch ? '3px solid #000' : '1.5px solid #e0e0e0', cursor: 'pointer', transition: 'transform 0.1s' }}
                           onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')} onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} title={swatch} />
                       ))}
@@ -623,7 +639,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                 )}
               </div>
               <select value={color.label} onChange={e => updateColorLabel(index, e.target.value)} style={{ ...inputStyle, flex: 1, fontSize: 13, padding: '8px 12px', color: '#555', cursor: 'pointer', appearance: 'none' as const, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', paddingRight: 32 }}>
-                {['Primary', 'Secondary', 'Accent', 'Background', 'Text', 'Button', 'Button Text', 'Border', 'Surface', 'Dark', 'Light', 'Custom'].map(o => <option key={o} value={o}>{o}</option>)}
+                {['Primary', 'Secondary', 'Accent', 'Light Background', 'Background', 'Text', 'Button', 'Button Text', 'Border', 'Surface', 'Dark', 'Light', 'Custom'].map(o => <option key={o} value={o}>{o}</option>)}
               </select>
               {colors.length > 1 && (
                 <button onClick={() => removeColor(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--muted)', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
@@ -636,6 +652,46 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}>
           + Add color
         </button>
+      </div>
+
+      {/* Text on colors */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={labelStyle}>Text on colors</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[
+            { label: 'Text on Primary', value: textOnPrimary, set: setTextOnPrimary, bg: colors[0]?.value },
+            { label: 'Text on Secondary', value: textOnSecondary, set: setTextOnSecondary, bg: colors[1]?.value },
+            { label: 'Text on Accent', value: textOnAccent, set: setTextOnAccent, bg: colors[2]?.value },
+          ].map((item, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div onClick={() => setOpenColorPicker(openColorPicker === 100 + idx ? null : 100 + idx)} style={{ width: 40, height: 40, borderRadius: 10, background: item.bg || '#000', border: openColorPicker === 100 + idx ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: item.value }}>{item.label.charAt(item.label.length - 1) === 'y' ? 'A' : 'A'}</span>
+                </div>
+                {openColorPicker === 100 + idx && (
+                  <div ref={colorPickerRef} style={{ position: 'absolute', top: 48, left: 0, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 14, padding: 14, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 220 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Brand colors</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                      {[...colors.map(c => c.value), ...scrapedColors, '#000000', '#ffffff', '#f5f5f5', '#1a1a1a'].filter((c, i, a) => c && a.indexOf(c) === i).map(swatch => (
+                        <div key={swatch} onClick={() => { item.set(swatch); setOpenColorPicker(null); setIsDirty(true) }} style={{ width: 28, height: 28, borderRadius: 8, background: swatch, border: item.value === swatch ? '3px solid #000' : '1.5px solid #e0e0e0', cursor: 'pointer', transition: 'transform 0.1s' }}
+                          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')} onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} title={swatch} />
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Custom</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: item.value, flexShrink: 0, border: '1px solid #eee' }} />
+                      <input type="text" value={item.value.toUpperCase()} onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) { item.set(e.target.value); setIsDirty(true) } }} style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '6px 10px', textTransform: 'uppercase' }} maxLength={7} />
+                      <label style={{ width: 28, height: 28, borderRadius: 6, overflow: 'hidden', cursor: 'pointer', border: '1px solid #eee', flexShrink: 0, background: 'linear-gradient(135deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <input type="color" value={item.value} onChange={e => { item.set(e.target.value); setIsDirty(true) }} style={{ opacity: 0, width: 0, height: 0 }} />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div style={{ ...inputStyle, flex: 1, fontSize: 13, padding: '8px 12px', color: '#555', background: '#fafafa' }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Fonts */}

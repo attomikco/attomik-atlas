@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     `Create ${platform ? platform + ' ' : ''}${subtype ? subtype + ' ' : ''}${toolLabel[tool] || tool} for ${brand.name}.`,
     `Tone: ${tone}.`,
     brief,
-    tool === 'ad_copy' || tool === 'social'
+    (tool === 'ad_copy' || tool === 'social') && platform !== 'creative'
       ? 'Write 3 distinct variations, numbered. Make each feel different in approach.'
       : '',
     tool === 'email'

@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { href: '/newsletter', label: 'Email' },
   { href: '/landing-page', label: 'Landing Page' },
   { href: '/campaigns', label: 'Campaigns' },
+  { href: '/insights', label: 'Insights' },
 ]
 
 export default function TopNav() {
@@ -61,6 +62,7 @@ export default function TopNav() {
     if (href === '/newsletter') return `/newsletter?brand=${id}`
     if (href === '/copy') return `/copy?brand=${id}`
     if (href === '/landing-page') return `/landing-page?brand=${id}`
+    if (href === '/insights') return `/insights?brand=${id}`
     return href
   }
 
@@ -72,8 +74,8 @@ export default function TopNav() {
 
   return (
     <nav style={{ position: 'sticky', top: 0, zIndex: 40 /* TODO: tokenize */, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 32px', height: layout.navHeight, gap: 0 }}>
-      <Link href="/dashboard" style={{ marginRight: 24, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-        <AttomikLogo height={30} color={colors.ink} />
+      <Link href={getBrandNavHref('/dashboard')} style={{ marginRight: 24, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+        <AttomikLogo width={140} color={colors.ink} />
       </Link>
 
       <div style={{ width: 1, height: 24, background: 'var(--border)', marginRight: 24, flexShrink: 0 }} />
