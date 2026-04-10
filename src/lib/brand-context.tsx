@@ -91,19 +91,30 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         const resolvedId = validSaved ? saved : data[0].id
         setActiveBrandIdState(resolvedId)
         localStorage.setItem('attomik_active_brand_id', resolvedId)
+
+        // Restore active campaign only if it belongs to the resolved brand
+        if (savedCampaignId) {
+          const { data: campaign } = await supabase
+            .from('campaigns')
+            .select('brand_id')
+            .eq('id', savedCampaignId)
+            .maybeSingle()
+          if (campaign && campaign.brand_id === resolvedId) {
+            setActiveCampaignIdState(savedCampaignId)
+            fetchCampaign(savedCampaignId)
+          } else {
+            // Campaign belongs to a different brand — clear it
+            localStorage.removeItem('attomik_active_campaign_id')
+          }
+        }
       } else if (saved) {
         setActiveBrandIdState(null)
         localStorage.removeItem('attomik_active_brand_id')
+        localStorage.removeItem('attomik_active_campaign_id')
       }
       setBrandsLoaded(true)
     }
     load()
-
-    // Restore active campaign if present
-    if (savedCampaignId) {
-      setActiveCampaignIdState(savedCampaignId)
-      fetchCampaign(savedCampaignId)
-    }
   }, [fetchCampaign])
 
   const setActiveBrandId = useCallback((id: string) => {

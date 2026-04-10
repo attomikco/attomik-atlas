@@ -5,37 +5,130 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+// Parse creative type from ad name
+function parseCreativeType(adName: string): string {
+  const lower = adName.toLowerCase()
+  if (lower.includes('ugc') || lower.includes('billo')) return 'UGC'
+  if (lower.includes(' ai ') || lower.startsWith('ai ') || lower.includes('ai-')) return 'AI Creative'
+  if (lower.includes('shar')) return 'Influencer'
+  return 'Other'
+}
+
+interface AggRow {
+  ad_name: string
+  creative_type: string
+  impressions: number
+  clicks: number
+  spend: number
+  purchases: number
+  purchase_value: number
+  avg_ctr: number
+  avg_roas: number
+  avg_cpa: number
+}
+
 export async function POST(req: NextRequest) {
-  const { brandId, aggregatedData } = await req.json()
-  if (!brandId || !aggregatedData) return NextResponse.json({ error: 'brandId and aggregatedData required' }, { status: 400 })
+  const { brandId, rows, timeRange } = await req.json()
+  if (!brandId || !rows) return NextResponse.json({ error: 'brandId and rows required' }, { status: 400 })
 
   const supabase = await createClient()
 
   const { data: brand } = await supabase.from('brands').select('*').eq('id', brandId).single()
   if (!brand) return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
 
+  // Aggregate rows by ad_name
+  const map: Record<string, { impressions: number; clicks: number; spend: number; purchases: number; purchase_value: number; ctr_sum: number; roas_sum: number; count: number }> = {}
+  for (const r of rows) {
+    const name = r.ad_name || '(no ad name)'
+    if (!map[name]) map[name] = { impressions: 0, clicks: 0, spend: 0, purchases: 0, purchase_value: 0, ctr_sum: 0, roas_sum: 0, count: 0 }
+    map[name].impressions += r.impressions || 0
+    map[name].clicks += r.clicks || 0
+    map[name].spend += r.spend || 0
+    map[name].purchases += r.purchases || 0
+    map[name].purchase_value += r.purchase_value || 0
+    map[name].ctr_sum += r.ctr || 0
+    map[name].roas_sum += r.roas || 0
+    map[name].count++
+  }
+
+  const aggregated: AggRow[] = Object.entries(map).map(([name, v]) => ({
+    ad_name: name,
+    creative_type: parseCreativeType(name),
+    impressions: v.impressions,
+    clicks: v.clicks,
+    spend: v.spend,
+    purchases: v.purchases,
+    purchase_value: v.purchase_value,
+    avg_ctr: v.count > 0 ? v.ctr_sum / v.count : 0,
+    avg_roas: v.count > 0 ? v.roas_sum / v.count : 0,
+    avg_cpa: v.purchases > 0 ? v.spend / v.purchases : 0,
+  }))
+  aggregated.sort((a, b) => b.spend - a.spend)
+
+  // Also aggregate by creative type
+  const byType: Record<string, { spend: number; purchases: number; purchase_value: number; impressions: number; clicks: number; count: number }> = {}
+  for (const a of aggregated) {
+    if (!byType[a.creative_type]) byType[a.creative_type] = { spend: 0, purchases: 0, purchase_value: 0, impressions: 0, clicks: 0, count: 0 }
+    byType[a.creative_type].spend += a.spend
+    byType[a.creative_type].purchases += a.purchases
+    byType[a.creative_type].purchase_value += a.purchase_value
+    byType[a.creative_type].impressions += a.impressions
+    byType[a.creative_type].clicks += a.clicks
+    byType[a.creative_type].count++
+  }
+
+  const typeBreakdown = Object.entries(byType)
+    .map(([type, v]) => `${type}: ${v.count} ads, $${v.spend.toFixed(2)} spend, ${v.purchases} purchases, $${v.purchase_value.toFixed(2)} revenue, ROAS ${v.purchases > 0 ? (v.purchase_value / v.spend).toFixed(2) : '0'}x`)
+    .join('\n')
+
+  const adBreakdown = aggregated.slice(0, 20)
+    .map(a => `"${a.ad_name}" [${a.creative_type}]: $${a.spend.toFixed(2)} spend, ${a.impressions} impr, ${a.clicks} clicks, CTR ${a.avg_ctr.toFixed(2)}%, ${a.purchases} purchases, ROAS ${a.avg_roas.toFixed(2)}x, CPA ${a.avg_cpa > 0 ? '$' + a.avg_cpa.toFixed(2) : 'N/A'}`)
+    .join('\n')
+
+  const totalSpend = aggregated.reduce((s, a) => s + a.spend, 0)
+  const totalPurchases = aggregated.reduce((s, a) => s + a.purchases, 0)
+  const totalRevenue = aggregated.reduce((s, a) => s + a.purchase_value, 0)
+
   const systemPrompt = buildBrandSystemPrompt(brand)
 
-  const userPrompt = `You are a performance marketing strategist. Based on this Meta Ads data for ${brand.name}, identify what is working and what is not.
+  const userPrompt = `You are a performance marketing strategist analyzing Meta Ads data for ${brand.name}.
 
-Here is the aggregated performance data:
+TIME RANGE: ${timeRange === '7d' ? 'Last 7 days' : timeRange === '30d' ? 'Last 30 days' : 'All time'}
+TOTAL: $${totalSpend.toFixed(2)} spend, ${totalPurchases} purchases, $${totalRevenue.toFixed(2)} revenue, overall ROAS ${totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(2) : '0'}x
 
-${aggregatedData}
+BY CREATIVE TYPE:
+${typeBreakdown}
 
-Return ONLY valid JSON in this exact shape, no markdown, no explanation:
+TOP ADS BY SPEND (up to 20):
+${adBreakdown}
+
+Based on this data, return ONLY valid JSON (no markdown, no explanation) in this exact shape:
 {
-  "summary": "2-3 sentence overview of overall performance",
-  "topInsights": ["insight 1", "insight 2", "insight 3"],
-  "angles": [{ "angle": "string", "reasoning": "string" }],
-  "audiences": [{ "segment": "string", "reasoning": "string" }],
-  "offers": [{ "offer": "string", "reasoning": "string" }]
+  "summary": "2-3 sentence overview of overall performance — include specific numbers",
+  "working": [
+    {
+      "title": "short title of what's working",
+      "insight": "explanation with specific numbers from the data",
+      "attomikPrompt": "a ready-to-paste prompt for Attomik's Creative Studio or Copy Creator — be specific about creative type, audience, theme, and angle based on what's actually performing"
+    }
+  ],
+  "opportunities": [
+    {
+      "title": "short title of the opportunity",
+      "insight": "what the data shows — cite specific ads and numbers",
+      "action": "pause | scale | test | optimize",
+      "recommendation": "specific actionable step — name the exact ad or ad set"
+    }
+  ]
 }
 
-Return 3-5 items in each array. Base everything on the data provided.`
+Return exactly 3 items in "working" and exactly 3 items in "opportunities".
+Base EVERYTHING on the actual data above. No generic advice.
+The attomikPrompt should reference specific creative types, themes, and audiences that are actually performing well in the data.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 2500,
+    max_tokens: 3000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   })

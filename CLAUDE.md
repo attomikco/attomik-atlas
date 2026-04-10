@@ -126,8 +126,8 @@ isSwitching      // true for 500ms after brand switch
 | `funnel_starts` | Anonymous onboarding sessions |
 | `saved_creatives` | Saved ad creatives with full style snapshot |
 | `campaign_assets` | Assets attached to campaigns |
-| `brand_insights` | Meta Ads CSV upload metadata per brand |
-| `brand_insight_rows` | Individual parsed CSV rows for insights analysis |
+| `brand_insights` | Upload/sync metadata per brand |
+| `brand_insight_rows` | Individual Meta Ads data rows — performance + creative fields |
 
 ### Supabase storage buckets:
 - `brand-images` — public — scraped brand images
@@ -145,6 +145,9 @@ notes: {
   tone: string[]
   email_config: MasterEmailConfig
   klaviyo_api_key: string
+  meta_access_token: string      // Meta Graph API long-lived token (60 days)
+  meta_ad_account_id: string     // Ad account number, no "act_" prefix
+  meta_token_saved_at: string    // ISO timestamp for expiry computation
   font_heading: { family, weight, transform, letterSpacing }
   font_body: { family, weight, transform }
 }
@@ -328,27 +331,34 @@ palette.accentText   // text on accent backgrounds
 **File:** `src/app/(app)/insights/page.tsx`
 
 ### Tables:
-- `brand_insights` — upload metadata (per brand, per upload)
-- `brand_insight_rows` — individual CSV rows
+- `brand_insights` — upload/sync metadata (per brand, per upload or sync)
+- `brand_insight_rows` — individual data rows (CSV or Meta API)
+
+### brand_insight_rows key columns:
+```
+ad_id, ad_name, campaign_name, ad_set_name, date, impressions, clicks,
+ctr, spend, purchases, purchase_value, roas, creative_title, creative_body,
+creative_image_url, creative_cta, sync_source ('csv' | 'meta_api')
+```
 
 ### Dedup constraint:
-`(brand_id, date, campaign_name, ad_set_name, age, gender, placement)` — prevents duplicates across uploads
+`(brand_id, date, campaign_name, ad_set_name, ad_name)` — prevents duplicates across uploads/syncs.
+Always deduplicate before insert using a seen Set on the same key.
 
 ### Flow:
-1. Upload Meta Ads CSV → parse client-side (no external CSV library)
-2. Deduplicate against existing rows → insert new rows only
-3. "Analyze with AI" → aggregate all rows for brand → send to Claude
-4. AI returns: `{ summary, topInsights[], angles[], audiences[], offers[] }`
-5. Each recommendation has "Launch Campaign" → creates campaign → enters campaign mode → navigates to Creative Studio
+1. **Primary:** Sync from Meta API (if credentials configured) — fetches performance + creative data
+2. **Fallback:** Upload Meta Ads CSV → parse client-side (no external CSV library)
+3. Deduplicate against existing rows → insert new rows only
+4. "Analyze with AI" → aggregate all rows for brand → send to Claude
+5. AI returns: `{ summary, working[], opportunities[] }`
+6. Each "working" item has "Use in Attomik" → copies prompt to clipboard
 
 ### AI response format (JSON only):
 ```json
 {
   "summary": "2-3 sentence overview",
-  "topInsights": ["insight 1", "insight 2", "insight 3"],
-  "angles": [{ "angle": "string", "reasoning": "string" }],
-  "audiences": [{ "segment": "string", "reasoning": "string" }],
-  "offers": [{ "offer": "string", "reasoning": "string" }]
+  "working": [{ "title": "string", "insight": "string", "attomikPrompt": "string" }],
+  "opportunities": [{ "title": "string", "insight": "string", "action": "pause|scale|test|optimize", "recommendation": "string" }]
 }
 ```
 
@@ -380,6 +390,7 @@ palette.accentText   // text on accent backgrounds
 | `/api/export/props` | POST/GET | Temp props store for Puppeteer |
 | `/api/generate` | POST | Main generation endpoint |
 | `/api/insights/analyze` | POST | Analyze brand insight rows with AI |
+| `/api/insights/sync-meta` | POST | Sync Meta Ads data via Graph API |
 | `/api/landing-page/generate-brief` | POST | Generate landing page brief |
 | `/api/newsletter` | POST | Newsletter generation |
 
@@ -437,6 +448,61 @@ Every nav link includes `?brand=activeBrandId` via `getBrandNavHref()`. This ens
 
 ---
 
+## META ADS INTEGRATION
+
+### Credentials
+Stored per brand in `brand.notes` JSON:
+- `meta_access_token` — long-lived token (60 days), generated at developers.facebook.com/tools/explorer
+- `meta_ad_account_id` — just the number, no `act_` prefix
+- `meta_token_saved_at` — ISO timestamp, used to compute expiry warning (14 days before 60-day expiry)
+
+Required token permissions: `ads_read`, `ads_management`, `business_management`
+
+### Sync API — /api/insights/sync-meta
+- POST with `{ brandId }`
+- Auth: checks Supabase session
+- Smart date preset: `this_year` on first sync (0 existing meta_api rows), `last_30d` on subsequent
+- Fetches from Meta Graph API v19.0 (auto-upgraded to v25.0 by Meta)
+- Follows pagination via `paging.next`
+- Creative fetch is TWO steps:
+  1. Batch fetch `creative{id,title,body,thumbnail_url,image_url,call_to_action_type}` per ad_id
+  2. For ads that only return creative ID (no content), batch fetch the creative object by ID
+- Upsert pattern: delete existing rows for date range, insert fresh (ignoreDuplicates: true)
+- Always deduplicate rows before insert using a Set on (brand_id|date|campaign_name|ad_set_name|ad_name)
+- brand_insights record: delete old meta_api record for brand, insert fresh after sync
+
+### Creative image URLs
+- Come from Meta CDN (fbcdn.net) — expire in ~24 hours
+- Do NOT store long-term — always re-fetch on sync
+- May be null for older ads or ads without image creatives
+- Render with onError handler to hide broken images gracefully
+
+### Data mapping from Meta API
+- `purchases` = `actions` array where `action_type === 'purchase'` → value
+- `purchase_value` = `action_values` array where `action_type === 'purchase'` → value
+- `roas` = purchase_value / spend (computed locally)
+- `cpa` = spend / purchases (computed locally)
+- `date` = `date_start` field (YYYY-MM-DD)
+- `ad_set_name` = `adset_name` (Meta uses no underscore)
+
+### Brand Hub — Integrations section
+- Meta token + ad account ID fields added to BrandSetupClient.tsx
+- Saved to brand.notes JSON in saveAll() function
+- Token expiry warning shown when < 14 days remaining
+- "✓ Connected" indicator when both fields are filled
+
+### Insights page sync flow
+1. On load: check brand.notes for meta credentials → set hasMetaCredentials
+2. If connected: show black "Sync from Meta" card as primary CTA
+3. If not connected: show grey card with "Connect →" link to Brand Hub
+4. CSV upload collapsed under "Or upload CSV manually ▾" details element
+5. After sync: refresh upload history + aggregated table data
+
+### CRITICAL: never use SDK
+Always use direct fetch to Meta Graph API — no facebook-nodejs-business-sdk or similar.
+
+---
+
 ## COMMON GOTCHAS
 
 1. **Brand images showing wrong brand after reload**
@@ -471,6 +537,24 @@ Every nav link includes `?brand=activeBrandId` via `getBrandNavHref()`. This ens
 8. **`notes` field is a JSON string**
    - Always parse: `const notes = b.notes ? JSON.parse(b.notes) : {}`
    - Never assume it's already an object
+
+9. **Meta API creative images expire in ~24 hours**
+   - Never rely on stored image URLs being valid
+   - Always re-sync to get fresh URLs
+   - Use onError on img tags to hide broken images
+
+10. **Meta API returns creative ID only for some ads**
+    - Two-step fetch required: first get creative ID, then fetch full creative by ID
+    - Some ads may never return image URLs (video ads return thumbnail_url instead)
+
+11. **Meta API duplicate rows**
+    - Meta insights can return duplicate rows for same ad/date combination
+    - Always deduplicate before insert using a Set
+    - Use ignoreDuplicates: true on upsert to handle any remaining conflicts
+
+12. **Meta API version**
+    - We call v19.0 but Meta auto-upgrades to v25.0
+    - Don't change the version — let Meta handle upgrades
 
 ---
 

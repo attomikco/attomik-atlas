@@ -104,6 +104,9 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [avoidWords, setAvoidWords] = useState<string[]>(brand.avoid_words || [])
   const [neverWords, setNeverWords] = useState<string[]>(tryParse(brand.notes)?.never_words || [])
   const [klaviyoKey, setKlaviyoKey] = useState(tryParse(brand.notes)?.klaviyo_api_key || '')
+  const [metaToken, setMetaToken] = useState(tryParse(brand.notes)?.meta_access_token || '')
+  const [metaAdAccountId, setMetaAdAccountId] = useState(tryParse(brand.notes)?.meta_ad_account_id || '')
+  const [metaTokenSavedAt, setMetaTokenSavedAt] = useState(tryParse(brand.notes)?.meta_token_saved_at || null)
   const [colors, setColors] = useState<Array<{ label: string; value: string }>>(() => {
     const base = [
       { label: 'Primary', value: brand.primary_color || '#000000' },
@@ -297,6 +300,9 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         extra_colors: colors.slice(4).map(c => ({ label: c.label, value: c.value })),
         klaviyo_api_key: klaviyoKey || null,
         default_cta: defaultCta || null,
+        meta_access_token: metaToken || null,
+        meta_ad_account_id: metaAdAccountId || null,
+        meta_token_saved_at: metaToken ? (metaTokenSavedAt || new Date().toISOString()) : null,
       }),
       products: savedProducts.length ? savedProducts : null,
     }).eq('id', brand.id)
@@ -944,6 +950,65 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
 
       {/* ── SECTION 6: INTEGRATIONS ── */}
       <SectionHeader title="Integrations" subtitle="Connect your marketing tools" />
+
+      {/* Meta Ads */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: '#1877f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>f</span>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#000' }}>Meta Ads</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)' }}>Connect to sync ad performance + creatives automatically</div>
+          </div>
+        </div>
+
+        {/* Token expiry warning */}
+        {metaTokenSavedAt && (() => {
+          const savedDate = new Date(metaTokenSavedAt)
+          const expiryDate = new Date(savedDate.getTime() + 60 * 24 * 60 * 60 * 1000)
+          const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          if (daysLeft <= 14) return (
+            <div style={{ background: '#fff3cd', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#856404', marginBottom: 12 }}>
+              ⚠️ Your Meta token expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}. Refresh it at developers.facebook.com/tools/debug/accesstoken
+            </div>
+          )
+          return null
+        })()}
+
+        <label style={labelStyle}>
+          Long-lived Access Token
+          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: 'var(--muted)' }}>optional</span>
+        </label>
+        <input
+          type="password"
+          value={metaToken}
+          onChange={e => { setMetaToken(e.target.value); setIsDirty(true) }}
+          placeholder="EAAxxxxxxxxxxxxx..."
+          style={{ ...inputStyle, marginBottom: 12 }}
+          onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+        />
+
+        <label style={labelStyle}>Ad Account ID</label>
+        <input
+          type="text"
+          value={metaAdAccountId}
+          onChange={e => { setMetaAdAccountId(e.target.value.replace('act_', '')); setIsDirty(true) }}
+          placeholder="663039913130424"
+          style={{ ...inputStyle, marginBottom: 6 }}
+          onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+        />
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 0 }}>
+          Just the number — no "act_" prefix. Find in Meta Ads Manager → Settings → Ad Account ID.
+          Get your token at <a href="https://developers.facebook.com/tools/explorer" target="_blank" rel="noopener noreferrer" style={{ color: '#1877f2' }}>Graph API Explorer</a> with ads_read + ads_management + business_management permissions, then extend to 60 days.
+        </div>
+        {metaToken && metaAdAccountId && (
+          <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: '#00a86b' }}>✓ Connected</div>
+        )}
+      </div>
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0 0 24px' }} />
 
       <div style={{ marginBottom: 20 }}>
         <label style={labelStyle}>
