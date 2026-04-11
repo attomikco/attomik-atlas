@@ -267,11 +267,36 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
-  // Use the service-role client for campaign/brand/brand_images reads. This
-  // endpoint is hit from the public preview page by anonymous funnel visitors
-  // who have no auth cookie, and RLS on brand_images would otherwise return
-  // zero rows — which left the email hero, product feature, and IG grid all
-  // rendering empty URLs.
+  // Fast path — return the already-rendered email that POST persisted to
+  // generated_content. Previously this handler re-fetched brand + images and
+  // re-ran buildMasterEmail on every preview-page mount, which was wasteful
+  // (no AI call, but still a cold DB round-trip + full HTML rebuild per load).
+  // The POST handler is the single writer; GET just serves what's stored.
+  const { data: stored } = await supabaseAdmin
+    .from('generated_content')
+    .select('content')
+    .eq('campaign_id', id)
+    .eq('type', 'email')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (stored?.content) {
+    try {
+      const parsed = JSON.parse(stored.content)
+      if (parsed.html) {
+        return NextResponse.json({
+          html: parsed.html,
+          subject: parsed.subject || '',
+          config: parsed.config || null,
+        })
+      }
+    } catch {}
+  }
+
+  // No cached row — fall through to the saved-config rebuild path so preview
+  // still shows something if the campaign was generated on an older flow that
+  // didn't persist HTML to generated_content.
   const { data: campaign } = await supabaseAdmin
     .from('campaigns')
     .select('*, brand:brands(*)')
