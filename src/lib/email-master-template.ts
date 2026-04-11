@@ -460,9 +460,17 @@ export function buildMasterEmail(
   // Shorthand: is this block enabled?
   const on = (id: string) => config.enabledBlocks.includes(id)
 
-  // Image resolution — explicit assignment first, then positional fallback
+  // Image resolution — explicit assignment first, then positional fallback.
+  // Hero and product must never land on the same image, so product prefers
+  // the next-best lifestyle slot and only reuses hero's choice as a last resort.
   const heroImg = config.imageAssignments?.hero || lifestyleImages[0] || productImages[0] || ''
-  const productImg = config.imageAssignments?.product || lifestyleImages[0] || productImages[0] || ''
+  const productImg =
+    config.imageAssignments?.product ||
+    lifestyleImages.find(img => img && img !== heroImg) ||
+    productImages.find(img => img && img !== heroImg) ||
+    productImages[0] ||
+    lifestyleImages[0] ||
+    ''
 
   // Instagram images with placeholder fallback
   const ig = config.igImages || []

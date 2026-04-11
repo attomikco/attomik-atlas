@@ -35,6 +35,24 @@ export function getContentImages(images: BrandImage[]): BrandImage[] {
  * sections can hide the Product section and show only Lifestyle (populated
  * with all content images) when this is true.
  */
+// Lifestyle bucket ranking: lower index = higher quality for hero/editorial use.
+// "other" is the catch-all for images the scraper couldn't classify — always last.
+const LIFESTYLE_TAG_RANK: Record<string, number> = {
+  lifestyle: 0,
+  ugc: 1,
+  seasonal: 2,
+  background: 3,
+  product: 4,
+  shopify: 5,
+  other: 99,
+}
+
+function rankLifestyle(a: BrandImage, b: BrandImage): number {
+  const ra = LIFESTYLE_TAG_RANK[a.tag ?? 'other'] ?? 50
+  const rb = LIFESTYLE_TAG_RANK[b.tag ?? 'other'] ?? 50
+  return ra - rb
+}
+
 export function bucketBrandImages(
   images: BrandImage[],
   businessType: BusinessType
@@ -61,11 +79,16 @@ export function bucketBrandImages(
     )
   }
 
+  // Rank lifestyle bucket so the "best" image for hero/editorial slots wins.
+  lifestyleImages = [...lifestyleImages].sort(rankLifestyle)
+
   const shouldCollapse = productImages.length === 0
 
   // When collapsing, the single visible section is the full content pool so
-  // nothing is hidden from the user.
-  const collapsedLifestyle = shouldCollapse ? content : lifestyleImages
+  // nothing is hidden from the user. Also ranked.
+  const collapsedLifestyle = shouldCollapse
+    ? [...content].sort(rankLifestyle)
+    : lifestyleImages
 
   return {
     productImages,

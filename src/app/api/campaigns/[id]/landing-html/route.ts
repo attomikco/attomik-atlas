@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { bucketBrandImages, getBusinessType, getContentImages } from '@/lib/brand-images'
+import type { BrandImage } from '@/types'
 
 function isLight(hex: string) {
   const c = hex.replace('#', '')
@@ -63,37 +65,64 @@ export async function GET(
   const brand = campaign.brand
 
   // ── Images
-  const { data: allImages } = await supabase
+  const { data: allImagesRaw } = await supabase
     .from('brand_images').select('*')
     .eq('brand_id', brand.id).order('created_at')
 
   const getUrl = (path: string) =>
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/brand-images/${path}`
 
-  const products = (allImages || []).filter(i => i.tag === 'product')
-  const lifestyle = (allImages || []).filter(i => i.tag === 'lifestyle' || i.tag === 'background')
-  const all = allImages || []
+  // Single source of truth — same bucketing/ranking the email + Brand Hub use,
+  // so the landing page never grabs logos, press badges, or the random first
+  // row from the raw table.
+  const rawImages = (allImagesRaw || []) as BrandImage[]
+  const { productImages: productBucket, lifestyleImages: lifestyleBucket } =
+    bucketBrandImages(rawImages, getBusinessType(brand))
+  const content = getContentImages(rawImages)
 
-  function pickLandscape(fallback?: string) {
-    const candidates = [...lifestyle, ...products, ...all]
-    const landscape = candidates.find(i => i.width && i.height && i.width > i.height * 1.2)
-    return landscape ? getUrl(landscape.storage_path) : (candidates[0] ? getUrl(candidates[0].storage_path) : fallback || '')
+  const isLandscape = (i: BrandImage) => !!(i.width && i.height && i.width > i.height * 1.2)
+  const isPortrait  = (i: BrandImage) => !!(i.width && i.height && i.height >= i.width)
+
+  // Running set of URLs already used, so hero/lifestyle/product-feature never
+  // land on the same image when there are alternatives available.
+  const used = new Set<string>()
+  function pickFrom(pools: BrandImage[][], predicate?: (i: BrandImage) => boolean): string {
+    // 1. Walk pools in order, taking the first image matching the predicate
+    //    that we haven't used yet.
+    for (const pool of pools) {
+      for (const img of pool) {
+        const url = getUrl(img.storage_path)
+        if (used.has(url)) continue
+        if (predicate && !predicate(img)) continue
+        used.add(url)
+        return url
+      }
+    }
+    // 2. Relax the predicate — any unused image from the pools.
+    if (predicate) {
+      for (const pool of pools) {
+        for (const img of pool) {
+          const url = getUrl(img.storage_path)
+          if (used.has(url)) continue
+          used.add(url)
+          return url
+        }
+      }
+    }
+    // 3. Final fallback — reuse the first available (may repeat).
+    for (const pool of pools) {
+      const first = pool[0]
+      if (first) return getUrl(first.storage_path)
+    }
+    return ''
   }
 
-  function pickPortrait(fallback?: string) {
-    const candidates = [...products, ...all]
-    const portrait = candidates.find(i => i.width && i.height && i.height >= i.width)
-    return portrait ? getUrl(portrait.storage_path) : (candidates[0] ? getUrl(candidates[0].storage_path) : fallback || '')
-  }
-
-  function pickByIndex(n: number) {
-    const img = all[n % Math.max(all.length, 1)]
-    return img ? getUrl(img.storage_path) : ''
-  }
-
-  const heroImg = pickPortrait()
-  const lifestyleImg = pickLandscape()
-  const img1 = pickByIndex(0)
+  // Main hero (section 9) — portrait preferred, from products (for Shopify) then lifestyle.
+  const heroImg = pickFrom([productBucket, lifestyleBucket, content], isPortrait)
+  // Lifestyle / product-feature hero — landscape preferred, MUST differ from heroImg.
+  const lifestyleImg = pickFrom([lifestyleBucket, productBucket, content], isLandscape)
+  // Per-product card fallback (used when brand.products[0] has no image).
+  const img1 = pickFrom([productBucket, lifestyleBucket, content])
   const product = brand.products?.[0]
 
   // ── Colors (allow query param overrides from preview)
@@ -134,7 +163,7 @@ export async function GET(
     </div>
   `).join('')
 
-  const photoStripHtml = all.slice(0, 6).map(img =>
+  const photoStripHtml = content.slice(0, 6).map(img =>
     `<img src="${getUrl(img.storage_path)}" alt="${brand.name}" loading="lazy">`
   ).join('')
 
@@ -273,7 +302,7 @@ body, p, span, li { font-family: '${fontFamily}', 'DM Sans', system-ui, sans-ser
     )
   }
   const ingredientCardsHtml = (brief.benefits || []).slice(0, 3).map((b: any, i: number) => {
-    const img = all[i] ? getUrl(all[i].storage_path) : ''
+    const img = content[i] ? getUrl(content[i].storage_path) : ''
     return `
       <div class="ingredient-card">
         ${img ? `<img src="${img}" alt="${b.headline}" loading="lazy">` : `<div style="height:120px;background:var(--accent-dim);border-radius:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:center;font-size:32px;">✦</div>`}
