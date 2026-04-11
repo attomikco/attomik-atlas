@@ -98,6 +98,83 @@ export function bucketBrandImages(
 }
 
 /**
+ * Pick the best hero + product images for an email / landing slot. Mirrors
+ * the selection rules the Creative Studio uses per template:
+ *   1. Bucket + tag-rank (lifestyle first, "other" last)
+ *   2. Orientation preference (landscape-first for hero, then square, portrait)
+ *   3. Never reuse an image already taken for another slot
+ *
+ * Returns BrandImage objects so callers can still access width/height/tag.
+ */
+export function pickSlotImages(
+  images: BrandImage[],
+  businessType: BusinessType,
+  slots: Array<'hero' | 'product' | 'lifestyle'> = ['hero', 'product']
+): BrandImage[] {
+  const { productImages, lifestyleImages } = bucketBrandImages(images, businessType)
+
+  const isLandscape = (i: BrandImage) => !!(i.width && i.height && i.width > i.height * 1.2)
+  const isPortrait  = (i: BrandImage) => !!(i.width && i.height && i.height > i.width * 1.2)
+  const isSquare    = (i: BrandImage) => !!(i.width && i.height && !isLandscape(i) && !isPortrait(i))
+
+  // Per-slot preference: pool order and orientation priority
+  const preferences: Record<'hero' | 'product' | 'lifestyle', {
+    pools: BrandImage[][]
+    orientations: Array<(i: BrandImage) => boolean>
+  }> = {
+    hero: {
+      pools: [lifestyleImages, productImages],
+      orientations: [isLandscape, isSquare, isPortrait],
+    },
+    product: {
+      pools: [productImages, lifestyleImages],
+      orientations: [isSquare, isPortrait, isLandscape],
+    },
+    lifestyle: {
+      pools: [lifestyleImages, productImages],
+      orientations: [isLandscape, isSquare, isPortrait],
+    },
+  }
+
+  const used = new Set<string>()
+  const picked: BrandImage[] = []
+
+  for (const slot of slots) {
+    const pref = preferences[slot]
+    let found: BrandImage | undefined
+
+    // Walk orientations → pools, returning the first unused match
+    for (const matchesOrientation of pref.orientations) {
+      if (found) break
+      for (const pool of pref.pools) {
+        const match = pool.find(img => !used.has(img.id) && matchesOrientation(img))
+        if (match) { found = match; break }
+      }
+    }
+
+    // Relax orientation — any unused image from the preferred pools
+    if (!found) {
+      for (const pool of pref.pools) {
+        const match = pool.find(img => !used.has(img.id))
+        if (match) { found = match; break }
+      }
+    }
+
+    // Final fallback — reuse the first available (may repeat)
+    if (!found) {
+      found = pref.pools.flat()[0]
+    }
+
+    if (found) {
+      used.add(found.id)
+      picked.push(found)
+    }
+  }
+
+  return picked
+}
+
+/**
  * Extract `business_type` from a brand's `notes` JSON field. Handles both
  * already-parsed objects and the raw JSON-string form the DB typically holds.
  */

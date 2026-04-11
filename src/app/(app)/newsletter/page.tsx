@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
 import EmailTemplateClient from '@/components/email/EmailTemplateClient'
-import { bucketBrandImages, getBusinessType, getContentImages } from '@/lib/brand-images'
+import { bucketBrandImages, getBusinessType, getContentImages, pickSlotImages } from '@/lib/brand-images'
 import type { BrandImage } from '@/types'
 
 export default function EmailPage() {
@@ -25,7 +25,7 @@ export default function EmailPage() {
       supabase.from('brands')
         .select('id, name, website, logo_url, primary_color, accent_color, secondary_color, bg_base, text_on_dark, text_on_base, text_on_accent, font_primary, font_heading, font_body, products, notes')
         .eq('id', activeBrandId).single(),
-      supabase.from('brand_images').select('storage_path, tag')
+      supabase.from('brand_images').select('id, storage_path, tag, width, height')
         .eq('brand_id', activeBrandId).order('created_at'),
       supabase.from('generated_content').select('*, campaign:campaigns(id, name, goal)')
         .eq('brand_id', activeBrandId).eq('type', 'email').order('created_at', { ascending: false }),
@@ -71,8 +71,6 @@ export default function EmailPage() {
         }
       }
 
-      setInitialConfig(emailConfig)
-
       setEmails(emailsRes.data ?? [])
 
       const rows = (imagesRes.data || []) as BrandImage[]
@@ -83,6 +81,30 @@ export default function EmailPage() {
       // Smart bucketing — Shopify vs non-Shopify logic is handled by the helper
       const { productImages: bucketProduct, lifestyleImages: bucketLifestyle } =
         bucketBrandImages(rows, getBusinessType(b))
+
+      // Pre-pick orientation-aware hero + product images (same rules the
+      // Creative Studio uses per template). Inject as defaults only — user's
+      // manual imageAssignments always win.
+      const [heroPick, productPick] = pickSlotImages(rows, getBusinessType(b), ['hero', 'product'])
+      if (emailConfig) {
+        emailConfig = {
+          ...emailConfig,
+          imageAssignments: {
+            hero: emailConfig.imageAssignments?.hero || (heroPick ? toUrl(heroPick) : ''),
+            product: emailConfig.imageAssignments?.product || (productPick ? toUrl(productPick) : ''),
+            ...emailConfig.imageAssignments,
+          },
+        }
+      } else {
+        emailConfig = {
+          imageAssignments: {
+            hero: heroPick ? toUrl(heroPick) : '',
+            product: productPick ? toUrl(productPick) : '',
+          },
+        }
+      }
+      setInitialConfig(emailConfig)
+
       setProductImages(bucketProduct.map(toUrl))
       setLifestyleImages(bucketLifestyle.map(toUrl))
       setAllImages(getContentImages(rows).map(toUrl))

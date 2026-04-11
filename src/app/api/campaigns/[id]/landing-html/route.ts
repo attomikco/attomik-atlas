@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { bucketBrandImages, getBusinessType, getContentImages } from '@/lib/brand-images'
+import { bucketBrandImages, getBusinessType, getContentImages, pickSlotImages } from '@/lib/brand-images'
 import type { BrandImage } from '@/types'
 
 function isLight(hex: string) {
@@ -80,49 +80,15 @@ export async function GET(
     bucketBrandImages(rawImages, getBusinessType(brand))
   const content = getContentImages(rawImages)
 
-  const isLandscape = (i: BrandImage) => !!(i.width && i.height && i.width > i.height * 1.2)
-  const isPortrait  = (i: BrandImage) => !!(i.width && i.height && i.height >= i.width)
-
-  // Running set of URLs already used, so hero/lifestyle/product-feature never
-  // land on the same image when there are alternatives available.
-  const used = new Set<string>()
-  function pickFrom(pools: BrandImage[][], predicate?: (i: BrandImage) => boolean): string {
-    // 1. Walk pools in order, taking the first image matching the predicate
-    //    that we haven't used yet.
-    for (const pool of pools) {
-      for (const img of pool) {
-        const url = getUrl(img.storage_path)
-        if (used.has(url)) continue
-        if (predicate && !predicate(img)) continue
-        used.add(url)
-        return url
-      }
-    }
-    // 2. Relax the predicate — any unused image from the pools.
-    if (predicate) {
-      for (const pool of pools) {
-        for (const img of pool) {
-          const url = getUrl(img.storage_path)
-          if (used.has(url)) continue
-          used.add(url)
-          return url
-        }
-      }
-    }
-    // 3. Final fallback — reuse the first available (may repeat).
-    for (const pool of pools) {
-      const first = pool[0]
-      if (first) return getUrl(first.storage_path)
-    }
-    return ''
-  }
-
-  // Main hero (section 9) — portrait preferred, from products (for Shopify) then lifestyle.
-  const heroImg = pickFrom([productBucket, lifestyleBucket, content], isPortrait)
-  // Lifestyle / product-feature hero — landscape preferred, MUST differ from heroImg.
-  const lifestyleImg = pickFrom([lifestyleBucket, productBucket, content], isLandscape)
-  // Per-product card fallback (used when brand.products[0] has no image).
-  const img1 = pickFrom([productBucket, lifestyleBucket, content])
+  // Use the unified slot picker so landing/email/creatives share the same
+  // orientation + tag-quality rules. Later slots exclude earlier picks so the
+  // main hero, the lifestyle/feature hero, and the per-product card are all
+  // distinct images when supply allows.
+  const [heroSlot, lifestyleSlot, productSlot] =
+    pickSlotImages(rawImages, getBusinessType(brand), ['product', 'lifestyle', 'hero'])
+  const heroImg = heroSlot ? getUrl(heroSlot.storage_path) : ''
+  const lifestyleImg = lifestyleSlot ? getUrl(lifestyleSlot.storage_path) : ''
+  const img1 = productSlot ? getUrl(productSlot.storage_path) : heroImg
   const product = brand.products?.[0]
 
   // ── Colors (allow query param overrides from preview)

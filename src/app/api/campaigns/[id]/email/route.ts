@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { buildBrandSystemPrompt } from '@/lib/anthropic'
 import { buildMasterEmail, DEFAULT_MASTER_CONFIG, type MasterEmailConfig } from '@/lib/email-master-template'
-import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
+import { bucketBrandImages, getBusinessType, pickSlotImages } from '@/lib/brand-images'
 import type { BrandImage } from '@/types'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -218,6 +218,12 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
     return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 })
   }
 
+  // Pre-pick orientation-aware hero + product images (same rules as Creative
+  // Studio templates). Used as defaults — any saved user assignment wins.
+  const [heroPick, productPick] = pickSlotImages(rows, getBusinessType(brand), ['hero', 'product'])
+  const heroUrl = heroPick ? toUrl(heroPick) : ''
+  const productUrl = productPick ? toUrl(productPick) : ''
+
   // Merge: defaults < generated < saved. Saved user edits always win over AI;
   // AI only fills fields the user hasn't touched.
   const finalConfig: MasterEmailConfig = {
@@ -226,7 +232,11 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
     ...(savedConfig || {}),
     emailColors: savedConfig?.emailColors ?? null,
     enabledBlocks: savedConfig?.enabledBlocks ?? DEFAULT_MASTER_CONFIG.enabledBlocks,
-    imageAssignments: savedConfig?.imageAssignments ?? {},
+    imageAssignments: {
+      ...(savedConfig?.imageAssignments || {}),
+      hero: savedConfig?.imageAssignments?.hero || heroUrl,
+      product: savedConfig?.imageAssignments?.product || productUrl,
+    },
   }
 
   const logoLight = notesData?.logo_url_light || null
@@ -301,11 +311,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? [0, 1, 2, 3, 4, 5].map(i => savedIg[i] || lifestylePool[i] || '')
     : [0, 1, 2, 3, 4, 5].map(i => lifestylePool[i] || '')
 
+  // Pre-pick orientation-aware hero + product images (same rules as Creative
+  // Studio templates). Used as defaults — any saved user assignment wins.
+  const [heroPick, productPick] = pickSlotImages(rows, getBusinessType(brand), ['hero', 'product'])
+  const heroUrl = heroPick ? toUrl(heroPick) : ''
+  const productUrl = productPick ? toUrl(productPick) : ''
+
   // Campaign prefills — match the dashboard email page exactly.
   const configWithPrefills: MasterEmailConfig = {
     ...DEFAULT_MASTER_CONFIG,
     ...savedConfig,
     igImages,
+    imageAssignments: {
+      ...(savedConfig.imageAssignments || {}),
+      hero: savedConfig.imageAssignments?.hero || heroUrl,
+      product: savedConfig.imageAssignments?.product || productUrl,
+    },
     heroHeadline: campaign.key_message || savedConfig.heroHeadline,
     calloutHeadline: campaign.offer || savedConfig.calloutHeadline,
     heroCta: campaign.goal === 'new_product_launch' ? 'Shop Now'
