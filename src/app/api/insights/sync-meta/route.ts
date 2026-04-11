@@ -10,16 +10,18 @@ function extractImageUrl(c: any): string {
     c.image_url ||
     c.object_story_spec?.video_data?.image_url ||
     ''
-  // Upgrade Meta thumbnail from 64x64 to 320x320 for better quality
-  return url.replace('p64x64', 'p320x320').replace('dst-emg0_p64x64', 'dst-emg0_p320x320')
+  // Request larger thumbnail size
+  return url
+    .replace(/p\d+x\d+/g, 'p64x64')
+    .replace(/dst-emg0_p\d+x\d+/g, 'dst-emg0_p64x64')
 }
 
 async function fetchAllPages(url: string): Promise<any[]> {
   const results: any[] = []
   let nextUrl: string | null = url
   while (nextUrl) {
-    const res = await fetch(nextUrl)
-    const json = await res.json()
+    const res: Response = await fetch(nextUrl)
+    const json: any = await res.json()
     if (json.error) throw new Error(json.error.message)
     if (json.data) results.push(...json.data)
     nextUrl = json.paging?.next || null
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Step 1: Get creative IDs from ads (batch)
-  const adIds = [...new Set(insights.map((r: any) => r.ad_id).filter(Boolean))].slice(0, 100)
+  const adIds = Array.from(new Set(insights.map((r: any) => r.ad_id).filter(Boolean))).slice(0, 100)
   const creativeIdMap: Record<string, string> = {} // adId → creativeId
   const creativeMap: Record<string, { title?: string; body?: string; image_url?: string; cta?: string }> = {}
 
@@ -175,6 +177,8 @@ export async function POST(req: NextRequest) {
   const cachedImageMap: Record<string, string> = {}
 
   const imageEntries = Object.entries(creativeMap).filter(([_, c]) => c.image_url)
+  console.log('[meta-sync] imageEntries count:', imageEntries.length)
+  console.log('[meta-sync] creativeMap sample:', JSON.stringify(Object.entries(creativeMap).slice(0, 2), null, 2))
 
   await Promise.all(
     imageEntries.map(async ([adId, creative]) => {
@@ -182,26 +186,38 @@ export async function POST(req: NextRequest) {
         const metaUrl = creative.image_url!
         const filename = `meta-creatives/${brandId}/${adId}.jpg`
 
-        const imgRes = await fetch(metaUrl)
-        if (!imgRes.ok) return
+        const imgRes = await fetch(metaUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.facebook.com/',
+          }
+        })
+        if (!imgRes.ok) {
+          console.log(`[meta-sync] image fetch failed for ${adId}: ${imgRes.status}`)
+          return
+        }
 
         const imgBuffer = await imgRes.arrayBuffer()
+        const nodeBuffer = Buffer.from(imgBuffer)
 
         const { error: uploadError } = await supabase.storage
           .from('brand-assets')
-          .upload(filename, imgBuffer, {
+          .upload(filename, nodeBuffer, {
             contentType: 'image/jpeg',
             upsert: true,
           })
 
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage
-            .from('brand-assets')
-            .getPublicUrl(filename)
-          cachedImageMap[adId] = urlData.publicUrl
+        if (uploadError) {
+          console.log(`[meta-sync] upload error for ${adId}:`, uploadError.message)
+          return
         }
-      } catch {
-        // silently skip
+
+        const { data: urlData } = supabase.storage
+          .from('brand-assets')
+          .getPublicUrl(filename)
+        cachedImageMap[adId] = urlData.publicUrl
+      } catch (e: any) {
+        console.log(`[meta-sync] image proxy error for ${adId}:`, e?.message)
       }
     })
   )
