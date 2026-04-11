@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { BrandImage } from '@/types'
 import type { Brand, GeneratedCopy } from '../types'
 import type { TextPosition } from '../templates/types'
+import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
 
 // No cache — always fetch fresh images to reflect Brand Hub changes
 // Previously cached but caused stale images after uploads/deletes
@@ -152,11 +153,18 @@ export function useBrandSync(opts: UseBrandSyncOptions) {
 
     // Images — always fetch fresh to reflect Brand Hub changes
     const supabase = createClient()
+    const currentBrand = brands.find(b => b.id === brandId)
     supabase.from('brand_images').select('*').eq('brand_id', brandId).order('created_at')
       .then(({ data }) => {
         const imgs = data ?? []
         setImages(imgs)
-        setSelectedImageId(imgs.length > 0 ? imgs[Math.floor(Math.random() * imgs.length)].id : null)
+        // Default selection: prefer lifestyle over product/shopify. Lifestyle
+        // shots set the emotional tone for a creative; product shots are a
+        // fallback when no lifestyle content exists.
+        const { productImages: bucketProduct, lifestyleImages: bucketLifestyle } =
+          bucketBrandImages(imgs, getBusinessType(currentBrand))
+        const defaultImg = bucketLifestyle[0] || bucketProduct[0] || imgs[0] || null
+        setSelectedImageId(defaultImg ? defaultImg.id : null)
       })
 
     // Copy

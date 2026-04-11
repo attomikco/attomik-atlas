@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { BrandImage } from '@/types'
+import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
 import { Download, Sparkles, Loader2, Check } from 'lucide-react'
 import { TextPosition } from './templates/types'
 import { Callout } from './templates/types'
@@ -299,6 +300,11 @@ FB_DESCRIPTION: <under 12 words>`,
   }
 
   function pickSecondImage(excludeId: string | null): string | null {
+    // Grid templates pair a hero (lifestyle) with a product shot. For the
+    // secondary slot, prefer a product image that isn't the hero — fall back
+    // to any non-excluded image.
+    const productPool = productImages.filter(img => img.id !== excludeId)
+    if (productPool.length > 0) return productPool[0].id
     if (images.length < 2) return excludeId
     const others = images.filter(img => img.id !== excludeId)
     return others[Math.floor(Math.random() * others.length)]?.id || excludeId
@@ -306,24 +312,30 @@ FB_DESCRIPTION: <under 12 words>`,
 
   function pickImageForTemplate(tid: string): string | null {
     if (images.length === 0) return null
-    const portraits = images.filter(img => img.width && img.height && img.height > img.width)
-    const landscapes = images.filter(img => img.width && img.height && img.width > img.height)
-    const squares = images.filter(img => img.width && img.height && Math.abs(img.width - img.height) < img.width * 0.15)
+    // Lifestyle-first pool for orientation matching. If the ideal orientation
+    // has no lifestyle images, we still prefer any lifestyle image over a
+    // product shot because lifestyle sets the tone for the creative.
+    const orderedImages = [...lifestyleImages, ...productImages, ...otherImages]
+    const portraits = orderedImages.filter(img => img.width && img.height && img.height > img.width)
+    const landscapes = orderedImages.filter(img => img.width && img.height && img.width > img.height)
+    const squares = orderedImages.filter(img => img.width && img.height && Math.abs(img.width - img.height) < img.width * 0.15)
+    const firstOf = (arr: typeof images) => arr[0]?.id || null
     const randomFrom = (arr: typeof images) => arr[Math.floor(Math.random() * arr.length)]?.id || null
 
     switch (tid) {
       case 'overlay':
       case 'stat':
-        return squares.length > 0 ? randomFrom(squares) : randomFrom(images)
+        return squares.length > 0 ? randomFrom(squares) : firstOf(orderedImages)
       case 'split':
-        return portraits.length > 0 ? randomFrom(portraits) : randomFrom(images)
+        return portraits.length > 0 ? randomFrom(portraits) : firstOf(orderedImages)
       case 'ugc':
       case 'testimonial':
-        return landscapes.length > 0 ? randomFrom(landscapes) : randomFrom(images)
+        return landscapes.length > 0 ? randomFrom(landscapes) : firstOf(orderedImages)
       case 'grid':
-        return randomFrom(images)
+        // Grid hero slot gets the top lifestyle image deterministically
+        return firstOf(orderedImages)
       default:
-        return randomFrom(images)
+        return firstOf(orderedImages)
     }
   }
 
@@ -332,6 +344,18 @@ FB_DESCRIPTION: <under 12 words>`,
     const abort = new AbortController(); batchAbortRef.current = abort
     setBatchGenerating(true); setVariations([]); setActiveVariation(null)
     const templateIds = TEMPLATES.map(t => t.id); const results: Variation[] = []
+    // Overlay layout variants — rotated through each time 'overlay' is hit in
+    // the batch so multiple overlay cards in the same run don't all look the
+    // same. Position + overlay opacity + showOverlay are all varied.
+    const overlayLayouts: { textPosition: TextPosition; showOverlay: boolean; overlayOpacity: number }[] = [
+      { textPosition: 'bottom-left', showOverlay: true, overlayOpacity: 45 },
+      { textPosition: 'top-left', showOverlay: true, overlayOpacity: 40 },
+      { textPosition: 'center', showOverlay: true, overlayOpacity: 35 },
+      { textPosition: 'bottom-center', showOverlay: true, overlayOpacity: 50 },
+      { textPosition: 'top-center', showOverlay: true, overlayOpacity: 35 },
+      { textPosition: 'bottom-right', showOverlay: true, overlayOpacity: 45 },
+    ]
+    let overlayCount = 0
     for (let i = 0; i < batchCount; i++) {
       if (abort.signal.aborted) break
       const tid = templateIds[i % templateIds.length]
@@ -364,7 +388,11 @@ FB_DESCRIPTION: <under 12 words>`,
         const defC = nb?.default_cta || 'Shop Now'
         const imgId = pickImageForTemplate(tid)
         let rawBody = bm?.[1]?.trim() || defB; if (rawBody.length > 75) { rawBody = rawBody.slice(0, 75); const ls = rawBody.lastIndexOf(' '); if (ls > 50) rawBody = rawBody.slice(0, ls) }
-        const v = { headline: hm?.[1]?.trim() || defH, body: rawBody, cta: cm?.[1]?.trim() || defC, imageId: imgId, templateId: tid, style: styleForTemplate(tid), fbPrimaryText: fp?.[1]?.trim() || '', fbHeadline: fh?.[1]?.trim() || '', fbDescription: fd?.[1]?.trim() || '' }
+        const baseStyle = styleForTemplate(tid)
+        const style = tid === 'overlay'
+          ? { ...baseStyle, ...overlayLayouts[overlayCount++ % overlayLayouts.length] }
+          : baseStyle
+        const v = { headline: hm?.[1]?.trim() || defH, body: rawBody, cta: cm?.[1]?.trim() || defC, imageId: imgId, templateId: tid, style, fbPrimaryText: fp?.[1]?.trim() || '', fbHeadline: fh?.[1]?.trim() || '', fbDescription: fd?.[1]?.trim() || '' }
         results.push(v)
         setVariations([...results])
         // Load latest into preview
@@ -381,7 +409,11 @@ FB_DESCRIPTION: <under 12 words>`,
         const defB = nb?.default_body_text || nb?.mission?.slice(0, 80) || firstProd?.description?.slice(0, 80) || ''
         const defC = nb?.default_cta || 'Shop Now'
         const fallbackImgId = pickImageForTemplate(tid)
-        const v = { headline: defH, body: defB, cta: defC, imageId: fallbackImgId, templateId: tid, style: styleForTemplate(tid) }
+        const baseStyle = styleForTemplate(tid)
+        const style = tid === 'overlay'
+          ? { ...baseStyle, ...overlayLayouts[overlayCount++ % overlayLayouts.length] }
+          : baseStyle
+        const v = { headline: defH, body: defB, cta: defC, imageId: fallbackImgId, templateId: tid, style }
         results.push(v)
         setVariations([...results])
         setHeadline(v.headline); setBodyText(v.body); setCtaText(v.cta)
@@ -617,9 +649,12 @@ FB_DESCRIPTION: <under 12 words>`,
   }
 
   // ── Derived image groups for left panel ────────────────────────────
-  const productImages = images.filter(i => i.tag === 'product')
-  const lifestyleImages = images.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
-  const otherImages = images.filter(i => i.tag !== 'product' && i.tag !== 'lifestyle' && i.tag !== 'background')
+  // Smart bucketing — Shopify brands use tag='shopify' for products,
+  // non-Shopify brands use tag='product'. Lifestyle covers everything else.
+  const { productImages, lifestyleImages } = bucketBrandImages(images, getBusinessType(brand))
+  const otherImages = images.filter(i =>
+    i.tag !== 'product' && i.tag !== 'shopify' && i.tag !== 'lifestyle' && i.tag !== 'background'
+  )
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
@@ -644,17 +679,23 @@ FB_DESCRIPTION: <under 12 words>`,
               if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) }
               if (t.id === 'ugc') { setImagePosition('bottom') }
               if (t.id === 'testimonial') { setImagePosition('bottom') }
-              const portrait = images.filter(img => img.width && img.height && img.height > img.width)
-              const landscape = images.filter(img => img.width && img.height && img.width > img.height)
-              const square = images.filter(img => img.width && img.height && Math.abs(img.width - img.height) < img.width * 0.15)
+              // Lifestyle-first pool for template image picks. Falls back to
+              // product images only when no lifestyle images match the required
+              // orientation. Matches the "lifestyle sets the tone" rule.
+              const orderedImages = [...lifestyleImages, ...productImages, ...otherImages]
+              const portrait = orderedImages.filter(img => img.width && img.height && img.height > img.width)
+              const landscape = orderedImages.filter(img => img.width && img.height && img.width > img.height)
+              const square = orderedImages.filter(img => img.width && img.height && Math.abs(img.width - img.height) < img.width * 0.15)
               const randFrom = (arr: typeof images) => arr[Math.floor(Math.random() * arr.length)]
-              if (t.id === 'overlay' || t.id === 'stat') { const sq = square.length > 0 ? randFrom(square) : randFrom(images); if (sq) setSelectedImageId(sq.id) }
+              if (t.id === 'overlay' || t.id === 'stat') { const sq = square.length > 0 ? randFrom(square) : randFrom(orderedImages); if (sq) setSelectedImageId(sq.id) }
               if (t.id === 'split' && portrait.length > 0) setSelectedImageId(randFrom(portrait).id)
               if ((t.id === 'ugc' || t.id === 'testimonial') && landscape.length > 0) setSelectedImageId(randFrom(landscape).id)
-              if (t.id === 'grid' && images.length > 1) {
-                const shuffled = [...images].sort(() => Math.random() - 0.5)
-                setSelectedImageId(shuffled[0].id)
-                setSelectedProductImageId(shuffled[1].id)
+              if (t.id === 'grid' && orderedImages.length > 1) {
+                // Grid: lifestyle in the hero slot, product in the secondary slot
+                // (the "product image" on a grid template is explicitly the product shot)
+                setSelectedImageId(orderedImages[0].id)
+                const productShot = productImages[0] || orderedImages[1]
+                if (productShot) setSelectedProductImageId(productShot.id)
               }
             }}
             {...pill(templateId === t.id)}
@@ -761,11 +802,13 @@ FB_DESCRIPTION: <under 12 words>`,
         {/* ── IMAGES PANEL ── */}
         <div className="w-full md:w-auto" style={{ flex: 0.5, minWidth: 0 }}>
           <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
-            {productImages.length > 0 && (
+            {/* Lifestyle first — sets the emotional tone for a creative and is the
+                default pick downstream. Product shots come after as fallback. */}
+            {lifestyleImages.length > 0 && (
               <>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>PRODUCT</div>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>LIFESTYLE</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {productImages.map(img => (
+                  {lifestyleImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
                       style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
                       <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
@@ -774,11 +817,11 @@ FB_DESCRIPTION: <under 12 words>`,
                 </div>
               </>
             )}
-            {lifestyleImages.length > 0 && (
+            {productImages.length > 0 && (
               <>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>LIFESTYLE</div>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: lifestyleImages.length > 0 ? 16 : 0, marginBottom: 8 }}>PRODUCT</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {lifestyleImages.map(img => (
+                  {productImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
                       style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
                       <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />

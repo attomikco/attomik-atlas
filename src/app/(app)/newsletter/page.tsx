@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
 import EmailTemplateClient from '@/components/email/EmailTemplateClient'
+import { bucketBrandImages, getBusinessType, getContentImages } from '@/lib/brand-images'
+import type { BrandImage } from '@/types'
 
 export default function EmailPage() {
   const { activeBrandId, activeCampaign } = useBrand()
@@ -11,6 +13,7 @@ export default function EmailPage() {
   const [emails, setEmails] = useState<any[]>([])
   const [lifestyleImages, setLifestyleImages] = useState<string[]>([])
   const [productImages, setProductImages] = useState<string[]>([])
+  const [allImages, setAllImages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function EmailPage() {
         emailConfig = {
           ...(emailConfig || {}),
           heroHeadline: activeCampaign.key_message || emailConfig?.heroHeadline,
-          ctaBannerHeadline: activeCampaign.offer || emailConfig?.ctaBannerHeadline,
+          calloutHeadline: activeCampaign.offer || emailConfig?.calloutHeadline,
           heroCta: activeCampaign.goal === 'new_product_launch' ? 'Shop Now'
             : activeCampaign.goal === 'limited_offer___sale' ? 'Claim Offer'
             : activeCampaign.goal === 'brand_awareness' ? 'Learn More'
@@ -72,21 +75,22 @@ export default function EmailPage() {
 
       setEmails(emailsRes.data ?? [])
 
-      const lifestyle: string[] = []
-      const product: string[] = []
-      for (const img of imagesRes.data || []) {
+      const rows = (imagesRes.data || []) as BrandImage[]
+      const toUrl = (img: BrandImage) => {
         const cleanPath = img.storage_path.replace(/^brand-images\//, '')
-        const { data: urlData } = supabase.storage.from('brand-images').getPublicUrl(cleanPath)
-        if (img.tag === 'product' || img.tag === 'shopify') product.push(urlData.publicUrl)
-        else if (img.tag !== 'logo' && img.tag !== 'press') lifestyle.push(urlData.publicUrl)
+        return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
       }
-      setLifestyleImages(lifestyle)
-      setProductImages(product)
+      // Smart bucketing — Shopify vs non-Shopify logic is handled by the helper
+      const { productImages: bucketProduct, lifestyleImages: bucketLifestyle } =
+        bucketBrandImages(rows, getBusinessType(b))
+      setProductImages(bucketProduct.map(toUrl))
+      setLifestyleImages(bucketLifestyle.map(toUrl))
+      setAllImages(getContentImages(rows).map(toUrl))
       setLoading(false)
     })
   }, [activeBrandId, activeCampaign])
 
   if (loading || !brand) return null
 
-  return <EmailTemplateClient brand={brand} initialConfig={initialConfig} emails={emails} lifestyleImages={lifestyleImages} productImages={productImages} campaignId={activeCampaign?.id || null} />
+  return <EmailTemplateClient brand={brand} initialConfig={initialConfig} emails={emails} allImages={allImages} lifestyleImages={lifestyleImages} productImages={productImages} campaignId={activeCampaign?.id || null} />
 }

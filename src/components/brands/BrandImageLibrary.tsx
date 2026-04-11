@@ -5,7 +5,7 @@ import { BrandImage, ImageTag } from '@/types'
 import { Upload, Trash2, Loader2, ImageIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-const TAGS: ImageTag[] = ['product', 'lifestyle', 'ugc', 'background', 'seasonal', 'other']
+const TAGS: ImageTag[] = ['product', 'shopify', 'lifestyle', 'background', 'ugc', 'seasonal', 'logo', 'press', 'other']
 
 function getOrientation(w: number | null, h: number | null): string | null {
   if (!w || !h) return null
@@ -13,6 +13,41 @@ function getOrientation(w: number | null, h: number | null): string | null {
   if (ratio > 1.1) return 'landscape'
   if (ratio < 0.9) return 'portrait'
   return 'square'
+}
+
+/**
+ * Classify an image by sampling 5 points (4 corners + center) on an offscreen canvas.
+ * Returns 'product' if every sampled pixel is near-white (R,G,B > 240) or transparent
+ * (alpha < 30). Otherwise returns 'lifestyle'. Silently returns 'lifestyle' on any
+ * read failure (CORS, decode error, etc.) — never blocks an upload.
+ */
+async function classifyByBackground(file: File): Promise<'product' | 'lifestyle'> {
+  try {
+    const bitmap = await createImageBitmap(file)
+    const canvas = document.createElement('canvas')
+    // Small canvas is enough — we only sample 5 pixels
+    const size = 100
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return 'lifestyle'
+    ctx.drawImage(bitmap, 0, 0, size, size)
+    bitmap.close()
+    const samples: [number, number][] = [
+      [2, 2], [size - 3, 2], [2, size - 3], [size - 3, size - 3], // 4 corners
+      [Math.floor(size / 2), Math.floor(size / 2)],                // center
+    ]
+    for (const [x, y] of samples) {
+      const px = ctx.getImageData(x, y, 1, 1).data
+      const r = px[0], g = px[1], b = px[2], a = px[3]
+      const isTransparent = a < 30
+      const isNearWhite = r > 240 && g > 240 && b > 240
+      if (!isTransparent && !isNearWhite) return 'lifestyle'
+    }
+    return 'product'
+  } catch {
+    return 'lifestyle'
+  }
 }
 
 function buildFileName(slug: string, orientation: string | null, seq: number, ext: string) {
@@ -72,6 +107,9 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
       const fileName = buildFileName(brandSlug, orientation, seq, ext)
       const storagePath = `${brandId}/${fileName}`
 
+      // Auto-classify: white/transparent bg → 'product', otherwise 'lifestyle'
+      const autoTag: ImageTag = await classifyByBackground(file)
+
       const { error: uploadError } = await supabase.storage
         .from('brand-images')
         .upload(storagePath, file)
@@ -85,7 +123,8 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
         id: '', created_at: '', brand_id: brandId,
         file_name: fileName, storage_path: storagePath,
         mime_type: file.type, size_bytes: file.size,
-        tag: 'other', alt_text: null, width, height,
+        tag: autoTag, alt_text: null, width, height,
+        source_url: null,
       }
       uploaded.push(newImage)
 
@@ -95,7 +134,7 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
         storage_path: storagePath,
         mime_type: file.type,
         size_bytes: file.size,
-        tag: 'other' as ImageTag,
+        tag: autoTag,
         width,
         height,
       })

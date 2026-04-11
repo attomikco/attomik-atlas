@@ -389,11 +389,18 @@ export default function OnboardingWizard() {
         </div>
       )}
 
-      {/* Detected images strip */}
+      {/* Detected images strip — lifestyle first, then product/shopify */}
       {(() => {
-        const displayImages = detectedImages.filter(
-          img => img.tag !== 'logo' && img.url !== detectedLogo
+        const filtered = detectedImages.filter(
+          img => img.tag !== 'logo' && img.tag !== 'press' && img.url !== detectedLogo
         )
+        // Match bucketBrandImages: lifestyle bucket includes lifestyle, background,
+        // and any other non-product tag the scraper emits. Shopify/product tags are
+        // the fallback — they render last and only fill the strip after every
+        // lifestyle/editorial shot has been shown.
+        const lifestyle = filtered.filter(i => i.tag !== 'shopify' && i.tag !== 'product')
+        const products = filtered.filter(i => i.tag === 'shopify' || i.tag === 'product')
+        const displayImages = [...lifestyle, ...products]
         return displayImages.length > 0 ? (
         <div style={{ marginBottom: 16 }}>
           <div style={{

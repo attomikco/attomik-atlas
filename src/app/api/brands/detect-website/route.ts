@@ -482,9 +482,14 @@ export async function POST(req: NextRequest) {
       imagePool.push({ url: resolveUrl(src), alt, context, source: 'img-tag', width: imgW || undefined, height: imgH || undefined })
     }
 
-    // Shopify product images (all images, not just first)
+    // Shopify product images.
+    // IMPORTANT: only the FIRST image per product is treated as a true product shot
+    // (source='shopify-product' → tag='shopify'). Additional images (variants,
+    // lifestyle shots, packaging) are marked as 'shopify-product-variant' so they
+    // fall through to the lifestyle bucket via rule 11.
     if (isShopify && products.length > 0) {
       for (const p of products) {
+        // The primary p.image from the homepage scrape is always the first image
         if (p.image) imagePool.push({ url: p.image, alt: p.name, context: '', source: 'shopify-product' })
       }
       try {
@@ -493,14 +498,26 @@ export async function POST(req: NextRequest) {
         if (r.ok) {
           const d = await r.json()
           for (const p of (d?.products || [])) {
-            for (const img of (p.images || []).slice(0, 3)) {
-              if (img.src) {
-                const imgUrl = img.src
+            const imgs = (p.images || []).slice(0, 3)
+            imgs.forEach((img: { src?: string }, imgIdx: number) => {
+              if (!img.src) return
+              const imgUrl = img.src
+              const isFirstImage = imgIdx === 0
+              // Only add the first image to knownProductUrls. Otherwise rule 1a's
+              // third clause (CDN + knownProductUrls) would promote variants back
+              // to 'shopify'. Variants stay out of the known set so rule 11 can
+              // demote them to 'lifestyle'.
+              if (isFirstImage) {
                 knownProductUrls.add(imgUrl)
                 try { knownProductUrls.add(new URL(imgUrl).pathname) } catch {}
-                imagePool.push({ url: imgUrl, alt: p.title || null, context: '', source: 'shopify-product' })
               }
-            }
+              imagePool.push({
+                url: imgUrl,
+                alt: p.title || null,
+                context: '',
+                source: isFirstImage ? 'shopify-product' : 'shopify-product-variant',
+              })
+            })
           }
         }
       } catch {}
@@ -591,37 +608,60 @@ export async function POST(req: NextRequest) {
       const ctx = raw.context
 
       // ── Determine tag ──
-      let tag: ImageTagType = 'other'
+      // Default to 'lifestyle' — most unclassified scraped content from brand websites
+      // is lifestyle imagery, not genuinely unclassifiable. 'other' is reserved for
+      // cases that fail every specific rule AND aren't lifestyle-appropriate.
+      let tag: ImageTagType = 'lifestyle'
 
       // Pre-check: is this image likely a brand mark / logo?
       const freq = urlFrequency.get(pathname) || 0
-      const isBrandMark =
-        // URL contains brand/logo keywords
-        /logo|brand|wordmark|icon|favicon|badge|symbol/i.test(url) ||
-        // Alt text contains brand name but no product keywords
+
+      // STRONG logo signal — URL or alt text explicitly contains "logo" / "wordmark" /
+      // "emblem". This beats EVERY other rule (including Shopify /products.json sources
+      // and CDN fallbacks), because if a filename literally says "Saint_Spritz_Logo_Circle"
+      // there's no ambiguity — it's a logo, even if Shopify's admin happens to list it
+      // as a product thumbnail.
+      const isLogoByName =
+        /logo|wordmark|emblem/i.test(url) ||
+        /logo|wordmark|emblem/i.test(altLower)
+
+      // Diagnostic: log every image the scraper thinks is a logo so we can
+      // verify the classifier is seeing the right URLs. Remove once settled.
+      if (isLogoByName) {
+        console.log(`[detect-website] isLogoByName=true  source=${raw.source}  url=${url.slice(0, 140)}`)
+      }
+
+      // WEAK logo signal — heuristic combo that's noisier. Still skipped for
+      // known-product sources to avoid tagging legit product thumbnails as logos.
+      const isBrandMarkHeuristic =
+        /brand|icon|favicon|badge|symbol/i.test(url) ||
         (altLower && name && altLower.includes(name.toLowerCase()) && !/product|shop|buy|price/i.test(altLower)) ||
-        // Very small image (under 100x100)
         (raw.width && raw.height && raw.width < 100 && raw.height < 100) ||
-        // Very wide and short — horizontal wordmark (aspect ratio > 3:1)
         (raw.width && raw.height && raw.height > 0 && raw.width / raw.height > 3) ||
-        // Image in header, nav, or footer
         /header|nav|footer/i.test(ctx) ||
-        // Repeated image (appears 3+ times — decorative/brand asset)
         freq >= 3
 
-      // 0. Press/media logos — check BEFORE product to prevent misclassification
+      // 0. Press/media logos — check BEFORE everything to prevent misclassification
       if (pressContextPattern.test(ctx) || pressUrlPattern.test(url) ||
           (altLower && pressAltPattern.test(altLower))) {
         tag = 'press'
       }
-      // 0b. Brand marks — catch before product rules
-      else if (isBrandMark && raw.source !== 'shopify-product' && raw.source !== 'jsonld-product') {
+      // 0a. Strong logo signal — fires regardless of source. URL/alt with "logo"
+      // is unambiguous and must win over Shopify product sources and CDN fallbacks.
+      else if (isLogoByName) {
         tag = 'logo'
       }
-      // 1a. Shopify product images (from products.json API or Shopify CDN in product context)
+      // 0b. Weak brand-mark heuristics — still respect the Shopify-product guard
+      // so that legit product thumbnails don't get mistagged as logos.
+      else if (isBrandMarkHeuristic && raw.source !== 'shopify-product' && raw.source !== 'jsonld-product') {
+        tag = 'logo'
+      }
+      // 1a. Shopify product images (from products.json API or Shopify CDN in product context).
+      // Matches cdn.shopify.com AND custom-domain Shopify stores that serve via
+      // /cdn/shop/files/ (e.g. saintspritz.com/cdn/shop/files/...).
       else if (raw.source === 'shopify-product' ||
-          (raw.source === 'jsonld-product' && /cdn\.shopify\.com/i.test(url)) ||
-          (/cdn\.shopify\.com\/s\/files/i.test(url) && (knownProductUrls.has(url) || knownProductUrls.has(pathname)))) {
+          (raw.source === 'jsonld-product' && /cdn\.shopify\.com|\/cdn\/shop\/files\//i.test(url)) ||
+          ((/cdn\.shopify\.com\/s\/files/i.test(url) || /\/cdn\/shop\/files\//i.test(url)) && (knownProductUrls.has(url) || knownProductUrls.has(pathname)))) {
         tag = 'shopify'
       }
       // 1b. Other known product URLs (JSON-LD Product, etc.)
@@ -629,16 +669,34 @@ export async function POST(req: NextRequest) {
           raw.source === 'jsonld-product') {
         tag = 'product'
       }
+      // Shopify CDN guard — Rules 2 and 4 over-tag lifestyle shots on Shopify
+      // brands because editorial images live on the same CDN as product shots
+      // and typically have alt text mentioning the product name and sit inside
+      // DOM sections with class="product-grid" etc. For any image served from
+      // cdn.shopify.com/s/files/ or /cdn/shop/files/ that isn't already a known
+      // product SKU (rule 1a), let rule 11 catch it as lifestyle instead.
+      // shopify-product-variant source is also explicitly excluded from rules 2
+      // and 4 — these are extra images per product and belong in lifestyle.
       // 2. Alt text matches a detected product name
-      else if (altLower && productNames.some(pn => altLower.includes(pn))) {
+      else if (altLower && productNames.some(pn => altLower.includes(pn))
+          && raw.source !== 'shopify-product-variant'
+          && !/\/cdn\/shop\/files\//i.test(url)
+          && !/cdn\.shopify\.com\/s\/files/i.test(url)) {
         tag = 'product'
       }
-      // 3. URL path signals product
-      else if (/\/products?\/|\/shop\/|\/catalog\//i.test(url)) {
+      // 3. URL path signals product catalog page.
+      // Use pathname (not full URL) and require the segment to be at the start of
+      // the path — otherwise Shopify's /cdn/shop/files/ asset path matches /shop/
+      // and mis-tags every CDN-hosted image as a product.
+      else if (/^\/(products?|collections?|catalog)\//i.test(pathname)
+            || /^\/shop\//i.test(pathname)) {
         tag = 'product'
       }
       // 4. Context signals product (parent class/id)
-      else if (productContextPattern.test(ctx) && !logoContextPattern.test(ctx)) {
+      else if (productContextPattern.test(ctx) && !logoContextPattern.test(ctx)
+          && raw.source !== 'shopify-product-variant'
+          && !/\/cdn\/shop\/files\//i.test(url)
+          && !/cdn\.shopify\.com\/s\/files/i.test(url)) {
         tag = 'product'
       }
       // 5. Logo detection — URL or context
@@ -664,6 +722,16 @@ export async function POST(req: NextRequest) {
       // 10. CSS background images
       else if (bgImgUrls.has(url)) {
         tag = 'background'
+      }
+      // 11. Shopify CDN fallback — any image served from /cdn/shop/files/ or
+      // cdn.shopify.com/s/files/ that wasn't caught by earlier rules. Tagged
+      // as 'lifestyle' (not 'shopify') because page-HTML scrapes from the CDN
+      // are typically editorial/banner content. True product shots from
+      // /products.json are caught earlier by rule 1a (source='shopify-product').
+      // Guard: never override a logo signal. Rule 0a (isLogoByName) already
+      // catches logos first, but the explicit guard here documents the intent.
+      else if (!isLogoByName && (/\/cdn\/shop\/files\//i.test(url) || /cdn\.shopify\.com\/s\/files/i.test(url))) {
+        tag = 'lifestyle'
       }
 
       // ── Score ──

@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Brand, BrandImage } from '@/types'
+import ColorPickerPopover from '@/components/ui/ColorPickerPopover'
+import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
 
 const POPULAR_FONTS = [
   'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Raleway', 'Nunito',
@@ -142,6 +144,16 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [rescraping, setRescraping] = useState(false)
+  const [rescrapeToast, setRescrapeToast] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
+  const [rescrapeDialogOpen, setRescrapeDialogOpen] = useState(false)
+  const [rescrapeOpts, setRescrapeOpts] = useState({
+    images: true,
+    logo: true,
+    colors: false,
+    fonts: false,
+    products: false,
+  })
   const [images, setImages] = useState<BrandImage[]>(initialImages)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
@@ -151,15 +163,6 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [isDirty, setIsDirty] = useState(false)
   const [fontDropdownOpen, setFontDropdownOpen] = useState<number | null>(null)
   const [fontSearch, setFontSearch] = useState('')
-  const [openColorPicker, setOpenColorPicker] = useState<number | null>(null)
-  const colorPickerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) { if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) setOpenColorPicker(null) }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
   const initialRef = useRef({
     name: brand.name, website: brand.website || '', mission: brand.mission || '',
     targetAudience: brand.target_audience || '', brandVoice: brand.brand_voice || '',
@@ -416,6 +419,194 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     return data.publicUrl
   }
 
+  function openRescrapeDialog() {
+    if (!brand.website) {
+      setRescrapeToast({ kind: 'error', text: 'No website URL saved on this brand' })
+      setTimeout(() => setRescrapeToast(null), 4000)
+      return
+    }
+    setRescrapeDialogOpen(true)
+  }
+
+  async function performRescrape(opts: { images: boolean; logo: boolean; colors: boolean; fonts: boolean; products: boolean }) {
+    // Nothing to do
+    if (!opts.images && !opts.logo && !opts.colors && !opts.fonts && !opts.products) {
+      setRescrapeDialogOpen(false)
+      return
+    }
+
+    setRescrapeDialogOpen(false)
+    setRescraping(true)
+    setRescrapeToast(null)
+
+    try {
+      // 1. Scrape once — we may need multiple parts of the response
+      const detectRes = await fetch('/api/brands/detect-website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: brand.website }),
+      })
+      if (!detectRes.ok) throw new Error(`Scrape failed: ${detectRes.status}`)
+      const detect = await detectRes.json()
+
+      // 2. Images + Logo — safer "upload first, delete old after" pattern.
+      //    We capture the current row IDs BEFORE upload, let the upload route
+      //    insert new rows alongside the old ones, and only delete the old rows
+      //    if the upload actually inserted new ones. If the upload fails the
+      //    user keeps their existing library intact.
+      let uploadedCount = 0
+      let oldImageIds: string[] = []
+      if (opts.images) {
+        const { data: oldRows, error: snapErr } = await supabase
+          .from('brand_images').select('id').eq('brand_id', brand.id)
+        if (snapErr) throw new Error(`Snapshot failed: ${snapErr.message}`)
+        oldImageIds = (oldRows || []).map(r => r.id as string)
+      }
+
+      // 3. Images and/or Logo — both flow through the upload route. Only include
+      //    the fields that were checked so we don't touch the other.
+      if (opts.images || opts.logo) {
+        const uploadBody: {
+          logoUrl: string | null
+          productImageUrls: string[]
+          scrapedImages: Array<{ url: string; tag: string; alt: string | null }>
+        } = {
+          logoUrl: opts.logo ? (detect.logo || null) : null,
+          productImageUrls: opts.images
+            ? (detect.products || []).map((p: { image: string | null }) => p.image).filter(Boolean)
+            : [],
+          scrapedImages: opts.images
+            ? [
+                ...(detect.ogImage ? [{ url: detect.ogImage, tag: 'lifestyle', alt: null }] : []),
+                ...(detect.images || []).map((i: { url: string; tag: string; alt: string | null }) => ({ url: i.url, tag: i.tag, alt: i.alt || null })),
+              ].slice(0, 25)
+            : [],
+        }
+        const uploadRes = await fetch(`/api/brands/${brand.id}/upload-scraped-images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(uploadBody),
+        })
+        if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`)
+        const upload = await uploadRes.json()
+        // Prefer `inserted` (new field with real DB insert count), fall back to `uploaded`
+        uploadedCount = (typeof upload.inserted === 'number' ? upload.inserted : upload.uploaded) || 0
+        const attempted = upload.attempted || 0
+        if (attempted > uploadedCount) {
+          console.warn(`[rescrape] ${attempted - uploadedCount} of ${attempted} images failed to upload — check server logs`)
+        }
+
+        // Only delete the old rows if new ones successfully landed. If zero
+        // new rows inserted, the user keeps their existing library intact
+        // and we surface an error toast instead of silently wiping data.
+        if (opts.images) {
+          if (uploadedCount === 0) {
+            throw new Error('No new images inserted — keeping existing library intact. Check server logs for errors.')
+          }
+          if (oldImageIds.length > 0) {
+            const { error: delErr } = await supabase
+              .from('brand_images').delete().in('id', oldImageIds)
+            if (delErr) {
+              console.warn(`[rescrape] failed to delete ${oldImageIds.length} old rows: ${delErr.message}`)
+            }
+          }
+          const { data: freshImages } = await supabase
+            .from('brand_images').select('*')
+            .eq('brand_id', brand.id).order('created_at')
+          setImages((freshImages || []) as BrandImage[])
+        }
+      }
+
+      // 4. Colors — update primary/secondary/accent + notes.scraped_colors.
+      //    Never touches user-only keys inside notes.
+      if (opts.colors) {
+        const scrapedColors = (detect.allColors || detect.colors || []) as string[]
+        const existingNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
+        const mergedNotes = { ...existingNotes, scraped_colors: scrapedColors.length > 0 ? scrapedColors : (existingNotes.scraped_colors ?? null) }
+        const colorUpdate: Record<string, string | null> = {}
+        if (detect.colors?.[0]) colorUpdate.primary_color = detect.colors[0]
+        if (detect.colors?.[1]) colorUpdate.secondary_color = detect.colors[1]
+        if (detect.colors?.[2]) colorUpdate.accent_color = detect.colors[2]
+        const { error: colorErr } = await supabase.from('brands').update({
+          ...colorUpdate,
+          notes: JSON.stringify(mergedNotes),
+        }).eq('id', brand.id)
+        if (colorErr) throw new Error(`Colors update failed: ${colorErr.message}`)
+        // Reflect in local state
+        setColors(prev => prev.map((c, i) => {
+          if (i === 0 && detect.colors?.[0]) return { ...c, value: detect.colors[0] }
+          if (i === 1 && detect.colors?.[1]) return { ...c, value: detect.colors[1] }
+          if (i === 2 && detect.colors?.[2]) return { ...c, value: detect.colors[2] }
+          return c
+        }))
+      }
+
+      // 5. Fonts — update font_primary and font_heading. Never touches font_body (user-only).
+      if (opts.fonts && detect.font) {
+        const newFontPrimary = `${detect.font}|700|${detect.fontTransform || 'none'}`
+        const newFontHeading = {
+          family: detect.font,
+          weight: '700',
+          transform: detect.fontTransform || 'none',
+          letterSpacing: detect.letterSpacing || 'normal',
+        }
+        const { error: fontErr } = await supabase.from('brands').update({
+          font_primary: newFontPrimary,
+          font_heading: newFontHeading,
+        }).eq('id', brand.id)
+        if (fontErr) throw new Error(`Fonts update failed: ${fontErr.message}`)
+        // Reflect in local state — only the Heading entry
+        setFonts(prev => prev.map(f =>
+          f.label === 'Heading'
+            ? { ...f, family: detect.font, weight: '700', transform: (detect.fontTransform || 'none') as 'none' | 'uppercase' | 'lowercase' | 'capitalize' }
+            : f
+        ))
+      }
+
+      // 6. Products — replace brands.products with fresh scrape.
+      if (opts.products && Array.isArray(detect.products)) {
+        const newProducts = (detect.products || []).map((p: { name: string; description: string | null; price: string | null; image: string | null }) => ({
+          name: p.name,
+          description: p.description || null,
+          price_range: p.price || null,
+          image: p.image || null,
+        }))
+        const { error: prodErr } = await supabase.from('brands').update({
+          products: newProducts,
+        }).eq('id', brand.id)
+        if (prodErr) throw new Error(`Products update failed: ${prodErr.message}`)
+        // Reflect in local state
+        setProducts(newProducts.map((p: { name: string; description: string | null; price_range: string | null; image: string | null }) => ({
+          name: p.name || '',
+          description: p.description || '',
+          price: p.price_range || '',
+          image: p.image || null,
+        })))
+      }
+
+      // 7. Build success message
+      const parts: string[] = []
+      if (opts.images) parts.push(`${uploadedCount} image${uploadedCount !== 1 ? 's' : ''}`)
+      if (opts.logo) parts.push('logo')
+      if (opts.colors) parts.push('colors')
+      if (opts.fonts) parts.push('fonts')
+      if (opts.products) parts.push('products')
+      setRescrapeToast({
+        kind: 'success',
+        text: `Re-scraped — refreshed ${parts.join(', ')}`,
+      })
+      setTimeout(() => setRescrapeToast(null), 6000)
+    } catch (err) {
+      setRescrapeToast({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Re-scrape failed',
+      })
+      setTimeout(() => setRescrapeToast(null), 5000)
+    } finally {
+      setRescraping(false)
+    }
+  }
+
   const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }
   const inputStyle: React.CSSProperties = { border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '11px 14px', fontSize: 14, width: '100%', outline: 'none', color: '#000', background: '#fff' }
   const helperStyle: React.CSSProperties = { fontSize: 13, color: 'var(--muted)', marginTop: 4 }
@@ -483,12 +674,40 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       })()}
 
       {/* Page header */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
-        <div style={{ background: 'rgba(0,255,151,0.08)', border: '1px solid rgba(0,255,151,0.2)', borderRadius: 10, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <span style={{ color: '#00ff97', fontSize: 14 }}>✦</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.4 }}>The more you fill in, the better your creatives get.</span>
+      <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>Brand Hub</div>
+          <div style={{ background: 'rgba(0,255,151,0.08)', border: '1px solid rgba(0,255,151,0.2)', borderRadius: 10, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <span style={{ color: '#00ff97', fontSize: 14 }}>✦</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.4 }}>The more you fill in, the better your creatives get.</span>
+          </div>
         </div>
+        <button
+          onClick={openRescrapeDialog}
+          disabled={rescraping || !brand.website}
+          title={brand.website ? `Re-scrape ${brand.website}` : 'No website URL saved'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '10px 18px', borderRadius: 999,
+            background: '#fff', border: '1.5px solid var(--border)',
+            fontFamily: 'Barlow, sans-serif', fontSize: 12, fontWeight: 800,
+            letterSpacing: '0.04em', textTransform: 'uppercase',
+            color: rescraping ? 'var(--muted)' : '#000',
+            cursor: rescraping || !brand.website ? 'not-allowed' : 'pointer',
+            opacity: rescraping || !brand.website ? 0.6 : 1,
+            transition: 'border-color 0.15s, color 0.15s',
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => { if (!rescraping && brand.website) e.currentTarget.style.borderColor = '#000' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ animation: rescraping ? 'spin 0.9s linear infinite' : undefined }}>
+            <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+            <path d="M21 3v5h-5" />
+          </svg>
+          {rescraping ? 'Re-scraping…' : 'Re-scrape website'}
+        </button>
       </div>
 
       {/* ── BRAND KNOWLEDGE SUMMARY ── */}
@@ -621,29 +840,11 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {colors.map((color, index) => (
             <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Swatch with popup picker */}
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <div onClick={() => setOpenColorPicker(openColorPicker === index ? null : index)} style={{ width: 40, height: 40, borderRadius: 10, background: color.value, border: openColorPicker === index ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }} />
-                {openColorPicker === index && (
-                  <div ref={colorPickerRef} style={{ position: 'absolute', top: 48, left: 0, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 14, padding: 14, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 220 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Brand colors</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                      {[...colors.map(c => c.value), ...scrapedColors, '#000000', '#ffffff', '#f5f5f5', '#1a1a1a'].filter((c, i, a) => c && a.indexOf(c) === i).map(swatch => (
-                        <div key={swatch} onClick={() => { updateColor(index, swatch); setOpenColorPicker(null) }} style={{ width: 28, height: 28, borderRadius: 8, background: swatch, border: color.value === swatch ? '3px solid #000' : '1.5px solid #e0e0e0', cursor: 'pointer', transition: 'transform 0.1s' }}
-                          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')} onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} title={swatch} />
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Custom</div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 6, background: color.value, flexShrink: 0, border: '1px solid #eee' }} />
-                      <input type="text" value={color.value.toUpperCase()} onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) updateColor(index, e.target.value) }} style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '6px 10px', textTransform: 'uppercase' }} maxLength={7} />
-                      <label style={{ width: 28, height: 28, borderRadius: 6, overflow: 'hidden', cursor: 'pointer', border: '1px solid #eee', flexShrink: 0, background: 'linear-gradient(135deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <input type="color" value={color.value} onChange={e => updateColor(index, e.target.value)} style={{ opacity: 0, width: 0, height: 0 }} />
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ColorPickerPopover
+                value={color.value}
+                onChange={v => updateColor(index, v)}
+                presets={[...colors.map(c => c.value), ...scrapedColors, '#000000', '#ffffff', '#f5f5f5', '#1a1a1a']}
+              />
               <select value={color.label} onChange={e => updateColorLabel(index, e.target.value)} style={{ ...inputStyle, flex: 1, fontSize: 13, padding: '8px 12px', color: '#555', cursor: 'pointer', appearance: 'none' as const, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', paddingRight: 32 }}>
                 {['Primary', 'Secondary', 'Accent', 'Light Background', 'Background', 'Text', 'Button', 'Button Text', 'Border', 'Surface', 'Dark', 'Light', 'Custom'].map(o => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -670,30 +871,13 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             { label: 'Text on Accent', value: textOnAccent, set: setTextOnAccent, bg: colors[2]?.value },
           ].map((item, idx) => (
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <div onClick={() => setOpenColorPicker(openColorPicker === 100 + idx ? null : 100 + idx)} style={{ width: 40, height: 40, borderRadius: 10, background: item.bg || '#000', border: openColorPicker === 100 + idx ? '3px solid #000' : '2px solid #eee', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: item.value }}>{item.label.charAt(item.label.length - 1) === 'y' ? 'A' : 'A'}</span>
-                </div>
-                {openColorPicker === 100 + idx && (
-                  <div ref={colorPickerRef} style={{ position: 'absolute', top: 48, left: 0, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 14, padding: 14, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 220 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Brand colors</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                      {[...colors.map(c => c.value), ...scrapedColors, '#000000', '#ffffff', '#f5f5f5', '#1a1a1a'].filter((c, i, a) => c && a.indexOf(c) === i).map(swatch => (
-                        <div key={swatch} onClick={() => { item.set(swatch); setOpenColorPicker(null); setIsDirty(true) }} style={{ width: 28, height: 28, borderRadius: 8, background: swatch, border: item.value === swatch ? '3px solid #000' : '1.5px solid #e0e0e0', cursor: 'pointer', transition: 'transform 0.1s' }}
-                          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')} onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} title={swatch} />
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Custom</div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 6, background: item.value, flexShrink: 0, border: '1px solid #eee' }} />
-                      <input type="text" value={item.value.toUpperCase()} onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) { item.set(e.target.value); setIsDirty(true) } }} style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '6px 10px', textTransform: 'uppercase' }} maxLength={7} />
-                      <label style={{ width: 28, height: 28, borderRadius: 6, overflow: 'hidden', cursor: 'pointer', border: '1px solid #eee', flexShrink: 0, background: 'linear-gradient(135deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <input type="color" value={item.value} onChange={e => { item.set(e.target.value); setIsDirty(true) }} style={{ opacity: 0, width: 0, height: 0 }} />
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ColorPickerPopover
+                value={item.value}
+                onChange={v => { item.set(v); setIsDirty(true) }}
+                presets={[...colors.map(c => c.value), ...scrapedColors, '#000000', '#ffffff', '#f5f5f5', '#1a1a1a']}
+                triggerBg={item.bg || '#000'}
+                triggerContent={<span style={{ fontSize: 16, fontWeight: 800, color: item.value }}>A</span>}
+              />
               <div style={{ ...inputStyle, flex: 1, fontSize: 13, padding: '8px 12px', color: '#555', background: '#fafafa' }}>{item.label}</div>
             </div>
           ))}
@@ -835,10 +1019,10 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           {/* LEFT: Product image */}
           <div style={{ width: 180, flexShrink: 0, display: 'flex', alignSelf: 'stretch' }}>
             {(() => {
-              const productImgs = images.filter(img => img.tag === 'product')
+              const productImgs = bucketBrandImages(images, getBusinessType(brand)).productImages
               const currentImg = product.image || (productImgs[index] ? getImageUrl(productImgs[index]) : null)
               return (
-                <label style={{ width: '100%', height: '100%', borderRadius: 10, border: currentImg ? '1px solid var(--border)' : '2px dashed var(--border)', cursor: 'pointer', overflow: 'hidden', background: currentImg ? '#000' : '#fafafa', position: 'relative', display: 'block' }}>
+                <label style={{ width: '100%', height: '100%', borderRadius: 10, border: currentImg ? '1px solid var(--border)' : '2px dashed var(--border)', cursor: 'pointer', overflow: 'hidden', background: currentImg ? '#ffffff' : '#fafafa', position: 'relative', display: 'block' }}>
                   {currentImg ? (
                     <>
                       <img src={currentImg} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
@@ -904,47 +1088,60 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       {/* ── SECTION 5: IMAGES ── */}
       <SectionHeader title="Images" subtitle={`${images.length} image${images.length !== 1 ? 's' : ''} in your library`} />
 
-      {/* Product images */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Product images
-          <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>Hero shots of your product</span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {images.filter(img => img.tag === 'product').map(img => (
-            <div key={img.id} style={{ position: 'relative' }}>
-              <img src={getImageUrl(img)} alt="" style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', display: 'block' }} onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }} />
-              <button onClick={() => removeImageById(img.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
-            </div>
-          ))}
-          <label style={{ width: 120, height: 120, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 11, fontWeight: 600, gap: 4, transition: 'border-color 0.15s' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-            <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>Add
-            <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files || []); if (f.length) handleImageUpload(f, 'product'); e.target.value = '' }} />
-          </label>
-        </div>
-      </div>
+      {(() => {
+        const { productImages: bucketProduct, lifestyleImages: bucketLifestyle, shouldCollapse } =
+          bucketBrandImages(images, getBusinessType(brand))
+        return (
+          <>
+            {/* Product images — only shown if bucket is non-empty */}
+            {!shouldCollapse && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Product images
+                  <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>Hero shots of your product</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {bucketProduct.map(img => (
+                    <div key={img.id} style={{ position: 'relative' }}>
+                      <img src={getImageUrl(img)} alt="" style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', display: 'block' }} onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }} />
+                      <button onClick={() => removeImageById(img.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                  <label style={{ width: 120, height: 120, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 11, fontWeight: 600, gap: 4, transition: 'border-color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+                    <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>Add
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files || []); if (f.length) handleImageUpload(f, 'product'); e.target.value = '' }} />
+                  </label>
+                </div>
+              </div>
+            )}
 
-      {/* Lifestyle images */}
-      <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Lifestyle images
-          <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>Brand context, mood, people using the product</span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {images.filter(img => img.tag === 'lifestyle' || img.tag === 'background').map(img => (
-            <div key={img.id} style={{ position: 'relative' }}>
-              <img src={getImageUrl(img)} alt="" style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', display: 'block' }} onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }} />
-              <button onClick={() => removeImageById(img.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+            {/* Lifestyle images — always shown. Heading adapts to whether
+                Product section is visible above it. */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                {shouldCollapse ? 'Images' : 'Lifestyle images'}
+                <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>
+                  {shouldCollapse ? 'All content images for this brand' : 'Brand context, mood, people using the product'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {bucketLifestyle.map(img => (
+                  <div key={img.id} style={{ position: 'relative' }}>
+                    <img src={getImageUrl(img)} alt="" style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', display: 'block' }} onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }} />
+                    <button onClick={() => removeImageById(img.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                  </div>
+                ))}
+                <label style={{ width: 120, height: 120, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 11, fontWeight: 600, gap: 4, transition: 'border-color 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>Add
+                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files || []); if (f.length) handleImageUpload(f, 'lifestyle'); e.target.value = '' }} />
+                </label>
+              </div>
             </div>
-          ))}
-          <label style={{ width: 120, height: 120, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 11, fontWeight: 600, gap: 4, transition: 'border-color 0.15s' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-            <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>Add
-            <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files || []); if (f.length) handleImageUpload(f, 'lifestyle'); e.target.value = '' }} />
-          </label>
-        </div>
-      </div>
+          </>
+        )
+      })()}
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '36px 0' }} />
 
@@ -1066,6 +1263,130 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           animation: 'fadeIn 0.2s ease',
         }}>
           ✓ Brand saved
+        </div>
+      )}
+
+      {/* Re-scrape options dialog */}
+      {rescrapeDialogOpen && (
+        <div
+          onClick={() => setRescrapeDialogOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24, animation: 'fadeIn 0.15s ease',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 16,
+              padding: '28px 32px', maxWidth: 480, width: '100%',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+              animation: 'fadeIn 0.2s ease',
+            }}
+          >
+            {/* Title */}
+            <div style={{
+              fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 20,
+              textTransform: 'uppercase', letterSpacing: '-0.01em', color: '#000',
+              lineHeight: 1.2,
+            }}>
+              Re-scrape {brand.website?.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, marginBottom: 22 }}>
+              Choose what to refresh
+            </div>
+
+            {/* Compact checkbox rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 20 }}>
+              {[
+                { key: 'images' as const, label: 'Images', hint: 'Delete & re-pull from site' },
+                { key: 'logo' as const, label: 'Logo', hint: 'Fresh logo URL' },
+                { key: 'colors' as const, label: 'Colors', hint: 'Primary, secondary, accent' },
+                { key: 'fonts' as const, label: 'Fonts', hint: 'Heading font only' },
+                { key: 'products' as const, label: 'Products', hint: 'From Shopify /products.json' },
+              ].map(({ key, label, hint }) => (
+                <label
+                  key={key}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 2px', cursor: 'pointer',
+                    borderBottom: '1px solid rgba(0,0,0,0.05)',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={rescrapeOpts[key]}
+                    onChange={e => setRescrapeOpts(prev => ({ ...prev, [key]: e.target.checked }))}
+                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#000', flexShrink: 0 }}
+                  />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#000', minWidth: 86 }}>{label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Info note */}
+            <div style={{
+              fontSize: 12, color: 'var(--muted)', marginBottom: 22,
+              padding: '10px 14px', background: '#fafafa', borderRadius: 10,
+              display: 'flex', alignItems: 'flex-start', gap: 10, lineHeight: 1.5,
+            }}>
+              <span style={{ fontSize: 13, marginTop: 1 }}>ℹ</span>
+              <span>Voice, mission, integrations and manual edits are never touched.</span>
+            </div>
+
+            {/* Footer actions */}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setRescrapeDialogOpen(false)}
+                style={{
+                  padding: '11px 22px', borderRadius: 999,
+                  background: '#fff', color: '#000',
+                  border: '1.5px solid var(--border)',
+                  fontFamily: 'Barlow, sans-serif',
+                  fontSize: 12, fontWeight: 800,
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                  cursor: 'pointer', transition: 'border-color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#000' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => performRescrape(rescrapeOpts)}
+                style={{
+                  padding: '11px 26px', borderRadius: 999,
+                  background: '#000', color: '#00ff97',
+                  border: 'none',
+                  fontFamily: 'Barlow, sans-serif',
+                  fontSize: 12, fontWeight: 800,
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                Re-scrape →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Re-scrape toast */}
+      {rescrapeToast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 100,
+          background: rescrapeToast.kind === 'success' ? '#000' : '#c0392b',
+          color: rescrapeToast.kind === 'success' ? '#00ff97' : '#fff',
+          padding: '12px 24px', borderRadius: 12,
+          fontSize: 14, fontWeight: 700,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          animation: 'fadeIn 0.2s ease',
+          maxWidth: 360,
+        }}>
+          {rescrapeToast.kind === 'success' ? '✓ ' : '⚠ '}{rescrapeToast.text}
         </div>
       )}
       <style>{`

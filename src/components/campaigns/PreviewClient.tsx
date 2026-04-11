@@ -3,6 +3,12 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Brand, Campaign, GeneratedContent, BrandImage } from '@/types'
 import { createClient } from '@/lib/supabase/client'
+import {
+  getLogoImages,
+  getContentImages,
+  bucketBrandImages,
+  getBusinessType,
+} from '@/lib/brand-images'
 import OverlayTemplate from '@/components/creatives/templates/OverlayTemplate'
 import SplitTemplate from '@/components/creatives/templates/SplitTemplate'
 import StatTemplate from '@/components/creatives/templates/StatTemplate'
@@ -348,64 +354,67 @@ export default function PreviewClient({
     function loadImages(images: BrandImage[]) {
       console.log('[Preview] brand images:', images.map(i => ({ id: i.id, tag: i.tag, storage_path: i.storage_path, file_name: i.file_name })))
 
-      // Build set of known logo URLs to exclude
+      // Build set of known logo URLs to exclude from content pools.
+      // We still need the brand.logo_url vs file-name match below because some brands
+      // have a stored brand.logo_url that may also appear in brand_images without a 'logo' tag.
       const logoUrls = new Set<string>()
       if (brand.logo_url) logoUrls.add(brand.logo_url)
-      for (const img of images) {
-        if (img.tag === 'logo' || /logo/i.test(img.storage_path) || /logo/i.test(img.file_name || '')) {
-          logoUrls.add(buildImageUrl(img.storage_path))
-        }
+      for (const img of getLogoImages(images)) {
+        logoUrls.add(buildImageUrl(img.storage_path))
       }
-
       setLogoImageUrls(Array.from(logoUrls))
 
-      // Filter out logos and press from content pools — they shouldn't appear in ad templates
-      const contentImages = images.filter(i => {
-        if (i.tag === 'logo') return false
-        if (/logo/i.test(i.storage_path)) return false
-        if (/logo/i.test(i.file_name || '')) return false
+      // Tag-based content pool (excludes logo + press), plus safety filter for
+      // SVGs and anything that matches the brand.logo_url file path (legacy data).
+      const contentImages = getContentImages(images).filter(i => {
         if (/\.svg$/i.test(i.storage_path) || /\.svg$/i.test(i.file_name || '')) return false
-        // Check if this image's URL matches the brand logo
         const url = buildImageUrl(i.storage_path)
         if (logoUrls.has(url)) return false
         if (brand.logo_url) {
           try {
-            // Compare by original source URL embedded in alt_text or file path
             const logoHost = new URL(brand.logo_url).pathname.split('/').pop()
             if (logoHost && i.file_name && i.file_name.includes(logoHost)) return false
           } catch {}
         }
         return true
       })
-      // Shopify images are stored as tag='product' but with file_name prefix 'shopify_'
-      const shopify = contentImages.filter(i => /^shopify_/i.test(i.file_name || ''))
-      const products = contentImages.filter(i => i.tag === 'product' && !/^shopify_/i.test(i.file_name || ''))
-      const lifestyle = contentImages.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
-      // Priority: shopify > products > lifestyle > any content
-      const bestProduct = shopify[0] || products[0] || contentImages[0]
-      if (bestProduct) setProductImageUrl(buildImageUrl(bestProduct.storage_path))
-      const bestLifestyle = lifestyle[0] || shopify[0] || products[0] || contentImages[0]
+      // Smart bucketing — delegates to the shared helper which handles
+      // Shopify-vs-non-Shopify brand distinctions and the "collapse when
+      // product bucket is empty" rule.
+      const { productImages: bucketProduct, lifestyleImages: bucketLifestyle } =
+        bucketBrandImages(contentImages, getBusinessType(brand))
+
+      // Lifestyle-first: the single "hero image" defaults used in ad templates
+      // prefer lifestyle imagery (sets emotional tone) and fall back to product.
+      const bestHero = bucketLifestyle[0] || bucketProduct[0] || contentImages[0]
+      if (bestHero) setProductImageUrl(buildImageUrl(bestHero.storage_path))
+      const bestLifestyle = bucketLifestyle[0] || bucketProduct[0] || contentImages[0]
       if (bestLifestyle) setLifestyleImageUrl(buildImageUrl(bestLifestyle.storage_path))
-      const shopifyUrls = shopify.map(img => buildImageUrl(img.storage_path))
-      const productUrls = products.map(img => buildImageUrl(img.storage_path))
-      const lifestyleUrls = lifestyle.map(img => buildImageUrl(img.storage_path))
-      setShopifyImageUrls(shopifyUrls)
+
+      const productUrls = bucketProduct.map(img => buildImageUrl(img.storage_path))
+      const lifestyleUrls = bucketLifestyle.map(img => buildImageUrl(img.storage_path))
+      // productImageUrls and shopifyImageUrls both mirror the product bucket
+      // (kept as two state vars for legacy consumers).
+      setShopifyImageUrls(productUrls)
       setProductImageUrls(productUrls)
       setLifestyleImageUrls(lifestyleUrls)
-      const allUrls = contentImages.map(img => buildImageUrl(img.storage_path))
+      // allImageUrls is used as the ad-template image pool; order lifestyle-first
+      // so carousels/rotations start with lifestyle shots and fall back to products.
+      const orderedContent = [
+        ...bucketLifestyle,
+        ...bucketProduct,
+        ...contentImages.filter(i => !bucketLifestyle.includes(i) && !bucketProduct.includes(i)),
+      ]
+      const allUrls = orderedContent.map(img => buildImageUrl(img.storage_path))
       setAllImageUrls(allUrls)
       filterGoodImages(allUrls).then(goodUrls => {
         if (goodUrls.length >= Math.ceil(allUrls.length * 0.3) || goodUrls.length >= 3) {
           setAllImageUrls(goodUrls)
         }
       })
-      filterGoodImages(shopifyUrls).then(good => {
-        if (good.length >= Math.ceil(shopifyUrls.length * 0.3) || good.length >= 2) {
-          setShopifyImageUrls(good)
-        }
-      })
       filterGoodImages(productUrls).then(good => {
         if (good.length >= Math.ceil(productUrls.length * 0.3) || good.length >= 2) {
+          setShopifyImageUrls(good)
           setProductImageUrls(good)
         }
       })
@@ -420,7 +429,9 @@ export default function PreviewClient({
       loadImages(brandImages)
       setImagesLoaded(true)
 
-      // Poll for stragglers
+      // Poll for stragglers — wizard upload is fire-and-forget, 25-image scrapes
+      // routinely take 30s+ to fully land. Stop after 5 consecutive no-change ticks
+      // (15s) OR once we've seen 20+ images.
       let pollCount = 0
       let knownCount = brandImages.length
       const pollInterval = setInterval(async () => {
@@ -433,7 +444,7 @@ export default function PreviewClient({
           loadImages(data as BrandImage[])
           pollCount = 0
         }
-        if (pollCount >= 3 || knownCount >= 10) {
+        if (pollCount >= 5 || knownCount >= 20) {
           clearInterval(pollInterval)
         }
       }, 3000)
@@ -551,11 +562,13 @@ export default function PreviewClient({
     letterSpacing: fh?.letterSpacing === 'wide' ? letterSpacing.widest : fh?.letterSpacing === 'tight' ? letterSpacing.snug : 'normal',
   }
 
-  // Unified image pool — deduped, seeded shuffle for variety per brand
+  // Unified image pool — deduped, seeded shuffle for variety per brand.
+  // Lifestyle-first: lifestyle shots set the emotional tone for ad templates,
+  // product shots serve as fallback when no lifestyle content exists.
   const imagePool = (() => {
     const seen = new Set<string>()
     const pool: string[] = []
-    for (const url of [...shopifyImageUrls, ...productImageUrls, ...lifestyleImageUrls]) {
+    for (const url of [...lifestyleImageUrls, ...shopifyImageUrls, ...productImageUrls]) {
       if (!seen.has(url)) { seen.add(url); pool.push(url) }
     }
     // Seeded shuffle based on campaign id for consistent but varied ordering
@@ -643,7 +656,7 @@ export default function PreviewClient({
         brand={brand}
         adVariation={adVariations[0] || adVariation || { headline: brand.name, primary_text: '', description: '' }}
         imageUrl={img0}
-        allImageUrls={[...shopifyImageUrls, ...productImageUrls, ...lifestyleImageUrls]}
+        allImageUrls={[...lifestyleImageUrls, ...shopifyImageUrls, ...productImageUrls]}
         adVariations={adVariations}
         isActive={showReel}
         onComplete={() => { setShowReel(false); setShowReadyModal(true) }}

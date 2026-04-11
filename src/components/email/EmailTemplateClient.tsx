@@ -1,46 +1,194 @@
 'use client'
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { buildMasterEmail, DEFAULT_MASTER_CONFIG, deriveEmailColorsFromBrand, type MasterEmailConfig, type EmailColors } from '@/lib/email-master-template'
 import EmailActions from './EmailActions'
+import ColorPickerPopover from '@/components/ui/ColorPickerPopover'
+
+type TemplateType = 'master' | 'welcome' | 'abandoned_cart' | 'post_purchase' | 'newsletter' | 'promotion' | 'custom'
+type TemplateStatus = 'draft' | 'ready'
+type EmailTemplateRow = {
+  id: string
+  brand_id: string
+  name: string
+  type: TemplateType
+  brief: string | null
+  email_config: MasterEmailConfig | null
+  status: TemplateStatus
+  klaviyo_template_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {
+  master: 'Master Brand Email',
+  welcome: 'Welcome Series',
+  abandoned_cart: 'Abandoned Cart',
+  post_purchase: 'Post-Purchase',
+  newsletter: 'Newsletter',
+  promotion: 'Promotion',
+  custom: 'Custom',
+}
+
+const TEMPLATE_BRIEF_PLACEHOLDERS: Record<TemplateType, string> = {
+  master: 'The default brand email — used when no other template fits.',
+  welcome: 'First email in a welcome series. Introduce the brand, what we stand for, and give a small first-order incentive.',
+  abandoned_cart: 'Remind the shopper they left something behind. Lead with the product, lean on urgency or a small nudge.',
+  post_purchase: 'Thank the customer and help them get the most out of what they bought. Include product care or how-to if relevant.',
+  newsletter: 'Monthly newsletter. Mix of new arrivals, a story block, and a social CTA.',
+  promotion: 'Limited-time offer or sale. Lead with the discount, back it up with product and social proof.',
+  custom: 'Describe what this email is for. The AI will pick the right blocks and write the copy.',
+}
 
 interface Brand {
   id: string; name: string; website: string | null; logo_url: string | null
   primary_color: string | null; accent_color: string | null; secondary_color?: string | null
+  bg_base?: string | null
+  text_on_dark?: string | null; text_on_base?: string | null; text_on_accent?: string | null
   font_primary: string | null; font_heading: any; font_body?: any
   products: any[] | null; notes: string | null
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 12, display: 'block' }
-const inputStyle: React.CSSProperties = { width: '100%', border: '1.5px solid #e0e0e0', borderRadius: 8, padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }
+const inputStyle: React.CSSProperties = { width: '100%', border: '1.5px solid #e0e0e0', borderRadius: 8, padding: '9px 11px', fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' as const }
-const sectionStyle: React.CSSProperties = { marginBottom: 24 }
 
-// Defined at module scope so it keeps a stable identity across renders — prevents
-// all children (inputs, color pickers) from unmounting when the parent state updates.
-function Section({ id, label, isOpen, onToggle, children }: { id: string; label: string; isOpen: boolean; onToggle: (id: string) => void; children: React.ReactNode }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-      <button onClick={() => onToggle(id)} style={{
-        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 16px', background: isOpen ? 'rgba(0,255,151,0.06)' : '#f8f8f8',
-        border: 'none', cursor: 'pointer', textAlign: 'left',
-        fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-        color: isOpen ? '#00a86b' : 'var(--muted)', transition: 'all 0.15s',
-      }}>
-        <span>{label}</span>
-        <span style={{ fontSize: 9 }}>{isOpen ? '▼' : '▶'}</span>
-      </button>
-      {isOpen && <div style={{ padding: '14px 16px' }}>{children}</div>}
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14, marginTop: 8 }}>
+      <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#000' }}>{title}</div>
+      {subtitle && <div style={{ fontSize: 11, color: 'var(--muted)' }}>{subtitle}</div>}
     </div>
   )
 }
 
-export default function EmailTemplateClient({ brand, initialConfig, emails, lifestyleImages = [], productImages = [], campaignId = null }: {
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }}>{children}</div>
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      {children}
+    </div>
+  )
+}
+
+function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-pressed={on}
+      style={{
+        width: 34, height: 20, borderRadius: 999, border: 'none', padding: 0, cursor: 'pointer',
+        background: on ? '#000' : '#e0e0e0', position: 'relative', transition: 'background 0.15s',
+        flexShrink: 0,
+      }}
+    >
+      <div style={{
+        position: 'absolute', top: 2, left: on ? 16 : 2,
+        width: 16, height: 16, borderRadius: '50%',
+        background: '#fff', transition: 'left 0.15s',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+      }} />
+    </button>
+  )
+}
+
+function BlockRow({ label, isOn, onToggle, children, alwaysOn = false }: {
+  label: string
+  isOn?: boolean
+  onToggle?: () => void
+  children?: React.ReactNode
+  alwaysOn?: boolean
+}) {
+  const active = alwaysOn || !!isOn
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px',
+        background: active ? '#e6e6e6' : '#fafafa',
+        borderRadius: 8,
+        border: active ? '1px solid #d6d6d6' : '1px solid #f0f0f0',
+        transition: 'background 0.15s, border-color 0.15s, opacity 0.15s',
+        opacity: active ? 1 : 0.6,
+      }}>
+        <div style={{
+          fontFamily: 'Barlow, sans-serif', fontSize: 15, fontWeight: 900,
+          letterSpacing: '0.01em', textTransform: 'uppercase',
+          color: active ? '#000' : '#888',
+        }}>{label}</div>
+        {!alwaysOn && onToggle && <Toggle on={!!isOn} onChange={onToggle} />}
+      </div>
+      {active && children && (
+        <div style={{
+          marginTop: 10, paddingLeft: 14, paddingRight: 2, paddingBottom: 6,
+          borderLeft: '2px solid rgba(0,0,0,0.08)',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Color math — shared between derive logic and the primaryBg re-derivation in updateEmailColor
+function getLum(hex: string): number {
+  const n = parseInt(hex.replace('#', ''), 16)
+  return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 0xff) + 0.114 * (n & 0xff)) / 255
+}
+function darkenHex(hex: string, pct: number): string {
+  const n = parseInt(hex.replace('#', ''), 16)
+  const r = Math.max(0, (n >> 16) - Math.round(2.55 * pct))
+  const g = Math.max(0, ((n >> 8) & 0xff) - Math.round(2.55 * pct))
+  const b = Math.max(0, (n & 0xff) - Math.round(2.55 * pct))
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+}
+function lightenHex(hex: string, pct: number): string {
+  const n = parseInt(hex.replace('#', ''), 16)
+  const r = Math.min(255, (n >> 16) + Math.round(2.55 * pct))
+  const g = Math.min(255, ((n >> 8) & 0xff) + Math.round(2.55 * pct))
+  const b = Math.min(255, (n & 0xff) + Math.round(2.55 * pct))
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+}
+function altFromPrimary(primary: string): { altPrimaryBg: string; altPrimaryText: string } {
+  const lum = getLum(primary)
+  const altPrimaryBg = lum < 0.15 ? lightenHex(primary, 15) : lum < 0.35 ? darkenHex(primary, 10) : darkenHex(primary, 20)
+  const altPrimaryText = lum < 0.5 ? '#ffffff' : '#000000'
+  return { altPrimaryBg, altPrimaryText }
+}
+
+function ImagePicker({ images, value, onPick }: { images: string[]; value?: string; onPick: (url: string) => void }) {
+  if (!images.length) {
+    return <div style={{ fontSize: 11, color: 'var(--muted)', padding: 12, textAlign: 'center', border: '1px dashed #e0e0e0', borderRadius: 8 }}>No brand images. Upload some in Brand Hub.</div>
+  }
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+      {images.map((url, i) => {
+        const selected = value === url
+        return (
+          <button key={i} onClick={() => onPick(url)} style={{
+            aspectRatio: '1', overflow: 'hidden', padding: 0, cursor: 'pointer',
+            border: selected ? '2px solid #00a86b' : '1.5px solid #e0e0e0',
+            borderRadius: 6, background: '#fafafa',
+          }}>
+            <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function EmailTemplateClient({ brand, initialConfig, emails, allImages = [], lifestyleImages = [], productImages = [], campaignId = null }: {
   brand: Brand
   initialConfig: MasterEmailConfig | null
   emails: any[]
+  allImages?: string[]
   lifestyleImages?: string[]
   productImages?: string[]
   campaignId?: string | null
@@ -52,38 +200,60 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
   const [generating, setGenerating] = useState(false)
   const [previewWidth, setPreviewWidth] = useState(600)
   const [copied, setCopied] = useState(false)
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['hero']))
 
-  const toggleSection = (name: string) => {
-    setOpenSections(prev => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name); else next.add(name)
-      return next
-    })
-  }
-
+  // ── Multi-template state ────────────────────────────────────────────
+  const [templates, setTemplates] = useState<EmailTemplateRow[]>([])
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null)
+  const [templatesLoaded, setTemplatesLoaded] = useState(false)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [newTemplateModalOpen, setNewTemplateModalOpen] = useState(false)
+  const [klaviyoPushing, setKlaviyoPushing] = useState(false)
+  const [klaviyoMessage, setKlaviyoMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const activeTemplate = templates.find(t => t.id === activeTemplateId) || null
   const [config, setConfig] = useState<MasterEmailConfig>(() => {
-    const base = { ...DEFAULT_MASTER_CONFIG }
-    // Smart defaults from brand data
-    const p0 = brand.products?.[0]
-    const p1 = brand.products?.[1]
+    const base: MasterEmailConfig = { ...DEFAULT_MASTER_CONFIG }
     base.heroHeadline = `Welcome to ${brand.name}`
     base.heroCta = 'Shop Now'
     base.heroCtaUrl = brand.website || ''
-    base.instagramUrl = ''
     base.footerTagline = `Crafted with care — ${brand.name}`
+    const p0 = brand.products?.[0]
     if (p0) {
-      base.products = [
-        { name: p0.name || p0.title || '', price: p0.price_range || p0.price || '', imageUrl: p0.image || '', url: brand.website || '' },
-        ...(p1 ? [{ name: p1.name || p1.title || '', price: p1.price_range || p1.price || '', imageUrl: p1.image || '', url: brand.website || '' }] : []),
-      ]
-      base.featuredProductName = p0.name || p0.title || ''
-      base.featuredProductBody = p0.description || ''
+      base.productName = p0.name || p0.title || ''
+      base.productBody1 = p0.description || ''
+      base.productCtaUrl = brand.website || ''
     }
-    return { ...base, ...initialConfig }
+    const merged: MasterEmailConfig = { ...base, ...(initialConfig || {}) }
+    // Defensive normalization for old saved configs
+    if (!Array.isArray(merged.enabledBlocks)) merged.enabledBlocks = [...DEFAULT_MASTER_CONFIG.enabledBlocks]
+    if (!merged.imageAssignments || typeof merged.imageAssignments !== 'object') merged.imageAssignments = {}
+    if (!Array.isArray(merged.testimonials)) merged.testimonials = [...DEFAULT_MASTER_CONFIG.testimonials]
+    if (!Array.isArray(merged.faqItems)) merged.faqItems = [...DEFAULT_MASTER_CONFIG.faqItems]
+    if (!Array.isArray(merged.products)) merged.products = []
+    if (!Array.isArray(merged.igImages) || merged.igImages.length !== 6) merged.igImages = ['', '', '', '', '', '']
+    return merged
   })
 
-  // Build email HTML — recomputes on every config/brand change
+  // Auto-populate IG grid from the brand image library on first load. If the
+  // user never manually set any IG images, fill the 6 slots from `allImages`
+  // (most recent first since the page query orders by created_at). This runs
+  // once per brand change — if the user then clears/edits slots manually, we
+  // don't clobber their edits.
+  const igAutofillAppliedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (igAutofillAppliedRef.current === brand.id) return
+    const anyIgSet = config.igImages.some(url => !!url)
+    if (anyIgSet) {
+      igAutofillAppliedRef.current = brand.id
+      return
+    }
+    if (allImages.length === 0) return
+    const seeded = [0, 1, 2, 3, 4, 5].map(i => allImages[i] || '')
+    update({ igImages: seeded })
+    igAutofillAppliedRef.current = brand.id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand.id, allImages])
+
   const previewHtml = buildMasterEmail(brand, config, productImages, lifestyleImages)
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -94,13 +264,11 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
     if (doc) { doc.open(); doc.write(previewHtml); doc.close() }
   })
 
-
   function update(partial: Partial<MasterEmailConfig>) {
     setConfig(prev => ({ ...prev, ...partial }))
     setIsDirty(true)
   }
 
-  // Debounced auto-save for color picker changes
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   function scheduleAutoSave() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -108,51 +276,48 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
   }
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }, [])
 
-  // Resolve current email colors (user-set or derived from brand)
-  const currentEmailColors: EmailColors = config.emailColors || deriveEmailColorsFromBrand(brand)
+  // Backfill any keys missing from a legacy saved config (e.g. older configs
+  // saved before secondaryBg/secondaryText were added to EmailColors).
+  const currentEmailColors: EmailColors = {
+    ...deriveEmailColorsFromBrand(brand),
+    ...(config.emailColors || {}),
+  }
 
   function updateEmailColor(key: keyof EmailColors, value: string) {
     const next: EmailColors = { ...currentEmailColors, [key]: value }
+    if (key === 'primaryBg') {
+      // Re-derive dark variant when primary changes so dark-bg blocks follow
+      const { altPrimaryBg, altPrimaryText } = altFromPrimary(value)
+      next.altPrimaryBg = altPrimaryBg
+      next.altPrimaryText = altPrimaryText
+    }
     update({ emailColors: next })
     scheduleAutoSave()
   }
 
-  // Compute the derived palette from brand colors (matches buildEmailPalette's auto-derive branch)
   function deriveColorsFromBrand(): EmailColors {
     const primary = brand.primary_color || '#154734'
     const accent = brand.accent_color || '#BFA46D'
     const secondary = brand.secondary_color || '#E9E3D8'
-    const getLum = (hex: string) => {
-      const n = parseInt(hex.replace('#', ''), 16)
-      return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 0xff) + 0.114 * (n & 0xff)) / 255
-    }
     const primaryText = getLum(primary) < 0.5 ? '#ffffff' : '#000000'
-    const accentText = getLum(accent) > 0.5 ? '#000000' : '#ffffff'
+    const secondaryText = (brand as Brand & { text_on_base?: string | null }).text_on_base
+      || (getLum(secondary) < 0.5 ? '#ffffff' : '#000000')
+    const accentText = (brand as Brand & { text_on_accent?: string | null }).text_on_accent
+      || (getLum(accent) > 0.5 ? '#000000' : '#ffffff')
     const lightBg = getLum(secondary) > 0.7 ? secondary : '#f8f7f4'
-    const darken = (hex: string, pct: number) => {
-      const n = parseInt(hex.replace('#', ''), 16)
-      const r = Math.max(0, (n >> 16) - Math.round(2.55 * pct))
-      const g = Math.max(0, ((n >> 8) & 0xff) - Math.round(2.55 * pct))
-      const b = Math.max(0, (n & 0xff) - Math.round(2.55 * pct))
-      return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
-    }
-    const lighten = (hex: string, pct: number) => {
-      const n = parseInt(hex.replace('#', ''), 16)
-      const r = Math.min(255, (n >> 16) + Math.round(2.55 * pct))
-      const g = Math.min(255, ((n >> 8) & 0xff) + Math.round(2.55 * pct))
-      const b = Math.min(255, (n & 0xff) + Math.round(2.55 * pct))
-      return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
-    }
-    const lum = getLum(primary)
-    const altPrimaryBg = lum < 0.15 ? lighten(primary, 15) : lum < 0.35 ? darken(primary, 10) : darken(primary, 20)
+    const { altPrimaryBg, altPrimaryText } = altFromPrimary(primary)
     return {
       primaryBg: primary,
       primaryText,
       altPrimaryBg,
-      altPrimaryText: primaryText,
+      altPrimaryText,
+      secondaryBg: secondary,
+      secondaryText,
       accentColor: accent,
+      accentText,
+      accentButtonText: accentText,
       neutralBg: lightBg,
-      neutralText: primary,
+      neutralText: '#111111',
       buttonBg: primary,
       buttonText: primaryText,
       altButtonBg: accent,
@@ -161,7 +326,6 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
     }
   }
 
-  // Initialize emailColors from brand on mount so sidebar swatches match preview immediately
   useEffect(() => {
     if (!config.emailColors && brand) {
       update({ emailColors: deriveColorsFromBrand() })
@@ -171,6 +335,22 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
 
   function resetEmailColors() {
     update({ emailColors: deriveColorsFromBrand() })
+    scheduleAutoSave()
+  }
+
+  function toggleBlock(id: string) {
+    setConfig(prev => {
+      const set = new Set(prev.enabledBlocks || [])
+      if (set.has(id)) set.delete(id); else set.add(id)
+      return { ...prev, enabledBlocks: Array.from(set) }
+    })
+    setIsDirty(true)
+    scheduleAutoSave()
+  }
+
+  function updateImage(key: 'hero' | 'product', url: string) {
+    setConfig(prev => ({ ...prev, imageAssignments: { ...(prev.imageAssignments || {}), [key]: url } }))
+    setIsDirty(true)
     scheduleAutoSave()
   }
 
@@ -184,10 +364,8 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
       })
       const data = await res.json()
       if (data.config) {
-        // Preserve emailColors (those come from brand, not AI)
-        const { emailColors: _ignore, ...aiContent } = data.config
+        const { emailColors: _ignore, enabledBlocks: _ignoreBlocks, ...aiContent } = data.config
         update(aiContent)
-        // Auto-save after generation
         setTimeout(() => saveConfig(), 100)
       }
     } catch (e) {
@@ -197,14 +375,155 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
     }
   }
 
-  async function saveConfig() {
+  // saveConfig writes to the active email_template row via the PATCH API
+  // (which also mirrors master-type templates to brands.notes.email_config for
+  // the public preview page). Until a template exists we fall back to the old
+  // brand.notes write path so first-load saves don't drop the user's edits.
+  const saveConfig = useCallback(async () => {
     setSaving(true)
-    const existingNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
-    await supabase.from('brands').update({
-      notes: JSON.stringify({ ...existingNotes, email_config: config }),
-    }).eq('id', brand.id)
+    if (activeTemplateId) {
+      try {
+        const res = await fetch(`/api/email-templates/${activeTemplateId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email_config: config }),
+        })
+        const data = await res.json()
+        if (data.template) {
+          setTemplates(prev => prev.map(t => t.id === activeTemplateId ? data.template : t))
+        }
+      } catch (e) {
+        console.error('[saveConfig] template patch failed:', e)
+      }
+    } else {
+      const existingNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
+      await supabase.from('brands').update({
+        notes: JSON.stringify({ ...existingNotes, email_config: config }),
+      }).eq('id', brand.id)
+    }
     setSaving(false)
     setIsDirty(false)
+  }, [activeTemplateId, config, brand.id, brand.notes, supabase])
+
+  // Load templates on mount. If none exist, auto-create a master template
+  // seeded from the current config (which was itself derived from
+  // brand.notes.email_config by the parent page).
+  useEffect(() => {
+    let cancelled = false
+    async function loadTemplates() {
+      try {
+        const res = await fetch(`/api/email-templates?brandId=${brand.id}`)
+        const data = await res.json()
+        if (cancelled) return
+        const rows = (data.templates || []) as EmailTemplateRow[]
+        if (rows.length === 0) {
+          // Seed master template from the parent-provided initialConfig (or
+          // the in-memory default we built at mount).
+          const createRes = await fetch('/api/email-templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              brand_id: brand.id,
+              name: 'Master Brand Email',
+              type: 'master',
+              email_config: initialConfig || config,
+            }),
+          })
+          const createData = await createRes.json()
+          if (!cancelled && createData.template) {
+            setTemplates([createData.template])
+            setActiveTemplateId(createData.template.id)
+            if (createData.template.email_config) setConfig(createData.template.email_config)
+          }
+        } else {
+          setTemplates(rows)
+          // Prefer master template as the default active row.
+          const master = rows.find(r => r.type === 'master') || rows[0]
+          setActiveTemplateId(master.id)
+          if (master.email_config) setConfig(master.email_config)
+        }
+      } catch (e) {
+        console.error('[loadTemplates]', e)
+      } finally {
+        if (!cancelled) setTemplatesLoaded(true)
+      }
+    }
+    loadTemplates()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand.id])
+
+  // Switch to a different template — loads its saved config into the editor.
+  function switchTemplate(id: string) {
+    const row = templates.find(t => t.id === id)
+    if (!row) return
+    setActiveTemplateId(id)
+    setSwitcherOpen(false)
+    if (row.email_config) setConfig(row.email_config)
+    setIsDirty(false)
+  }
+
+  // Rename the active template (inline edit in the switcher header).
+  async function renameActiveTemplate(next: string) {
+    const trimmed = next.trim()
+    if (!activeTemplateId || !trimmed) return
+    setEditingName(false)
+    setTemplates(prev => prev.map(t => t.id === activeTemplateId ? { ...t, name: trimmed } : t))
+    try {
+      await fetch(`/api/email-templates/${activeTemplateId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      })
+    } catch (e) {
+      console.error('[renameActiveTemplate]', e)
+    }
+  }
+
+  async function markActiveTemplateReady() {
+    if (!activeTemplateId) return
+    try {
+      const res = await fetch(`/api/email-templates/${activeTemplateId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ready' }),
+      })
+      const data = await res.json()
+      if (data.template) {
+        setTemplates(prev => prev.map(t => t.id === activeTemplateId ? data.template : t))
+      }
+    } catch (e) {
+      console.error('[markActiveTemplateReady]', e)
+    }
+  }
+
+  async function pushActiveTemplateToKlaviyo() {
+    if (!activeTemplateId || klaviyoPushing) return
+    setKlaviyoPushing(true)
+    setKlaviyoMessage(null)
+    // Save any pending edits first so Klaviyo gets the latest config.
+    if (isDirty) await saveConfig()
+    try {
+      const res = await fetch(`/api/email-templates/${activeTemplateId}/klaviyo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html: previewHtml }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setKlaviyoMessage({ type: 'ok', text: 'Pushed to Klaviyo' })
+        if (data.templateId) {
+          setTemplates(prev => prev.map(t => t.id === activeTemplateId ? { ...t, klaviyo_template_id: data.templateId } : t))
+        }
+      } else {
+        setKlaviyoMessage({ type: 'err', text: data.error || 'Push failed' })
+      }
+    } catch {
+      setKlaviyoMessage({ type: 'err', text: 'Push failed' })
+    } finally {
+      setKlaviyoPushing(false)
+      setTimeout(() => setKlaviyoMessage(null), 4000)
+    }
   }
 
   function copyHtml() {
@@ -213,20 +532,136 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const isBlockOn = (id: string) => (config.enabledBlocks || []).includes(id)
+
+  const scrapedColors: string[] = (() => {
+    try {
+      const n = brand.notes ? JSON.parse(brand.notes) : {}
+      return Array.isArray(n.scraped_colors) ? n.scraped_colors : []
+    } catch { return [] }
+  })()
+
+  const colorPresets: string[] = [
+    brand.primary_color,
+    brand.secondary_color,
+    brand.accent_color,
+    brand.bg_base,
+    brand.text_on_dark,
+    brand.text_on_base,
+    brand.text_on_accent,
+    ...scrapedColors,
+    '#000000',
+    '#ffffff',
+    '#f5f5f5',
+    '#1a1a1a',
+  ].filter((c): c is string => typeof c === 'string' && c.length > 0)
+
   const emailColorFields: Array<{ key: keyof EmailColors; label: string }> = [
     { key: 'primaryBg', label: 'Primary' },
     { key: 'primaryText', label: 'Text on Primary' },
+    { key: 'secondaryBg', label: 'Secondary' },
+    { key: 'secondaryText', label: 'Text on Secondary' },
     { key: 'accentColor', label: 'Accent' },
+    { key: 'accentButtonText', label: 'Text on Accent' },
     { key: 'neutralBg', label: 'Light Background' },
-    { key: 'neutralText', label: 'Text on Light' },
-    { key: 'buttonBg', label: 'Button' },
-    { key: 'buttonText', label: 'Button Text' },
+    { key: 'neutralText', label: 'Text on Light BG' },
+    { key: 'buttonBg', label: 'Button BG' },
+    { key: 'buttonText', label: 'Text on Button' },
   ]
 
   const templatePanel = (
-    <div>
-      {/* AI Generate button */}
-      <div style={{ padding: '0 16px 16px' }}>
+    <div style={{ paddingBottom: 80 }}>
+      {/* Template switcher */}
+      <div style={{ marginBottom: 20, position: 'relative' }}>
+        <FieldLabel>Template</FieldLabel>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 12px', background: '#fafafa',
+          border: '1.5px solid #e0e0e0', borderRadius: 10,
+        }}>
+          {/* Status dot */}
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: activeTemplate?.status === 'ready' ? '#22c55e' : '#c0c0c0',
+            flexShrink: 0,
+          }} />
+          {/* Name (click to edit) */}
+          {editingName ? (
+            <input
+              autoFocus
+              defaultValue={activeTemplate?.name || ''}
+              onBlur={e => renameActiveTemplate(e.currentTarget.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') renameActiveTemplate(e.currentTarget.value)
+                if (e.key === 'Escape') setEditingName(false)
+              }}
+              style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 13, fontWeight: 700, outline: 'none', fontFamily: 'inherit' }}
+            />
+          ) : (
+            <button
+              onClick={() => activeTemplate && setEditingName(true)}
+              style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {activeTemplate?.name || (templatesLoaded ? 'Untitled' : 'Loading…')}
+            </button>
+          )}
+          {/* Dropdown arrow */}
+          <button
+            onClick={() => setSwitcherOpen(v => !v)}
+            aria-label="Switch template"
+            style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: '#666', fontSize: 12, lineHeight: 1 }}
+          >
+            ▾
+          </button>
+        </div>
+
+        {switcherOpen && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+            background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)', zIndex: 30, overflow: 'hidden',
+          }}>
+            {templates.map(t => (
+              <button
+                key={t.id}
+                onClick={() => switchTemplate(t.id)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '10px 12px',
+                  background: t.id === activeTemplateId ? '#f5f5f5' : '#fff',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  borderBottom: '1px solid #f0f0f0',
+                }}
+              >
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: t.status === 'ready' ? '#22c55e' : '#c0c0c0',
+                  flexShrink: 0,
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                  <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{TEMPLATE_TYPE_LABELS[t.type] || t.type}</div>
+                </div>
+              </button>
+            ))}
+            <button
+              onClick={() => { setSwitcherOpen(false); setNewTemplateModalOpen(true) }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '12px',
+                background: '#000', color: '#00ff97',
+                border: 'none', cursor: 'pointer',
+                fontSize: 12, fontWeight: 800, fontFamily: 'Barlow, sans-serif',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}
+            >
+              + New Template
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* AI Generate */}
+      <div style={{ marginBottom: 24 }}>
         <button onClick={generateWithAI} disabled={generating}
           style={{
             width: '100%', padding: '12px', background: generating ? '#333' : '#000',
@@ -243,167 +678,235 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
         </div>
       </div>
 
-      <Section id="colors" label="Template Colors" isOpen={openSections.has("colors")} onToggle={toggleSection}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {emailColorFields.map(({ key, label }) => {
-            const value = currentEmailColors[key]
-            return (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <label style={{ position: 'relative', width: 32, height: 32, borderRadius: 6, border: '1.5px solid #e0e0e0', overflow: 'hidden', cursor: 'pointer', flexShrink: 0, background: value }}>
-                  <input type="color" value={value}
-                    onChange={e => updateEmailColor(key, e.target.value)}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none' }} />
-                </label>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 1 }}>{label}</div>
-                  <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#999' }}>{value}</div>
-                </div>
-              </div>
-            )
-          })}
-          <button onClick={resetEmailColors}
-            style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-            Reset to Brand Hub colors
-          </button>
-        </div>
-      </Section>
+      {/* Settings */}
+      <SectionHeader title="Settings" subtitle="Subject line & preview" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
+        <Field label="Subject Line">
+          <input value={config.subjectLine} onChange={e => update({ subjectLine: e.target.value })} onBlur={saveConfig}
+            placeholder="e.g. Welcome to [Brand] — Here's 10% Off" style={inputStyle} />
+        </Field>
+        <Field label="Preview Text">
+          <input value={config.previewText} onChange={e => update({ previewText: e.target.value })} onBlur={saveConfig}
+            placeholder="Short text shown after the subject in inbox" style={inputStyle} />
+        </Field>
+      </div>
 
-      <Section id="announcement" label="Announcement Bar" isOpen={openSections.has("announcement")} onToggle={toggleSection}>
-        <input value={config.announcementText} onChange={e => update({ announcementText: e.target.value })} onBlur={saveConfig} placeholder="Free Shipping On Orders Over $50" style={inputStyle} />
-      </Section>
-
-      <Section id="hero" label="Hero" isOpen={openSections.has("hero")} onToggle={toggleSection}>
-        <input value={config.heroHeadline} onChange={e => update({ heroHeadline: e.target.value })} onBlur={saveConfig} placeholder="Headline" style={{ ...inputStyle, marginBottom: 6 }} />
-        <textarea value={config.heroBody} onChange={e => update({ heroBody: e.target.value })} onBlur={saveConfig} placeholder="Body text" rows={2} style={{ ...textareaStyle, marginBottom: 6 }} />
-        <input value={config.heroCta} onChange={e => update({ heroCta: e.target.value })} onBlur={saveConfig} placeholder="CTA button text" style={{ ...inputStyle, marginBottom: 6 }} />
-        <input value={config.heroCtaUrl} onChange={e => update({ heroCtaUrl: e.target.value })} onBlur={saveConfig} placeholder="CTA URL (optional)" style={inputStyle} />
-      </Section>
-
-      <Section id="products" label={`Products (${config.products.length}/3)`} isOpen={openSections.has("products")} onToggle={toggleSection}>
-        {config.products.map((p, i) => (
-          <div key={i} style={{ marginBottom: 10, padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee' }}>
-            <input value={p.name} onChange={e => { const u = [...config.products]; u[i] = { ...u[i], name: e.target.value }; update({ products: u }) }} onBlur={saveConfig} placeholder="Name" style={{ ...inputStyle, marginBottom: 4 }} />
-            <input value={p.price} onChange={e => { const u = [...config.products]; u[i] = { ...u[i], price: e.target.value }; update({ products: u }) }} onBlur={saveConfig} placeholder="Price" style={{ ...inputStyle, marginBottom: 4 }} />
-            <input value={p.imageUrl} onChange={e => { const u = [...config.products]; u[i] = { ...u[i], imageUrl: e.target.value }; update({ products: u }) }} onBlur={saveConfig} placeholder="Image URL" style={inputStyle} />
-          </div>
-        ))}
-        {config.products.length < 3 && (
-          <button onClick={() => update({ products: [...config.products, { name: '', price: '', imageUrl: '', url: '' }] })}
-            style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', background: 'none', border: '1px dashed var(--border)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', width: '100%' }}>
-            + Add product
-          </button>
-        )}
-      </Section>
-
-      <Section id="cta" label="CTA Banner" isOpen={openSections.has("cta")} onToggle={toggleSection}>
-        <input value={config.ctaBannerHeadline} onChange={e => update({ ctaBannerHeadline: e.target.value })} onBlur={saveConfig} placeholder="Headline" style={{ ...inputStyle, marginBottom: 6 }} />
-        <textarea value={config.ctaBannerBody} onChange={e => update({ ctaBannerBody: e.target.value })} onBlur={saveConfig} placeholder="Body" rows={2} style={{ ...textareaStyle, marginBottom: 6 }} />
-        <input value={config.ctaBannerCta} onChange={e => update({ ctaBannerCta: e.target.value })} onBlur={saveConfig} placeholder="Button text" style={inputStyle} />
-      </Section>
-
-      <Section id="howitworks" label="How It Works" isOpen={openSections.has("howitworks")} onToggle={toggleSection}>
-        {[1, 2, 3].map(n => {
-          const tKey = `step${n}Title` as keyof MasterEmailConfig
-          const bKey = `step${n}Body` as keyof MasterEmailConfig
+      {/* Colors */}
+      <SectionHeader title="Colors" subtitle="Template palette" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+        {emailColorFields.map(({ key, label }) => {
+          const value = currentEmailColors[key]
           return (
-            <div key={n} style={{ marginBottom: 10, padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee' }}>
-              <input value={config[tKey] as string} onChange={e => update({ [tKey]: e.target.value } as any)} onBlur={saveConfig} placeholder={`Step ${n} title`} style={{ ...inputStyle, marginBottom: 4 }} />
-              <input value={config[bKey] as string} onChange={e => update({ [bKey]: e.target.value } as any)} onBlur={saveConfig} placeholder={`Step ${n} body`} style={inputStyle} />
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <ColorPickerPopover
+                value={value}
+                onChange={v => updateEmailColor(key, v)}
+                presets={colorPresets}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 1 }}>{label}</div>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#999' }}>{value.toUpperCase()}</div>
+              </div>
             </div>
           )
         })}
-      </Section>
+        <button onClick={resetEmailColors}
+          style={{ marginTop: 4, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+          Reset to Brand Hub colors
+        </button>
+      </div>
 
-      <Section id="experience" label="Experience" isOpen={openSections.has("experience")} onToggle={toggleSection}>
-        <input value={config.experienceHeadline} onChange={e => update({ experienceHeadline: e.target.value })} onBlur={saveConfig} placeholder="Headline" style={{ ...inputStyle, marginBottom: 6 }} />
-        <textarea value={config.experienceBody} onChange={e => update({ experienceBody: e.target.value })} onBlur={saveConfig} placeholder="Body" rows={3} style={{ ...textareaStyle, marginBottom: 6 }} />
-        <input value={config.experienceQuote} onChange={e => update({ experienceQuote: e.target.value })} onBlur={saveConfig} placeholder="Italic quote" style={{ ...inputStyle, marginBottom: 6 }} />
-        <input value={config.experienceCta} onChange={e => update({ experienceCta: e.target.value })} onBlur={saveConfig} placeholder="CTA button text" style={inputStyle} />
-      </Section>
+      {/* Content */}
+      <SectionHeader title="Content" subtitle="13 blocks + shell" />
 
-      <Section id="testimonials" label="Testimonials" isOpen={openSections.has("testimonials")} onToggle={toggleSection}>
+      <BlockRow label="Announcement Bar" alwaysOn>
+        <Field label="Text">
+          <input value={config.announcementText} onChange={e => update({ announcementText: e.target.value })} onBlur={saveConfig}
+            placeholder="Free Shipping On Orders Over $50" style={inputStyle} />
+        </Field>
+      </BlockRow>
+
+      <BlockRow label="Hero Image" isOn={isBlockOn('01a')} onToggle={() => toggleBlock('01a')}>
+        <ImagePicker images={allImages} value={config.imageAssignments?.hero} onPick={url => updateImage('hero', url)} />
+      </BlockRow>
+
+      <BlockRow label="Hero Text" isOn={isBlockOn('01b')} onToggle={() => toggleBlock('01b')}>
+        <Field label="Eyebrow"><input value={config.heroEyebrow} onChange={e => update({ heroEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.heroHeadline} onChange={e => update({ heroHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Body"><textarea value={config.heroBody} onChange={e => update({ heroBody: e.target.value })} onBlur={saveConfig} rows={3} style={textareaStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="CTA Button" isOn={isBlockOn('01c')} onToggle={() => toggleBlock('01c')}>
+        <Field label="Button Text"><input value={config.heroCta} onChange={e => update({ heroCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Button URL"><input value={config.heroCtaUrl} onChange={e => update({ heroCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="Promo Code" isOn={isBlockOn('02')} onToggle={() => toggleBlock('02')}>
+        <Field label="Eyebrow"><input value={config.promoEyebrow} onChange={e => update({ promoEyebrow: e.target.value })} onBlur={saveConfig} placeholder="Exclusive Offer" style={inputStyle} /></Field>
+        <Field label="Discount"><input value={config.promoDiscount} onChange={e => update({ promoDiscount: e.target.value })} onBlur={saveConfig} placeholder="15% Off" style={inputStyle} /></Field>
+        <Field label="Subtitle"><input value={config.promoSubtitle} onChange={e => update({ promoSubtitle: e.target.value })} onBlur={saveConfig} placeholder="Your First Order" style={inputStyle} /></Field>
+        <Field label="Code"><input value={config.promoCode} onChange={e => update({ promoCode: e.target.value })} onBlur={saveConfig} placeholder="SAVE15" style={inputStyle} /></Field>
+        <Field label="Expiry Note"><input value={config.promoExpiry} onChange={e => update({ promoExpiry: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA Text"><input value={config.promoCta} onChange={e => update({ promoCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA URL"><input value={config.promoCtaUrl} onChange={e => update({ promoCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="3-Pillar Feature" isOn={isBlockOn('03')} onToggle={() => toggleBlock('03')}>
+        <Field label="Eyebrow"><input value={config.pillarsEyebrow} onChange={e => update({ pillarsEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.pillarsHeadline} onChange={e => update({ pillarsHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        {[1, 2, 3].map(n => {
+          const iKey = `pillar${n}Icon`
+          const lKey = `pillar${n}Label`
+          const bKey = `pillar${n}Body`
+          const c = config as any
+          return (
+            <div key={n} style={{ padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999' }}>Pillar {n}</div>
+              <input value={c[iKey] || ''} onChange={e => update({ [iKey]: e.target.value } as any)} onBlur={saveConfig} placeholder="Icon (e.g. ✦)" style={inputStyle} />
+              <input value={c[lKey] || ''} onChange={e => update({ [lKey]: e.target.value } as any)} onBlur={saveConfig} placeholder="Label" style={inputStyle} />
+              <input value={c[bKey] || ''} onChange={e => update({ [bKey]: e.target.value } as any)} onBlur={saveConfig} placeholder="Body" style={inputStyle} />
+            </div>
+          )
+        })}
+      </BlockRow>
+
+      <BlockRow label="Story / Nostalgia" isOn={isBlockOn('04')} onToggle={() => toggleBlock('04')}>
+        <Field label="Eyebrow"><input value={config.storyEyebrow} onChange={e => update({ storyEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.storyHeadline} onChange={e => update({ storyHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Body"><textarea value={config.storyBody} onChange={e => update({ storyBody: e.target.value })} onBlur={saveConfig} rows={3} style={textareaStyle} /></Field>
+        <Field label="Quote"><input value={config.storyQuote} onChange={e => update({ storyQuote: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Quote Attribution"><input value={config.storyQuoteAttribution} onChange={e => update({ storyQuoteAttribution: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Closing"><textarea value={config.storyClosing} onChange={e => update({ storyClosing: e.target.value })} onBlur={saveConfig} rows={2} style={textareaStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="Product Feature" isOn={isBlockOn('05')} onToggle={() => toggleBlock('05')}>
+        <Field label="Product Image">
+          <ImagePicker images={allImages} value={config.imageAssignments?.product} onPick={url => updateImage('product', url)} />
+        </Field>
+        <Field label="Badge"><input value={config.productBadge} onChange={e => update({ productBadge: e.target.value })} onBlur={saveConfig} placeholder="Best Seller" style={inputStyle} /></Field>
+        <Field label="Name"><input value={config.productName} onChange={e => update({ productName: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Body 1"><textarea value={config.productBody1} onChange={e => update({ productBody1: e.target.value })} onBlur={saveConfig} rows={2} style={textareaStyle} /></Field>
+        <Field label="Body 2"><textarea value={config.productBody2} onChange={e => update({ productBody2: e.target.value })} onBlur={saveConfig} rows={2} style={textareaStyle} /></Field>
+        <Field label="CTA Text"><input value={config.productCta} onChange={e => update({ productCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA URL"><input value={config.productCtaUrl} onChange={e => update({ productCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="Callout Card" isOn={isBlockOn('11')} onToggle={() => toggleBlock('11')}>
+        <Field label="Eyebrow"><input value={config.calloutEyebrow} onChange={e => update({ calloutEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.calloutHeadline} onChange={e => update({ calloutHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Body"><textarea value={config.calloutBody} onChange={e => update({ calloutBody: e.target.value })} onBlur={saveConfig} rows={2} style={textareaStyle} /></Field>
+        <Field label="CTA Text"><input value={config.calloutCta} onChange={e => update({ calloutCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA URL"><input value={config.calloutCtaUrl} onChange={e => update({ calloutCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="How-To / 3 Steps" isOn={isBlockOn('06')} onToggle={() => toggleBlock('06')}>
+        <Field label="Eyebrow"><input value={config.howToEyebrow} onChange={e => update({ howToEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.howToHeadline} onChange={e => update({ howToHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Subheadline"><input value={config.howToSubheadline} onChange={e => update({ howToSubheadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        {[1, 2, 3].map(n => {
+          const lKey = `step${n}Label`
+          const bKey = `step${n}Body`
+          const c = config as any
+          return (
+            <div key={n} style={{ padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999' }}>Step {n}</div>
+              <input value={c[lKey] || ''} onChange={e => update({ [lKey]: e.target.value } as any)} onBlur={saveConfig} placeholder="Label" style={inputStyle} />
+              <input value={c[bKey] || ''} onChange={e => update({ [bKey]: e.target.value } as any)} onBlur={saveConfig} placeholder="Body" style={inputStyle} />
+            </div>
+          )
+        })}
+        <Field label="Note"><input value={config.howToNote} onChange={e => update({ howToNote: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA Text"><input value={config.howToCta} onChange={e => update({ howToCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA URL"><input value={config.howToCtaUrl} onChange={e => update({ howToCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="Testimonials" isOn={isBlockOn('07')} onToggle={() => toggleBlock('07')}>
+        <Field label="Eyebrow"><input value={config.testimonialsEyebrow} onChange={e => update({ testimonialsEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.testimonialsHeadline} onChange={e => update({ testimonialsHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         {config.testimonials.map((t, i) => (
-          <div key={i} style={{ marginBottom: 8 }}>
-            <textarea value={t.quote} onChange={e => { const u = [...config.testimonials]; u[i] = { ...u[i], quote: e.target.value }; update({ testimonials: u }) }} onBlur={saveConfig} placeholder="Quote" rows={2} style={{ ...textareaStyle, marginBottom: 4 }} />
+          <div key={i} style={{ padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999' }}>Testimonial {i + 1}</div>
+            <textarea value={t.quote} onChange={e => { const u = [...config.testimonials]; u[i] = { ...u[i], quote: e.target.value }; update({ testimonials: u }) }} onBlur={saveConfig} placeholder="Quote" rows={2} style={textareaStyle} />
             <input value={t.author} onChange={e => { const u = [...config.testimonials]; u[i] = { ...u[i], author: e.target.value }; update({ testimonials: u }) }} onBlur={saveConfig} placeholder="Author" style={inputStyle} />
           </div>
         ))}
-      </Section>
+      </BlockRow>
 
-      <Section id="social" label="Social Proof" isOpen={openSections.has("social")} onToggle={toggleSection}>
-        <input value={config.reviewCount} onChange={e => update({ reviewCount: e.target.value })} onBlur={saveConfig} placeholder="e.g. 500+" style={{ ...inputStyle, marginBottom: 6 }} />
-        <input value={config.socialProofQuote} onChange={e => update({ socialProofQuote: e.target.value })} onBlur={saveConfig} placeholder="Featured quote" style={inputStyle} />
-      </Section>
+      {/* Hide block 08 entirely when there are no products to display — neither
+          in config.products nor in the Supabase-hosted productImages pool. */}
+      {(config.products.length > 0 || productImages.length > 0) && (
+        <BlockRow label="You'll Also Love" isOn={isBlockOn('08')} onToggle={() => toggleBlock('08')}>
+          <Field label="Eyebrow"><input value={config.youllAlsoLoveEyebrow} onChange={e => update({ youllAlsoLoveEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+          <Field label="Headline"><input value={config.youllAlsoLoveHeadline} onChange={e => update({ youllAlsoLoveHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+          <Field label="Subheadline"><input value={config.youllAlsoLoveSubheadline} onChange={e => update({ youllAlsoLoveSubheadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+          {config.products.map((p, i) => (
+            <div key={i} style={{ padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999' }}>Product {i + 1}</div>
+              <input value={p.name} onChange={e => { const u = [...config.products]; u[i] = { ...u[i], name: e.target.value }; update({ products: u }) }} onBlur={saveConfig} placeholder="Name" style={inputStyle} />
+              <input value={p.description} onChange={e => { const u = [...config.products]; u[i] = { ...u[i], description: e.target.value }; update({ products: u }) }} onBlur={saveConfig} placeholder="Description" style={inputStyle} />
+              <input value={p.imageUrl} onChange={e => { const u = [...config.products]; u[i] = { ...u[i], imageUrl: e.target.value }; update({ products: u }) }} onBlur={saveConfig} placeholder="Image URL (leave blank to auto-fill from brand library)" style={inputStyle} />
+              <input value={p.url} onChange={e => { const u = [...config.products]; u[i] = { ...u[i], url: e.target.value }; update({ products: u }) }} onBlur={saveConfig} placeholder="Link URL" style={inputStyle} />
+            </div>
+          ))}
+          <button onClick={() => update({ products: [...config.products, { name: '', description: '', imageUrl: '', url: '' }] })}
+            style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', background: 'none', border: '1px dashed var(--border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', width: '100%' }}>
+            + Add product
+          </button>
+        </BlockRow>
+      )}
 
-      <Section id="origin" label="Founder / Origin" isOpen={openSections.has("origin")} onToggle={toggleSection}>
-        <input value={config.originHeadline} onChange={e => update({ originHeadline: e.target.value })} onBlur={saveConfig} placeholder="Headline" style={{ ...inputStyle, marginBottom: 6 }} />
-        <textarea value={config.originBody} onChange={e => update({ originBody: e.target.value })} onBlur={saveConfig} placeholder="Body" rows={3} style={textareaStyle} />
-      </Section>
-
-      <Section id="subscribe" label="Subscribe & Save" isOpen={openSections.has("subscribe")} onToggle={toggleSection}>
-        <input value={config.subscribeHeadline} onChange={e => update({ subscribeHeadline: e.target.value })} onBlur={saveConfig} placeholder="Headline" style={{ ...inputStyle, marginBottom: 6 }} />
-        {config.subscribePerks.map((p, i) => (
-          <input key={i} value={p} onChange={e => { const u = [...config.subscribePerks]; u[i] = e.target.value; update({ subscribePerks: u }) }} onBlur={saveConfig} placeholder={`Perk ${i + 1}`} style={{ ...inputStyle, marginBottom: 4 }} />
-        ))}
-        <input value={config.subscribeCta} onChange={e => update({ subscribeCta: e.target.value })} onBlur={saveConfig} placeholder="CTA button text" style={{ ...inputStyle, marginTop: 6 }} />
-      </Section>
-
-      <Section id="bundle" label="Featured Bundle" isOpen={openSections.has("bundle")} onToggle={toggleSection}>
-        <input value={config.bundleHeadline} onChange={e => update({ bundleHeadline: e.target.value })} onBlur={saveConfig} placeholder="Headline" style={{ ...inputStyle, marginBottom: 6 }} />
-        <input value={config.bundlePrice} onChange={e => update({ bundlePrice: e.target.value })} onBlur={saveConfig} placeholder="Price (e.g. $72)" style={{ ...inputStyle, marginBottom: 6 }} />
-        <textarea value={config.bundleBody} onChange={e => update({ bundleBody: e.target.value })} onBlur={saveConfig} placeholder="Body" rows={2} style={{ ...textareaStyle, marginBottom: 6 }} />
-        <input value={config.bundleCta} onChange={e => update({ bundleCta: e.target.value })} onBlur={saveConfig} placeholder="CTA button text" style={inputStyle} />
-      </Section>
-
-      <Section id="featured" label="Single Product Feature" isOpen={openSections.has("featured")} onToggle={toggleSection}>
-        <input value={config.featuredProductLabel} onChange={e => update({ featuredProductLabel: e.target.value })} onBlur={saveConfig} placeholder="Label (e.g. New Flavor)" style={{ ...inputStyle, marginBottom: 6 }} />
-        <input value={config.featuredProductName} onChange={e => update({ featuredProductName: e.target.value })} onBlur={saveConfig} placeholder="Product name" style={{ ...inputStyle, marginBottom: 6 }} />
-        <textarea value={config.featuredProductBody} onChange={e => update({ featuredProductBody: e.target.value })} onBlur={saveConfig} placeholder="Body" rows={2} style={{ ...textareaStyle, marginBottom: 6 }} />
-        <input value={config.featuredProductCta} onChange={e => update({ featuredProductCta: e.target.value })} onBlur={saveConfig} placeholder="CTA button text" style={inputStyle} />
-      </Section>
-
-      <Section id="promo" label="Promo Code" isOpen={openSections.has("promo")} onToggle={toggleSection}>
-        <input value={config.promoPercent} onChange={e => update({ promoPercent: e.target.value })} onBlur={saveConfig} placeholder="e.g. 15%" style={{ ...inputStyle, marginBottom: 6 }} />
-        <input value={config.promoCode} onChange={e => update({ promoCode: e.target.value })} onBlur={saveConfig} placeholder="e.g. WELCOME15" style={inputStyle} />
-      </Section>
-
-      <Section id="referral" label="Referral" isOpen={openSections.has("referral")} onToggle={toggleSection}>
-        <input value={config.referralAmount} onChange={e => update({ referralAmount: e.target.value })} onBlur={saveConfig} placeholder="e.g. $10" style={{ ...inputStyle, marginBottom: 6 }} />
-        <textarea value={config.referralBody} onChange={e => update({ referralBody: e.target.value })} onBlur={saveConfig} placeholder="Body" rows={2} style={textareaStyle} />
-      </Section>
-
-      <Section id="blog" label="Blog Posts" isOpen={openSections.has("blog")} onToggle={toggleSection}>
-        {config.blogPosts.map((p, i) => (
-          <div key={i} style={{ marginBottom: 10, padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee' }}>
-            <input value={p.category} onChange={e => { const u = [...config.blogPosts]; u[i] = { ...u[i], category: e.target.value }; update({ blogPosts: u }) }} onBlur={saveConfig} placeholder="Category" style={{ ...inputStyle, marginBottom: 4 }} />
-            <input value={p.title} onChange={e => { const u = [...config.blogPosts]; u[i] = { ...u[i], title: e.target.value }; update({ blogPosts: u }) }} onBlur={saveConfig} placeholder="Title" style={{ ...inputStyle, marginBottom: 4 }} />
-            <textarea value={p.excerpt} onChange={e => { const u = [...config.blogPosts]; u[i] = { ...u[i], excerpt: e.target.value }; update({ blogPosts: u }) }} onBlur={saveConfig} placeholder="Excerpt" rows={2} style={textareaStyle} />
+      <BlockRow label="FAQ" isOn={isBlockOn('12')} onToggle={() => toggleBlock('12')}>
+        <Field label="Eyebrow"><input value={config.faqEyebrow} onChange={e => update({ faqEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.faqHeadline} onChange={e => update({ faqHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        {config.faqItems.map((f, i) => (
+          <div key={i} style={{ padding: 10, background: '#fafafa', borderRadius: 8, border: '1px solid #eee', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999' }}>FAQ {i + 1}</div>
+            <input value={f.question} onChange={e => { const u = [...config.faqItems]; u[i] = { ...u[i], question: e.target.value }; update({ faqItems: u }) }} onBlur={saveConfig} placeholder="Question" style={inputStyle} />
+            <textarea value={f.answer} onChange={e => { const u = [...config.faqItems]; u[i] = { ...u[i], answer: e.target.value }; update({ faqItems: u }) }} onBlur={saveConfig} placeholder="Answer" rows={2} style={textareaStyle} />
           </div>
         ))}
-      </Section>
-
-      <Section id="footer" label="Footer" isOpen={openSections.has("footer")} onToggle={toggleSection}>
-        <input value={config.footerTagline} onChange={e => update({ footerTagline: e.target.value })} onBlur={saveConfig} placeholder="Tagline" style={{ ...inputStyle, marginBottom: 6 }} />
-        <input value={config.instagramUrl} onChange={e => update({ instagramUrl: e.target.value })} onBlur={saveConfig} placeholder="Instagram URL" style={inputStyle} />
-      </Section>
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 16, padding: '0 16px' }}>
-        <button onClick={copyHtml}
-          style={{ flex: 1, padding: '10px', background: '#fff', color: '#000', fontWeight: 700, fontSize: 12, borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer' }}>
-          {copied ? '✓ Copied' : 'Copy HTML'}
+        <button onClick={() => update({ faqItems: [...config.faqItems, { question: '', answer: '' }] })}
+          style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', background: 'none', border: '1px dashed var(--border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', width: '100%' }}>
+          + Add FAQ
         </button>
-        {isDirty && (
-          <button onClick={saveConfig} disabled={saving}
-            style={{ flex: 1, padding: '10px', background: '#000', color: '#00ff97', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12, borderRadius: 999, border: 'none', cursor: 'pointer' }}>
-            {saving ? 'Saving...' : 'Save template'}
-          </button>
-        )}
-      </div>
+        <Field label="CTA Text"><input value={config.faqCta} onChange={e => update({ faqCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA URL"><input value={config.faqCtaUrl} onChange={e => update({ faqCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+      </BlockRow>
+
+      <BlockRow label="Instagram Grid" isOn={isBlockOn('09')} onToggle={() => toggleBlock('09')}>
+        <Field label="Eyebrow"><input value={config.igEyebrow} onChange={e => update({ igEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Headline"><input value={config.igHeadline} onChange={e => update({ igHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Handle"><input value={config.igHandle} onChange={e => update({ igHandle: e.target.value })} onBlur={saveConfig} placeholder="@handle" style={inputStyle} /></Field>
+        <Field label="Instagram URL"><input value={config.igUrl} onChange={e => update({ igUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="CTA Text"><input value={config.igCta} onChange={e => update({ igCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Images (6)">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <div key={i}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999', marginBottom: 4 }}>Slot {i + 1}</div>
+                <ImagePicker
+                  images={allImages}
+                  value={config.igImages[i] || undefined}
+                  onPick={url => {
+                    const u = [...config.igImages]
+                    u[i] = url
+                    update({ igImages: u })
+                    scheduleAutoSave()
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </Field>
+      </BlockRow>
+
+      <BlockRow label="Footer" alwaysOn>
+        <Field label="Tagline"><input value={config.footerTagline} onChange={e => update({ footerTagline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Instagram URL"><input value={config.instagramUrl} onChange={e => update({ instagramUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+      </BlockRow>
     </div>
   )
 
-  // ── Sent emails tab ──
   const sentPanel = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {!emails?.length ? (
@@ -434,15 +937,27 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
   )
 
   return (
-    <div style={{ display: 'flex', gap: 24, minHeight: 'calc(100vh - 72px)', padding: '24px 32px' }}>
-      {/* Left panel — editor */}
-      <div style={{ width: 360, flexShrink: 0, overflowY: 'auto', paddingRight: 8 }}>
+    <>
+    {newTemplateModalOpen && (
+      <NewTemplateModal
+        brandId={brand.id}
+        onClose={() => setNewTemplateModalOpen(false)}
+        onCreated={row => {
+          setTemplates(prev => [...prev, row])
+          setActiveTemplateId(row.id)
+          if (row.email_config) setConfig(row.email_config)
+          setIsDirty(false)
+          setNewTemplateModalOpen(false)
+        }}
+      />
+    )}
+    <div style={{ display: 'flex', gap: 24, height: 'calc(100vh - 72px)', padding: '24px 32px', alignItems: 'flex-start' }}>
+      <div style={{ width: 360, flexShrink: 0, overflowY: 'auto', paddingRight: 8, position: 'relative', height: 'calc(100vh - 120px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase' }}>Email</div>
           <Link href="/campaigns/new" style={{ fontSize: 11, fontWeight: 700, color: '#000', background: '#00ff97', padding: '6px 14px', borderRadius: 999, textDecoration: 'none' }}>+ New</Link>
         </div>
 
-        {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
           {(['Template', 'Sent emails'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
@@ -453,10 +968,70 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
         </div>
 
         {activeTab === 'Template' ? templatePanel : sentPanel}
+
+        {activeTab === 'Template' && (
+          <div style={{
+            position: 'sticky', bottom: 0, background: '#fff',
+            borderTop: '1px solid var(--border)',
+            padding: '12px 0 8px',
+            display: 'flex', flexDirection: 'column', gap: 8, zIndex: 5,
+          }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={copyHtml}
+                style={{ flex: 1, padding: '11px', background: '#fff', color: '#000', fontWeight: 700, fontSize: 12, borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer' }}>
+                {copied ? '✓ Copied' : 'Copy HTML'}
+              </button>
+              <button onClick={saveConfig} disabled={saving || !isDirty}
+                style={{
+                  flex: 1, padding: '11px',
+                  background: isDirty ? '#000' : '#e0e0e0',
+                  color: isDirty ? '#00ff97' : '#999',
+                  fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12,
+                  borderRadius: 999, border: 'none',
+                  cursor: isDirty && !saving ? 'pointer' : 'default',
+                }}>
+                {saving ? 'Saving...' : isDirty ? 'Save template' : 'Saved'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={markActiveTemplateReady}
+                disabled={!activeTemplateId || activeTemplate?.status === 'ready'}
+                style={{
+                  flex: 1, padding: '10px', background: '#fff',
+                  color: activeTemplate?.status === 'ready' ? '#22c55e' : '#000',
+                  fontWeight: 700, fontSize: 11, borderRadius: 999,
+                  border: `1px solid ${activeTemplate?.status === 'ready' ? '#22c55e' : 'var(--border)'}`,
+                  cursor: activeTemplate?.status === 'ready' ? 'default' : 'pointer',
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                }}
+              >
+                {activeTemplate?.status === 'ready' ? '✓ Ready' : 'Mark as ready'}
+              </button>
+              <button
+                onClick={pushActiveTemplateToKlaviyo}
+                disabled={!activeTemplateId || klaviyoPushing}
+                title="Push the active template to Klaviyo"
+                style={{
+                  flex: 1, padding: '10px',
+                  background: klaviyoMessage?.type === 'ok' ? '#00ff97' : '#f0f0f0',
+                  color: klaviyoMessage?.type === 'ok' ? '#000' : '#333',
+                  fontWeight: 700, fontSize: 11, borderRadius: 999, border: 'none',
+                  cursor: klaviyoPushing ? 'wait' : 'pointer',
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                }}
+              >
+                {klaviyoPushing ? '...' : klaviyoMessage?.type === 'ok' ? '✓ Klaviyo' : 'Push to Klaviyo'}
+              </button>
+            </div>
+            {klaviyoMessage?.type === 'err' && (
+              <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center' }}>{klaviyoMessage.text}</div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Right panel — live preview */}
-      <div style={{ flex: 1, background: '#e0e0e0', borderRadius: 16, overflow: 'hidden', position: 'relative', minHeight: 600 }}>
+      <div style={{ flex: 1, background: '#e0e0e0', borderRadius: 16, overflow: 'hidden', position: 'sticky', top: 24, height: 'calc(100vh - 120px)' }}>
         {generating && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
             <div style={{ width: 32, height: 32, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -470,6 +1045,150 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, life
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0', height: '100%', overflowY: 'auto' }}>
           <iframe ref={iframeRef} style={{ width: previewWidth, height: 'calc(100vh - 140px)', border: 'none', background: '#fff', borderRadius: 0 }} title="Email preview" />
+        </div>
+      </div>
+    </div>
+    </>
+  )
+}
+
+// ── New Template modal ────────────────────────────────────────────────
+function NewTemplateModal({ brandId, onClose, onCreated }: {
+  brandId: string
+  onClose: () => void
+  onCreated: (row: EmailTemplateRow) => void
+}) {
+  const [name, setName] = useState('')
+  const [type, setType] = useState<TemplateType>('welcome')
+  const [brief, setBrief] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit() {
+    if (!name.trim() || !brief.trim()) {
+      setError('Name and brief are required')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      // 1. Create the template row
+      const createRes = await fetch('/api/email-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_id: brandId, name: name.trim(), type, brief: brief.trim() }),
+      })
+      const createData = await createRes.json()
+      if (!createData.template) {
+        setError(createData.error || 'Create failed')
+        setBusy(false)
+        return
+      }
+      // 2. Ask the AI to fill it in from the brief
+      const genRes = await fetch(`/api/email-templates/${createData.template.id}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brief: brief.trim() }),
+      })
+      const genData = await genRes.json()
+      onCreated(genData.template || createData.template)
+    } catch (e) {
+      console.error('[NewTemplateModal]', e)
+      setError('Something went wrong')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(4px)', zIndex: 100,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: '#fff', borderRadius: 16, padding: 28, width: 520, maxWidth: '90vw',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          display: 'flex', flexDirection: 'column', gap: 16,
+        }}
+      >
+        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase', color: '#000' }}>
+          New Template
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', marginBottom: 4 }}>Template Name</div>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Welcome Email 1" style={inputStyle} disabled={busy} />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', marginBottom: 4 }}>Type</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {(Object.keys(TEMPLATE_TYPE_LABELS) as TemplateType[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setType(t)}
+                disabled={busy}
+                style={{
+                  padding: '8px 14px', borderRadius: 999,
+                  background: type === t ? '#000' : '#fff',
+                  color: type === t ? '#00ff97' : '#444',
+                  border: `1.5px solid ${type === t ? '#000' : '#e0e0e0'}`,
+                  fontSize: 12, fontWeight: 700, cursor: busy ? 'default' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {TEMPLATE_TYPE_LABELS[t]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', marginBottom: 4 }}>Brief</div>
+          <textarea
+            value={brief}
+            onChange={e => setBrief(e.target.value)}
+            rows={5}
+            placeholder={TEMPLATE_BRIEF_PLACEHOLDERS[type]}
+            disabled={busy}
+            style={textareaStyle}
+          />
+          <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+            Describe what this email is for. The AI will pick the right blocks and write the copy.
+          </div>
+        </div>
+
+        {error && <div style={{ fontSize: 12, color: '#ef4444' }}>{error}</div>}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button
+            onClick={onClose}
+            disabled={busy}
+            style={{ flex: 1, padding: '12px', background: '#fff', color: '#000', fontWeight: 700, fontSize: 13, borderRadius: 999, border: '1.5px solid #e0e0e0', cursor: busy ? 'default' : 'pointer' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={busy}
+            style={{
+              flex: 2, padding: '12px',
+              background: busy ? '#333' : '#000', color: '#00ff97',
+              fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 13,
+              borderRadius: 999, border: 'none',
+              cursor: busy ? 'wait' : 'pointer',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            {busy && <div style={{ width: 14, height: 14, border: '2px solid rgba(0,255,151,0.3)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />}
+            {busy ? 'Building your template...' : 'Generate Template'}
+          </button>
         </div>
       </div>
     </div>

@@ -576,7 +576,7 @@ export default function InsightsPage() {
 
       {/* ═══ SECTION 2 — KPI STRIP ═══ */}
       {hasData && aggRows.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 48 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 48 }}>
           {[
             { label: 'Total Spend', value: `$${totalSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, dark: true },
             { label: 'Purchases', value: totalPurchases.toLocaleString(), dark: false },
@@ -615,51 +615,61 @@ export default function InsightsPage() {
                   border: `1px solid ${colors.border}`, overflow: 'hidden',
                   boxShadow: shadow.card, transition: 'transform 0.15s, box-shadow 0.15s',
                 }}>
-                  {/* Image */}
-                  <div style={{ position: 'relative', aspectRatio: '4/3', overflow: 'hidden', background: colors.cream }}>
-                    <img
-                      src={r.creative_image_url!}
-                      alt={shortAdName(r.ad_name)}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }}
-                    />
-                    {/* Purchases badge overlay top-right */}
-                    <div style={{
-                      position: 'absolute', top: 12, right: 12,
-                      background: colors.accent, color: colors.ink,
-                      fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md,
-                      padding: '6px 12px', borderRadius: radius.pill, boxShadow: shadow.sm,
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2,
-                    }}>
-                      <span>{r.purchases} sales</span>
-                      <span style={{ fontSize: fontSize.xs, fontWeight: fontWeight.semibold }}>{r.roas.toFixed(2)}x ROAS</span>
+                  <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                    {/* Thumbnail — small and crisp */}
+                    {r.creative_image_url && (
+                      <div style={{ flexShrink: 0, position: 'relative' }}>
+                        <img
+                          src={r.creative_image_url}
+                          alt={shortAdName(r.ad_name)}
+                          style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: radius.md, border: `1px solid ${colors.border}` }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                        {/* Creative type badge below image */}
+                        {creativeType && (
+                          <div style={{
+                            marginTop: 4, textAlign: 'center',
+                            fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
+                            background: creativeType.color, color: colors.ink,
+                            padding: '2px 6px', borderRadius: radius.pill,
+                            textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                          }}>{creativeType.label}</div>
+                        )}
+                      </div>
+                    )}
+                    {/* Right: name + ROAS badge */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                        <div style={{
+                          fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
+                          textTransform: 'uppercase', letterSpacing: letterSpacing.slight, color: colors.ink,
+                        }}>{shortAdName(r.ad_name)}</div>
+                        {/* Purchases + ROAS badge */}
+                        <div style={{
+                          background: colors.accent, color: colors.ink,
+                          fontFamily: font.heading, fontWeight: fontWeight.heading,
+                          fontSize: fontSize.xs, padding: '4px 10px', borderRadius: radius.pill,
+                          whiteSpace: 'nowrap', flexShrink: 0, textAlign: 'center', lineHeight: 1.3,
+                        }}>
+                          <div>{r.purchases} sales</div>
+                          <div style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.semibold }}>{r.roas.toFixed(2)}x</div>
+                        </div>
+                      </div>
                     </div>
-                    {/* Creative type badge */}
-                    {creativeType && (
+                  </div>
+
+                  {/* Copy body below the header */}
+                  <div style={{ padding: '10px 20px 0' }}>
+                    {r.creative_body && (
                       <div style={{
-                        position: 'absolute', bottom: 12, left: 12,
-                        background: creativeType.color, color: colors.ink,
-                        fontFamily: font.heading, fontWeight: fontWeight.bold,
-                        fontSize: fontSize.xs, padding: '4px 10px', borderRadius: radius.pill,
-                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                      }}>{creativeType.label}</div>
+                        fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6,
+                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+                      }}>{r.creative_body}</div>
                     )}
                   </div>
 
                   {/* Card content */}
-                  <div style={{ padding: '16px 20px 20px' }}>
-                    <div style={{
-                      fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
-                      textTransform: 'uppercase', letterSpacing: letterSpacing.slight, color: colors.ink, marginBottom: 8,
-                    }}>{shortAdName(r.ad_name)}</div>
-
-                    {r.creative_body && (
-                      <div style={{
-                        fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6, marginBottom: 12,
-                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-                      }}>{r.creative_body}</div>
-                    )}
-
+                  <div style={{ padding: '14px 20px 20px' }}>
                     {/* Metrics row */}
                     <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
                       {[

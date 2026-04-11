@@ -37,6 +37,7 @@ export interface Brand {
   logo_url: string | null
   mission: string | null
   products: any[] | null
+  notes: string | null
 }
 
 export interface GeneratedCopy {

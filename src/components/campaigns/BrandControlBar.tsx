@@ -9,8 +9,8 @@ import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition,
 // SECTION 1: LOGO — shows brand.logo_url, single thumbnail, not removable
 // SECTION 2: COLORS — primary, secondary, accent color pickers
 // SECTION 3: FONT — font family display and picker
-// SECTION 4: PRODUCTS — getShopifyImages(), only if length > 0, capped at 8
-// SECTION 5: IMAGES — getProductImages() + getLifestyleImages() combined, capped at 8
+// SECTION 4: PRODUCTS — product bucket from bucketBrandImages(), only if non-empty, capped at 8
+// SECTION 5: IMAGES — lifestyle bucket from bucketBrandImages(), capped at 8
 //
 // Any prompt editing this file must:
 // 1. Read the full file before making changes
@@ -108,7 +108,7 @@ export default function BrandControlBar({
       return bScore - aScore
     })
   const filteredLifestyleUrls = dedupe(lifestyleImageUrls.filter(u => !isLogoUrl(u)))
-  const filteredCombinedUrls = dedupe([...filteredProductUrls, ...filteredLifestyleUrls])
+  const filteredCombinedUrls = dedupe([...filteredLifestyleUrls, ...filteredProductUrls])
 
   const imageThumb = (url: string, i: number, keyPrefix: string) => {
     const idx = allImageUrls.indexOf(url)

@@ -118,6 +118,7 @@ export interface BrandImage {
   alt_text: string | null
   width: number | null
   height: number | null
+  source_url: string | null
 }
 
 export interface Campaign {
