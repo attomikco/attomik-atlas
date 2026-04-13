@@ -128,6 +128,9 @@ isSwitching      // true for 500ms after brand switch
 | `campaign_assets` | Assets attached to campaigns |
 | `brand_insights` | Upload/sync metadata per brand |
 | `brand_insight_rows` | Individual Meta Ads data rows — performance + creative fields |
+| `profiles` | One row per `auth.users` user — `full_name`, `job_title`. Auto-created by `handle_new_user()` trigger on signup. |
+| `brand_members` | Brand team membership — `(brand_id, user_id)` unique, `role in ('owner', 'admin', 'member')`. **This table is the authority for brand access**, not `brands.user_id`. |
+| `brand_invites` | Pending email invites — opaque `token` (default `gen_random_bytes(32)` hex), 7-day `expires_at`, `accepted_at` nullable. |
 
 ### Supabase storage buckets:
 - `brand-images` — public — scraped brand images
@@ -190,11 +193,65 @@ Protected routes (require auth):
 - `/newsletter/:path*`
 - `/landing-page/:path*`
 - `/insights/:path*`
+- `/settings/:path*`
+- `/brands/:path*`
 
 Public routes (no auth):
 - `/`, `/login`, `/auth`, `/onboarding`, `/preview/:path*`, `/api/:path*`, `/render`
+- **`/invite/:path*`** — intentionally public. The accept-invite page is served before the user has a session; it uses the service-role client to look up the invite by opaque token. Do not add this to the middleware matcher.
 
 Auth uses Supabase magic link. On auth → brand claimed with `user_id` → redirect to dashboard.
+
+---
+
+## TEAM MEMBERSHIP & INVITES
+
+**Tables:** `brand_members`, `brand_invites` (see SUPABASE TABLES above).
+
+### Access model
+- `brand_members` is the single source of truth for "can this user see/touch this brand". `brands.user_id` still exists and is written on first claim, but RLS no longer gates access through it — every `brands` select/update now goes through a `brand_members where user_id = auth.uid()` subquery.
+- Roles: `owner` (full control, can delete brand, manage all members), `admin` (can invite + revoke invites), `member` (read/edit brand content, cannot manage people).
+- Backfill on migration: every brand with a non-null `user_id` got an `owner` row in `brand_members`.
+
+### RLS summary
+- **`brand_members` select**: row visible if `user_id = auth.uid()` OR the caller is a member of the same brand.
+- **`brand_members` insert**: caller must be `owner` or `admin` of that brand.
+- **`brand_members` delete**: caller must be `owner` of that brand.
+- **`brand_invites` select**: caller must be a member of the brand.
+- **`brand_invites` insert/delete**: caller must be `owner` or `admin`.
+- **`brands` select/update**: caller must be in `brand_members` for that brand.
+- **`brands` delete**: caller must be `owner`.
+
+### Key constraints
+- `brand_members (brand_id, user_id)` is unique — no duplicate memberships.
+- `brand_invites.token` is unique (default `encode(gen_random_bytes(32), 'hex')` — requires `pgcrypto`).
+- "Last owner" cannot be removed (guarded in the member DELETE route, not in SQL).
+- Owner role is not flippable via the PATCH role endpoint — ownership transfer is a separate future action.
+
+### Invite flow
+1. **POST** `/api/brands/[brandId]/invites` — validates email, checks for duplicate membership (via `auth.admin.listUsers`) and pending invites, inserts `brand_invites` row, sends email via `sendEmail()`. Returns 200 with a `warning` field (not an error) if the Resend send fails so the invite row is still available for resend.
+2. **Email** lands with a big CTA linking to `/invite/<token>` (see `src/lib/invite-email.ts`).
+3. **GET** `/invite/[token]` — public server component, fetches via admin client, rejects expired/accepted/not-found, hands off to `AcceptInviteClient`.
+4. **POST** `/api/invites/[token]` — auth required, case-insensitive email match between `user.email` and `invite.email`, inserts `brand_members` via admin client (RLS would block otherwise), marks invite `accepted_at = now()`. Idempotent: re-accepting a completed invite returns `{ brand_id }` if the user is already a member.
+5. **DELETE** `/api/brands/[brandId]/invites/[inviteId]` — owner/admin revoke.
+
+### Member management
+- **DELETE** `/api/brands/[brandId]/members/[userId]` — owner only, cannot remove self, cannot remove last owner.
+- **PATCH** `/api/brands/[brandId]/members/[userId]` — owner only, body `{ role: 'admin' | 'member' }`, cannot change own role, cannot demote an owner.
+
+### ⚠️ `listUsers` pagination cap
+Both the invite POST route and the team settings page resolve `auth.users` emails via `supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 })`. **Above 200 total users, email resolution becomes incomplete** — existing members would appear as "email null" in the team list, and the duplicate-member pre-check during invite creation would miss them (the unique constraint + invite accept email-match still catch it at accept time, but the UX degrades). Fix when you grow past ~200: add an `email` column to `profiles` kept in sync via the `handle_new_user()` trigger, or create a `get_user_by_email` RPC. Search for `listUsers` in `src/app/api/brands/[brandId]/invites/route.ts` and `src/app/(app)/brands/[brandId]/settings/team/page.tsx`.
+
+---
+
+## TRANSACTIONAL EMAIL (RESEND)
+
+**Helper:** `src/lib/resend.ts` — every outbound email in this codebase goes through `sendEmail({ to, subject, html, from? })`. Single place to change the domain, API key, or `from` header.
+
+- **Default from**: `Attomik <invites@email.attomik.co>` (override via `RESEND_FROM` env var).
+- **API key**: `RESEND_API_KEY` (server-only, no `NEXT_PUBLIC_` prefix).
+- **Templates** live in `src/lib/` as plain HTML builders (e.g. `invite-email.ts`) — inline styles only, no external CSS, no media queries, HTML-escape all interpolated values.
+- Current sends: brand team invites. No other transactional emails are wired up yet — add them via `sendEmail()`, not by re-instantiating `Resend`.
 
 ---
 
@@ -563,8 +620,12 @@ Always use direct fetch to Meta Graph API — no facebook-nodejs-business-sdk or
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_SITE_URL
+NEXT_PUBLIC_APP_URL       # used by invite flow for outbound links; falls back to NEXT_PUBLIC_SITE_URL
 ANTHROPIC_API_KEY
 RESEND_API_KEY
+RESEND_FROM               # optional; defaults to "Attomik <invites@email.attomik.co>"
 ```
 
 ---
