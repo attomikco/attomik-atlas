@@ -90,9 +90,9 @@ export default function EmailPage() {
         emailConfig = {
           ...emailConfig,
           imageAssignments: {
+            ...emailConfig.imageAssignments,
             hero: emailConfig.imageAssignments?.hero || (heroPick ? toUrl(heroPick) : ''),
             product: emailConfig.imageAssignments?.product || (productPick ? toUrl(productPick) : ''),
-            ...emailConfig.imageAssignments,
           },
         }
       } else {

@@ -69,5 +69,7 @@ export const config = {
     '/newsletter/:path*',
     '/landing-page/:path*',
     '/insights/:path*',
+    '/settings/:path*',
+    '/brands/:path*',
   ],
 }

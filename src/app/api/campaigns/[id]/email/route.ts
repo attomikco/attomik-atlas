@@ -224,6 +224,16 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
   const heroUrl = heroPick ? toUrl(heroPick) : ''
   const productUrl = productPick ? toUrl(productPick) : ''
 
+  // IG grid backfill — keep user's manual IG images if they set any, otherwise
+  // seed all 6 slots from the lifestyle/product pool so the preview never
+  // renders empty placeholder tiles.
+  const savedIg = Array.isArray(savedConfig?.igImages) ? savedConfig.igImages : []
+  const anyIgSet = savedIg.some(url => typeof url === 'string' && url.length > 0)
+  const lifestylePool = [...lifestyleImages, ...productImages]
+  const igImages: string[] = anyIgSet
+    ? [0, 1, 2, 3, 4, 5].map(i => savedIg[i] || lifestylePool[i] || '')
+    : [0, 1, 2, 3, 4, 5].map(i => lifestylePool[i] || '')
+
   // Merge: defaults < generated < saved. Saved user edits always win over AI;
   // AI only fills fields the user hasn't touched.
   const finalConfig: MasterEmailConfig = {
@@ -232,6 +242,7 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
     ...(savedConfig || {}),
     emailColors: savedConfig?.emailColors ?? null,
     enabledBlocks: savedConfig?.enabledBlocks ?? DEFAULT_MASTER_CONFIG.enabledBlocks,
+    igImages,
     imageAssignments: {
       ...(savedConfig?.imageAssignments || {}),
       hero: savedConfig?.imageAssignments?.hero || heroUrl,
@@ -285,11 +296,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     try {
       const parsed = JSON.parse(stored.content)
       if (parsed.html) {
-        return NextResponse.json({
-          html: parsed.html,
-          subject: parsed.subject || '',
-          config: parsed.config || null,
-        })
+        // Staleness check — cached HTML written before the image/palette fixes
+        // contains IG placeholders, the old cream fallback bg, or an empty hero
+        // url. Fall through to rebuild so the preview picks up fresh content
+        // without requiring a manual regenerate.
+        const html: string = parsed.html
+        const isStale =
+          html.includes('placehold.co') ||
+          html.includes('#f8f7f4') ||
+          html.includes("background-image:url('')")
+        if (!isStale) {
+          return NextResponse.json({
+            html,
+            subject: parsed.subject || '',
+            config: parsed.config || null,
+          })
+        }
       }
     } catch {}
   }

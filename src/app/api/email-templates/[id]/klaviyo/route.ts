@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildMasterEmail, type MasterEmailConfig } from '@/lib/email-master-template'
 import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
+import { pushTemplateToKlaviyo } from '@/lib/klaviyo'
 import type { BrandImage } from '@/types'
 
 // POST /api/email-templates/[id]/klaviyo
-// Body (optional): { html?: string }  — if html is provided, push that directly;
-// otherwise render fresh from the template row's email_config.
-// Stores the returned klaviyo_template_id back on the template row.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// Always re-renders fresh HTML from template.email_config via buildMasterEmail,
+// then pushes to Klaviyo using create-or-update semantics keyed on
+// template.klaviyo_template_id. Never trusts client-supplied HTML.
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -29,6 +30,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} }
   })()
 
+  console.log('[email-templates klaviyo] brand notes inspection', {
+    templateId: id,
+    notesRawType: typeof brand.notes,
+    notesRawLength: typeof brand.notes === 'string' ? brand.notes.length : null,
+    parsedNotesKeys: Object.keys(notesData || {}),
+    hasKlaviyoKey: typeof notesData?.klaviyo_api_key === 'string' && notesData.klaviyo_api_key.length > 0,
+    klaviyoKeyPrefix: typeof notesData?.klaviyo_api_key === 'string'
+      ? notesData.klaviyo_api_key.slice(0, 6) + '…'
+      : null,
+  })
+
   const klaviyoKey = notesData?.klaviyo_api_key
   if (!klaviyoKey) {
     return NextResponse.json(
@@ -37,88 +49,67 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     )
   }
 
-  let html = ''
-  try {
-    const body = await req.json()
-    if (body?.html) html = body.html
-  } catch {}
+  const config = (template.email_config || {}) as MasterEmailConfig
 
-  if (!html) {
-    // Render fresh from the template's email_config
-    const config = (template.email_config || {}) as MasterEmailConfig
-    const { data: brandImagesData } = await supabase
-      .from('brand_images').select('*')
-      .eq('brand_id', brand.id).order('created_at')
-    const rows = (brandImagesData || []) as BrandImage[]
-    const toUrl = (img: BrandImage) => {
-      const cleanPath = img.storage_path.replace(/^brand-images\//, '')
-      return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
-    }
-    const { productImages: bp, lifestyleImages: bl } =
-      bucketBrandImages(rows, getBusinessType(brand))
-    const productImages = bp.map(toUrl)
-    const lifestyleImages = bl.map(toUrl)
-
-    const brandData = {
-      ...brand,
-      logo_url_light: notesData?.logo_url_light || null,
-      font_heading: typeof brand.font_heading === 'string' ? JSON.parse(brand.font_heading) : brand.font_heading,
-      font_body: typeof brand.font_body === 'string' ? JSON.parse(brand.font_body) : brand.font_body,
-    }
-    html = buildMasterEmail(brandData, config, productImages, lifestyleImages)
+  const { data: brandImagesData } = await supabase
+    .from('brand_images').select('*')
+    .eq('brand_id', brand.id).order('created_at')
+  const rows = (brandImagesData || []) as BrandImage[]
+  const toUrl = (img: BrandImage) => {
+    const cleanPath = img.storage_path.replace(/^brand-images\//, '')
+    return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
   }
+  const { productImages: bp, lifestyleImages: bl } =
+    bucketBrandImages(rows, getBusinessType(brand))
+  const productImages = bp.map(toUrl)
+  const lifestyleImages = bl.map(toUrl)
 
-  const subject = (template.email_config?.subjectLine as string) || template.name
+  const brandData = {
+    ...brand,
+    logo_url_light: notesData?.logo_url_light || null,
+    font_heading: typeof brand.font_heading === 'string' ? JSON.parse(brand.font_heading) : brand.font_heading,
+    font_body: typeof brand.font_body === 'string' ? JSON.parse(brand.font_body) : brand.font_body,
+  }
+  const html = buildMasterEmail(brandData, config, productImages, lifestyleImages)
+
   const templateName = `${brand.name} — ${template.name}`
-
-  // Update existing Klaviyo template if we already pushed this one; otherwise create.
   const existingKlaviyoId: string | null = template.klaviyo_template_id || null
 
-  const klaviyoRes = await fetch(
-    existingKlaviyoId
-      ? `https://a.klaviyo.com/api/templates/${existingKlaviyoId}/`
-      : 'https://a.klaviyo.com/api/templates/',
-    {
-      method: existingKlaviyoId ? 'PATCH' : 'POST',
-      headers: {
-        'Authorization': `Klaviyo-API-Key ${klaviyoKey}`,
-        'Content-Type': 'application/json',
-        'revision': '2024-02-15',
-      },
-      body: JSON.stringify({
-        data: {
-          type: 'template',
-          ...(existingKlaviyoId ? { id: existingKlaviyoId } : {}),
-          attributes: {
-            name: templateName,
-            html: html,
-            text: `${subject}\n\nView this email in your browser.`,
-          },
-        },
-      }),
-    }
-  )
+  console.log('[email-templates klaviyo] route hit', {
+    templateId: id,
+    templateName,
+    hasApiKey: !!klaviyoKey,
+    apiKeyLength: typeof klaviyoKey === 'string' ? klaviyoKey.length : 0,
+    htmlLength: html?.length ?? 0,
+    existingKlaviyoId,
+  })
 
-  if (!klaviyoRes.ok) {
-    const error = await klaviyoRes.text()
-    return NextResponse.json({ error: `Klaviyo error: ${error}` }, { status: klaviyoRes.status })
+  let pushResult: { klaviyoId: string; created: boolean }
+  try {
+    pushResult = await pushTemplateToKlaviyo(klaviyoKey, templateName, html, existingKlaviyoId)
+  } catch (e) {
+    console.error('[email-templates klaviyo] push failed:', {
+      templateId: id,
+      templateName,
+      existingKlaviyoId,
+      htmlLength: html.length,
+      error: e instanceof Error ? { message: e.message, stack: e.stack } : e,
+    })
+    const message = e instanceof Error ? e.message : 'Klaviyo push failed'
+    return NextResponse.json({ error: message }, { status: 502 })
   }
 
-  const result = await klaviyoRes.json()
-  const klaviyoTemplateId = result.data?.id || existingKlaviyoId
-
-  // Persist the Klaviyo template ID on the template row for next time.
-  if (klaviyoTemplateId && klaviyoTemplateId !== existingKlaviyoId) {
+  if (pushResult.klaviyoId && pushResult.klaviyoId !== existingKlaviyoId) {
     await supabase
       .from('email_templates')
-      .update({ klaviyo_template_id: klaviyoTemplateId })
+      .update({ klaviyo_template_id: pushResult.klaviyoId })
       .eq('id', id)
   }
 
   return NextResponse.json({
     success: true,
-    templateId: klaviyoTemplateId,
+    templateId: pushResult.klaviyoId,
     templateName,
-    message: `Template "${templateName}" ${existingKlaviyoId ? 'updated in' : 'created in'} Klaviyo successfully.`,
+    message: `Template "${templateName}" ${pushResult.created ? 'created in' : 'updated in'} Klaviyo successfully.`,
   })
 }

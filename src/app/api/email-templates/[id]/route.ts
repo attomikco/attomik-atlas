@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { deleteTemplateFromKlaviyo } from '@/lib/klaviyo'
 
 // GET /api/email-templates/[id]
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -70,6 +71,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 // DELETE /api/email-templates/[id]
 // The master template cannot be deleted — it's the brand-level default.
+// If the template has a klaviyo_template_id, the matching Klaviyo template is
+// also deleted so we don't leave orphans behind. Any non-404 Klaviyo error
+// aborts the local delete so the two sides stay consistent.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -78,12 +82,50 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { data: existing } = await supabase
     .from('email_templates')
-    .select('type')
+    .select('type, klaviyo_template_id, brand_id')
     .eq('id', id)
     .single()
 
-  if (existing?.type === 'master') {
+  if (!existing) {
+    return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+  }
+
+  if (existing.type === 'master') {
     return NextResponse.json({ error: 'Cannot delete master template' }, { status: 400 })
+  }
+
+  // Klaviyo cleanup — only attempts a delete if the template was ever pushed
+  // and the brand still has an API key. Missing key → skip silently (we can't
+  // reach Klaviyo anyway, and the user explicitly asked to delete locally).
+  if (existing.klaviyo_template_id && existing.brand_id) {
+    const { data: brandRow } = await supabase
+      .from('brands')
+      .select('notes')
+      .eq('id', existing.brand_id)
+      .single()
+
+    const notesData = (() => {
+      try { return brandRow?.notes ? JSON.parse(brandRow.notes) : {} }
+      catch { return {} }
+    })()
+    const klaviyoKey = notesData?.klaviyo_api_key
+
+    if (klaviyoKey) {
+      try {
+        await deleteTemplateFromKlaviyo(klaviyoKey, existing.klaviyo_template_id)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Klaviyo delete failed'
+        console.error('[email-templates DELETE] klaviyo cleanup failed:', {
+          templateId: id,
+          klaviyoTemplateId: existing.klaviyo_template_id,
+          error: message,
+        })
+        return NextResponse.json(
+          { error: `Could not delete from Klaviyo: ${message}` },
+          { status: 502 }
+        )
+      }
+    }
   }
 
   const { error } = await supabase.from('email_templates').delete().eq('id', id)

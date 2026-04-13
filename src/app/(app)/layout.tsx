@@ -1,8 +1,10 @@
 'use client'
 import { usePathname } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
+import FirstNameModal from '@/components/ui/FirstNameModal'
 import { CampaignModeBar } from '@/components/ui/CampaignModeBar'
 import { BrandProvider, useBrand } from '@/lib/brand-context'
+import { ProfileProvider } from '@/lib/profile-context'
 
 function BrandSwitchIndicator() {
   const { isSwitching } = useBrand()
@@ -39,14 +41,17 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
       <main style={{ minHeight: 'calc(100vh - 72px)' }}>
         {children}
       </main>
+      <FirstNameModal />
     </div>
   )
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <BrandProvider>
-      <LayoutShell>{children}</LayoutShell>
-    </BrandProvider>
+    <ProfileProvider>
+      <BrandProvider>
+        <LayoutShell>{children}</LayoutShell>
+      </BrandProvider>
+    </ProfileProvider>
   )
 }

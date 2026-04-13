@@ -31,6 +31,22 @@ const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {
   custom: 'Custom',
 }
 
+// Template status badge — single source of truth for the three states shown
+// everywhere the active template (or a switcher row) renders: draft, ready
+// without a Klaviyo push yet, and ready with a live Klaviyo template id.
+type TemplateStatusBadge = { color: string; label: string; dotSymbol: string }
+function getTemplateStatusBadge(
+  t: { status: TemplateStatus; klaviyo_template_id: string | null } | null | undefined
+): TemplateStatusBadge {
+  if (t && t.status === 'ready' && t.klaviyo_template_id) {
+    return { color: '#22c55e', label: 'Live', dotSymbol: '●' }
+  }
+  if (t && t.status === 'ready') {
+    return { color: '#f59e0b', label: 'Ready', dotSymbol: '●' }
+  }
+  return { color: '#c0c0c0', label: 'Draft', dotSymbol: '○' }
+}
+
 const TEMPLATE_BRIEF_PLACEHOLDERS: Record<TemplateType, string> = {
   master: 'The default brand email — used when no other template fits.',
   welcome: 'First email in a welcome series. Introduce the brand, what we stand for, and give a small first-order incentive.',
@@ -209,7 +225,12 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
   const [editingName, setEditingName] = useState(false)
   const [newTemplateModalOpen, setNewTemplateModalOpen] = useState(false)
   const [klaviyoPushing, setKlaviyoPushing] = useState(false)
-  const [klaviyoMessage, setKlaviyoMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [klaviyoMessage, setKlaviyoMessage] = useState<
+    | { type: 'ok'; text: string }
+    | { type: 'err'; text: string }
+    | { type: 'missing_key'; context: 'push' | 'ready' }
+    | null
+  >(null)
   const activeTemplate = templates.find(t => t.id === activeTemplateId) || null
   const [config, setConfig] = useState<MasterEmailConfig>(() => {
     const base: MasterEmailConfig = { ...DEFAULT_MASTER_CONFIG }
@@ -231,6 +252,11 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     if (!Array.isArray(merged.faqItems)) merged.faqItems = [...DEFAULT_MASTER_CONFIG.faqItems]
     if (!Array.isArray(merged.products)) merged.products = []
     if (!Array.isArray(merged.igImages) || merged.igImages.length !== 6) merged.igImages = ['', '', '', '', '', '']
+    // Legacy migration — the old default light background was #f8f7f4 (cream).
+    // Treat that saved value as unset so the new white default takes over.
+    if (merged.emailColors?.neutralBg && merged.emailColors.neutralBg.toLowerCase() === '#f8f7f4') {
+      merged.emailColors = { ...merged.emailColors, neutralBg: '#ffffff' }
+    }
     return merged
   })
 
@@ -304,7 +330,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       || (getLum(secondary) < 0.5 ? '#ffffff' : '#000000')
     const accentText = (brand as Brand & { text_on_accent?: string | null }).text_on_accent
       || (getLum(accent) > 0.5 ? '#000000' : '#ffffff')
-    const lightBg = getLum(secondary) > 0.7 ? secondary : '#f8f7f4'
+    const lightBg = (brand as Brand & { bg_base?: string | null }).bg_base || '#ffffff'
     const { altPrimaryBg, altPrimaryText } = altFromPrimary(primary)
     return {
       primaryBg: primary,
@@ -325,13 +351,6 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       headlineColor: primaryText,
     }
   }
-
-  useEffect(() => {
-    if (!config.emailColors && brand) {
-      update({ emailColors: deriveColorsFromBrand() })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand.id])
 
   function resetEmailColors() {
     update({ emailColors: deriveColorsFromBrand() })
@@ -374,6 +393,20 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       setGenerating(false)
     }
   }
+
+  // Auto-generate AI content on first visit when the brand has no saved email
+  // config. Without this the page would render with generic placeholders like
+  // "Exclusive Offer / 15% Off / SAVE15" until the user manually clicked
+  // "Generate with AI". Runs once per brand.
+  const autoGenTriedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (autoGenTriedRef.current.has(brand.id)) return
+    autoGenTriedRef.current.add(brand.id)
+    if (initialConfig == null) {
+      generateWithAI()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand.id])
 
   // saveConfig writes to the active email_template row via the PATCH API
   // (which also mirrors master-type templates to brands.notes.email_config for
@@ -482,6 +515,26 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
 
   async function markActiveTemplateReady() {
     if (!activeTemplateId) return
+
+    // Pre-flight: refuse to mark ready unless the brand has a Klaviyo API key.
+    // The existing auto-push branch for "missing key" only fires if the PATCH
+    // already succeeded — by then the template is ready without anywhere to
+    // push it. Blocking up front keeps the ready state meaningful: "ready"
+    // implies "pushed (or about to be pushed) to Klaviyo".
+    const parsedNotes = (() => {
+      try { return brand.notes ? JSON.parse(brand.notes) : null }
+      catch { return null }
+    })() as { klaviyo_api_key?: string } | null
+    const hasKlaviyoKey = typeof parsedNotes?.klaviyo_api_key === 'string'
+      && parsedNotes.klaviyo_api_key.trim().length > 0
+    if (!hasKlaviyoKey) {
+      setKlaviyoMessage({ type: 'missing_key', context: 'ready' })
+      return
+    }
+
+    // Persist any in-flight edits first so the server push uses the latest
+    // saved config, not a stale copy.
+    if (isDirty) await saveConfig()
     try {
       const res = await fetch(`/api/email-templates/${activeTemplateId}`, {
         method: 'PATCH',
@@ -489,11 +542,91 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         body: JSON.stringify({ status: 'ready' }),
       })
       const data = await res.json()
+      if (!data.template) return
+      setTemplates(prev => prev.map(t => t.id === activeTemplateId ? data.template : t))
+
+      // Auto-push to Klaviyo. Three outcomes:
+      //   1. Missing API key → silent skip (template still marked ready)
+      //   2. Push succeeds → confirmation toast
+      //   3. Push fails → subtle warning; template stays ready
+      try {
+        const pushRes = await fetch(`/api/email-templates/${activeTemplateId}/klaviyo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+        const pushData = await pushRes.json()
+        if (pushData.success) {
+          if (pushData.templateId) {
+            setTemplates(prev => prev.map(t => t.id === activeTemplateId ? { ...t, klaviyo_template_id: pushData.templateId } : t))
+          }
+          setKlaviyoMessage({ type: 'ok', text: 'Marked ready · Pushed to Klaviyo' })
+          setTimeout(() => setKlaviyoMessage(null), 4000)
+        } else if (typeof pushData.error === 'string' && pushData.error.startsWith('No Klaviyo API key')) {
+          // Silent skip — user hasn't connected Klaviyo yet. Marking as ready
+          // is still the right outcome; nothing to warn about.
+        } else {
+          setKlaviyoMessage({ type: 'err', text: 'Marked as ready but Klaviyo push failed — try pushing manually.' })
+          setTimeout(() => setKlaviyoMessage(null), 6000)
+        }
+      } catch {
+        setKlaviyoMessage({ type: 'err', text: 'Marked as ready but Klaviyo push failed — try pushing manually.' })
+        setTimeout(() => setKlaviyoMessage(null), 6000)
+      }
+    } catch (e) {
+      console.error('[markActiveTemplateReady]', e)
+    }
+  }
+
+  async function deleteTemplate(id: string, name: string) {
+    // Master templates are refused by the API, but also guard here so the
+    // button never surfaces an error for them.
+    const target = templates.find(t => t.id === id)
+    if (!target || target.type === 'master') return
+    const ok = window.confirm(
+      `Delete "${name}"?\n\nIf this template was pushed to Klaviyo, the Klaviyo template will also be deleted.`
+    )
+    if (!ok) return
+    try {
+      const res = await fetch(`/api/email-templates/${id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setKlaviyoMessage({ type: 'err', text: data.error || 'Delete failed' })
+        setTimeout(() => setKlaviyoMessage(null), 6000)
+        return
+      }
+      // If the deleted template was active, switch back to the master first
+      // so the config state transitions before the row disappears.
+      if (id === activeTemplateId) {
+        const master = templates.find(t => t.type === 'master' && t.id !== id)
+        if (master) {
+          setActiveTemplateId(master.id)
+          if (master.email_config) setConfig(master.email_config)
+          setIsDirty(false)
+        }
+      }
+      setTemplates(prev => prev.filter(t => t.id !== id))
+      setSwitcherOpen(false)
+    } catch (e) {
+      console.error('[deleteTemplate]', e)
+      setKlaviyoMessage({ type: 'err', text: 'Delete failed' })
+      setTimeout(() => setKlaviyoMessage(null), 6000)
+    }
+  }
+
+  async function setTemplateToDraft() {
+    if (!activeTemplateId) return
+    try {
+      const res = await fetch(`/api/email-templates/${activeTemplateId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'draft' }),
+      })
+      const data = await res.json()
       if (data.template) {
         setTemplates(prev => prev.map(t => t.id === activeTemplateId ? data.template : t))
       }
     } catch (e) {
-      console.error('[markActiveTemplateReady]', e)
+      console.error('[setTemplateToDraft]', e)
     }
   }
 
@@ -501,13 +634,13 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     if (!activeTemplateId || klaviyoPushing) return
     setKlaviyoPushing(true)
     setKlaviyoMessage(null)
-    // Save any pending edits first so Klaviyo gets the latest config.
+    // Save any pending edits first so the server re-render picks up the
+    // latest config when it pushes.
     if (isDirty) await saveConfig()
     try {
       const res = await fetch(`/api/email-templates/${activeTemplateId}/klaviyo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html: previewHtml }),
       })
       const data = await res.json()
       if (data.success) {
@@ -515,14 +648,20 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         if (data.templateId) {
           setTemplates(prev => prev.map(t => t.id === activeTemplateId ? { ...t, klaviyo_template_id: data.templateId } : t))
         }
+        setTimeout(() => setKlaviyoMessage(null), 4000)
+      } else if (typeof data.error === 'string' && data.error.startsWith('No Klaviyo API key')) {
+        setKlaviyoMessage({ type: 'missing_key', context: 'push' })
+        // Leave the missing-key message visible — the user needs the link to
+        // take action, not a 4-second flash.
       } else {
         setKlaviyoMessage({ type: 'err', text: data.error || 'Push failed' })
+        setTimeout(() => setKlaviyoMessage(null), 4000)
       }
     } catch {
       setKlaviyoMessage({ type: 'err', text: 'Push failed' })
+      setTimeout(() => setKlaviyoMessage(null), 4000)
     } finally {
       setKlaviyoPushing(false)
-      setTimeout(() => setKlaviyoMessage(null), 4000)
     }
   }
 
@@ -569,6 +708,9 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     { key: 'buttonText', label: 'Text on Button' },
   ]
 
+  const isLocked = activeTemplate?.status === 'ready'
+  const activeBadge = getTemplateStatusBadge(activeTemplate)
+
   const templatePanel = (
     <div style={{ paddingBottom: 80 }}>
       {/* Template switcher */}
@@ -582,7 +724,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           {/* Status dot */}
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: activeTemplate?.status === 'ready' ? '#22c55e' : '#c0c0c0',
+            background: activeBadge.color,
             flexShrink: 0,
           }} />
           {/* Name (click to edit) */}
@@ -621,29 +763,63 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
             background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10,
             boxShadow: '0 8px 24px rgba(0,0,0,0.08)', zIndex: 30, overflow: 'hidden',
           }}>
-            {templates.map(t => (
-              <button
-                key={t.id}
-                onClick={() => switchTemplate(t.id)}
-                style={{
-                  width: '100%', textAlign: 'left', padding: '10px 12px',
-                  background: t.id === activeTemplateId ? '#f5f5f5' : '#fff',
-                  border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  borderBottom: '1px solid #f0f0f0',
-                }}
-              >
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: t.status === 'ready' ? '#22c55e' : '#c0c0c0',
-                  flexShrink: 0,
-                }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
-                  <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{TEMPLATE_TYPE_LABELS[t.type] || t.type}</div>
+            {templates.map(t => {
+              const badge = getTemplateStatusBadge(t)
+              const canDelete = t.type !== 'master'
+              return (
+                <div
+                  key={t.id}
+                  style={{
+                    display: 'flex',
+                    background: t.id === activeTemplateId ? '#f5f5f5' : '#fff',
+                    borderBottom: '1px solid #f0f0f0',
+                  }}
+                >
+                  <button
+                    onClick={() => switchTemplate(t.id)}
+                    style={{
+                      flex: 1, textAlign: 'left', padding: '10px 12px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      minWidth: 0,
+                    }}
+                  >
+                    <div style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: badge.color,
+                      flexShrink: 0,
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                      <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{TEMPLATE_TYPE_LABELS[t.type] || t.type}</div>
+                    </div>
+                    <div style={{
+                      fontSize: 10, fontWeight: 800, color: badge.color,
+                      textTransform: 'uppercase', letterSpacing: '0.06em',
+                      flexShrink: 0,
+                    }}>
+                      {badge.dotSymbol} {badge.label}
+                    </div>
+                  </button>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); deleteTemplate(t.id, t.name) }}
+                      title="Delete template"
+                      aria-label={`Delete ${t.name}`}
+                      style={{
+                        padding: '0 14px', background: 'none', border: 'none',
+                        borderLeft: '1px solid #f0f0f0', cursor: 'pointer',
+                        color: '#999', fontSize: 18, lineHeight: 1,
+                        flexShrink: 0,
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
-              </button>
-            ))}
+              )
+            })}
             <button
               onClick={() => { setSwitcherOpen(false); setNewTemplateModalOpen(true) }}
               style={{
@@ -660,6 +836,37 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         )}
       </div>
 
+      {/* Locked banner — only rendered when the active template is 'ready'.
+          Stays outside the fieldset below so the Edit button remains clickable. */}
+      {isLocked && (
+        <div style={{
+          marginBottom: 20, padding: '12px 14px',
+          background: '#fff7ed', border: '1.5px solid #fdba74', borderRadius: 10,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#9a3412', flex: 1 }}>
+            This template is live.
+          </div>
+          <button
+            type="button"
+            onClick={setTemplateToDraft}
+            style={{
+              background: '#000', color: '#fff',
+              border: 'none', borderRadius: 999,
+              padding: '6px 14px', fontSize: 11, fontWeight: 800,
+              fontFamily: 'Barlow, sans-serif', letterSpacing: '0.06em',
+              textTransform: 'uppercase', cursor: 'pointer',
+            }}
+          >
+            Edit
+          </button>
+        </div>
+      )}
+
+      <fieldset disabled={isLocked} style={{
+        border: 'none', padding: 0, margin: 0, minInlineSize: 'auto',
+        ...(isLocked ? { pointerEvents: 'none', opacity: 0.55 } : null),
+      }}>
       {/* AI Generate */}
       <div style={{ marginBottom: 24 }}>
         <button onClick={generateWithAI} disabled={generating}
@@ -903,7 +1110,11 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       <BlockRow label="Footer" alwaysOn>
         <Field label="Tagline"><input value={config.footerTagline} onChange={e => update({ footerTagline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Instagram URL"><input value={config.instagramUrl} onChange={e => update({ instagramUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Privacy Policy URL"><input value={config.privacyPolicyUrl} onChange={e => update({ privacyPolicyUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/privacy-policy`} style={inputStyle} /></Field>
+        <Field label="Refund Policy URL"><input value={config.refundPolicyUrl} onChange={e => update({ refundPolicyUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/refund-policy`} style={inputStyle} /></Field>
+        <Field label="Terms of Service URL"><input value={config.termsOfServiceUrl} onChange={e => update({ termsOfServiceUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/terms-of-service`} style={inputStyle} /></Field>
       </BlockRow>
+      </fieldset>
     </div>
   )
 
@@ -996,17 +1207,19 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={markActiveTemplateReady}
-                disabled={!activeTemplateId || activeTemplate?.status === 'ready'}
+                disabled={!activeTemplateId || isLocked}
                 style={{
                   flex: 1, padding: '10px', background: '#fff',
-                  color: activeTemplate?.status === 'ready' ? '#22c55e' : '#000',
+                  color: isLocked ? activeBadge.color : '#000',
                   fontWeight: 700, fontSize: 11, borderRadius: 999,
-                  border: `1px solid ${activeTemplate?.status === 'ready' ? '#22c55e' : 'var(--border)'}`,
-                  cursor: activeTemplate?.status === 'ready' ? 'default' : 'pointer',
+                  border: `1px solid ${isLocked ? activeBadge.color : 'var(--border)'}`,
+                  cursor: isLocked ? 'default' : 'pointer',
                   textTransform: 'uppercase', letterSpacing: '0.04em',
                 }}
               >
-                {activeTemplate?.status === 'ready' ? '✓ Ready' : 'Mark as ready'}
+                {isLocked
+                  ? (activeTemplate?.klaviyo_template_id ? '✓ Live in Klaviyo' : '✓ Ready')
+                  : 'Mark as ready'}
               </button>
               <button
                 onClick={pushActiveTemplateToKlaviyo}
@@ -1026,6 +1239,28 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
             </div>
             {klaviyoMessage?.type === 'err' && (
               <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center' }}>{klaviyoMessage.text}</div>
+            )}
+            {klaviyoMessage?.type === 'missing_key' && klaviyoMessage.context === 'push' && (
+              <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center' }}>
+                <Link
+                  href={`/brand-setup/${brand.id}`}
+                  style={{ color: '#ef4444', textDecoration: 'underline', fontWeight: 700 }}
+                >
+                  Add your Klaviyo API key in Brand Hub → Integrations
+                </Link>
+              </div>
+            )}
+            {klaviyoMessage?.type === 'missing_key' && klaviyoMessage.context === 'ready' && (
+              <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center', lineHeight: 1.4 }}>
+                No Klaviyo API key connected. Add it in{' '}
+                <Link
+                  href={`/brand-setup/${brand.id}`}
+                  style={{ color: '#ef4444', textDecoration: 'underline', fontWeight: 700 }}
+                >
+                  Brand Hub → Integrations
+                </Link>
+                {' '}before marking as ready.
+              </div>
             )}
           </div>
         )}

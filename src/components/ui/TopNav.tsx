@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
+import { useProfile } from '@/lib/profile-context'
 import AttomikLogo from './AttomikLogo'
+import InitialsAvatar from './InitialsAvatar'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, layout } from '@/lib/design-tokens'
 
 const NAV_LINKS = [
@@ -22,8 +24,13 @@ export default function TopNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { activeBrandId, setActiveBrandId, brands, brandsLoaded } = useBrand()
+  const { user, profile } = useProfile()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // full_name is the primary label; fall back to email while the profile is
+  // loading or in the unlikely case the first-name modal was bypassed.
+  const profileLabel = profile?.full_name || user?.email || ''
 
   // On /brand-setup/[brandId], the URL defines the brand. Sync context to match.
   const urlBrandId = pathname.startsWith('/brand-setup/') ? pathname.split('/')[2] : null
@@ -166,6 +173,29 @@ export default function TopNav() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        {profileLabel && (
+          <Link
+            href="/settings/profile"
+            title={profile?.full_name ? `${profile.full_name} · Profile settings` : 'Profile settings'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '4px 12px 4px 4px', borderRadius: radius.pill,
+              background: colors.gray150, border: '1px solid var(--border)',
+              textDecoration: 'none', transition: `background ${transition.base}`,
+              maxWidth: 180,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = colors.gray200)}
+            onMouseLeave={e => (e.currentTarget.style.background = colors.gray150)}
+          >
+            <InitialsAvatar name={profileLabel} size="sm" />
+            <span style={{
+              fontSize: fontSize.caption, fontWeight: fontWeight.bold,
+              color: colors.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {profileLabel}
+            </span>
+          </Link>
+        )}
         <button onClick={async () => { const s = createClient(); await s.auth.signOut(); window.location.href = '/' }}
           style={{ fontSize: fontSize.caption, fontWeight: fontWeight.semibold, color: 'var(--muted)', background: 'none', border: '1px solid var(--border)', borderRadius: radius.pill, padding: '6px 14px', cursor: 'pointer' }}>
           Log out

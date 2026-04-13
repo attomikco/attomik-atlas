@@ -92,7 +92,7 @@ CROSS-FIELD CONSTRAINTS — the output must satisfy these, not just the length t
 - promoCode must relate to the brand name or a product (e.g. JOLENE15, MONJITA20, WESAKE10). Do NOT use generic codes like SAVE15, WELCOME10, FIRST15.
 
 PRODUCT GUIDANCE:
-- productName should be whichever product in the PRODUCTS list best represents the brand as a flagship. If one is clearly a bestseller or most distinctive, pick that one — do not default to the first product if a different one is more iconic.
+- productName MUST NEVER be empty. If the PRODUCTS list above is populated, pick whichever product best represents the brand as a flagship (do not default to the first if a different one is more iconic). If PRODUCTS is "No products specified", set productName to "${brand.name}" so the email still renders with something meaningful — never leave this field blank.
 - The youllAlsoLove products array should be COMPLEMENTS or alternatives to the featured product, not repeats. If you featured the flagship in block 05, fill youllAlsoLove with the rest of the line or the 2-3 best cross-sells — do NOT include the flagship again.
 
 ICON RULE:
@@ -206,6 +206,18 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
 
   try {
     const config = JSON.parse(text)
+
+    // Safety net — the AI sometimes returns an empty productName when the
+    // brand's PRODUCTS list is sparse, even with explicit instructions not to.
+    // An empty field gets spread over the client's initial fallback during
+    // merge, leaving the Block 05 headline blank. Fall back to the first
+    // brand product or the brand name so something always renders.
+    const firstProductName = products[0]?.name || products[0]?.title || ''
+    if (typeof config.productName !== 'string' || !config.productName.trim()) {
+      config.productName = firstProductName || brand.name
+      console.warn('[email generate-template] productName empty, fell back to', config.productName)
+    }
+
     return NextResponse.json({ config })
   } catch {
     return NextResponse.json({ error: 'Failed to parse AI response', raw: text }, { status: 500 })
