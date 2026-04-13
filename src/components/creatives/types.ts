@@ -84,7 +84,35 @@ export type Variation = {
   fbDescription?: string
 }
 
-export type Draft = Variation & { sizeId: string; dbId?: string; imageUrl?: string | null }
+export type Draft = Variation & {
+  sizeId: string
+  dbId?: string
+  imageUrl?: string | null
+  // ── Meta ad launch fields, hydrated from saved_creatives when loading ──
+  destinationUrl?: string
+  ctaType?: CtaType
+}
+
+export type CtaType =
+  | 'SHOP_NOW'
+  | 'LEARN_MORE'
+  | 'SIGN_UP'
+  | 'BOOK_NOW'
+  | 'CONTACT_US'
+  | 'DOWNLOAD'
+  | 'GET_OFFER'
+  | 'WATCH_MORE'
+
+export const CTA_TYPE_LABELS: Record<CtaType, string> = {
+  SHOP_NOW: 'Shop Now',
+  LEARN_MORE: 'Learn More',
+  SIGN_UP: 'Sign Up',
+  BOOK_NOW: 'Book Now',
+  CONTACT_US: 'Contact Us',
+  DOWNLOAD: 'Download',
+  GET_OFFER: 'Get Offer',
+  WATCH_MORE: 'Watch More',
+}
 
 export type SavedCreative = {
   id: string
@@ -100,4 +128,12 @@ export type SavedCreative = {
   style_snapshot: StyleSnapshot
   thumbnail_url: string | null
   name: string | null
+  // ── Meta ad launch fields (20260413_creatives_meta_fields.sql) ──
+  destination_url: string | null
+  cta_type: CtaType
+  fb_primary_text: string | null
+  fb_headline: string | null
+  fb_description: string | null
+  meta_ad_id: string | null
+  meta_ad_status: string | null
 }

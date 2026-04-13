@@ -11,6 +11,7 @@ import type { Brand, GeneratedCopy, StyleSnapshot, Variation, Draft } from './ty
 import { useBrandSync, isLightColor } from './hooks/useBrandSync'
 import { useCreativeExport } from './hooks/useCreativeExport'
 import CopyEditor from './sidebar/CopyEditor'
+import type { CtaType } from './types'
 import StylePanel from './sidebar/StylePanel'
 import PreviewCanvas from './preview/PreviewCanvas'
 import VariationStrip from './preview/VariationStrip'
@@ -52,6 +53,11 @@ export default function CreativeBuilder({
   const [fbPrimaryText, setFbPrimaryText] = useState('')
   const [fbHeadline, setFbHeadline] = useState('')
   const [fbDescription, setFbDescription] = useState('')
+  // ── Meta ad launch fields (persisted on save) ──
+  // destinationUrl defaults to blank so the empty string means "use brand.website
+  // at launch time" — matches the save route's default_url || null logic.
+  const [destinationUrl, setDestinationUrl] = useState('')
+  const [ctaType, setCtaType] = useState<CtaType>('LEARN_MORE')
   const [textPosition, setTextPosition] = useState<TextPosition>('bottom-left')
   const [showCta, setShowCta] = useState(true)
   const [headlineColor, setHeadlineColor] = useState<string>('#ffffff')
@@ -453,6 +459,12 @@ FB_DESCRIPTION: <under 12 words>`,
         body_text: draft.body,
         cta_text: draft.cta,
         style_snapshot: draft.style,
+        // ── Meta ad launch fields ──
+        destination_url: destinationUrl || null,
+        cta_type: ctaType,
+        fb_primary_text: fbPrimaryText || null,
+        fb_headline: fbHeadline || null,
+        fb_description: fbDescription || null,
       }),
     })
     if (res.ok) {
@@ -472,6 +484,12 @@ FB_DESCRIPTION: <under 12 words>`,
       body_text: draft.body,
       cta_text: draft.cta,
       style_snapshot: draft.style,
+      // ── Meta ad launch fields ──
+      destination_url: destinationUrl || null,
+      cta_type: ctaType,
+      fb_primary_text: fbPrimaryText || null,
+      fb_headline: fbHeadline || null,
+      fb_description: fbDescription || null,
     }
     const res = await fetch('/api/creatives/save', {
       method: 'POST',
@@ -484,10 +502,65 @@ FB_DESCRIPTION: <under 12 words>`,
       setSavedDrafts(prev => [newDraft, ...prev])
       setActiveDraft(0)
       setExportToast('Saved!'); setTimeout(() => setExportToast(null), 2000)
+
+      // Fire-and-forget thumbnail render — renders the creative at 1080x1080
+      // via the existing Puppeteer pipeline, uploads to brand-assets storage,
+      // and PATCHes the row with thumbnail_url. Runs in the background so the
+      // Save toast fires immediately; any failure is logged and swallowed.
+      if (saved.id) {
+        generateAndUploadThumbnail(saved.id, draft).catch(e => {
+          console.warn('[thumbnail] post-save render failed:', e)
+        })
+      }
     } else {
       const err = await res.text()
       console.error('[Save creative] Failed:', res.status, err)
       setExportToast('Save failed'); setTimeout(() => setExportToast(null), 3000)
+    }
+  }
+
+  // Post-save thumbnail: renders the creative at feed size (1080x1080) via
+  // the existing /api/export/png pipeline, uploads the PNG to the
+  // brand-assets bucket at thumbnails/{brand_id}/{creative_id}.png, then
+  // PATCHes the saved_creatives row with the public URL. Client-side so the
+  // save response isn't blocked and so we don't need server-side
+  // fire-and-forget (which is unreliable on serverless).
+  async function generateAndUploadThumbnail(
+    creativeId: string,
+    draft: Draft & { imageUrl?: string | null }
+  ) {
+    if (!brandId) return
+    try {
+      const { fetchPngViaPuppeteer } = await import('./hooks/useCreativeExport')
+      // Build minimal template props for the feed (1:1) size. The render
+      // page reads template props via propsId, so only serializable props
+      // matter here.
+      const feedProps = thumbProps(draft, draft.imageUrl || null, 1080, 1080)
+      const buf = await fetchPngViaPuppeteer(
+        draft.templateId,
+        feedProps,
+        1080,
+        1080,
+        `thumb-${creativeId}.png`
+      )
+      const file = new Blob([buf], { type: 'image/png' })
+      const path = `thumbnails/${brandId}/${creativeId}.png`
+      const { error: uploadErr } = await supabase.storage
+        .from('brand-assets')
+        .upload(path, file, { contentType: 'image/png', upsert: true })
+      if (uploadErr) {
+        console.warn('[thumbnail] upload failed:', uploadErr.message)
+        return
+      }
+      const { data: pub } = supabase.storage.from('brand-assets').getPublicUrl(path)
+      if (!pub?.publicUrl) return
+      await fetch(`/api/creatives/${creativeId}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thumbnail_url: pub.publicUrl }),
+      })
+    } catch (e) {
+      console.warn('[thumbnail] render or upload threw:', e)
     }
   }
 
@@ -500,6 +573,12 @@ FB_DESCRIPTION: <under 12 words>`,
       if (match) setSelectedImageId(match.id)
     }
     setTemplateId(d.templateId); setSizeId(d.sizeId); applyStyle(d.style); setActiveDraft(i); setActiveVariation(null)
+    // Restore Meta ad launch fields from the hydrated draft row.
+    setDestinationUrl(d.destinationUrl || '')
+    setCtaType((d.ctaType as CtaType) || 'LEARN_MORE')
+    setFbPrimaryText(d.fbPrimaryText || '')
+    setFbHeadline(d.fbHeadline || '')
+    setFbDescription(d.fbDescription || '')
   }
 
   function clearActiveDraft() { setActiveDraft(null); setActiveVariation(null) }
@@ -554,6 +633,12 @@ FB_DESCRIPTION: <under 12 words>`,
           style: r.style_snapshot || {},
           dbId: r.id,
           imageUrl: r.image_url,
+          // ── Meta ad launch fields ──
+          destinationUrl: r.destination_url || '',
+          ctaType: (r.cta_type as CtaType) || 'LEARN_MORE',
+          fbPrimaryText: r.fb_primary_text || '',
+          fbHeadline: r.fb_headline || '',
+          fbDescription: r.fb_description || '',
         }))
         setSavedDrafts(drafts)
       })
@@ -918,6 +1003,17 @@ FB_DESCRIPTION: <under 12 words>`,
             inputCls={inputCls}
             generateCopy={generateCopy}
             generating={generating}
+            destinationUrl={destinationUrl}
+            setDestinationUrl={setDestinationUrl}
+            ctaType={ctaType}
+            setCtaType={setCtaType}
+            fbPrimaryText={fbPrimaryText}
+            setFbPrimaryText={setFbPrimaryText}
+            fbHeadline={fbHeadline}
+            setFbHeadline={setFbHeadline}
+            fbDescription={fbDescription}
+            setFbDescription={setFbDescription}
+            brandWebsite={(brand as { website?: string | null } | null)?.website ?? null}
           />
           </div>
 

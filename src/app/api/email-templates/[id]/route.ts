@@ -24,12 +24,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 // Master-type templates are also synced to brands.notes.email_config so the
 // public preview page keeps working without schema changes.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    return await handlePatch(req, params)
+  } catch (e) {
+    // Any thrown exception returns a JSON body so the client's res.json()
+    // doesn't blow up on an empty 500 response. The autosave fix started
+    // firing real PATCHes on every color pick / block toggle, which surfaced
+    // this as a "SyntaxError: Unexpected end of JSON input" on the client.
+    const message = e instanceof Error ? e.message : 'Template update failed'
+    console.error('[email-templates PATCH] threw:', e)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+async function handlePatch(req: NextRequest, params: Promise<{ id: string }>) {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await req.json().catch(() => ({}))
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (body.name !== undefined) patch.name = body.name
   if (body.brief !== undefined) patch.brief = body.brief

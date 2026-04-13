@@ -19,6 +19,17 @@ export async function POST(req: NextRequest) {
     cta_text: body.cta_text || '',
     style_snapshot: body.style_snapshot || {},
     name: body.name || null,
+    // ── Meta ad launch fields ──
+    destination_url: body.destination_url || null,
+    cta_type: body.cta_type || 'LEARN_MORE',
+    fb_primary_text: body.fb_primary_text || null,
+    fb_headline: body.fb_headline || null,
+    fb_description: body.fb_description || null,
+    // Always null on create — populated by /api/creatives/[id]/thumbnail
+    // after the client fires the post-save render. meta_ad_id is set only
+    // when the creative is launched via the (future) Meta launch endpoint.
+    meta_ad_id: null,
+    meta_ad_status: null,
   }
 
   const { data, error } = await supabase

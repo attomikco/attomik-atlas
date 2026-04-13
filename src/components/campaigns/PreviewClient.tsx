@@ -530,8 +530,14 @@ export default function PreviewClient({
       setMagicModal({ mode: 'adcopy', isDone: false })
       try {
         const res = await fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' })
-        const data = await res.json()
-        if (data?.variations) setAdVariations(data.variations)
+        // Parse defensively — a transient 5xx from Anthropic can surface here
+        // as an empty response body, which JSON.parse would choke on.
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          console.error('[Generation] Ad copy failed:', res.status, data?.error || res.statusText)
+        } else if (data?.variations) {
+          setAdVariations(data.variations)
+        }
       } catch (e) { console.error('[Generation] Ad copy failed:', e) }
       setMagicModal({ mode: 'adcopy', isDone: true })
       await new Promise(r => setTimeout(r, 1500))

@@ -6,6 +6,19 @@ import Anthropic from '@anthropic-ai/sdk'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    return await handle(req, params)
+  } catch (e) {
+    // Any thrown exception — Anthropic transient 5xx, Supabase network blip,
+    // etc. — returns a JSON body so the client's res.json() doesn't explode
+    // on an empty 500 response.
+    const message = e instanceof Error ? e.message : 'Ad copy generation failed'
+    console.error('[ad-copy POST] threw:', e)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+async function handle(req: NextRequest, params: Promise<{ id: string }>) {
   const { id } = await params
   const supabase = await createClient()
 

@@ -310,6 +310,8 @@ When `activeCampaignId` is set:
 ### Templates (9):
 `Overlay`, `Split`, `Testimonial`, `Stat`, `Card` (UGC), `Grid`, `Info` (Infographic), `Compare`, `Mission`
 
+All nine are registered in `src/components/creatives/templates/registry.ts`. The `infographic`, `comparison`, and `mission` ids were previously file-present-but-unregistered; they were re-enabled on 2026-04-13 alongside the Meta launch field additions.
+
 ### Sizes (3):
 - `1:1` — 1080×1080
 - `9:16` — 1080×1920
@@ -331,6 +333,32 @@ When `activeCampaignId` is set:
 ### Saved creatives:
 - Persist to `saved_creatives` Supabase table with full style snapshot
 - Show in the saved strip below the preview
+
+### Meta ad launch fields (20260413_creatives_meta_fields.sql)
+`saved_creatives` carries the data needed to launch each row as a Meta ad:
+
+| Column | Purpose |
+|---|---|
+| `destination_url` | Per-creative landing page override. Blank → falls back to `brand.website` at launch time. |
+| `cta_type` | Meta `call_to_action_type` enum: `SHOP_NOW`, `LEARN_MORE`, `SIGN_UP`, `BOOK_NOW`, `CONTACT_US`, `DOWNLOAD`, `GET_OFFER`, `WATCH_MORE`. Default `LEARN_MORE`. |
+| `fb_primary_text` | Main ad body — 125 char target. Pre-filled from AI copy generation when available, editable in the Copy panel's "Meta Ad Copy" section. |
+| `fb_headline` | Short benefit — 40 char target. |
+| `fb_description` | Supporting context — 30 char target. |
+| `thumbnail_url` | Public URL of a 1080×1080 PNG render. Populated by a client-triggered post-save render (see below). |
+| `meta_ad_id` | Set when the creative is pushed to an Ad Account via the (future) Meta launch endpoint. |
+| `meta_ad_status` | Same. |
+
+Labels for `cta_type` values live in `CTA_TYPE_LABELS` (`src/components/creatives/types.ts`). When adding a field, update both the SQL, the `SavedCreative` type, the `/api/creatives/save` POST insert object, and the `/api/creatives/[id]/update` PATCH handler (which now accepts a partial patch of any subset of columns).
+
+### Post-save thumbnail generation
+
+After a creative is saved, the client fires `generateAndUploadThumbnail` in `CreativeBuilder.tsx` **without awaiting**:
+
+1. Calls `fetchPngViaPuppeteer()` (the existing PNG export pipeline) at 1080×1080 with the current template props
+2. Uploads the PNG to Supabase Storage: `brand-assets/thumbnails/{brand_id}/{creative_id}.png` (upsert)
+3. PATCHes the `saved_creatives` row with `thumbnail_url = <public url>`
+
+All failures are logged and swallowed — the save itself never fails because of a thumbnail issue. This is client-triggered rather than server-side fire-and-forget because Vercel serverless tears down the function once `NextResponse` returns.
 
 ---
 

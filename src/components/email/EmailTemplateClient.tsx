@@ -210,7 +210,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
   campaignId?: string | null
 }) {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'Template' | 'Sent emails'>('Template')
+  const [activeTab, setActiveTab] = useState<'Template' | 'History'>('Template')
   const [isDirty, setIsDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -232,20 +232,15 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     | null
   >(null)
   const activeTemplate = templates.find(t => t.id === activeTemplateId) || null
-  const [config, setConfig] = useState<MasterEmailConfig>(() => {
-    const base: MasterEmailConfig = { ...DEFAULT_MASTER_CONFIG }
-    base.heroHeadline = `Welcome to ${brand.name}`
-    base.heroCta = 'Shop Now'
-    base.heroCtaUrl = brand.website || ''
-    base.footerTagline = `Crafted with care — ${brand.name}`
-    const p0 = brand.products?.[0]
-    if (p0) {
-      base.productName = p0.name || p0.title || ''
-      base.productBody1 = p0.description || ''
-      base.productCtaUrl = brand.website || ''
-    }
-    const merged: MasterEmailConfig = { ...base, ...(initialConfig || {}) }
-    // Defensive normalization for old saved configs
+
+  // Normalize any incoming MasterEmailConfig against DEFAULT_MASTER_CONFIG so
+  // every string/array field is defined. Saved configs from before a field
+  // existed would otherwise flip a controlled <input value={config.x}> from
+  // '' to undefined when the saved config gets loaded, triggering React's
+  // "changing a controlled input to be uncontrolled" warning. Called from the
+  // useState initializer and from every setConfig(row.email_config) site.
+  function normalizeConfig(incoming: Partial<MasterEmailConfig> | null | undefined): MasterEmailConfig {
+    const merged: MasterEmailConfig = { ...DEFAULT_MASTER_CONFIG, ...(incoming || {}) }
     if (!Array.isArray(merged.enabledBlocks)) merged.enabledBlocks = [...DEFAULT_MASTER_CONFIG.enabledBlocks]
     if (!merged.imageAssignments || typeof merged.imageAssignments !== 'object') merged.imageAssignments = {}
     if (!Array.isArray(merged.testimonials)) merged.testimonials = [...DEFAULT_MASTER_CONFIG.testimonials]
@@ -258,6 +253,21 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       merged.emailColors = { ...merged.emailColors, neutralBg: '#ffffff' }
     }
     return merged
+  }
+
+  const [config, setConfig] = useState<MasterEmailConfig>(() => {
+    const base: MasterEmailConfig = { ...DEFAULT_MASTER_CONFIG }
+    base.heroHeadline = `Welcome to ${brand.name}`
+    base.heroCta = 'Shop Now'
+    base.heroCtaUrl = brand.website || ''
+    base.footerTagline = `Crafted with care — ${brand.name}`
+    const p0 = brand.products?.[0]
+    if (p0) {
+      base.productName = p0.name || p0.title || ''
+      base.productBody1 = p0.description || ''
+      base.productCtaUrl = brand.website || ''
+    }
+    return normalizeConfig({ ...base, ...(initialConfig || {}) })
   })
 
   // Auto-populate IG grid from the brand image library on first load. If the
@@ -296,9 +306,16 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
   }
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // saveConfig is a useCallback that closes over `config`, so a fresh copy
+  // exists on every render. A setTimeout scheduled in one render and fired
+  // later would otherwise call the stale copy and PATCH the pre-change
+  // config — losing color picks, block toggles, and any other non-blur
+  // mutation that routes through scheduleAutoSave. Keep a ref pointed at
+  // the latest saveConfig so the deferred call always gets the current one.
+  const saveConfigRef = useRef<() => Promise<void>>(() => Promise.resolve())
   function scheduleAutoSave() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => { saveConfig() }, 500)
+    saveTimerRef.current = setTimeout(() => { saveConfigRef.current() }, 500)
   }
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }, [])
 
@@ -421,8 +438,14 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email_config: config }),
         })
-        const data = await res.json()
-        if (data.template) {
+        // Parse defensively — an empty 500 body from the route would otherwise
+        // throw "SyntaxError: Unexpected end of JSON input" from inside a
+        // setTimeout scheduled by scheduleAutoSave, which has no meaningful
+        // stack frame to debug from.
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          console.error('[saveConfig] template patch failed:', res.status, data?.error || res.statusText)
+        } else if (data?.template) {
           setTemplates(prev => prev.map(t => t.id === activeTemplateId ? data.template : t))
         }
       } catch (e) {
@@ -437,6 +460,11 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     setSaving(false)
     setIsDirty(false)
   }, [activeTemplateId, config, brand.id, brand.notes, supabase])
+
+  // Point the ref used by scheduleAutoSave at the latest saveConfig after
+  // every render so timeouts scheduled before a state change still fire
+  // against the fresh closure.
+  useEffect(() => { saveConfigRef.current = saveConfig }, [saveConfig])
 
   // Load templates on mount. If none exist, auto-create a master template
   // seeded from the current config (which was itself derived from
@@ -466,14 +494,14 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           if (!cancelled && createData.template) {
             setTemplates([createData.template])
             setActiveTemplateId(createData.template.id)
-            if (createData.template.email_config) setConfig(createData.template.email_config)
+            if (createData.template.email_config) setConfig(normalizeConfig(createData.template.email_config))
           }
         } else {
           setTemplates(rows)
           // Prefer master template as the default active row.
           const master = rows.find(r => r.type === 'master') || rows[0]
           setActiveTemplateId(master.id)
-          if (master.email_config) setConfig(master.email_config)
+          if (master.email_config) setConfig(normalizeConfig(master.email_config))
         }
       } catch (e) {
         console.error('[loadTemplates]', e)
@@ -492,7 +520,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     if (!row) return
     setActiveTemplateId(id)
     setSwitcherOpen(false)
-    if (row.email_config) setConfig(row.email_config)
+    if (row.email_config) setConfig(normalizeConfig(row.email_config))
     setIsDirty(false)
   }
 
@@ -600,7 +628,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         const master = templates.find(t => t.type === 'master' && t.id !== id)
         if (master) {
           setActiveTemplateId(master.id)
-          if (master.email_config) setConfig(master.email_config)
+          if (master.email_config) setConfig(normalizeConfig(master.email_config))
           setIsDirty(false)
         }
       }
@@ -1118,32 +1146,219 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     </div>
   )
 
-  const sentPanel = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {!emails?.length ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ fontSize: 24, marginBottom: 12 }}>✉</div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>No emails generated yet.</div>
-          <Link href="/campaigns/new" style={{ fontSize: 12, fontWeight: 700, color: '#000', background: '#00ff97', padding: '8px 20px', borderRadius: 999, textDecoration: 'none' }}>Create campaign →</Link>
+  // ── History tab — Edit action on a template card ──
+  // Loads the template into the editor and flips back to the Template tab.
+  function editTemplateFromHistory(id: string) {
+    switchTemplate(id)
+    setActiveTab('Template')
+  }
+
+  // ── History tab — download rendered HTML for a template ──
+  // Built client-side from the template's saved email_config using the same
+  // buildMasterEmail pipeline the preview iframe uses. Keeps download parity
+  // with the campaign email "↓ HTML" action.
+  function downloadTemplateHtml(t: EmailTemplateRow) {
+    if (!t.email_config) return
+    const html = buildMasterEmail(
+      brand,
+      normalizeConfig(t.email_config),
+      productImages,
+      lifestyleImages
+    )
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(t.name || 'template').replace(/[^a-z0-9-_ ]+/gi, '-')}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  // Sort templates by updated_at desc for the History list without mutating
+  // the switcher's stable order.
+  const historyTemplates = [...templates].sort((a, b) => {
+    const ta = a.updated_at || a.created_at || ''
+    const tb = b.updated_at || b.created_at || ''
+    return tb.localeCompare(ta)
+  })
+
+  // Small action-pill style shared across the History cards.
+  const historyPillBase: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700,
+    padding: '6px 12px', borderRadius: 999,
+    border: '1px solid var(--border)',
+    background: '#fff', color: '#000',
+    textDecoration: 'none', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+  }
+
+  const historyPanel = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      {/* ── Section 1 — Email Templates ── */}
+      <section>
+        <div style={{
+          fontFamily: 'Barlow, sans-serif', fontWeight: 900,
+          fontSize: 13, color: '#000',
+          textTransform: 'uppercase', letterSpacing: '0.04em',
+          marginBottom: 12,
+        }}>
+          Email Templates
         </div>
-      ) : emails.map((e: any, i: number) => {
-        let subject = ''
-        let hasHtml = false
-        try { const p = JSON.parse(e.content); subject = p.subject || ''; hasHtml = !!p.html } catch {}
-        return (
-          <div key={e.id} style={{ padding: '12px 0', borderBottom: i < emails.length - 1 ? '1px solid var(--border)' : 'none' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.campaign?.name || 'Email'}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
-              {subject && <>&quot;{subject}&quot; · </>}
-              {new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {e.campaign?.id && <Link href={`/preview/${e.campaign.id}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none', padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 999 }}>View</Link>}
-              {hasHtml && e.campaign?.id && <EmailActions campaignId={e.campaign.id} content={e.content} />}
-            </div>
+        {historyTemplates.length === 0 ? (
+          <div style={{
+            fontSize: 12, color: 'var(--muted)', padding: '14px 16px',
+            border: '1px dashed var(--border)', borderRadius: 8,
+          }}>
+            No templates yet. Create your first template in the Template tab.
           </div>
-        )
-      })}
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {historyTemplates.map(t => {
+              const badge = getTemplateStatusBadge(t)
+              const klaviyoUrl = t.klaviyo_template_id
+                ? `https://www.klaviyo.com/template/${t.klaviyo_template_id}/edit`
+                : null
+              return (
+                <div key={t.id} style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: 16,
+                  background: '#fff',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 14, fontWeight: 800, color: '#000',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {t.name || 'Untitled'}
+                      </div>
+                      <div style={{
+                        marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                      }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 800,
+                          textTransform: 'uppercase', letterSpacing: '0.06em',
+                          padding: '3px 8px', borderRadius: 999,
+                          background: '#f0f0f0', color: '#000',
+                        }}>
+                          {TEMPLATE_TYPE_LABELS[t.type] || t.type}
+                        </span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 800,
+                          textTransform: 'uppercase', letterSpacing: '0.06em',
+                          color: badge.color,
+                        }}>
+                          {badge.dotSymbol} {badge.label}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                          {new Date(t.updated_at || t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => editTemplateFromHistory(t.id)}
+                      style={historyPillBase}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadTemplateHtml(t)}
+                      style={historyPillBase}
+                    >
+                      ↓ HTML
+                    </button>
+                    {klaviyoUrl ? (
+                      <a
+                        href={klaviyoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          ...historyPillBase,
+                          background: '#00ff97',
+                          borderColor: '#00ff97',
+                        }}
+                      >
+                        Klaviyo →
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        title="Push to Klaviyo first"
+                        style={{
+                          ...historyPillBase,
+                          color: 'var(--muted)',
+                          cursor: 'not-allowed',
+                          opacity: 0.7,
+                        }}
+                      >
+                        Push to Klaviyo first
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Section 2 — Campaign Emails ── */}
+      <section>
+        <div style={{
+          fontFamily: 'Barlow, sans-serif', fontWeight: 900,
+          fontSize: 13, color: '#000',
+          textTransform: 'uppercase', letterSpacing: '0.04em',
+          marginBottom: 12,
+        }}>
+          Campaign Emails
+        </div>
+        {!emails?.length ? (
+          <div style={{
+            fontSize: 12, color: 'var(--muted)', padding: '14px 16px',
+            border: '1px dashed var(--border)', borderRadius: 8,
+          }}>
+            No campaign emails generated yet.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {emails.map((e: any, i: number) => {
+              let subject = ''
+              let hasHtml = false
+              try {
+                const p = JSON.parse(e.content)
+                subject = p.config?.subjectLine || p.subject || ''
+                hasHtml = !!p.html
+              } catch {}
+              const campaignName = e.campaign?.name || 'Email'
+              const primary = subject || campaignName
+              const secondary = subject ? campaignName : ''
+              return (
+                <div key={e.id} style={{ padding: '12px 0', borderBottom: i < emails.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {primary}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
+                    {secondary && <>{secondary} · </>}
+                    {new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {e.campaign?.id && <Link href={`/preview/${e.campaign.id}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none', padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 999 }}>View</Link>}
+                    {hasHtml && e.campaign?.id && <EmailActions campaignId={e.campaign.id} content={e.content} />}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
     </div>
   )
 
@@ -1156,7 +1371,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         onCreated={row => {
           setTemplates(prev => [...prev, row])
           setActiveTemplateId(row.id)
-          if (row.email_config) setConfig(row.email_config)
+          if (row.email_config) setConfig(normalizeConfig(row.email_config))
           setIsDirty(false)
           setNewTemplateModalOpen(false)
         }}
@@ -1166,19 +1381,25 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       <div style={{ width: 360, flexShrink: 0, overflowY: 'auto', paddingRight: 8, position: 'relative', height: 'calc(100vh - 120px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22, textTransform: 'uppercase' }}>Email</div>
-          <Link href="/campaigns/new" style={{ fontSize: 11, fontWeight: 700, color: '#000', background: '#00ff97', padding: '6px 14px', borderRadius: 999, textDecoration: 'none' }}>+ New</Link>
+          <button
+            type="button"
+            onClick={() => setNewTemplateModalOpen(true)}
+            style={{ fontSize: 11, fontWeight: 700, color: '#000', background: '#00ff97', padding: '6px 14px', borderRadius: 999, border: 'none', cursor: 'pointer' }}
+          >
+            + New
+          </button>
         </div>
 
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
-          {(['Template', 'Sent emails'] as const).map(tab => (
+          {(['Template', 'History'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              style={{ padding: '10px 20px', borderBottom: activeTab === tab ? '2px solid #000' : '2px solid transparent', background: 'none', border: 'none', borderBottomStyle: 'solid', fontSize: 13, fontWeight: activeTab === tab ? 700 : 500, color: activeTab === tab ? '#000' : 'var(--muted)', cursor: 'pointer' }}>
+              style={{ padding: '10px 20px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: activeTab === tab ? '2px solid #000' : '2px solid transparent', background: 'none', fontSize: 13, fontWeight: activeTab === tab ? 700 : 500, color: activeTab === tab ? '#000' : 'var(--muted)', cursor: 'pointer' }}>
               {tab}
             </button>
           ))}
         </div>
 
-        {activeTab === 'Template' ? templatePanel : sentPanel}
+        {activeTab === 'Template' ? templatePanel : historyPanel}
 
         {activeTab === 'Template' && (
           <div style={{
