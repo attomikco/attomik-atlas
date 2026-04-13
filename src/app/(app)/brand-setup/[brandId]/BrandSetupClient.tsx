@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Brand, BrandImage } from '@/types'
 import ColorPickerPopover from '@/components/ui/ColorPickerPopover'
@@ -682,32 +683,56 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.4 }}>The more you fill in, the better your creatives get.</span>
           </div>
         </div>
-        <button
-          onClick={openRescrapeDialog}
-          disabled={rescraping || !brand.website}
-          title={brand.website ? `Re-scrape ${brand.website}` : 'No website URL saved'}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '10px 18px', borderRadius: 999,
-            background: '#fff', border: '1.5px solid var(--border)',
-            fontFamily: 'Barlow, sans-serif', fontSize: 12, fontWeight: 800,
-            letterSpacing: '0.04em', textTransform: 'uppercase',
-            color: rescraping ? 'var(--muted)' : '#000',
-            cursor: rescraping || !brand.website ? 'not-allowed' : 'pointer',
-            opacity: rescraping || !brand.website ? 0.6 : 1,
-            transition: 'border-color 0.15s, color 0.15s',
-            flexShrink: 0,
-          }}
-          onMouseEnter={e => { if (!rescraping && brand.website) e.currentTarget.style.borderColor = '#000' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-            style={{ animation: rescraping ? 'spin 0.9s linear infinite' : undefined }}>
-            <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
-            <path d="M21 3v5h-5" />
-          </svg>
-          {rescraping ? 'Re-scraping…' : 'Re-scrape website'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+          <Link
+            href={`/brands/${brand.id}/settings/team`}
+            title="Manage team members and invites"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 18px', borderRadius: 999,
+              background: '#fff', border: '1.5px solid var(--border)',
+              fontFamily: 'Barlow, sans-serif', fontSize: 12, fontWeight: 800,
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+              color: '#000', textDecoration: 'none',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#000' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            Team
+          </Link>
+          <button
+            onClick={openRescrapeDialog}
+            disabled={rescraping || !brand.website}
+            title={brand.website ? `Re-scrape ${brand.website}` : 'No website URL saved'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 18px', borderRadius: 999,
+              background: '#fff', border: '1.5px solid var(--border)',
+              fontFamily: 'Barlow, sans-serif', fontSize: 12, fontWeight: 800,
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+              color: rescraping ? 'var(--muted)' : '#000',
+              cursor: rescraping || !brand.website ? 'not-allowed' : 'pointer',
+              opacity: rescraping || !brand.website ? 0.6 : 1,
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { if (!rescraping && brand.website) e.currentTarget.style.borderColor = '#000' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ animation: rescraping ? 'spin 0.9s linear infinite' : undefined }}>
+              <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+            {rescraping ? 'Re-scraping…' : 'Re-scrape website'}
+          </button>
+        </div>
       </div>
 
       {/* ── BRAND KNOWLEDGE SUMMARY ── */}
