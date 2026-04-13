@@ -78,17 +78,18 @@ async function sendRequest(
     : `${KLAVIYO_API_BASE}/templates/`
   const method = update ? 'PATCH' : 'POST'
 
-  // Klaviyo API note: earlier this session their schema demanded an
-  // `editor_type: 'CODE'` field; later in the same session the same revision
-  // (2024-02-15) started rejecting it as "not a valid field for the resource
-  // 'template'". The field is omitted now. If they flip again, the error
-  // body in [klaviyo] API error logs will tell us exactly which way.
+  // Klaviyo API note: their schema for `editor_type` on resource `template`
+  // has flipped twice in one day on revision 2024-02-15 — first required,
+  // then rejected, now required again ("'editor_type' is a required field").
+  // Sending CODE for HTML templates. If they flip again, the [klaviyo] API
+  // error body in logs will say exactly which way.
   const body = {
     data: {
       type: 'template',
       ...(update ? { id: existingKlaviyoId } : {}),
       attributes: {
         name,
+        editor_type: 'CODE',
         html,
         text: `${name}\n\nView this email in your browser.`,
       },
