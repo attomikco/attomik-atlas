@@ -12,11 +12,14 @@ export default async function DashboardPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // RLS gates `brands` selects through brand_members (see
+  // 20260413_brand_teams_fix.sql), so filtering by user_id here would miss
+  // brands the user was invited to. Removing the filter unblocks invited
+  // members from seeing their brands on the dashboard.
   const { data: brands } = await supabase
     .from('brands')
     .select('*')
     .eq('status', 'active')
-    .eq('user_id', user?.id || '')
     .order('created_at', { ascending: false })
 
   if (!brands?.length) {
@@ -78,7 +81,7 @@ export default async function DashboardPage({
 
   return (
     <div className="pv-dash" style={{ padding: '32px 40px', maxWidth: 1000, margin: '0 auto' }}>
-      <BrandSync brandId={brand.id} />
+      <BrandSync brandId={brand.id} paramExplicit={!!brandParam} />
       <style>{`
         @media (max-width: 768px) {
           .pv-dash { padding: 20px 16px !important; }

@@ -72,8 +72,13 @@ ${productList}
 ICON RULE:
 - Do NOT use ANY emoji anywhere in the output. Pillar icons must be single unicode symbols, one of: \u2726 \u21e2 \u2713 \u25c6 \u2605 \u2727 \u2666 \u21ea.
 
+PRODUCT FEATURE BLOCK (05) GUIDANCE:
+- If the brand has at least one product in the PRODUCTS list above, include "05" in enabledBlocks for almost every email — Product Feature is the natural place to spotlight a SKU and is rarely wrong to show.
+- When "05" is enabled, productName MUST NEVER be empty. Pick a flagship product from PRODUCTS (not always the first — choose the most iconic). productBody1 hooks on the single most compelling benefit (1-2 sentences). productBody2 goes sensory/experiential or drops social proof (1-2 sentences). Both bodies must contain real, specific copy — not generic filler.
+- Only omit "05" when PRODUCTS is "No products specified" or when the brief explicitly says no product spotlight.
+
 Return a COMPLETE JSON object that matches the MasterEmailConfig shape. Include:
-- "enabledBlocks": array of block IDs you've chosen from the menu above (e.g. ["01a","01b","01c","04","07","09"])
+- "enabledBlocks": array of block IDs you've chosen from the menu above (e.g. ["01a","01b","01c","04","05","07","09"])
 - "subjectLine" (30-60 chars) and "previewText" (40-90 chars, continues the subject without repeating)
 - All copy fields for the blocks you enabled — headlines, eyebrows, bodies, CTAs, etc.
 - For blocks you did NOT enable, leave their copy fields as empty strings
@@ -99,6 +104,33 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
     generatedConfig = JSON.parse(text)
   } catch {
     return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 })
+  }
+
+  // Product Feature (block 05) safety net — mirrors the same guard added to
+  // the Brand Hub generator route (/api/email/generate-template). The AI
+  // sometimes drops productName / productBody1 / productBody2 even when block
+  // 05 is enabled, leaving the editor sidebar showing empty fields. Backfill
+  // from the brand's product list so users always see real content to tweak.
+  const flagship = (products[0] || {}) as { name?: string; title?: string; description?: string }
+  const flagshipName = flagship.name || flagship.title || ''
+  const flagshipDescription = flagship.description || ''
+  if (typeof generatedConfig.productName !== 'string' || !generatedConfig.productName.trim()) {
+    generatedConfig.productName = flagshipName || brand.name
+    console.warn('[email-templates generate] productName empty, fell back to', generatedConfig.productName)
+  }
+  if (typeof generatedConfig.productBody1 !== 'string' || !generatedConfig.productBody1.trim()) {
+    generatedConfig.productBody1 = flagshipDescription || `Discover what makes ${brand.name} different.`
+  }
+  if (typeof generatedConfig.productBody2 !== 'string' || !generatedConfig.productBody2.trim()) {
+    generatedConfig.productBody2 = `Made for the way you live — try it for yourself.`
+  }
+  // If the AI omitted block 05 from enabledBlocks but the brand has a
+  // product, force-include it so the populated fields actually render in
+  // the preview. Skip when there are zero products.
+  if (Array.isArray(generatedConfig.enabledBlocks) && flagshipName) {
+    if (!generatedConfig.enabledBlocks.includes('05')) {
+      generatedConfig.enabledBlocks = [...generatedConfig.enabledBlocks, '05']
+    }
   }
 
   // Seed from defaults so every required field has a value. Generated copy

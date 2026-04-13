@@ -550,7 +550,7 @@ ${on('01a') ? `
 <!-- BLOCK 01a: HERO IMAGE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
   <tr><td style="padding:0;line-height:0;font-size:0;">
-    <div style="width:100%;height:350px;background-image:url('${heroImg}');background-size:cover;background-position:center;background-repeat:no-repeat;" role="img" aria-label="${brand.name}"></div>
+    <div style="width:100%;height:400px;background-image:url('${heroImg}');background-size:cover;background-position:center center;background-repeat:no-repeat;" role="img" aria-label="${brand.name}"></div>
   </td></tr>
 </table>` : ''}
 
@@ -646,7 +646,7 @@ ${on('05') ? `
 <!-- BLOCK 05: PRODUCT FEATURE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.darkBg};">
   <tr><td style="padding:0;line-height:0;font-size:0;">
-    <div style="width:100%;height:350px;background-image:url('${productImg}');background-size:cover;background-position:center;background-repeat:no-repeat;" role="img" aria-label="${config.productName || brand.name}"></div>
+    <div style="width:100%;height:320px;background-image:url('${productImg}');background-size:cover;background-position:center center;background-repeat:no-repeat;" role="img" aria-label="${config.productName || brand.name}"></div>
   </td></tr>
   <tr><td align="center" style="padding:48px 24px;">
     <p style="margin:0 0 10px;text-align:center;">

@@ -1,18 +1,57 @@
 'use client'
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useBrand } from '@/lib/brand-context'
 
-// Only syncs context when dashboard renders with an explicit ?brand= param
-// This handles: user switches brand via TopNav dropdown → navigates to /dashboard?brand=X
-// Does NOT override context when navigating to /dashboard without params
-export default function BrandSync({ brandId }: { brandId: string }) {
-  const { activeBrandId, setActiveBrandId } = useBrand()
+// Reconciles the server-rendered brand with the context's activeBrandId.
+//
+// Two paths:
+//
+//   1. paramExplicit = true  — the URL had `?brand=X`. The server already
+//      rendered using X, so X is the source of truth. Sync context to match
+//      so the TopNav and the dashboard agree.
+//
+//   2. paramExplicit = false — the URL had no param. The server fell back to
+//      `brands[0]` (the most recent brand). Don't trust that — the user has
+//      a saved brand in localStorage. Wait for BrandProvider to resolve, then
+//      if its activeBrandId disagrees with the server's fallback, redirect
+//      to `/dashboard?brand=<saved>` so the server re-renders with the right
+//      brand. This is what fixes the "every reload teleports me" bug.
+//
+// Important: the OLD version of this component called setActiveBrandId(brandId)
+// unconditionally, which overrode the user's saved brand on every reload of
+// /dashboard. That's the bug we're fixing.
+export default function BrandSync({
+  brandId,
+  paramExplicit,
+}: {
+  brandId: string
+  paramExplicit: boolean
+}) {
+  const router = useRouter()
+  const { activeBrandId, brandsLoaded, setActiveBrandId } = useBrand()
+
   useEffect(() => {
-    // Only sync if the dashboard's resolved brand differs from context
-    // This happens when ?brand= param was explicitly set (e.g. from TopNav switch)
-    if (brandId && brandId !== activeBrandId) {
-      setActiveBrandId(brandId)
+    if (paramExplicit) {
+      // URL was authoritative — sync context to match.
+      if (brandId && brandId !== activeBrandId) {
+        setActiveBrandId(brandId)
+      }
+      return
     }
-  }, [brandId])
+
+    // No URL param. Wait for context to finish resolving its brand from
+    // localStorage / first-brand-fallback. If activeBrandId is null after
+    // load, the user has zero brands; nothing to do.
+    if (!brandsLoaded || !activeBrandId) return
+
+    // If the server-rendered brand doesn't match the user's saved brand,
+    // navigate to put it back. router.replace() avoids polluting the back
+    // stack with the wrong-brand intermediate state.
+    if (activeBrandId !== brandId) {
+      router.replace(`/dashboard?brand=${activeBrandId}`)
+    }
+  }, [brandId, paramExplicit, activeBrandId, brandsLoaded, router, setActiveBrandId])
+
   return null
 }

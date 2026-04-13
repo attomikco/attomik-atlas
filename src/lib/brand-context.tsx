@@ -92,6 +92,17 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         const resolvedId = validSaved ? saved : data[0].id
         setActiveBrandIdState(resolvedId)
         localStorage.setItem('attomik_active_brand_id', resolvedId)
+        // Sync the URL's ?brand= param with the resolved brand so subsequent
+        // reloads stay on this brand. Mirrors the same write that
+        // setActiveBrandId does on user-initiated switches. See that callback
+        // for the rationale.
+        try {
+          const url = new URL(window.location.href)
+          if (url.searchParams.get('brand') !== resolvedId) {
+            url.searchParams.set('brand', resolvedId)
+            window.history.replaceState(null, '', url.toString())
+          }
+        } catch {}
 
         // Restore active campaign only if it belongs to the resolved brand
         if (savedCampaignId) {
@@ -124,6 +135,21 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('attomik_active_brand_id', id)
       return id
     })
+    // Keep the URL's ?brand= param in sync with the new active brand so a
+    // page reload (which prioritizes the URL param over localStorage) always
+    // resolves to the brand the user is actually working on. Without this,
+    // navigating around the app left stale ?brand= params behind, and a
+    // hard refresh would teleport the user back to whichever brand was last
+    // pinned to the URL — see `BrandSync` in `app/(app)/dashboard/`.
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href)
+        if (url.searchParams.get('brand') !== id) {
+          url.searchParams.set('brand', id)
+          window.history.replaceState(null, '', url.toString())
+        }
+      } catch {}
+    }
     // Clear active campaign if it belongs to a different brand
     setActiveCampaign(prevCampaign => {
       if (prevCampaign && prevCampaign.brand_id !== id) {
