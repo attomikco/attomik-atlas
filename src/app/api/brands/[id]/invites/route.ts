@@ -17,9 +17,9 @@ const supabaseAdmin = createAdminClient(
 // Requires caller to be owner or admin of the brand.
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ brandId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { brandId } = await params
+  const { id: brandId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

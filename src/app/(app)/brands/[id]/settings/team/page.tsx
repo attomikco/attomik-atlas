@@ -15,9 +15,9 @@ export const dynamic = 'force-dynamic'
 export default async function TeamSettingsPage({
   params,
 }: {
-  params: Promise<{ brandId: string }>
+  params: Promise<{ id: string }>
 }) {
-  const { brandId } = await params
+  const { id: brandId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect(`/login?next=/brands/${brandId}/settings/team`)

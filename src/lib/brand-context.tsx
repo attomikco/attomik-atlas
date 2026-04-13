@@ -80,10 +80,11 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user?.id) { setBrandsLoaded(true); return }
+      // RLS now filters by brand_members (see 20260413_brand_teams_fix.sql).
+      // Filtering by user_id here would miss brands the user was invited to.
       const { data } = await supabase.from('brands')
         .select('id, name, primary_color, logo_url')
         .eq('status', 'active')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       if (data?.length) {
         setBrands(data)
@@ -140,10 +141,10 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user?.id) return
+    // RLS filters by brand_members — see load() above.
     const { data } = await supabase.from('brands')
       .select('id, name, primary_color, logo_url')
       .eq('status', 'active')
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     if (data) setBrands(data)
   }, [])

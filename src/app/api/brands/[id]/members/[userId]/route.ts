@@ -27,13 +27,13 @@ async function authorizeOwner(brandId: string) {
   return { error: null, status: 200 as const, user }
 }
 
-// DELETE /api/brands/[brandId]/members/[userId]
+// DELETE /api/brands/[id]/members/[userId]
 // Owner removes a member. Cannot remove self. Cannot remove the last owner.
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ brandId: string; userId: string }> }
+  { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
-  const { brandId, userId } = await params
+  const { id: brandId, userId } = await params
   const auth = await authorizeOwner(brandId)
   if (auth.error || !auth.user) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -84,15 +84,15 @@ export async function DELETE(
   return NextResponse.json({ ok: true })
 }
 
-// PATCH /api/brands/[brandId]/members/[userId]
+// PATCH /api/brands/[id]/members/[userId]
 // Body: { role: 'admin' | 'member' }
 // Owner changes a member's role. Cannot change own role (lockout prevention).
 // Owner role itself is not assignable via this endpoint.
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ brandId: string; userId: string }> }
+  { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
-  const { brandId, userId } = await params
+  const { id: brandId, userId } = await params
   const auth = await authorizeOwner(brandId)
   if (auth.error || !auth.user) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })

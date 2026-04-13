@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// DELETE /api/brands/[brandId]/invites/[inviteId]
+// DELETE /api/brands/[id]/invites/[inviteId]
 // Revoke a pending invite. Owner or admin only.
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ brandId: string; inviteId: string }> }
+  { params }: { params: Promise<{ id: string; inviteId: string }> }
 ) {
-  const { brandId, inviteId } = await params
+  const { id: brandId, inviteId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
