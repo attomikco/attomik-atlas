@@ -582,19 +582,28 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
-        const pushData = await pushRes.json()
-        if (pushData.success) {
+        const pushData = await pushRes.json().catch(() => null)
+        if (pushData?.success) {
           if (pushData.templateId) {
             setTemplates(prev => prev.map(t => t.id === activeTemplateId ? { ...t, klaviyo_template_id: pushData.templateId } : t))
           }
           setKlaviyoMessage({ type: 'ok', text: 'Marked ready · Pushed to Klaviyo' })
           setTimeout(() => setKlaviyoMessage(null), 4000)
-        } else if (typeof pushData.error === 'string' && pushData.error.startsWith('No Klaviyo API key')) {
+        } else if (typeof pushData?.error === 'string' && pushData.error.startsWith('No Klaviyo API key')) {
           // Silent skip — user hasn't connected Klaviyo yet. Marking as ready
           // is still the right outcome; nothing to warn about.
         } else {
-          setKlaviyoMessage({ type: 'err', text: 'Marked as ready but Klaviyo push failed — try pushing manually.' })
-          setTimeout(() => setKlaviyoMessage(null), 6000)
+          // Surface the actual server-side error (Klaviyo response body, key
+          // failure, etc.) instead of the generic "try pushing manually"
+          // message — this prints to the browser console so you can debug
+          // without tailing the dev server terminal.
+          const serverError = pushData?.error || `${pushRes.status} ${pushRes.statusText}`
+          console.error('[mark-as-ready] Klaviyo push failed:', serverError, pushData)
+          setKlaviyoMessage({
+            type: 'err',
+            text: `Klaviyo push failed: ${serverError}`,
+          })
+          setTimeout(() => setKlaviyoMessage(null), 10000)
         }
       } catch {
         setKlaviyoMessage({ type: 'err', text: 'Marked as ready but Klaviyo push failed — try pushing manually.' })
