@@ -446,7 +446,16 @@ FB_DESCRIPTION: <under 12 words>`,
   function saveVariationAsDraft(i: number) { const v = variations[i]; if (!v) return; saveNewDraftToDB({ ...v, sizeId }) }
 
   function buildCurrentDraft(): Draft & { imageUrl?: string | null } {
-    return { headline, body: bodyText, cta: ctaText, imageId: selectedImageId, templateId, style: captureStyle(), sizeId, imageUrl }
+    return {
+      headline, body: bodyText, cta: ctaText,
+      imageId: selectedImageId, templateId, style: captureStyle(), sizeId, imageUrl,
+      // Include Meta-launch fields so the in-memory Draft matches what we
+      // persist to saved_creatives. Without these the Launch modal opens
+      // with empty pre-fills after a same-session save (reload was masking
+      // the bug because load hydration reads them straight from the row).
+      fbPrimaryText, fbHeadline, fbDescription,
+      destinationUrl, ctaType,
+    }
   }
 
   async function saveCurrentAsDraft() {

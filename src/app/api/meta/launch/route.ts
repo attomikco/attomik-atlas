@@ -101,6 +101,18 @@ export async function POST(req: NextRequest) {
     access_token: token,
   }
 
+  // Log the full outgoing payload (with the token redacted) so we can
+  // diagnose exactly what we're sending to Meta. The token is long and
+  // sensitive — just log its length and last 4 chars for correlation.
+  const redactedBody = {
+    ...adCreativeBody,
+    access_token: `***${token.slice(-4)} (len=${token.length})`,
+  }
+  console.log('[meta-launch] adcreative request →', JSON.stringify({
+    url: `https://graph.facebook.com/${META_API_VERSION}/act_${adAccountId}/adcreatives`,
+    body: redactedBody,
+  }, null, 2))
+
   const creativeRes = await fetch(
     `https://graph.facebook.com/${META_API_VERSION}/act_${adAccountId}/adcreatives`,
     {
@@ -111,9 +123,28 @@ export async function POST(req: NextRequest) {
   )
   const creativeJson: any = await creativeRes.json()
   if (!creativeRes.ok || creativeJson.error) {
-    console.error('[meta-launch] adcreative failed:', creativeJson)
+    // Log the FULL Meta error — not just .message. Meta puts the actionable
+    // info in error_user_title, error_user_msg, error_subcode, and sometimes
+    // error_data.blame_field_specs which names the rejected field.
+    console.error('[meta-launch] adcreative failed:', JSON.stringify({
+      status: creativeRes.status,
+      statusText: creativeRes.statusText,
+      error: creativeJson.error,
+      fullResponse: creativeJson,
+      requestBody: redactedBody,
+    }, null, 2))
     return NextResponse.json(
-      { error: `Meta creative error: ${creativeJson.error?.message || creativeRes.statusText}` },
+      {
+        error: `Meta creative error: ${creativeJson.error?.message || creativeRes.statusText}`,
+        metaError: creativeJson.error || null,
+        // Surface the full error payload so the modal can display field-level
+        // details from Meta (error_user_msg, blame_field_specs, etc.).
+        metaResponse: creativeJson,
+        debug: {
+          requestBody: redactedBody,
+          httpStatus: creativeRes.status,
+        },
+      },
       { status: 400 }
     )
   }
@@ -131,6 +162,15 @@ export async function POST(req: NextRequest) {
     access_token: token,
   }
 
+  const redactedAdBody = {
+    ...adBody,
+    access_token: `***${token.slice(-4)} (len=${token.length})`,
+  }
+  console.log('[meta-launch] ad request →', JSON.stringify({
+    url: `https://graph.facebook.com/${META_API_VERSION}/act_${adAccountId}/ads`,
+    body: redactedAdBody,
+  }, null, 2))
+
   const adRes = await fetch(
     `https://graph.facebook.com/${META_API_VERSION}/act_${adAccountId}/ads`,
     {
@@ -141,9 +181,25 @@ export async function POST(req: NextRequest) {
   )
   const adJson: any = await adRes.json()
   if (!adRes.ok || adJson.error) {
-    console.error('[meta-launch] ad create failed:', adJson)
+    console.error('[meta-launch] ad create failed:', JSON.stringify({
+      status: adRes.status,
+      statusText: adRes.statusText,
+      error: adJson.error,
+      fullResponse: adJson,
+      requestBody: redactedAdBody,
+      adCreativeId, // the creative WAS created — useful for cleanup
+    }, null, 2))
     return NextResponse.json(
-      { error: `Meta ad error: ${adJson.error?.message || adRes.statusText}` },
+      {
+        error: `Meta ad error: ${adJson.error?.message || adRes.statusText}`,
+        metaError: adJson.error || null,
+        metaResponse: adJson,
+        debug: {
+          requestBody: redactedAdBody,
+          httpStatus: adRes.status,
+          adCreativeId,
+        },
+      },
       { status: 400 }
     )
   }

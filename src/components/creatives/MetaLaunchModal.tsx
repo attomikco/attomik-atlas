@@ -40,11 +40,14 @@ export default function MetaLaunchModal({ creative, brand, onClose, onSuccess }:
   const [loadingAdsets, setLoadingAdsets] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
-  // Step 2 state — pre-filled from the saved creative + brand
+  // Step 2 state — pre-filled from the saved creative + brand.
+  // For fb_primary_text / fb_headline, fall back to body_text / headline so
+  // older creatives (saved before the Meta-copy fields existed) always have
+  // something pre-filled instead of blank inputs.
   const defaultAdName = creative.name || creative.headline || 'Untitled ad'
   const [adName, setAdName] = useState(defaultAdName)
-  const [primaryText, setPrimaryText] = useState(creative.fb_primary_text || '')
-  const [headline, setHeadline] = useState(creative.fb_headline || '')
+  const [primaryText, setPrimaryText] = useState(creative.fb_primary_text || creative.body_text || '')
+  const [headline, setHeadline] = useState(creative.fb_headline || creative.headline || '')
   const [description, setDescription] = useState(creative.fb_description || '')
   const [destinationUrl, setDestinationUrl] = useState(creative.destination_url || brand.website || '')
   const [ctaType, setCtaType] = useState<CtaType>(creative.cta_type || 'LEARN_MORE')
@@ -52,6 +55,8 @@ export default function MetaLaunchModal({ creative, brand, onClose, onSuccess }:
   // Step 3 state
   const [launching, setLaunching] = useState(false)
   const [launchError, setLaunchError] = useState<string | null>(null)
+  // Raw Meta error payload — shown under the message for field-level debugging.
+  const [launchErrorDetail, setLaunchErrorDetail] = useState<any>(null)
   const [launchedAdId, setLaunchedAdId] = useState<string | null>(null)
 
   // Read ad account id from brand.notes for the "View in Ads Manager" link
@@ -99,6 +104,7 @@ export default function MetaLaunchModal({ creative, brand, onClose, onSuccess }:
   async function handleLaunch() {
     setLaunching(true)
     setLaunchError(null)
+    setLaunchErrorDetail(null)
     try {
       const res = await fetch('/api/meta/launch', {
         method: 'POST',
@@ -116,7 +122,14 @@ export default function MetaLaunchModal({ creative, brand, onClose, onSuccess }:
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Launch failed')
+      if (!res.ok) {
+        // Surface both the short message and the raw Meta response so the
+        // rejected field / subcode is visible in the UI.
+        setLaunchError(json.error || 'Launch failed')
+        setLaunchErrorDetail(json.metaError || json.metaResponse || json.debug || null)
+        console.error('[meta-launch] failure payload:', json)
+        return
+      }
       setLaunchedAdId(json.adId)
       setStep(3)
       onSuccess(json)
@@ -383,7 +396,18 @@ export default function MetaLaunchModal({ creative, brand, onClose, onSuccess }:
                 padding: spacing[3], borderRadius: radius.md, fontSize: fontSize.sm,
                 marginBottom: spacing[3],
               }}>
-                {launchError}
+                <div style={{ fontWeight: 700, marginBottom: launchErrorDetail ? 6 : 0 }}>{launchError}</div>
+                {launchErrorDetail && (
+                  <pre style={{
+                    margin: 0, marginTop: 4,
+                    fontSize: 11, fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                    maxHeight: 180, overflowY: 'auto',
+                    background: 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 4,
+                  }}>
+                    {JSON.stringify(launchErrorDetail, null, 2)}
+                  </pre>
+                )}
               </div>
             )}
 
