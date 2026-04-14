@@ -456,11 +456,11 @@ export function buildMasterEmail(
   const needsLogoFilter = !logoLight && !!logoColor
   const logoFilterStyle = needsLogoFilter ? 'filter:brightness(0) invert(1);-webkit-filter:brightness(0) invert(1);' : ''
   const headerLogoHtml = logo
-    ? `<img src="${logo}" alt="${brand.name}" height="40" style="display:block;height:40px;width:auto;max-width:240px;border:0;margin:0 auto;${logoFilterStyle}">`
-    : `<span style="font-family:${hf};font-size:24px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
+    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;${logoFilterStyle}">`
+    : `<span style="font-family:${hf};font-size:22px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
   const footerLogoHtml = logo
-    ? `<img src="${logo}" alt="${brand.name}" height="40" style="display:block;height:40px;width:auto;max-width:240px;border:0;margin:0 auto;${logoFilterStyle}">`
-    : `<span style="font-family:${hf};font-size:17px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
+    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;${logoFilterStyle}">`
+    : `<span style="font-family:${hf};font-size:15px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
   const year = new Date().getFullYear()
 
   // Shorthand: is this block enabled?
@@ -535,7 +535,7 @@ ${config.previewText ? `<div style="display:none;max-height:0;overflow:hidden;ms
 <!-- ANNOUNCEMENT BAR -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.secondaryBg};">
 <tr><td align="center" style="padding:12px 16px;">
-  <p style="margin:0;font-family:${hf};font-size:16px;font-weight:700;color:${palette.secondaryText};text-transform:${ht};text-align:center;">${config.announcementText}</p>
+  <p style="margin:0;font-family:${hf};font-size:14px;font-weight:700;color:${palette.secondaryText};text-transform:${ht};text-align:center;">${config.announcementText}</p>
 </td></tr></table>
 
 <!-- HEADER -->
@@ -546,7 +546,7 @@ ${config.previewText ? `<div style="display:none;max-height:0;overflow:hidden;ms
   </a>
 </td></tr></table>
 
-${on('01a') ? `
+${on('01a') && heroImg ? `
 <!-- BLOCK 01a: HERO IMAGE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
   <tr><td style="padding:0;line-height:0;font-size:0;">
@@ -557,24 +557,24 @@ ${on('01a') ? `
 ${on('01b') ? `
 <!-- BLOCK 01b: HERO TEXT -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-  <tr><td align="center" style="padding:48px 24px 0;">
-    <p style="margin:0;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.heroEyebrow}</p>
+  <tr><td align="center" style="padding:48px 48px 0;">
+    <p style="margin:0;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.heroEyebrow}</p>
   </td></tr>
-  <tr><td align="center" style="padding:12px 24px 0;">
-    <h1 style="margin:0;font-family:${hf};font-size:39px;font-weight:${hw};color:${palette.lightText};line-height:1.1;text-align:center;text-transform:${ht};letter-spacing:1px;">${config.heroHeadline}</h1>
+  <tr><td align="center" style="padding:12px 48px 0;">
+    <h1 style="margin:0;font-family:${hf};font-size:35px;font-weight:${hw};color:${palette.lightText};line-height:1.1;text-align:center;text-transform:${ht};letter-spacing:1px;">${config.heroHeadline}</h1>
   </td></tr>
-  <tr><td align="center" style="padding:20px 24px 48px;">
-    <p style="margin:0 auto;font-family:${hf};font-size:17px;font-weight:400;color:${palette.lightText};line-height:1.8;text-align:center;max-width:500px;">${config.heroBody}</p>
+  <tr><td align="center" style="padding:20px 48px 48px;">
+    <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:${palette.lightText};line-height:1.8;text-align:center;max-width:500px;">${config.heroBody}</p>
   </td></tr>
 </table>` : ''}
 
 ${on('01c') ? `
 <!-- BLOCK 01c: CTA BUTTON -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-  <tr><td align="center" style="padding:0 24px 48px;">
+  <tr><td align="center" style="padding:0 48px 10px;">
     <table cellpadding="0" cellspacing="0" border="0" align="center">
     <tr><td style="background-color:${palette.primaryButtonBg};border-radius:2px;font-family:${hf};">
-      <a href="${config.heroCtaUrl || site}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.heroCta}</a>
+      <a href="${config.heroCtaUrl || site}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.heroCta}</a>
     </td></tr></table>
   </td></tr>
 </table>` : ''}
@@ -582,20 +582,20 @@ ${on('01c') ? `
 ${on('02') ? `
 <!-- BLOCK 02: PROMO CODE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-<tr><td align="center" style="padding:48px 24px;">
+<tr><td align="center" style="padding:48px 48px;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:460px;border:1.5px dashed rgba(${hexToRgbStr(palette.darkBg)},0.35);border-radius:6px;background:#ffffff;">
   <tr><td align="center" style="padding:36px 28px;">
-    <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.promoEyebrow}</p>
-    <h2 style="margin:0 0 4px;font-family:${hf};font-size:70px;font-weight:${hw};color:${palette.lightText};line-height:1;text-align:center;text-transform:${ht};">${config.promoDiscount}</h2>
-    <p style="margin:0 0 20px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.lightText};text-align:center;text-transform:${ht};">${config.promoSubtitle}</p>
+    <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.promoEyebrow}</p>
+    <h2 style="margin:0 0 4px;font-family:${hf};font-size:63px;font-weight:${hw};color:${palette.lightText};line-height:1;text-align:center;text-transform:${ht};">${config.promoDiscount}</h2>
+    <p style="margin:0 0 20px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.lightText};text-align:center;text-transform:${ht};">${config.promoSubtitle}</p>
     <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;" align="center">
     <tr><td style="padding:12px 28px;border:1.5px dashed rgba(${hexToRgbStr(palette.darkBg)},0.25);border-radius:4px;background:rgba(${hexToRgbStr(palette.darkBg)},0.04);">
-      <p style="margin:0;font-family:'Courier New',Courier,monospace;font-size:22px;font-weight:700;color:${palette.lightText};letter-spacing:5px;text-align:center;">${config.promoCode}</p>
+      <p style="margin:0;font-family:'Courier New',Courier,monospace;font-size:20px;font-weight:700;color:${palette.lightText};letter-spacing:5px;text-align:center;">${config.promoCode}</p>
     </td></tr></table>
-    <p style="margin:0 0 24px;font-family:${hf};font-size:16px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);text-align:center;">Apply at checkout &middot; ${config.promoExpiry}</p>
+    <p style="margin:0 0 24px;font-family:${hf};font-size:14px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);text-align:center;">Apply at checkout &middot; ${config.promoExpiry}</p>
     <table cellpadding="0" cellspacing="0" border="0" align="center">
     <tr><td style="background-color:${palette.primaryButtonBg};border-radius:2px;font-family:${hf};">
-      <a href="${config.promoCtaUrl || site}" style="display:inline-block;padding:15px 40px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.promoCta}</a>
+      <a href="${config.promoCtaUrl || site}" style="display:inline-block;padding:15px 40px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.promoCta}</a>
     </td></tr></table>
   </td></tr></table>
 </td></tr></table>` : ''}
@@ -603,62 +603,62 @@ ${on('02') ? `
 ${on('03') ? `
 <!-- BLOCK 03: 3-PILLAR -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.darkBg};">
-<tr><td align="center" style="padding:48px 24px;">
-  <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.pillarsEyebrow}</p>
-  <h2 style="margin:0 0 40px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.darkText};text-align:center;text-transform:${ht};">${config.pillarsHeadline}</h2>
+<tr><td align="center" style="padding:48px 48px;">
+  <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.pillarsEyebrow}</p>
+  <h2 style="margin:0 0 40px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.darkText};text-align:center;text-transform:${ht};">${config.pillarsHeadline}</h2>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
   <tr><td align="center">
-    <div style="width:56px;height:56px;border-radius:50%;background:${palette.secondaryBg};color:${palette.secondaryText};font-size:29px;line-height:56px;text-align:center;margin:0 auto 16px;">${config.pillar1Icon}</div>
-    <p style="margin:0 0 8px;font-family:${hf};font-size:22px;font-weight:900;color:${palette.darkText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.pillar1Label}</p>
-    <p style="margin:0 auto;font-family:${hf};font-size:17px;font-weight:400;color:${palette.darkText};line-height:1.75;text-align:center;max-width:420px;">${config.pillar1Body}</p>
+    <div style="width:56px;height:56px;border-radius:50%;background:${palette.secondaryBg};color:${palette.secondaryText};font-size:26px;line-height:56px;text-align:center;margin:0 auto 16px;">${config.pillar1Icon}</div>
+    <p style="margin:0 0 8px;font-family:${hf};font-size:20px;font-weight:900;color:${palette.darkText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.pillar1Label}</p>
+    <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:${palette.darkText};line-height:1.75;text-align:center;max-width:420px;">${config.pillar1Body}</p>
   </td></tr></table>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
   <tr><td align="center">
-    <div style="width:56px;height:56px;border-radius:50%;background:${palette.accent};color:${palette.accentText};font-size:29px;line-height:56px;text-align:center;margin:0 auto 16px;">${config.pillar2Icon}</div>
-    <p style="margin:0 0 8px;font-family:${hf};font-size:22px;font-weight:900;color:${palette.darkText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.pillar2Label}</p>
-    <p style="margin:0 auto;font-family:${hf};font-size:17px;font-weight:400;color:${palette.darkText};line-height:1.75;text-align:center;max-width:420px;">${config.pillar2Body}</p>
+    <div style="width:56px;height:56px;border-radius:50%;background:${palette.accent};color:${palette.accentText};font-size:26px;line-height:56px;text-align:center;margin:0 auto 16px;">${config.pillar2Icon}</div>
+    <p style="margin:0 0 8px;font-family:${hf};font-size:20px;font-weight:900;color:${palette.darkText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.pillar2Label}</p>
+    <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:${palette.darkText};line-height:1.75;text-align:center;max-width:420px;">${config.pillar2Body}</p>
   </td></tr></table>
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr><td align="center">
-    <div style="width:56px;height:56px;border-radius:50%;background:${palette.secondaryBg};color:${palette.secondaryText};font-size:29px;line-height:56px;text-align:center;margin:0 auto 16px;">${config.pillar3Icon}</div>
-    <p style="margin:0 0 8px;font-family:${hf};font-size:22px;font-weight:900;color:${palette.darkText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.pillar3Label}</p>
-    <p style="margin:0 auto;font-family:${hf};font-size:17px;font-weight:400;color:${palette.darkText};line-height:1.75;text-align:center;max-width:420px;">${config.pillar3Body}</p>
+    <div style="width:56px;height:56px;border-radius:50%;background:${palette.secondaryBg};color:${palette.secondaryText};font-size:26px;line-height:56px;text-align:center;margin:0 auto 16px;">${config.pillar3Icon}</div>
+    <p style="margin:0 0 8px;font-family:${hf};font-size:20px;font-weight:900;color:${palette.darkText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.pillar3Label}</p>
+    <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:${palette.darkText};line-height:1.75;text-align:center;max-width:420px;">${config.pillar3Body}</p>
   </td></tr></table>
 </td></tr></table>` : ''}
 
 ${on('04') ? `
 <!-- BLOCK 04: STORY / NOSTALGIA -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-<tr><td align="center" style="padding:48px 24px;">
-  <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.storyEyebrow}</p>
-  <h2 style="margin:0 0 20px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.lightText};line-height:1.2;text-align:center;text-transform:${ht};">${config.storyHeadline}</h2>
-  <p style="margin:0 auto 36px;font-family:${hf};font-size:19px;font-weight:400;color:${palette.lightText};line-height:1.8;text-align:center;max-width:500px;">${config.storyBody}</p>
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:500px;margin:0 auto 36px;background:${palette.secondaryBg};border-radius:6px;">
+<tr><td align="center" style="padding:48px 48px;">
+  <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.storyEyebrow}</p>
+  <h2 style="margin:0 0 20px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.lightText};line-height:1.2;text-align:center;text-transform:${ht};">${config.storyHeadline}</h2>
+  <p style="margin:0 auto 36px;font-family:${hf};font-size:15px;font-weight:400;color:${palette.lightText};line-height:1.8;text-align:center;max-width:500px;">${config.storyBody}</p>
+  ${(config.storyQuote || '').trim() ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:500px;margin:0 auto 36px;background:${palette.secondaryBg};border-radius:6px;">
   <tr><td style="padding:24px 28px;">
-    <p style="margin:0 0 10px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.accent};letter-spacing:1px;text-align:center;">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
-    <p style="margin:0 0 14px;font-family:${hf};font-size:19px;font-weight:400;font-style:italic;color:${palette.secondaryText};line-height:1.7;text-align:center;">&#8220;${config.storyQuote}&#8221;</p>
-    <p style="margin:0;font-family:${hf};font-size:12px;font-weight:700;color:${palette.secondaryText};text-transform:${ht};text-align:center;">${(config.storyQuoteAttribution || '').replace(/—/g, '&mdash;')} &middot; &#10003; Verified</p>
-  </td></tr></table>
-  <p style="margin:0 auto;font-family:${hf};font-size:19px;font-weight:400;color:${palette.lightText};line-height:1.8;text-align:center;max-width:500px;">${config.storyClosing}</p>
+    <p style="margin:0 0 10px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.accent};letter-spacing:1px;text-align:center;">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
+    <p style="margin:0 0 14px;font-family:${hf};font-size:15px;font-weight:400;font-style:italic;color:${palette.secondaryText};line-height:1.7;text-align:center;">&#8220;${config.storyQuote}&#8221;</p>
+    <p style="margin:0;font-family:${hf};font-size:11px;font-weight:700;color:${palette.secondaryText};text-transform:${ht};text-align:center;">${(config.storyQuoteAttribution || '').replace(/—/g, '&mdash;')} &middot; &#10003; Verified</p>
+  </td></tr></table>` : ''}
+  <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:${palette.lightText};line-height:1.8;text-align:center;max-width:500px;">${config.storyClosing}</p>
 </td></tr></table>` : ''}
 
 ${on('05') ? `
 <!-- BLOCK 05: PRODUCT FEATURE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.darkBg};">
-  <tr><td style="padding:0;line-height:0;font-size:0;">
+  ${productImg ? `<tr><td style="padding:0;line-height:0;font-size:0;">
     <div style="width:100%;height:320px;background-image:url('${productImg}');background-size:cover;background-position:center center;background-repeat:no-repeat;" role="img" aria-label="${config.productName || brand.name}"></div>
-  </td></tr>
-  <tr><td align="center" style="padding:48px 24px;">
+  </td></tr>` : ''}
+  <tr><td align="center" style="padding:48px 48px;">
     <p style="margin:0 0 10px;text-align:center;">
-      <span style="display:inline-block;background:rgba(${hexToRgbStr(palette.darkText)},0.15);border-radius:20px;padding:6px 18px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};">${config.productBadge}</span>
+      <span style="display:inline-block;background:rgba(${hexToRgbStr(palette.darkText)},0.15);border-radius:20px;padding:6px 18px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};">${config.productBadge}</span>
     </p>
-    <h2 style="margin:0 0 12px;font-family:${hf};font-size:33px;font-weight:${hw};color:${palette.darkText};line-height:1.15;text-transform:${ht};text-align:center;">${config.productName}</h2>
-    <p style="margin:0 0 8px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.accent};letter-spacing:1px;text-align:center;">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
-    <p style="margin:0 auto 12px;font-family:${hf};font-size:17px;font-weight:400;color:${palette.darkText};line-height:1.8;text-align:center;max-width:480px;">${config.productBody1}</p>
-    <p style="margin:0 auto 28px;font-family:${hf};font-size:17px;font-weight:400;color:${palette.darkText};line-height:1.8;text-align:center;max-width:480px;">${config.productBody2}</p>
+    <h2 style="margin:0 0 12px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.darkText};line-height:1.15;text-transform:${ht};text-align:center;">${config.productName}</h2>
+    <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.accent};letter-spacing:1px;text-align:center;">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
+    <p style="margin:0 auto 12px;font-family:${hf};font-size:15px;font-weight:400;color:${palette.darkText};line-height:1.8;text-align:center;max-width:480px;">${config.productBody1}</p>
+    <p style="margin:0 auto 28px;font-family:${hf};font-size:15px;font-weight:400;color:${palette.darkText};line-height:1.8;text-align:center;max-width:480px;">${config.productBody2}</p>
     <table cellpadding="0" cellspacing="0" border="0" align="center">
     <tr><td style="background-color:${palette.secondaryBg};border-radius:2px;font-family:${hf};">
-      <a href="${config.productCtaUrl || site}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.secondaryText};text-decoration:none;text-transform:${ht};">${config.productCta}</a>
+      <a href="${config.productCtaUrl || site}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.secondaryText};text-decoration:none;text-transform:${ht};">${config.productCta}</a>
     </td></tr></table>
   </td></tr>
 </table>` : ''}
@@ -666,15 +666,15 @@ ${on('05') ? `
 ${on('11') ? `
 <!-- BLOCK 11: CALLOUT CARD -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-<tr><td align="center" style="padding:48px 24px;">
+<tr><td align="center" style="padding:48px 48px;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:500px;background-color:${palette.darkBg};border-radius:6px;">
   <tr><td align="center" style="padding:36px 28px;">
-    ${config.calloutEyebrow ? `<p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.calloutEyebrow}</p>` : ''}
-    <h2 style="margin:0 0 16px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.darkText};line-height:1.2;text-align:center;text-transform:${ht};">${config.calloutHeadline}</h2>
-    <p style="margin:0 0 24px;font-family:${hf};font-size:17px;font-weight:400;color:${palette.darkText};line-height:1.7;text-align:center;">${config.calloutBody}</p>
+    ${config.calloutEyebrow ? `<p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.calloutEyebrow}</p>` : ''}
+    <h2 style="margin:0 0 16px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.darkText};line-height:1.2;text-align:center;text-transform:${ht};">${config.calloutHeadline}</h2>
+    <p style="margin:0 0 24px;font-family:${hf};font-size:15px;font-weight:400;color:${palette.darkText};line-height:1.7;text-align:center;">${config.calloutBody}</p>
     <table cellpadding="0" cellspacing="0" border="0" align="center">
     <tr><td style="background-color:${palette.secondaryBg};border-radius:2px;font-family:${hf};">
-      <a href="${config.calloutCtaUrl || site}" style="display:inline-block;padding:15px 40px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.secondaryText};text-decoration:none;text-transform:${ht};">${config.calloutCta}</a>
+      <a href="${config.calloutCtaUrl || site}" style="display:inline-block;padding:15px 40px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.secondaryText};text-decoration:none;text-transform:${ht};">${config.calloutCta}</a>
     </td></tr></table>
   </td></tr></table>
 </td></tr></table>` : ''}
@@ -682,55 +682,55 @@ ${on('11') ? `
 ${on('06') ? `
 <!-- BLOCK 06: HOW-TO -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-<tr><td align="center" style="padding:48px 24px;">
-  <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.howToEyebrow}</p>
-  <h2 style="margin:0 0 8px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.howToHeadline}</h2>
-  <p style="margin:0 auto 36px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.darkBg};text-transform:${ht};text-align:center;">${config.howToSubheadline}</p>
+<tr><td align="center" style="padding:48px 48px;">
+  <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.howToEyebrow}</p>
+  <h2 style="margin:0 0 8px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.howToHeadline}</h2>
+  <p style="margin:0 0 36px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};text-transform:${ht};text-align:center;">${config.howToSubheadline}</p>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
   <tr><td align="center">
-    <div style="width:56px;height:56px;border-radius:50%;background:${palette.darkBg};color:${palette.darkText};font-family:${hf};font-size:29px;font-weight:900;line-height:56px;text-align:center;margin:0 auto 14px;">1</div>
-    <p style="margin:0 0 6px;font-family:${hf};font-size:16px;font-weight:900;color:${palette.lightText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.step1Label}</p>
-    <p style="margin:0 auto;font-family:${hf};font-size:16px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.75;text-align:center;max-width:420px;">${config.step1Body}</p>
+    <div style="width:56px;height:56px;border-radius:50%;background:${palette.darkBg};color:${palette.darkText};font-family:${hf};font-size:26px;font-weight:900;line-height:56px;text-align:center;margin:0 auto 14px;">1</div>
+    <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:900;color:${palette.lightText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.step1Label}</p>
+    <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.75;text-align:center;max-width:420px;">${config.step1Body}</p>
   </td></tr></table>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
   <tr><td align="center">
-    <div style="width:56px;height:56px;border-radius:50%;background:${palette.accent};color:${palette.accentText};font-family:${hf};font-size:29px;font-weight:900;line-height:56px;text-align:center;margin:0 auto 14px;">2</div>
-    <p style="margin:0 0 6px;font-family:${hf};font-size:16px;font-weight:900;color:${palette.lightText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.step2Label}</p>
-    <p style="margin:0 auto;font-family:${hf};font-size:16px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.75;text-align:center;max-width:420px;">${config.step2Body}</p>
+    <div style="width:56px;height:56px;border-radius:50%;background:${palette.accent};color:${palette.accentText};font-family:${hf};font-size:26px;font-weight:900;line-height:56px;text-align:center;margin:0 auto 14px;">2</div>
+    <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:900;color:${palette.lightText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.step2Label}</p>
+    <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.75;text-align:center;max-width:420px;">${config.step2Body}</p>
   </td></tr></table>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
   <tr><td align="center">
-    <div style="width:56px;height:56px;border-radius:50%;background:${palette.secondaryBg};color:${palette.secondaryText};font-family:${hf};font-size:29px;font-weight:900;line-height:56px;text-align:center;margin:0 auto 14px;">3</div>
-    <p style="margin:0 0 6px;font-family:${hf};font-size:16px;font-weight:900;color:${palette.lightText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.step3Label}</p>
-    <p style="margin:0 auto;font-family:${hf};font-size:16px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.75;text-align:center;max-width:420px;">${config.step3Body}</p>
+    <div style="width:56px;height:56px;border-radius:50%;background:${palette.secondaryBg};color:${palette.secondaryText};font-family:${hf};font-size:26px;font-weight:900;line-height:56px;text-align:center;margin:0 auto 14px;">3</div>
+    <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:900;color:${palette.lightText};text-align:center;text-transform:${ht};letter-spacing:1px;">${config.step3Label}</p>
+    <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.75;text-align:center;max-width:420px;">${config.step3Body}</p>
   </td></tr></table>
   ${config.howToNote ? `
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:460px;margin:0 auto 32px;background:rgba(${hexToRgbStr(palette.darkBg)},0.08);border-radius:6px;">
   <tr><td style="padding:16px 24px;">
-    <p style="margin:0;font-family:${hf};font-size:16px;font-weight:700;color:${palette.lightText};text-align:center;">${config.howToNote}</p>
+    <p style="margin:0;font-family:${hf};font-size:15px;font-weight:700;color:${palette.lightText};text-align:center;">${config.howToNote}</p>
   </td></tr></table>` : ''}
   <table cellpadding="0" cellspacing="0" border="0" align="center">
   <tr><td style="background-color:${palette.primaryButtonBg};border-radius:2px;font-family:${hf};">
-    <a href="${config.howToCtaUrl || site}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.howToCta}</a>
+    <a href="${config.howToCtaUrl || site}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.howToCta}</a>
   </td></tr></table>
 </td></tr></table>` : ''}
 
 ${on('07') ? `
 <!-- BLOCK 07: TESTIMONIALS -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.darkBg};">
-<tr><td align="center" style="padding:48px 24px;">
-  <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.testimonialsEyebrow}</p>
-  <h2 style="margin:0 0 28px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.darkText};text-align:center;text-transform:${ht};">${config.testimonialsHeadline}</h2>
+<tr><td align="center" style="padding:48px 48px;">
+  <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.testimonialsEyebrow}</p>
+  <h2 style="margin:0 0 28px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.darkText};text-align:center;text-transform:${ht};">${config.testimonialsHeadline}</h2>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(${hexToRgbStr(palette.darkText)},0.15);border:1px solid rgba(${hexToRgbStr(palette.darkText)},0.25);border-radius:6px;margin-bottom:12px;">
   <tr><td style="padding:20px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td width="44" valign="top" style="padding-right:14px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:${avatarColors[0]};text-align:center;line-height:36px;font-family:${hf};font-size:16px;font-weight:700;color:${avatarTextColors[0]};">${(t0.author || 'A')[0].toUpperCase()}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:${avatarColors[0]};text-align:center;line-height:36px;font-family:${hf};font-size:14px;font-weight:700;color:${avatarTextColors[0]};">${(t0.author || 'A')[0].toUpperCase()}</div>
       </td>
       <td valign="top">
-        <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.accent};">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
-        <p style="margin:0 0 10px;font-family:${hf};font-size:17px;font-weight:400;font-style:italic;color:${palette.darkText};line-height:1.7;">&#8220;${t0.quote}&#8221;</p>
-        <p style="margin:0;font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${t0.author} &middot; &#10003; Verified</p>
+        <p style="margin:0 0 6px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.accent};">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
+        <p style="margin:0 0 10px;font-family:${hf};font-size:15px;font-weight:400;font-style:italic;color:${palette.darkText};line-height:1.7;">&#8220;${t0.quote}&#8221;</p>
+        <p style="margin:0;font-family:${hf};font-size:11px;font-weight:700;color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${t0.author} &middot; &#10003; Verified</p>
       </td>
     </tr></table>
   </td></tr></table>
@@ -738,12 +738,12 @@ ${on('07') ? `
   <tr><td style="padding:20px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td width="44" valign="top" style="padding-right:14px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:${avatarColors[1]};text-align:center;line-height:36px;font-family:${hf};font-size:16px;font-weight:700;color:${avatarTextColors[1]};">${(t1.author || 'A')[0].toUpperCase()}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:${avatarColors[1]};text-align:center;line-height:36px;font-family:${hf};font-size:14px;font-weight:700;color:${avatarTextColors[1]};">${(t1.author || 'A')[0].toUpperCase()}</div>
       </td>
       <td valign="top">
-        <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.accent};">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
-        <p style="margin:0 0 10px;font-family:${hf};font-size:17px;font-weight:400;font-style:italic;color:${palette.darkText};line-height:1.7;">&#8220;${t1.quote}&#8221;</p>
-        <p style="margin:0;font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${t1.author} &middot; &#10003; Verified</p>
+        <p style="margin:0 0 6px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.accent};">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
+        <p style="margin:0 0 10px;font-family:${hf};font-size:15px;font-weight:400;font-style:italic;color:${palette.darkText};line-height:1.7;">&#8220;${t1.quote}&#8221;</p>
+        <p style="margin:0;font-family:${hf};font-size:11px;font-weight:700;color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${t1.author} &middot; &#10003; Verified</p>
       </td>
     </tr></table>
   </td></tr></table>
@@ -751,12 +751,12 @@ ${on('07') ? `
   <tr><td style="padding:20px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td width="44" valign="top" style="padding-right:14px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:${palette.darkText};text-align:center;line-height:36px;font-family:${hf};font-size:16px;font-weight:700;color:${palette.lightText};">${(t2.author || 'A')[0].toUpperCase()}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:${palette.darkText};text-align:center;line-height:36px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.lightText};">${(t2.author || 'A')[0].toUpperCase()}</div>
       </td>
       <td valign="top">
-        <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.accent};">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
-        <p style="margin:0 0 10px;font-family:${hf};font-size:17px;font-weight:400;font-style:italic;color:${palette.darkText};line-height:1.7;">&#8220;${t2.quote}&#8221;</p>
-        <p style="margin:0;font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${t2.author} &middot; &#10003; Verified</p>
+        <p style="margin:0 0 6px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.accent};">&#9733;&#9733;&#9733;&#9733;&#9733;</p>
+        <p style="margin:0 0 10px;font-family:${hf};font-size:15px;font-weight:400;font-style:italic;color:${palette.darkText};line-height:1.7;">&#8220;${t2.quote}&#8221;</p>
+        <p style="margin:0;font-family:${hf};font-size:11px;font-weight:700;color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${t2.author} &middot; &#10003; Verified</p>
       </td>
     </tr></table>
   </td></tr></table>
@@ -765,10 +765,10 @@ ${on('07') ? `
 ${(on('08') && allProducts.length > 0) ? `
 <!-- BLOCK 08: YOU'LL ALSO LOVE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-<tr><td align="center" style="padding:48px 24px;">
-  <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.youllAlsoLoveEyebrow}</p>
-  <h2 style="margin:0 0 12px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.youllAlsoLoveHeadline}</h2>
-  ${config.youllAlsoLoveSubheadline ? `<p style="margin:0 auto 32px;font-family:${hf};font-size:16px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.7;text-align:center;max-width:480px;">${config.youllAlsoLoveSubheadline}</p>` : '<p style="margin:0 0 32px;"></p>'}
+<tr><td align="center" style="padding:48px 48px;">
+  <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.youllAlsoLoveEyebrow}</p>
+  <h2 style="margin:0 0 12px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.youllAlsoLoveHeadline}</h2>
+  ${config.youllAlsoLoveSubheadline ? `<p style="margin:0 0 32px;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.7;text-align:center;">${config.youllAlsoLoveSubheadline}</p>` : '<p style="margin:0 0 32px;"></p>'}
   ${allProducts.map((p: any) => `
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid rgba(${hexToRgbStr(palette.darkBg)},0.1);border-radius:6px;margin-bottom:12px;">
   <tr>
@@ -778,9 +778,9 @@ ${(on('08') && allProducts.length > 0) ? `
       </a>
     </td>
     <td valign="middle" style="padding:16px 18px;">
-      <p style="margin:0 0 6px;font-family:${hf};font-size:15px;font-weight:900;color:${palette.lightText};text-transform:${ht};">${p.name}</p>
-      <p style="margin:0 0 14px;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.6;">${p.description}</p>
-      <a href="${p.url || site}" style="font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};text-decoration:none;letter-spacing:2px;text-transform:${ht};">Shop Now &#8594;</a>
+      <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:900;color:${palette.lightText};text-transform:${ht};">${p.name}</p>
+      <p style="margin:0 0 14px;font-family:${hf};font-size:14px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.6;">${p.description}</p>
+      <a href="${p.url || site}" style="font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};text-decoration:none;letter-spacing:2px;text-transform:${ht};">Shop Now &#8594;</a>
     </td>
   </tr></table>`).join('')}
 </td></tr></table>` : ''}
@@ -788,35 +788,35 @@ ${(on('08') && allProducts.length > 0) ? `
 ${on('12') ? `
 <!-- BLOCK 12: FAQ -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-<tr><td align="center" style="padding:48px 24px;">
-  <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.faqEyebrow}</p>
-  <h2 style="margin:0 0 32px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.faqHeadline}</h2>
+<tr><td align="center" style="padding:48px 48px;">
+  <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.faqEyebrow}</p>
+  <h2 style="margin:0 0 32px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.faqHeadline}</h2>
   ${faqItems.map((item: any) => `
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:540px;margin:0 auto;border-top:1px solid rgba(${hexToRgbStr(palette.darkBg)},0.1);">
   <tr><td style="padding:20px 0;">
-    <p style="margin:0 0 8px;font-family:${hf};font-size:16px;font-weight:700;color:${palette.lightText};text-align:left;text-transform:${ht};letter-spacing:0.5px;">${item.question}</p>
-    <p style="margin:0;font-family:${hf};font-size:16px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.7;text-align:left;">${item.answer}</p>
+    <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.lightText};text-align:left;text-transform:${ht};letter-spacing:0.5px;">${item.question}</p>
+    <p style="margin:0;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.7;text-align:left;">${item.answer}</p>
   </td></tr></table>`).join('')}
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:540px;margin:0 auto;border-top:1px solid rgba(${hexToRgbStr(palette.darkBg)},0.1);border-bottom:1px solid rgba(${hexToRgbStr(palette.darkBg)},0.1);height:1px;"><tr><td></td></tr></table>
   ${config.faqCta ? `
   <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin-top:32px;">
   <tr><td style="background-color:${palette.primaryButtonBg};border-radius:2px;font-family:${hf};">
-    <a href="${config.faqCtaUrl || site}" style="display:inline-block;padding:15px 40px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.faqCta}</a>
+    <a href="${config.faqCtaUrl || site}" style="display:inline-block;padding:15px 40px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.faqCta}</a>
   </td></tr></table>` : ''}
 </td></tr></table>` : ''}
 
 ${on('09') ? `
 <!-- BLOCK 09: INSTAGRAM GRID -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-<tr><td align="center" style="padding:48px 24px 0;">
-  <p style="margin:0 0 8px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.igEyebrow}</p>
-  <h2 style="margin:0 0 6px;font-family:${hf};font-size:30px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.igHeadline}</h2>
-  <p style="margin:0 0 28px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.lightText};text-align:center;">${config.igHandle}</p>
+<tr><td align="center" style="padding:48px 48px 0;">
+  <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.igEyebrow}</p>
+  <h2 style="margin:0 0 6px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.igHeadline}</h2>
+  <p style="margin:0 0 28px;font-family:${hf};font-size:14px;font-weight:700;color:${palette.lightText};text-align:center;">${config.igHandle}</p>
 </td></tr>
 <tr><td align="center" style="padding:0 24px 32px;">
   <table cellpadding="0" cellspacing="0" border="0" align="center">
   <tr><td style="background-color:${palette.primaryButtonBg};border-radius:2px;font-family:${hf};">
-    <a href="${config.igUrl || '#'}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:17px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.igCta}</a>
+    <a href="${config.igUrl || '#'}" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.igCta}</a>
   </td></tr></table>
 </td></tr>
 <tr><td style="padding:0 24px 3px;">
@@ -842,13 +842,13 @@ ${on('09') ? `
   <a href="${site}" style="display:block;margin-bottom:18px;text-decoration:none;">
     ${footerLogoHtml}
   </a>
-  ${config.footerTagline ? `<p style="margin:0 0 22px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkText};letter-spacing:2px;text-transform:${ht};text-align:center;">${config.footerTagline}</p>` : ''}
-  ${config.instagramUrl ? `<p style="margin:0 0 20px;text-align:center;"><a href="${config.instagramUrl}" style="font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};text-decoration:none;letter-spacing:2px;text-transform:${ht};">Instagram</a></p>` : ''}
+  ${config.footerTagline ? `<p style="margin:0 0 22px;font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};letter-spacing:2px;text-transform:${ht};text-align:center;">${config.footerTagline}</p>` : ''}
+  ${config.instagramUrl ? `<p style="margin:0 0 20px;text-align:center;"><a href="${config.instagramUrl}" style="font-family:${hf};font-size:11px;font-weight:700;color:${palette.darkText};text-decoration:none;letter-spacing:2px;text-transform:${ht};">Instagram</a></p>` : ''}
   <p style="margin:0;text-align:center;">
-    <a href="${site}/collections/all" style="font-family:${hf};font-size:13px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">Shop</a>
-    <a href="${site}/pages/about" style="font-family:${hf};font-size:13px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">About</a>
-    <a href="${site}/pages/faq" style="font-family:${hf};font-size:13px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">FAQs</a>
-    <a href="${site}/pages/contact" style="font-family:${hf};font-size:13px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">Contact</a>
+    <a href="${site}/collections/all" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">Shop</a>
+    <a href="${site}/pages/about" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">About</a>
+    <a href="${site}/pages/faq" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">FAQs</a>
+    <a href="${site}/pages/contact" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">Contact</a>
   </p>
 </td></tr>
 <tr><td style="padding:20px 24px 0;background-color:${palette.darkBg};">
@@ -856,13 +856,13 @@ ${on('09') ? `
 </td></tr>
 <tr><td align="center" style="padding:20px 24px;background-color:${palette.darkBg};">
   <p style="margin:0;text-align:center;">
-    <a href="${config.privacyPolicyUrl || `${site}/policies/privacy-policy`}" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Privacy Policy</a>
-    <a href="${config.refundPolicyUrl || `${site}/policies/refund-policy`}" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Refund Policy</a>
-    <a href="${config.termsOfServiceUrl || `${site}/policies/terms-of-service`}" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Terms of Service</a>
+    <a href="${config.privacyPolicyUrl || `${site}/policies/privacy-policy`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Privacy Policy</a>
+    <a href="${config.refundPolicyUrl || `${site}/policies/refund-policy`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Refund Policy</a>
+    <a href="${config.termsOfServiceUrl || `${site}/policies/terms-of-service`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Terms of Service</a>
   </p>
 </td></tr>
 <tr><td align="center" style="padding:0 24px 16px;background-color:${palette.darkBg};">
-  <p style="margin:0;font-family:${hf};font-size:12px;font-weight:400;color:${palette.darkText};text-align:center;">&#169; ${year} ${brand.name}</p>
+  <p style="margin:0;font-family:${hf};font-size:11px;font-weight:400;color:${palette.darkText};text-align:center;">&#169; ${year} ${brand.name}</p>
 </td></tr>
 <tr><td style="padding:8px;background-color:${palette.darkBg};font-size:1px;line-height:1px;">&nbsp;</td></tr>
 </table>

@@ -1,5 +1,6 @@
 'use client'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, createContext, useContext } from 'react'
+import { colors } from '@/lib/design-tokens'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { buildMasterEmail, DEFAULT_MASTER_CONFIG, deriveEmailColorsFromBrand, type MasterEmailConfig, type EmailColors } from '@/lib/email-master-template'
@@ -113,7 +114,20 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
   )
 }
 
-function BlockRow({ label, isOn, onToggle, children, alwaysOn = false }: {
+// ── Accordion context — lets each BlockRow coordinate a single-open
+// behavior through the shared state held by the parent component. The
+// provider is mounted once around the content section below. ───────────
+type BlockAccordionValue = {
+  openId: string | null
+  setOpenId: (id: string | null) => void
+}
+const BlockAccordionContext = createContext<BlockAccordionValue>({
+  openId: null,
+  setOpenId: () => {},
+})
+
+function BlockRow({ id, label, isOn, onToggle, children, alwaysOn = false }: {
+  id: string
   label: string
   isOn?: boolean
   onToggle?: () => void
@@ -121,33 +135,75 @@ function BlockRow({ label, isOn, onToggle, children, alwaysOn = false }: {
   alwaysOn?: boolean
 }) {
   const active = alwaysOn || !!isOn
+  const { openId, setOpenId } = useContext(BlockAccordionContext)
+  const isOpen = openId === id
+  const toggleOpen = () => setOpenId(isOpen ? null : id)
+  const onHeaderKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      toggleOpen()
+    }
+  }
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px',
-        background: active ? '#e6e6e6' : '#fafafa',
-        borderRadius: 8,
-        border: active ? '1px solid #d6d6d6' : '1px solid #f0f0f0',
-        transition: 'background 0.15s, border-color 0.15s, opacity 0.15s',
-        opacity: active ? 1 : 0.6,
-      }}>
+    <div style={{ marginBottom: 8 }}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        onClick={toggleOpen}
+        onKeyDown={onHeaderKey}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px',
+          background: active ? '#e6e6e6' : '#fafafa',
+          borderRadius: 8,
+          border: active ? `1px solid ${colors.borderStrong}` : `1px solid ${colors.border}`,
+          transition: 'background 0.15s, border-color 0.15s, opacity 0.15s',
+          opacity: active ? 1 : 0.6,
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
         <div style={{
           fontFamily: 'Barlow, sans-serif', fontSize: 15, fontWeight: 900,
           letterSpacing: '0.01em', textTransform: 'uppercase',
-          color: active ? '#000' : '#888',
+          color: active ? colors.ink : '#888',
         }}>{label}</div>
-        {!alwaysOn && onToggle && <Toggle on={!!isOn} onChange={onToggle} />}
-      </div>
-      {active && children && (
-        <div style={{
-          marginTop: 10, paddingLeft: 14, paddingRight: 2, paddingBottom: 6,
-          borderLeft: '2px solid rgba(0,0,0,0.08)',
-          display: 'flex', flexDirection: 'column', gap: 10,
-        }}>
-          {children}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {!alwaysOn && onToggle && (
+            <span onClick={e => e.stopPropagation()} style={{ display: 'flex' }}>
+              <Toggle on={!!isOn} onChange={onToggle} />
+            </span>
+          )}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+            color: active ? colors.ink : '#888',
+          }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
-      )}
+      </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateRows: isOpen ? '1fr' : '0fr',
+        transition: 'grid-template-rows 0.2s ease',
+      }}>
+        <div style={{ minHeight: 0, overflow: 'hidden' }}>
+          {children && (
+            <div style={{
+              marginTop: 10, paddingLeft: 14, paddingRight: 2, paddingBottom: 6,
+              borderLeft: `2px solid ${colors.border}`,
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              {children}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -211,6 +267,9 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
 }) {
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState<'Template' | 'History'>('Template')
+  // Single-open accordion state for the content block sidebar. `null` = all
+  // collapsed; any other value = the one block id currently expanded.
+  const [openBlockId, setOpenBlockId] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -963,29 +1022,30 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       {/* Content */}
       <SectionHeader title="Content" subtitle="13 blocks + shell" />
 
-      <BlockRow label="Announcement Bar" alwaysOn>
+      <BlockAccordionContext.Provider value={{ openId: openBlockId, setOpenId: setOpenBlockId }}>
+      <BlockRow id="announcement" label="Announcement Bar" alwaysOn>
         <Field label="Text">
           <input value={config.announcementText} onChange={e => update({ announcementText: e.target.value })} onBlur={saveConfig}
             placeholder="Free Shipping On Orders Over $50" style={inputStyle} />
         </Field>
       </BlockRow>
 
-      <BlockRow label="Hero Image" isOn={isBlockOn('01a')} onToggle={() => toggleBlock('01a')}>
+      <BlockRow id="hero-image" label="Hero Image" isOn={isBlockOn('01a')} onToggle={() => toggleBlock('01a')}>
         <ImagePicker images={allImages} value={config.imageAssignments?.hero} onPick={url => updateImage('hero', url)} />
       </BlockRow>
 
-      <BlockRow label="Hero Text" isOn={isBlockOn('01b')} onToggle={() => toggleBlock('01b')}>
+      <BlockRow id="hero-text" label="Hero Text" isOn={isBlockOn('01b')} onToggle={() => toggleBlock('01b')}>
         <Field label="Eyebrow"><input value={config.heroEyebrow} onChange={e => update({ heroEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.heroHeadline} onChange={e => update({ heroHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Body"><textarea value={config.heroBody} onChange={e => update({ heroBody: e.target.value })} onBlur={saveConfig} rows={3} style={textareaStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="CTA Button" isOn={isBlockOn('01c')} onToggle={() => toggleBlock('01c')}>
+      <BlockRow id="cta-button" label="CTA Button" isOn={isBlockOn('01c')} onToggle={() => toggleBlock('01c')}>
         <Field label="Button Text"><input value={config.heroCta} onChange={e => update({ heroCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Button URL"><input value={config.heroCtaUrl} onChange={e => update({ heroCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="Promo Code" isOn={isBlockOn('02')} onToggle={() => toggleBlock('02')}>
+      <BlockRow id="promo" label="Promo Code" isOn={isBlockOn('02')} onToggle={() => toggleBlock('02')}>
         <Field label="Eyebrow"><input value={config.promoEyebrow} onChange={e => update({ promoEyebrow: e.target.value })} onBlur={saveConfig} placeholder="Exclusive Offer" style={inputStyle} /></Field>
         <Field label="Discount"><input value={config.promoDiscount} onChange={e => update({ promoDiscount: e.target.value })} onBlur={saveConfig} placeholder="15% Off" style={inputStyle} /></Field>
         <Field label="Subtitle"><input value={config.promoSubtitle} onChange={e => update({ promoSubtitle: e.target.value })} onBlur={saveConfig} placeholder="Your First Order" style={inputStyle} /></Field>
@@ -995,7 +1055,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         <Field label="CTA URL"><input value={config.promoCtaUrl} onChange={e => update({ promoCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="3-Pillar Feature" isOn={isBlockOn('03')} onToggle={() => toggleBlock('03')}>
+      <BlockRow id="pillars" label="3-Pillar Feature" isOn={isBlockOn('03')} onToggle={() => toggleBlock('03')}>
         <Field label="Eyebrow"><input value={config.pillarsEyebrow} onChange={e => update({ pillarsEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.pillarsHeadline} onChange={e => update({ pillarsHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         {[1, 2, 3].map(n => {
@@ -1014,7 +1074,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         })}
       </BlockRow>
 
-      <BlockRow label="Story / Nostalgia" isOn={isBlockOn('04')} onToggle={() => toggleBlock('04')}>
+      <BlockRow id="story" label="Story / Nostalgia" isOn={isBlockOn('04')} onToggle={() => toggleBlock('04')}>
         <Field label="Eyebrow"><input value={config.storyEyebrow} onChange={e => update({ storyEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.storyHeadline} onChange={e => update({ storyHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Body"><textarea value={config.storyBody} onChange={e => update({ storyBody: e.target.value })} onBlur={saveConfig} rows={3} style={textareaStyle} /></Field>
@@ -1023,7 +1083,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         <Field label="Closing"><textarea value={config.storyClosing} onChange={e => update({ storyClosing: e.target.value })} onBlur={saveConfig} rows={2} style={textareaStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="Product Feature" isOn={isBlockOn('05')} onToggle={() => toggleBlock('05')}>
+      <BlockRow id="product" label="Product Feature" isOn={isBlockOn('05')} onToggle={() => toggleBlock('05')}>
         <Field label="Product Image">
           <ImagePicker images={allImages} value={config.imageAssignments?.product} onPick={url => updateImage('product', url)} />
         </Field>
@@ -1035,7 +1095,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         <Field label="CTA URL"><input value={config.productCtaUrl} onChange={e => update({ productCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="Callout Card" isOn={isBlockOn('11')} onToggle={() => toggleBlock('11')}>
+      <BlockRow id="callout" label="Callout Card" isOn={isBlockOn('11')} onToggle={() => toggleBlock('11')}>
         <Field label="Eyebrow"><input value={config.calloutEyebrow} onChange={e => update({ calloutEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.calloutHeadline} onChange={e => update({ calloutHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Body"><textarea value={config.calloutBody} onChange={e => update({ calloutBody: e.target.value })} onBlur={saveConfig} rows={2} style={textareaStyle} /></Field>
@@ -1043,7 +1103,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         <Field label="CTA URL"><input value={config.calloutCtaUrl} onChange={e => update({ calloutCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="How-To / 3 Steps" isOn={isBlockOn('06')} onToggle={() => toggleBlock('06')}>
+      <BlockRow id="howto" label="How-To / 3 Steps" isOn={isBlockOn('06')} onToggle={() => toggleBlock('06')}>
         <Field label="Eyebrow"><input value={config.howToEyebrow} onChange={e => update({ howToEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.howToHeadline} onChange={e => update({ howToHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Subheadline"><input value={config.howToSubheadline} onChange={e => update({ howToSubheadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
@@ -1064,7 +1124,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         <Field label="CTA URL"><input value={config.howToCtaUrl} onChange={e => update({ howToCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="Testimonials" isOn={isBlockOn('07')} onToggle={() => toggleBlock('07')}>
+      <BlockRow id="testimonials" label="Testimonials" isOn={isBlockOn('07')} onToggle={() => toggleBlock('07')}>
         <Field label="Eyebrow"><input value={config.testimonialsEyebrow} onChange={e => update({ testimonialsEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.testimonialsHeadline} onChange={e => update({ testimonialsHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         {config.testimonials.map((t, i) => (
@@ -1079,7 +1139,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       {/* Hide block 08 entirely when there are no products to display — neither
           in config.products nor in the Supabase-hosted productImages pool. */}
       {(config.products.length > 0 || productImages.length > 0) && (
-        <BlockRow label="You'll Also Love" isOn={isBlockOn('08')} onToggle={() => toggleBlock('08')}>
+        <BlockRow id="youll-also-love" label="You'll Also Love" isOn={isBlockOn('08')} onToggle={() => toggleBlock('08')}>
           <Field label="Eyebrow"><input value={config.youllAlsoLoveEyebrow} onChange={e => update({ youllAlsoLoveEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
           <Field label="Headline"><input value={config.youllAlsoLoveHeadline} onChange={e => update({ youllAlsoLoveHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
           <Field label="Subheadline"><input value={config.youllAlsoLoveSubheadline} onChange={e => update({ youllAlsoLoveSubheadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
@@ -1099,7 +1159,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         </BlockRow>
       )}
 
-      <BlockRow label="FAQ" isOn={isBlockOn('12')} onToggle={() => toggleBlock('12')}>
+      <BlockRow id="faq" label="FAQ" isOn={isBlockOn('12')} onToggle={() => toggleBlock('12')}>
         <Field label="Eyebrow"><input value={config.faqEyebrow} onChange={e => update({ faqEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.faqHeadline} onChange={e => update({ faqHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         {config.faqItems.map((f, i) => (
@@ -1117,7 +1177,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         <Field label="CTA URL"><input value={config.faqCtaUrl} onChange={e => update({ faqCtaUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
       </BlockRow>
 
-      <BlockRow label="Instagram Grid" isOn={isBlockOn('09')} onToggle={() => toggleBlock('09')}>
+      <BlockRow id="instagram" label="Instagram Grid" isOn={isBlockOn('09')} onToggle={() => toggleBlock('09')}>
         <Field label="Eyebrow"><input value={config.igEyebrow} onChange={e => update({ igEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.igHeadline} onChange={e => update({ igHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Handle"><input value={config.igHandle} onChange={e => update({ igHandle: e.target.value })} onBlur={saveConfig} placeholder="@handle" style={inputStyle} /></Field>
@@ -1144,13 +1204,14 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         </Field>
       </BlockRow>
 
-      <BlockRow label="Footer" alwaysOn>
+      <BlockRow id="footer" label="Footer" alwaysOn>
         <Field label="Tagline"><input value={config.footerTagline} onChange={e => update({ footerTagline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Instagram URL"><input value={config.instagramUrl} onChange={e => update({ instagramUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Privacy Policy URL"><input value={config.privacyPolicyUrl} onChange={e => update({ privacyPolicyUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/privacy-policy`} style={inputStyle} /></Field>
         <Field label="Refund Policy URL"><input value={config.refundPolicyUrl} onChange={e => update({ refundPolicyUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/refund-policy`} style={inputStyle} /></Field>
         <Field label="Terms of Service URL"><input value={config.termsOfServiceUrl} onChange={e => update({ termsOfServiceUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/terms-of-service`} style={inputStyle} /></Field>
       </BlockRow>
+      </BlockAccordionContext.Provider>
       </fieldset>
     </div>
   )

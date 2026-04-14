@@ -124,10 +124,19 @@ export default function MetaLaunchModal({ creative, brand, onClose, onSuccess }:
       const json = await res.json()
       if (!res.ok) {
         // Surface both the short message and the raw Meta response so the
-        // rejected field / subcode is visible in the UI.
-        setLaunchError(json.error || 'Launch failed')
-        setLaunchErrorDetail(json.metaError || json.metaResponse || json.debug || null)
-        console.error('[meta-launch] failure payload:', json)
+        // rejected field / subcode is visible in the UI. Fall back to the
+        // whole JSON payload so empty {} from the server still produces
+        // something debuggable instead of a blank red banner.
+        const hasErrorText = json && typeof json.error === 'string' && json.error.length > 0
+        setLaunchError(hasErrorText ? json.error : `Launch failed (HTTP ${res.status})`)
+        setLaunchErrorDetail(
+          json.metaError
+          || json.metaResponse
+          || json.stack
+          || json.debug
+          || (Object.keys(json || {}).length ? json : { note: 'Server returned an empty body — check Vercel function logs.' })
+        )
+        console.error('[meta-launch] failure payload:', json, 'status:', res.status)
         return
       }
       setLaunchedAdId(json.adId)

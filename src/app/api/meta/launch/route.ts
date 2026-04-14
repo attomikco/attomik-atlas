@@ -16,6 +16,26 @@ type LaunchBody = {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handleLaunch(req)
+  } catch (e: any) {
+    // Without this top-level catch any throw in the flow (e.g. imageRes.json()
+    // on non-JSON body, network failure, undefined access) would bubble up
+    // and Vercel / Next would return an empty {} with status 500 — and the
+    // modal would have no useful diagnostics. Surface the stack to the client.
+    console.error('[meta-launch] unhandled exception:', e)
+    return NextResponse.json(
+      {
+        error: `Unhandled error: ${e?.message || String(e)}`,
+        stack: e?.stack || null,
+        name: e?.name || null,
+      },
+      { status: 500 }
+    )
+  }
+}
+
+async function handleLaunch(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

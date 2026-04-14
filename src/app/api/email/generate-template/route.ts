@@ -218,6 +218,22 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
       console.warn('[email generate-template] productName empty, fell back to', config.productName)
     }
 
+    // Safety net — the story quote card renders an empty shell (stars + "·
+    // Verified") when storyQuote is blank. If the AI returns nothing, pull the
+    // first sentence of storyBody so the card still reads as a line from the
+    // story. Attribution falls back to an em-dash + brand name.
+    const storyQuote = typeof config.storyQuote === 'string' ? config.storyQuote.trim() : ''
+    if (!storyQuote) {
+      const body = typeof config.storyBody === 'string' ? config.storyBody.trim() : ''
+      const firstSentence = body.match(/[^.!?]+[.!?]/)?.[0]?.trim() || body.split('\n')[0]?.trim() || ''
+      config.storyQuote = firstSentence
+      console.warn('[email generate-template] storyQuote empty, fell back to first sentence of storyBody')
+    }
+    const storyAttr = typeof config.storyQuoteAttribution === 'string' ? config.storyQuoteAttribution.trim() : ''
+    if (!storyAttr) {
+      config.storyQuoteAttribution = `— ${brand.name}`
+    }
+
     return NextResponse.json({ config })
   } catch {
     return NextResponse.json({ error: 'Failed to parse AI response', raw: text }, { status: 500 })
