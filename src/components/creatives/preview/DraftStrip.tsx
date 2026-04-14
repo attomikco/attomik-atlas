@@ -1,5 +1,5 @@
 'use client'
-import { Download, X } from 'lucide-react'
+import { Download, X, Zap } from 'lucide-react'
 import { TEMPLATES, SIZES } from '../templates/registry'
 import type { Draft, Variation } from '../types'
 import type { BrandImage } from '@/types'
@@ -15,11 +15,14 @@ interface DraftStripProps {
   thumbProps: (v: Variation, imgUrl: string | null, w?: number, h?: number) => Record<string, any>
   exportAllDrafts: () => void
   exportingAll: boolean
+  metaConnected: boolean
+  onLaunchDraft: (i: number) => void
 }
 
 export default function DraftStrip({
   savedDrafts, activeDraft, loadDraft, removeDraft,
   size, images, getPublicUrl, thumbProps, exportAllDrafts, exportingAll,
+  metaConnected, onLaunchDraft,
 }: DraftStripProps) {
   if (savedDrafts.length === 0) return null
 
@@ -42,6 +45,15 @@ export default function DraftStrip({
           const fixedH = 120
           const dThumbScale = fixedH / dSize.h
           const dThumbW = Math.round(dSize.w * dThumbScale)
+          const launched = !!d.metaAdId
+          const launchTooltip = !d.dbId
+            ? 'Save the creative first'
+            : !metaConnected
+              ? 'Connect Meta in Brand Hub'
+              : launched
+                ? `Already launched — ${d.metaAdStatus || 'PAUSED'}`
+                : 'Launch to Meta'
+          const launchDisabled = !d.dbId || !metaConnected || launched
           return (
             <div key={i} className="relative group" style={{ height: fixedH }}>
               <button onClick={() => loadDraft(i)}
@@ -52,6 +64,49 @@ export default function DraftStrip({
                 </div>
               </button>
               <span className="absolute bottom-0.5 left-0.5 text-[9px] font-bold bg-black/60 text-white px-1 rounded">{dSizeLabel}</span>
+
+              {/* Launch status badge — persistent when launched */}
+              {launched && (
+                <span
+                  title={`Meta ad ${d.metaAdId} — ${d.metaAdStatus || 'PAUSED'}`}
+                  style={{
+                    position: 'absolute', top: 2, left: 2,
+                    fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+                    background: d.metaAdStatus === 'ACTIVE' ? '#00cc78' : '#ffc107',
+                    color: '#000',
+                    padding: '2px 6px', borderRadius: 3,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {d.metaAdStatus === 'ACTIVE' ? '● Live' : '⏸ Paused'}
+                </span>
+              )}
+
+              {/* Launch button — persistent, bottom-right. Hidden once launched. */}
+              {!launched && (
+                <button
+                  onClick={() => { if (!launchDisabled) onLaunchDraft(i) }}
+                  disabled={launchDisabled}
+                  title={launchTooltip}
+                  style={{
+                    position: 'absolute', bottom: 4, right: 4,
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    padding: '3px 7px',
+                    borderRadius: 10,
+                    background: launchDisabled ? 'rgba(0,0,0,0.55)' : '#00ff97',
+                    color: launchDisabled ? '#fff' : '#000',
+                    border: 'none',
+                    cursor: launchDisabled ? 'not-allowed' : 'pointer',
+                    fontFamily: 'DM Mono, monospace',
+                    fontSize: 9, fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
+                    opacity: launchDisabled ? 0.65 : 1,
+                  }}
+                >
+                  <Zap size={9} /> Launch
+                </button>
+              )}
+
               <button onClick={() => removeDraft(i)}
                 className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger">
                 <X size={8} />

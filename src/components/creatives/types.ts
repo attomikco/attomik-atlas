@@ -88,9 +88,12 @@ export type Draft = Variation & {
   sizeId: string
   dbId?: string
   imageUrl?: string | null
+  thumbnailUrl?: string | null
   // ── Meta ad launch fields, hydrated from saved_creatives when loading ──
   destinationUrl?: string
   ctaType?: CtaType
+  metaAdId?: string | null
+  metaAdStatus?: string | null
 }
 
 export type CtaType =

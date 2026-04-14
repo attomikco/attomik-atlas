@@ -16,6 +16,7 @@ import StylePanel from './sidebar/StylePanel'
 import PreviewCanvas from './preview/PreviewCanvas'
 import VariationStrip from './preview/VariationStrip'
 import DraftStrip from './preview/DraftStrip'
+import MetaLaunchModal from './MetaLaunchModal'
 
 export default function CreativeBuilder({
   brands,
@@ -97,6 +98,7 @@ export default function CreativeBuilder({
   const [activeVariation, setActiveVariation] = useState<number | null>(null)
   const [savedDrafts, setSavedDrafts] = useState<Draft[]>([])
   const [activeDraft, setActiveDraft] = useState<number | null>(null)
+  const [launchModalDraft, setLaunchModalDraft] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportingAll, setExportingAll] = useState(false)
   const [exportToast, setExportToast] = useState<string | null>(null)
@@ -124,6 +126,14 @@ export default function CreativeBuilder({
 
   // ── Derived ────────────────────────────────────────────────────────
   const brand = brands.find(b => b.id === brandId)
+  // Gate the Launch button on a fully wired Meta connection (token + account + page id).
+  const metaConnected = (() => {
+    if (!brand?.notes) return false
+    try {
+      const n = JSON.parse(brand.notes)
+      return !!(n.meta_access_token && n.meta_ad_account_id && n.meta_page_id)
+    } catch { return false }
+  })()
   const brandColor = brand?.primary_color || '#00ff97'
   const [ctaColor, setCtaColor] = useState(brand?.accent_color || brandColor)
   const [ctaFontColor, setCtaFontColor] = useState(brand?.accent_font_color || '#000000')
@@ -633,12 +643,15 @@ FB_DESCRIPTION: <under 12 words>`,
           style: r.style_snapshot || {},
           dbId: r.id,
           imageUrl: r.image_url,
+          thumbnailUrl: r.thumbnail_url || null,
           // ── Meta ad launch fields ──
           destinationUrl: r.destination_url || '',
           ctaType: (r.cta_type as CtaType) || 'LEARN_MORE',
           fbPrimaryText: r.fb_primary_text || '',
           fbHeadline: r.fb_headline || '',
           fbDescription: r.fb_description || '',
+          metaAdId: r.meta_ad_id || null,
+          metaAdStatus: r.meta_ad_status || null,
         }))
         setSavedDrafts(drafts)
       })
@@ -878,6 +891,8 @@ FB_DESCRIPTION: <under 12 words>`,
                 thumbProps={thumbProps}
                 exportAllDrafts={exportAllDrafts}
                 exportingAll={exportingAll}
+                metaConnected={metaConnected}
+                onLaunchDraft={i => setLaunchModalDraft(i)}
               />
             </div>
 
@@ -1052,6 +1067,54 @@ FB_DESCRIPTION: <under 12 words>`,
           {exportToast}
         </div>
       )}
+
+      {/* ── Meta launch modal ── */}
+      {launchModalDraft !== null && brand && savedDrafts[launchModalDraft]?.dbId && (() => {
+        const d = savedDrafts[launchModalDraft]
+        // Reconstruct the minimal SavedCreative shape the modal expects from
+        // the Draft + the saved row's dbId. The modal only needs image urls,
+        // copy, and the Meta-specific fields.
+        const creative = {
+          id: d.dbId!,
+          created_at: '',
+          brand_id: brand.id,
+          campaign_id: null,
+          template_id: d.templateId,
+          size_id: d.sizeId,
+          image_url: d.imageUrl || null,
+          headline: d.headline,
+          body_text: d.body,
+          cta_text: d.cta,
+          style_snapshot: d.style,
+          thumbnail_url: d.thumbnailUrl || null,
+          name: null,
+          destination_url: d.destinationUrl || null,
+          cta_type: d.ctaType || 'LEARN_MORE',
+          fb_primary_text: d.fbPrimaryText || null,
+          fb_headline: d.fbHeadline || null,
+          fb_description: d.fbDescription || null,
+          meta_ad_id: d.metaAdId || null,
+          meta_ad_status: d.metaAdStatus || null,
+        }
+        return (
+          <MetaLaunchModal
+            creative={creative}
+            brand={{
+              id: brand.id,
+              website: (brand as { website?: string | null }).website ?? null,
+              notes: brand.notes,
+            }}
+            onClose={() => setLaunchModalDraft(null)}
+            onSuccess={result => {
+              setSavedDrafts(prev => prev.map((dd, idx) =>
+                idx === launchModalDraft
+                  ? { ...dd, metaAdId: result.adId, metaAdStatus: result.status }
+                  : dd
+              ))
+            }}
+          />
+        )
+      })()}
     </div>
   )
 }

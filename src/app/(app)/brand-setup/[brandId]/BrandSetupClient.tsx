@@ -109,6 +109,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
   const [klaviyoKey, setKlaviyoKey] = useState(tryParse(brand.notes)?.klaviyo_api_key || '')
   const [metaToken, setMetaToken] = useState(tryParse(brand.notes)?.meta_access_token || '')
   const [metaAdAccountId, setMetaAdAccountId] = useState(tryParse(brand.notes)?.meta_ad_account_id || '')
+  const [metaPageId, setMetaPageId] = useState(tryParse(brand.notes)?.meta_page_id || '')
   const [metaTokenSavedAt, setMetaTokenSavedAt] = useState(tryParse(brand.notes)?.meta_token_saved_at || null)
   const [colors, setColors] = useState<Array<{ label: string; value: string }>>(() => {
     const base = [
@@ -306,6 +307,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         default_cta: defaultCta || null,
         meta_access_token: metaToken || null,
         meta_ad_account_id: metaAdAccountId || null,
+        meta_page_id: metaPageId || null,
         meta_token_saved_at: metaToken ? (metaTokenSavedAt || new Date().toISOString()) : null,
       }),
       products: savedProducts.length ? savedProducts : null,
@@ -1218,16 +1220,30 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           value={metaAdAccountId}
           onChange={e => { setMetaAdAccountId(e.target.value.replace('act_', '')); setIsDirty(true) }}
           placeholder="663039913130424"
+          style={{ ...inputStyle, marginBottom: 12 }}
+          onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+        />
+
+        <label style={labelStyle}>Facebook Page ID</label>
+        <input
+          type="text"
+          value={metaPageId}
+          onChange={e => { setMetaPageId(e.target.value.trim()); setIsDirty(true) }}
+          placeholder="e.g. 123456789"
           style={{ ...inputStyle, marginBottom: 6 }}
           onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
           onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
         />
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 0 }}>
-          Just the number — no "act_" prefix. Find in Meta Ads Manager → Settings → Ad Account ID.
+          Required to launch ads. Find it on your Facebook Page → About → Page transparency → Page ID. Ad account ID has no "act_" prefix.
           Get your token at <a href="https://developers.facebook.com/tools/explorer" target="_blank" rel="noopener noreferrer" style={{ color: '#1877f2' }}>Graph API Explorer</a> with ads_read + ads_management + business_management permissions, then extend to 60 days.
         </div>
-        {metaToken && metaAdAccountId && (
+        {metaToken && metaAdAccountId && metaPageId && (
           <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: '#00a86b' }}>✓ Connected</div>
+        )}
+        {metaToken && metaAdAccountId && !metaPageId && (
+          <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: '#b8860b' }}>⚠ Add a Page ID to enable ad launching</div>
         )}
       </div>
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0 0 24px' }} />
