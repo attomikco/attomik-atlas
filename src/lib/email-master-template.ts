@@ -546,11 +546,11 @@ ${config.previewText ? `<div style="display:none;max-height:0;overflow:hidden;ms
   </a>
 </td></tr></table>
 
-${on('01a') && heroImg ? `
+${on('01a') ? `
 <!-- BLOCK 01a: HERO IMAGE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
   <tr><td style="padding:0;line-height:0;font-size:0;">
-    <div style="width:100%;height:400px;background-image:url('${heroImg}');background-size:cover;background-position:center center;background-repeat:no-repeat;" role="img" aria-label="${brand.name}"></div>
+    <div style="width:100%;height:400px;${heroImg ? `background-image:url('${heroImg}');background-size:cover;background-position:center center;background-repeat:no-repeat;` : `background-color:${palette.lightBg};`}" role="img" aria-label="${brand.name}"></div>
   </td></tr>
 </table>` : ''}
 
@@ -645,9 +645,9 @@ ${on('04') ? `
 ${on('05') ? `
 <!-- BLOCK 05: PRODUCT FEATURE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.darkBg};">
-  ${productImg ? `<tr><td style="padding:0;line-height:0;font-size:0;">
-    <div style="width:100%;height:320px;background-image:url('${productImg}');background-size:cover;background-position:center center;background-repeat:no-repeat;" role="img" aria-label="${config.productName || brand.name}"></div>
-  </td></tr>` : ''}
+  <tr><td style="padding:0;line-height:0;font-size:0;">
+    <div style="width:100%;height:320px;${productImg ? `background-image:url('${productImg}');background-size:cover;background-position:center center;background-repeat:no-repeat;` : `background-color:${palette.darkBg};`}" role="img" aria-label="${config.productName || brand.name}"></div>
+  </td></tr>
   <tr><td align="center" style="padding:48px 48px;">
     <p style="margin:0 0 10px;text-align:center;">
       <span style="display:inline-block;background:rgba(${hexToRgbStr(palette.darkText)},0.15);border-radius:20px;padding:6px 18px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkText};letter-spacing:3px;text-transform:${ht};">${config.productBadge}</span>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { anthropic, buildBrandSystemPrompt } from '@/lib/anthropic'
 import { DEFAULT_MASTER_CONFIG, type MasterEmailConfig } from '@/lib/email-master-template'
-import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
+import { bucketBrandImages, getBusinessType, pickSlotImages } from '@/lib/brand-images'
 import type { BrandImage } from '@/types'
 
 // POST /api/email-templates/[id]/generate
@@ -177,12 +177,26 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
   const lifestylePool = [...bucketLifestyle, ...bucketProduct].map(toUrl)
   const igImages: string[] = Array.from({ length: 6 }, (_, i) => lifestylePool[i] || '')
 
+  // Seed hero + product image assignments the same way the newsletter page and
+  // the campaign-email route do: pickSlotImages picks orientation-aware defaults
+  // from the brand image pool. User edits on the existing template always win —
+  // we only fill slots that the stored config left empty. Without this, the
+  // AI-generated master template rendered block 01a with url('') whenever the
+  // user hadn't manually assigned a hero image in the editor.
+  const [heroPick, productPick] = pickSlotImages(rows, getBusinessType(brand), ['hero', 'product'])
+  const existingAssignments = existingConfig.imageAssignments || {}
+  const imageAssignments = {
+    ...existingAssignments,
+    hero: existingAssignments.hero || (heroPick ? toUrl(heroPick) : ''),
+    product: existingAssignments.product || (productPick ? toUrl(productPick) : ''),
+  }
+
   const finalConfig: MasterEmailConfig = {
     ...DEFAULT_MASTER_CONFIG,
     ...generatedConfig,
     enabledBlocks: generatedConfig.enabledBlocks || DEFAULT_MASTER_CONFIG.enabledBlocks,
     emailColors: existingConfig.emailColors ?? null,
-    imageAssignments: existingConfig.imageAssignments ?? {},
+    imageAssignments,
     testimonials,
     igImages,
   }
