@@ -12,6 +12,20 @@ export default async function DashboardPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // First name for the welcome heading — parsed from profiles.full_name.
+  // Falls back to nothing (heading reads "Welcome back.") when profile or
+  // full_name is missing.
+  let firstName: string | null = null
+  if (user?.id) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+    const fullName = (profile?.full_name || '').trim()
+    if (fullName) firstName = fullName.split(/\s+/)[0] || null
+  }
+
   // RLS gates `brands` selects through brand_members (see
   // 20260413_brand_teams_fix.sql), so filtering by user_id here would miss
   // brands the user was invited to. Removing the filter unblocks invited
@@ -149,6 +163,58 @@ export default async function DashboardPage({
     ? 'None yet'
     : `${launchedCount} · ${activeAdCount} active${pausedCount ? ` · ${pausedCount} paused` : ''}`
 
+  // ── Meta Ads performance (last 30 days) ──
+  // One row per ad per day from brand_insight_rows. Rows are pulled in
+  // date-desc order so the first occurrence of an ad_name carries the
+  // most-recent creative snapshot (used for the top-creatives strip).
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const insightsCutoff = thirtyDaysAgo.toISOString().split('T')[0]
+
+  const { data: insightRows } = await supabase
+    .from('brand_insight_rows')
+    .select('ad_name, spend, purchases, purchase_value, roas, impressions, clicks, creative_image_url, creative_title, date')
+    .eq('brand_id', brand.id)
+    .gte('date', insightsCutoff)
+    .order('date', { ascending: false })
+
+  const hasInsights = !!(insightRows && insightRows.length > 0)
+  const totalSpend = (insightRows || []).reduce((s, r: any) => s + Number(r.spend || 0), 0)
+  const totalPurchases = (insightRows || []).reduce((s, r: any) => s + Number(r.purchases || 0), 0)
+  const totalRevenue = (insightRows || []).reduce((s, r: any) => s + Number(r.purchase_value || 0), 0)
+  const avgRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0
+
+  type TopAd = {
+    ad_name: string
+    spend: number
+    purchases: number
+    purchase_value: number
+    creative_image_url: string | null
+    creative_title: string | null
+  }
+  const adGroups = new Map<string, TopAd>()
+  for (const r of (insightRows || []) as any[]) {
+    const name = r.ad_name || '(unnamed)'
+    let g = adGroups.get(name)
+    if (!g) {
+      g = {
+        ad_name: name,
+        spend: 0,
+        purchases: 0,
+        purchase_value: 0,
+        creative_image_url: r.creative_image_url || null,
+        creative_title: r.creative_title || null,
+      }
+      adGroups.set(name, g)
+    }
+    g.spend += Number(r.spend || 0)
+    g.purchases += Number(r.purchases || 0)
+    g.purchase_value += Number(r.purchase_value || 0)
+  }
+  const topAds: TopAd[] = Array.from(adGroups.values())
+    .sort((a, b) => b.purchases - a.purchases)
+    .slice(0, 3)
+
   const primaryColor = brand.primary_color || '#000'
   function isLight(hex: string) {
     const c = hex.replace('#', '')
@@ -180,7 +246,7 @@ export default async function DashboardPage({
           Your workspace
         </div>
         <h1 style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 32, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
-          Welcome back.
+          {firstName ? `Welcome back, ${firstName}.` : 'Welcome back.'}
         </h1>
       </div>
 
@@ -298,6 +364,137 @@ export default async function DashboardPage({
           </Link>
         </div>
       )}
+
+      {/* Meta Ads — Last 30 days */}
+      <div style={{
+        background: '#fff',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        padding: 24,
+        marginBottom: 24,
+      }}>
+        {!hasInsights ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{
+                fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 14,
+                textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink)',
+                marginBottom: 4,
+              }}>Meta Ads</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                No Meta Ads data yet — sync your account in Insights
+              </div>
+            </div>
+            <Link href={`/insights?brand=${brand.id}`} style={{
+              fontSize: 12, fontWeight: 700, color: 'var(--ink)', textDecoration: 'none',
+              padding: '8px 18px', borderRadius: 999, border: '1px solid var(--border)',
+              background: '#fff', whiteSpace: 'nowrap',
+            }}>Open Insights →</Link>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
+              <div style={{
+                fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 14,
+                textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink)',
+              }}>Meta Ads — Last 30 days</div>
+              <Link href={`/insights?brand=${brand.id}`} style={{
+                fontSize: 12, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none',
+              }}>View all →</Link>
+            </div>
+
+            {/* KPI row */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24,
+            }}>
+              {[
+                { label: 'Spend',     value: `$${Math.round(totalSpend).toLocaleString()}` },
+                { label: 'Purchases', value: `${totalPurchases.toLocaleString()}` },
+                { label: 'Revenue',   value: `$${Math.round(totalRevenue).toLocaleString()}` },
+                { label: 'ROAS',      value: `${avgRoas.toFixed(2)}x` },
+              ].map(({ label, value }) => (
+                <div key={label} style={{
+                  background: '#000', color: '#fff', borderRadius: 12,
+                  padding: '20px 24px',
+                }}>
+                  <div style={{
+                    fontFamily: 'Barlow, sans-serif', fontSize: 9, fontWeight: 700,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.5)', marginBottom: 10, lineHeight: 1,
+                  }}>{label}</div>
+                  <div style={{
+                    fontFamily: 'DM Mono, monospace', fontSize: 28, fontWeight: 600,
+                    color: '#00ff97', lineHeight: 1,
+                  }}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Top creatives */}
+            {topAds.length > 0 && (
+              <>
+                <div style={{
+                  fontFamily: 'Barlow, sans-serif', fontSize: 9, fontWeight: 900,
+                  letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)',
+                  marginBottom: 12,
+                }}>Top creatives</div>
+                <div style={{ display: 'flex', gap: 12, overflow: 'hidden' }}>
+                  {topAds.map((ad, i) => {
+                    const initials = (ad.ad_name || 'AD')
+                      .split(/\s+/)
+                      .map((w: string) => w[0] || '')
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()
+                    return (
+                      <div key={i} style={{
+                        flex: '0 0 160px', width: 160,
+                        display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0,
+                      }}>
+                        <div style={{
+                          width: 160, height: 160, borderRadius: 8, overflow: 'hidden', position: 'relative',
+                          backgroundColor: '#2a2a2a',
+                          backgroundImage: ad.creative_image_url ? `url("${ad.creative_image_url}")` : undefined,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {!ad.creative_image_url && (
+                            <div style={{
+                              fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 36,
+                              color: 'rgba(255,255,255,0.5)', letterSpacing: '-0.02em',
+                            }}>{initials}</div>
+                          )}
+                          <div style={{
+                            position: 'absolute', bottom: 8, right: 8,
+                            background: '#000', color: '#00ff97',
+                            fontSize: 10, fontWeight: 700,
+                            padding: '4px 9px', borderRadius: 999,
+                            fontFamily: 'DM Mono, monospace',
+                            letterSpacing: '0.04em',
+                            whiteSpace: 'nowrap',
+                          }}>{ad.purchases} purchases</div>
+                        </div>
+                        <div
+                          title={ad.ad_name}
+                          style={{
+                            fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--ink)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            marginTop: 4,
+                          }}
+                        >{ad.ad_name}</div>
+                        <div style={{
+                          fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--muted)',
+                        }}>${Math.round(ad.spend).toLocaleString()}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Quick actions */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
