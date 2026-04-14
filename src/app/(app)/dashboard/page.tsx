@@ -68,6 +68,87 @@ export default async function DashboardPage({
 
   const latestCampaign = campaigns?.[0]
 
+  // ── Performance snapshot data ──
+  // Latest email generated for this brand. `generated_content.content` is a
+  // JSON string with the shape { html, subject, config } — we parse it to
+  // pull out the subject for the snapshot pill.
+  const { data: latestEmailRows } = await supabase
+    .from('generated_content')
+    .select('id, campaign_id, content, created_at')
+    .eq('brand_id', brand.id)
+    .eq('type', 'email')
+    .order('created_at', { ascending: false })
+    .limit(1)
+  const latestEmailRow = latestEmailRows?.[0] || null
+  let latestEmailSubject: string | null = null
+  if (latestEmailRow?.content) {
+    try {
+      const parsed = typeof latestEmailRow.content === 'string'
+        ? JSON.parse(latestEmailRow.content)
+        : latestEmailRow.content
+      latestEmailSubject = parsed?.subject || null
+    } catch {
+      latestEmailSubject = null
+    }
+  }
+
+  // Saved creatives + Meta-launched split. Single fetch feeds both the
+  // "Creatives" and "Ads launched" pills plus the per-campaign roll-up
+  // rendered in the campaigns list below.
+  const { data: creativesRows } = await supabase
+    .from('saved_creatives')
+    .select('id, campaign_id, meta_ad_id, meta_ad_status')
+    .eq('brand_id', brand.id)
+  const creativesCount = creativesRows?.length || 0
+  const launchedAds = (creativesRows || []).filter((c: any) => !!c.meta_ad_id)
+  const launchedCount = launchedAds.length
+  const pausedCount = launchedAds.filter((c: any) => c.meta_ad_status === 'PAUSED').length
+  const activeAdCount = launchedCount - pausedCount
+
+  const creativesByCampaign = new Map<string, number>()
+  for (const c of creativesRows || []) {
+    if (c.campaign_id) {
+      creativesByCampaign.set(c.campaign_id, (creativesByCampaign.get(c.campaign_id) || 0) + 1)
+    }
+  }
+
+  // Email templates count
+  const { count: emailTemplateCount } = await supabase
+    .from('email_templates')
+    .select('*', { count: 'exact', head: true })
+    .eq('brand_id', brand.id)
+
+  // Team members count
+  const { count: teamCount } = await supabase
+    .from('brand_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('brand_id', brand.id)
+
+  // Per-campaign email existence for the enhanced campaigns list
+  const { data: campaignEmailRows } = await supabase
+    .from('generated_content')
+    .select('campaign_id')
+    .eq('brand_id', brand.id)
+    .eq('type', 'email')
+  const emailsByCampaign = new Set<string>()
+  for (const row of campaignEmailRows || []) {
+    if (row.campaign_id) emailsByCampaign.add(row.campaign_id)
+  }
+
+  // Snapshot display strings
+  const latestEmailDate = latestEmailRow?.created_at
+    ? new Date(latestEmailRow.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : ''
+  const truncSubject = latestEmailSubject && latestEmailSubject.length > 28
+    ? latestEmailSubject.slice(0, 28) + '…'
+    : latestEmailSubject
+  const latestEmailDisplay = latestEmailSubject
+    ? `"${truncSubject}" · ${latestEmailDate}`
+    : 'No emails yet'
+  const adsDisplay = launchedCount === 0
+    ? 'None yet'
+    : `${launchedCount} · ${activeAdCount} active${pausedCount ? ` · ${pausedCount} paused` : ''}`
+
   const primaryColor = brand.primary_color || '#000'
   function isLight(hex: string) {
     const c = hex.replace('#', '')
@@ -163,6 +244,36 @@ export default async function DashboardPage({
         </div>
       </div>
 
+      {/* Performance snapshot */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { icon: '📧', label: 'Last email',  value: latestEmailDisplay, title: latestEmailSubject || undefined },
+          { icon: '🎨', label: 'Creatives',   value: `${creativesCount} saved` },
+          { icon: '📢', label: 'Ads launched', value: adsDisplay },
+          { icon: '✉',  label: 'Templates',   value: `${emailTemplateCount || 0}` },
+          { icon: '👥', label: 'Team',        value: `${teamCount || 0} member${(teamCount || 0) !== 1 ? 's' : ''}` },
+        ].map(({ icon, label, value, title }) => (
+          <div
+            key={label}
+            title={title}
+            style={{
+              flex: '1 1 160px', minWidth: 0,
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 14px',
+              background: '#fff',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{icon}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontFamily: 'Barlow, sans-serif', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', lineHeight: 1 }}>{label}</div>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Missing fields hint */}
       {completenessPercent < 100 && (
         <div style={{
@@ -187,6 +298,32 @@ export default async function DashboardPage({
           </Link>
         </div>
       )}
+
+      {/* Quick actions */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+        {[
+          { label: '+ New Campaign', href: `/campaigns/new?brand=${brand.id}` },
+          { label: '+ New Creative', href: `/creatives?brand=${brand.id}` },
+          { label: '+ New Email',    href: `/newsletter?brand=${brand.id}` },
+        ].map(({ label, href }) => (
+          <Link
+            key={label}
+            href={href}
+            style={{
+              fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: 'var(--ink)', textDecoration: 'none',
+              padding: '10px 20px', borderRadius: 999,
+              border: '1.5px solid var(--ink)',
+              background: '#fff',
+              whiteSpace: 'nowrap',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
+            {label}
+          </Link>
+        ))}
+      </div>
 
       {/* Three pillars */}
       <div className="pv-dash-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 32, alignItems: 'stretch' }}>
@@ -339,6 +476,16 @@ export default async function DashboardPage({
                   </div>
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: c.status === 'active' ? 'rgba(0,255,151,0.1)' : '#f5f5f5', color: c.status === 'active' ? '#00a86b' : 'var(--muted)', flexShrink: 0 }}>{c.status}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  {(creativesByCampaign.get(c.id) || 0) > 0 && (
+                    <span title={`${creativesByCampaign.get(c.id)} creative${creativesByCampaign.get(c.id) === 1 ? '' : 's'}`} style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
+                      🎨 {creativesByCampaign.get(c.id)}
+                    </span>
+                  )}
+                  {emailsByCampaign.has(c.id) && (
+                    <span title="Email generated" style={{ fontSize: 13, lineHeight: 1 }}>📧</span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <Link href={`/preview/${c.id}`} style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textDecoration: 'none', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 999, background: '#fff', whiteSpace: 'nowrap' }}>View</Link>
                   <Link href={`/creatives?brand=${brand.id}&campaign=${c.id}`} style={{ fontSize: 12, fontWeight: 700, color: '#000', textDecoration: 'none', padding: '5px 12px', background: '#f0f0f0', borderRadius: 999, whiteSpace: 'nowrap' }}>Creatives →</Link>
