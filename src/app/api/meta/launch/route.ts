@@ -81,13 +81,68 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── Step 1: create ad creative ─────────────────────────────────────
+  // ── Step 1a: upload the image to Meta's ad image library ───────────
+  // Meta rejects image_url inside object_story_spec.link_data — you must
+  // first POST the image URL to /adimages, get back an image_hash, and
+  // then reference that hash in link_data.image_hash.
+  const imageUploadUrl = `https://graph.facebook.com/${META_API_VERSION}/act_${adAccountId}/adimages`
+  const imageUploadForm = new URLSearchParams()
+  imageUploadForm.set('url', imageUrl)
+  imageUploadForm.set('access_token', token)
+
+  console.log('[meta-launch] adimage upload →', JSON.stringify({
+    url: imageUploadUrl,
+    imageSourceUrl: imageUrl,
+  }, null, 2))
+
+  const imageRes = await fetch(imageUploadUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: imageUploadForm.toString(),
+  })
+  const imageJson: any = await imageRes.json()
+  if (!imageRes.ok || imageJson.error) {
+    console.error('[meta-launch] adimage upload failed:', JSON.stringify({
+      status: imageRes.status,
+      statusText: imageRes.statusText,
+      error: imageJson.error,
+      fullResponse: imageJson,
+      imageSourceUrl: imageUrl,
+    }, null, 2))
+    return NextResponse.json(
+      {
+        error: `Failed to upload image to Meta: ${imageJson.error?.message || imageRes.statusText}`,
+        metaError: imageJson.error || null,
+        metaResponse: imageJson,
+        debug: { imageSourceUrl: imageUrl, httpStatus: imageRes.status },
+      },
+      { status: 400 }
+    )
+  }
+
+  // Response shape: { images: { "<filename.jpg>": { hash, url, ... } } }
+  const imagesMap = imageJson?.images || {}
+  const firstImageKey = Object.keys(imagesMap)[0]
+  const imageHash = firstImageKey ? imagesMap[firstImageKey]?.hash : null
+  if (!imageHash) {
+    console.error('[meta-launch] adimage upload returned no hash:', JSON.stringify(imageJson, null, 2))
+    return NextResponse.json(
+      {
+        error: 'Failed to upload image to Meta: no image hash returned',
+        metaResponse: imageJson,
+      },
+      { status: 400 }
+    )
+  }
+  console.log('[meta-launch] adimage hash:', imageHash)
+
+  // ── Step 1b: create ad creative using the image hash ──────────────
   const adCreativeBody = {
     name: adName,
     object_story_spec: {
       page_id: pageId,
       link_data: {
-        image_url: imageUrl,
+        image_hash: imageHash,
         link: finalLink,
         message: primaryText || '',
         name: headline || '',
