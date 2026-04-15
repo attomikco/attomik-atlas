@@ -25,6 +25,22 @@ import baseAbout from '../../templates/store/base-about.json'
 export type StoreFieldSource = 'index_json' | 'product_json' | 'footer_group_json' | 'about_json'
 export type StoreFieldType = 'short' | 'long' | 'url'
 
+// Editor page tab. Derived from the field's source column — there is no
+// separate `page` prop on PRIORITY_FIELDS, so new sections automatically
+// land on the correct tab based on which JSON they write into.
+export type StorePageName = 'Home' | 'PDP' | 'About'
+
+export const STORE_PAGE_ORDER: readonly StorePageName[] = ['Home', 'PDP', 'About'] as const
+
+export function pageForSource(source: StoreFieldSource): StorePageName {
+  if (source === 'product_json') return 'PDP'
+  if (source === 'about_json') return 'About'
+  // Both index_json and footer_group_json belong with Home — the footer is
+  // a shell that renders on every page but we edit it in the Home tab to
+  // keep it out of the PDP/About tabs.
+  return 'Home'
+}
+
 export interface StoreFieldSpec {
   placeholder: string          // variable-map key, e.g. "hero_banner__heading_1__content"
   source: StoreFieldSource
@@ -431,7 +447,13 @@ export function writeAtPath(root: unknown, path: string, value: string): boolean
 
 // Grouped view used by the editor UI — preserves sidebar order and
 // per-section field order from PRIORITY_FIELDS.
-export function groupStoreFields(): Array<{ section: string; order: number; fields: StoreFieldSpec[] }> {
+export interface StoreFieldGroup {
+  section: string
+  order: number
+  fields: StoreFieldSpec[]
+}
+
+export function groupStoreFields(): StoreFieldGroup[] {
   const bySection = new Map<string, { order: number; fields: StoreFieldSpec[] }>()
   for (const field of STORE_FIELDS) {
     const existing = bySection.get(field.editorSection)
@@ -444,4 +466,31 @@ export function groupStoreFields(): Array<{ section: string; order: number; fiel
   return Array.from(bySection.entries())
     .map(([section, v]) => ({ section, order: v.order, fields: v.fields }))
     .sort((a, b) => a.order - b.order)
+}
+
+// Page-tab partition. Runs groupStoreFields() once and splits each section
+// group into the tab its source column maps to. The result is a complete
+// Record — even empty pages get an empty array so the tab bar always
+// renders all 3 tabs.
+//
+// A section group only belongs to one page: every field inside a single
+// `editorSection` shares the same source in PRIORITY_FIELDS (Pillars is
+// all index_json, PDP is all product_json, About Hero is all about_json,
+// etc.). If a future editorSection ever mixes sources, the first field
+// wins and the rest get silently regrouped into the same page — flagged
+// here so you notice if you ever introduce a cross-page section.
+export function groupStoreFieldsByPage(): Record<StorePageName, StoreFieldGroup[]> {
+  const groups = groupStoreFields()
+  const byPage: Record<StorePageName, StoreFieldGroup[]> = {
+    Home: [],
+    PDP: [],
+    About: [],
+  }
+  for (const group of groups) {
+    const firstSource = group.fields[0]?.source
+    if (!firstSource) continue
+    const page = pageForSource(firstSource)
+    byPage[page].push(group)
+  }
+  return byPage
 }

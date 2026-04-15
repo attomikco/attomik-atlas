@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { STORE_FIELDS, groupStoreFields, readAtPath } from '@/lib/store-fields'
+import { STORE_FIELDS, groupStoreFieldsByPage, readAtPath } from '@/lib/store-fields'
 import StoreCopyEditorClient from './StoreCopyEditorClient'
 
 // Server component — loads the store_themes row, resolves initial values
@@ -78,7 +78,7 @@ export default async function StoreCopyEditorPage({
         last_deployed_at: theme.last_deployed_at,
       }}
       shopifyStoreUrl={shopifyStoreUrl}
-      grouped={groupStoreFields()}
+      groupedByPage={groupStoreFieldsByPage()}
       initialValues={initialValues}
     />
   )

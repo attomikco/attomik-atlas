@@ -2,7 +2,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { colors, font, fontWeight, spacing } from '@/lib/design-tokens'
-import type { StoreFieldSpec } from '@/lib/store-fields'
+import type { StoreFieldSpec, StoreFieldGroup, StorePageName } from '@/lib/store-fields'
+import { STORE_PAGE_ORDER } from '@/lib/store-fields'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // StoreCopyEditorClient — styling rewrite (no logic changes)
@@ -25,12 +26,6 @@ import type { StoreFieldSpec } from '@/lib/store-fields'
 // back in <p>…</p> in the save path. No save logic or API call shape
 // changes — just a pre/post transform around the existing code path.
 // ─────────────────────────────────────────────────────────────────────────────
-
-type GroupedFields = {
-  section: string
-  order: number
-  fields: StoreFieldSpec[]
-}
 
 type ThemeRowLite = {
   id: string
@@ -108,13 +103,13 @@ export default function StoreCopyEditorClient({
   brand,
   theme,
   shopifyStoreUrl,
-  grouped,
+  groupedByPage,
   initialValues,
 }: {
   brand: { id: string; name: string }
   theme: ThemeRowLite
   shopifyStoreUrl: string | null
-  grouped: GroupedFields[]
+  groupedByPage: Record<StorePageName, StoreFieldGroup[]>
   initialValues: Record<string, string>
 }) {
   // Compute the set of fields that hold HTML and the corresponding plain
@@ -135,7 +130,13 @@ export default function StoreCopyEditorClient({
   }, [initialValues])
 
   const [values, setValues] = useState<Record<string, string>>(initialDisplayValues)
-  const [activeSection, setActiveSection] = useState<string>(grouped[0]?.section || '')
+  const [activePage, setActivePage] = useState<StorePageName>('Home')
+  // Active section is derived from the current page's first group. A single
+  // flat `grouped` is computed from the active page for the sidebar, field
+  // rendering, and scroll-spy — the code below only ever touches this
+  // `grouped` variable, so everything that used to read `grouped` still works.
+  const grouped = groupedByPage[activePage]
+  const [activeSection, setActiveSection] = useState<string>(() => groupedByPage['Home'][0]?.section || '')
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set())
   const [errorMap, setErrorMap] = useState<Record<string, string>>({})
   const [deploying, setDeploying] = useState(false)
@@ -146,6 +147,7 @@ export default function StoreCopyEditorClient({
   const [targetThemeName, setTargetThemeName] = useState<string | null>(theme.shopify_theme_name)
   const [themesError, setThemesError] = useState<string | null>(null)
   const savedTimersRef = useRef<Map<string, number>>(new Map())
+  const contentScrollRef = useRef<HTMLDivElement>(null)
 
   // Fetch the list of non-main Shopify themes once on mount so the deploy
   // button knows where to push. Prefer the row's last-deployed theme; fall
@@ -186,10 +188,14 @@ export default function StoreCopyEditorClient({
     }
   }, [])
 
-  // Scroll-spy for the sidebar's active section. Rooted on the document
-  // (null root) since the whole page now scrolls with the window rather
-  // than a custom scroll container.
+  // Scroll-spy for the sidebar's active section. Rooted on the content
+  // scroll container so it only fires for sections visible in the right
+  // pane (not sections on other tabs — though those aren't rendered
+  // anyway, this is defensive). Re-registers when the active page
+  // changes since the DOM of the content column has swapped out.
   useEffect(() => {
+    const root = contentScrollRef.current
+    if (!root) return
     const sectionEls = grouped
       .map(g => document.getElementById(`store-section-${slugifySection(g.section)}`))
       .filter((s): s is HTMLElement => !!s)
@@ -205,17 +211,24 @@ export default function StoreCopyEditorClient({
           if (match) setActiveSection(match.section)
         }
       },
-      { root: null, rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+      { root, rootMargin: '-10% 0px -60% 0px', threshold: 0 }
     )
     sectionEls.forEach(s => observer.observe(s))
     return () => observer.disconnect()
   }, [grouped])
 
+  // Field lookup covers every placeholder across every page — a save fired
+  // by an onBlur that raced a tab switch still resolves correctly to its
+  // original field's source + path. Flattened once from all 3 pages.
   const placeholderToField = useMemo(() => {
     const map = new Map<string, StoreFieldSpec>()
-    for (const g of grouped) for (const f of g.fields) map.set(f.placeholder, f)
+    for (const page of STORE_PAGE_ORDER) {
+      for (const g of groupedByPage[page]) {
+        for (const f of g.fields) map.set(f.placeholder, f)
+      }
+    }
     return map
-  }, [grouped])
+  }, [groupedByPage])
 
   const saveField = useCallback(async (placeholder: string, displayValue: string) => {
     const field = placeholderToField.get(placeholder)
@@ -276,6 +289,22 @@ export default function StoreCopyEditorClient({
     saveField(placeholder, current)
   }
 
+  // Tab switch. Blurs the currently focused input first so its onBlur
+  // fires synchronously and its save PATCH is in-flight before React
+  // re-renders the tab contents. Saves are not debounced (they fire
+  // immediately from onBlur), so there's no timer queue to drain — this
+  // is the "flushPending" of a non-debounced save flow.
+  function switchPage(next: StorePageName) {
+    if (next === activePage) return
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    setActivePage(next)
+    const firstSection = groupedByPage[next][0]?.section || ''
+    setActiveSection(firstSection)
+    if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0
+  }
+
   async function deployNow() {
     if (!targetThemeId) return
     setDeploying(true)
@@ -306,121 +335,42 @@ export default function StoreCopyEditorClient({
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: '260px 1fr',
-        minHeight: `calc(100vh - ${NAV_OFFSET}px)`,
+        display: 'flex',
+        flexDirection: 'column',
+        height: `calc(100vh - ${NAV_OFFSET}px)`,
         background: 'var(--cream, #f8f7f4)',
       }}
     >
-      {/* ── Sidebar ──────────────────────────────────────────── */}
-      <aside
+      {/* ── Top bar (full width) ──────────────────────────────── */}
+      <div
         style={{
-          borderRight: '1px solid var(--border)',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: spacing[4],
+          padding: '20px 32px',
+          borderBottom: '1px solid var(--border)',
           background: 'var(--paper)',
-          padding: `${spacing[6]}px ${spacing[5]}px`,
-          position: 'sticky',
-          top: NAV_OFFSET,
-          alignSelf: 'start',
-          maxHeight: `calc(100vh - ${NAV_OFFSET}px)`,
-          overflowY: 'auto',
         }}
       >
-        <Link
-          href={`/store?brand=${brand.id}`}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 11,
-            fontWeight: 700,
-            color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            textDecoration: 'none',
-            marginBottom: spacing[6],
-          }}
-        >
-          ← Store
-        </Link>
-        <div
-          style={{
-            fontFamily: font.heading,
-            fontWeight: fontWeight.heading,
-            fontSize: 18,
-            textTransform: 'uppercase',
-            letterSpacing: '-0.02em',
-            color: 'var(--ink)',
-            marginBottom: spacing[5],
-            lineHeight: 1.1,
-          }}
-        >
-          Copy editor
-        </div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {grouped.map(g => {
-            const isActive = g.section === activeSection
-            return (
-              <a
-                key={g.section}
-                href={`#store-section-${slugifySection(g.section)}`}
-                onClick={(e) => {
-                  e.preventDefault()
-                  setActiveSection(g.section)
-                  const target = document.getElementById(`store-section-${slugifySection(g.section)}`)
-                  if (target) {
-                    const top = target.getBoundingClientRect().top + window.scrollY - NAV_OFFSET - 16
-                    window.scrollTo({ top, behavior: 'smooth' })
-                  }
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  background: isActive ? 'var(--ink)' : 'transparent',
-                  color: isActive ? 'var(--accent)' : 'var(--ink)',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  textDecoration: 'none',
-                  transition: 'background 120ms, color 120ms',
-                }}
-              >
-                <span>{g.section}</span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: isActive ? 'var(--accent)' : 'var(--muted)',
-                    opacity: isActive ? 0.75 : 1,
-                  }}
-                >
-                  {g.fields.length}
-                </span>
-              </a>
-            )
-          })}
-        </nav>
-      </aside>
-
-      {/* ── Right pane ────────────────────────────────────────── */}
-      <div>
-        {/* Top bar — sticky so it clears the TopNav when the page scrolls */}
-        <div
-          style={{
-            position: 'sticky',
-            top: NAV_OFFSET,
-            zIndex: 5,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: spacing[4],
-            padding: '20px 32px',
-            borderBottom: '1px solid var(--border)',
-            background: 'rgba(255,255,255,0.97)',
-            backdropFilter: 'blur(12px)',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[4] }}>
+          <Link
+            href={`/store?brand=${brand.id}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              color: 'var(--muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              textDecoration: 'none',
+            }}
+          >
+            ← Store
+          </Link>
           <div>
             <div
               style={{
@@ -449,135 +399,287 @@ export default function StoreCopyEditorClient({
               Shopify copy
             </h1>
           </div>
+        </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
-            {deployStatus && deployStatus !== 'idle' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+          {deployStatus && deployStatus !== 'idle' && (
+            <span
+              style={{
+                fontFamily: font.mono,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '4px 10px',
+                borderRadius: 999,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                background:
+                  deployStatus === 'success' ? 'rgba(0,255,151,0.15)' :
+                  deployStatus === 'failed'  ? 'rgba(244,63,94,0.12)' :
+                  'var(--cream)',
+                color:
+                  deployStatus === 'success' ? '#00a86b' :
+                  deployStatus === 'failed'  ? '#b91c1c' :
+                  'var(--muted)',
+              }}
+            >
+              {deployStatus}
+            </span>
+          )}
+          {previewUrl && (
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 12,
+                color: 'var(--ink)',
+                fontWeight: 700,
+                textDecoration: 'underline',
+              }}
+            >
+              Preview →
+            </a>
+          )}
+          <button
+            onClick={deployNow}
+            disabled={deploying || !targetThemeId}
+            style={{
+              fontFamily: font.heading,
+              fontWeight: 800,
+              fontSize: 13,
+              letterSpacing: '-0.01em',
+              padding: '10px 20px',
+              borderRadius: 999,
+              border: '1px solid transparent',
+              background: (deploying || !targetThemeId) ? colors.gray200 : 'var(--ink)',
+              color: (deploying || !targetThemeId) ? 'var(--muted)' : 'var(--accent)',
+              cursor: (deploying || !targetThemeId) ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {deploying ? 'Deploying…' : 'Deploy changes'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Tab bar (full width) ─────────────────────────────── */}
+      <div
+        role="tablist"
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'stretch',
+          gap: 0,
+          padding: '0 32px',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--paper)',
+        }}
+      >
+        {STORE_PAGE_ORDER.map(page => {
+          const isActive = page === activePage
+          const fieldCount = groupedByPage[page].reduce((n, g) => n + g.fields.length, 0)
+          return (
+            <button
+              key={page}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => switchPage(page)}
+              style={{
+                position: 'relative',
+                padding: '14px 18px',
+                border: 'none',
+                background: 'transparent',
+                fontFamily: font.heading,
+                fontWeight: isActive ? fontWeight.heading : fontWeight.bold,
+                fontSize: 13,
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                color: isActive ? 'var(--ink)' : 'var(--muted)',
+                cursor: 'pointer',
+                borderBottom: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+                marginBottom: -1,
+                transition: 'color 120ms, border-color 120ms',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              {page}
               <span
                 style={{
                   fontFamily: font.mono,
                   fontSize: 10,
                   fontWeight: 700,
-                  padding: '4px 10px',
-                  borderRadius: 999,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  background:
-                    deployStatus === 'success' ? 'rgba(0,255,151,0.15)' :
-                    deployStatus === 'failed'  ? 'rgba(244,63,94,0.12)' :
-                    'var(--cream)',
-                  color:
-                    deployStatus === 'success' ? '#00a86b' :
-                    deployStatus === 'failed'  ? '#b91c1c' :
-                    'var(--muted)',
+                  color: isActive ? 'var(--muted)' : 'var(--muted)',
+                  opacity: 0.7,
                 }}
               >
-                {deployStatus}
+                {fieldCount}
               </span>
-            )}
-            {previewUrl && (
-              <a
-                href={previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: 12,
-                  color: 'var(--ink)',
-                  fontWeight: 700,
-                  textDecoration: 'underline',
-                }}
-              >
-                Preview →
-              </a>
-            )}
-            <button
-              onClick={deployNow}
-              disabled={deploying || !targetThemeId}
-              style={{
-                fontFamily: font.heading,
-                fontWeight: 800,
-                fontSize: 13,
-                letterSpacing: '-0.01em',
-                padding: '10px 20px',
-                borderRadius: 999,
-                border: '1px solid transparent',
-                background: (deploying || !targetThemeId) ? colors.gray200 : 'var(--ink)',
-                color: (deploying || !targetThemeId) ? 'var(--muted)' : 'var(--accent)',
-                cursor: (deploying || !targetThemeId) ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {deploying ? 'Deploying…' : 'Deploy changes'}
             </button>
-          </div>
+          )
+        })}
+      </div>
+
+      {(deployError || themesError) && (
+        <div
+          style={{
+            flexShrink: 0,
+            margin: '12px 32px 0',
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'rgba(244,63,94,0.08)',
+            border: '1px solid rgba(244,63,94,0.2)',
+            color: '#b91c1c',
+            fontSize: 12,
+          }}
+        >
+          {deployError || themesError}
         </div>
+      )}
 
-        {(deployError || themesError) && (
+      {targetThemeName && (
+        <div
+          style={{
+            flexShrink: 0,
+            padding: '10px 32px 0',
+            fontSize: 11,
+            color: 'var(--muted)',
+          }}
+        >
+          Deploying to <strong style={{ color: 'var(--ink)', fontWeight: 700 }}>{targetThemeName}</strong>
+          {deployedAt && ` · last pushed ${new Date(deployedAt).toLocaleString()}`}
+        </div>
+      )}
+
+      {/* ── Sidebar + content split (fills remaining space) ──── */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'grid',
+          gridTemplateColumns: '260px 1fr',
+        }}
+      >
+        <aside
+          key={`sidebar-${activePage}`}
+          style={{
+            borderRight: '1px solid var(--border)',
+            background: 'var(--paper)',
+            padding: `${spacing[5]}px ${spacing[5]}px`,
+            overflowY: 'auto',
+            minHeight: 0,
+          }}
+        >
           <div
             style={{
-              margin: '20px 32px 0',
-              padding: '10px 14px',
-              borderRadius: 8,
-              background: 'rgba(244,63,94,0.08)',
-              border: '1px solid rgba(244,63,94,0.2)',
-              color: '#b91c1c',
-              fontSize: 12,
-            }}
-          >
-            {deployError || themesError}
-          </div>
-        )}
-
-        {targetThemeName && (
-          <div
-            style={{
-              padding: '12px 32px 0',
-              fontSize: 11,
+              fontFamily: font.heading,
+              fontWeight: fontWeight.heading,
+              fontSize: 15,
+              textTransform: 'uppercase',
+              letterSpacing: '-0.01em',
               color: 'var(--muted)',
+              marginBottom: spacing[4],
+              lineHeight: 1.1,
             }}
           >
-            Deploying to <strong style={{ color: 'var(--ink)', fontWeight: 700 }}>{targetThemeName}</strong>
-            {deployedAt && ` · last pushed ${new Date(deployedAt).toLocaleString()}`}
+            {activePage}
           </div>
-        )}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {grouped.map(g => {
+              const isActive = g.section === activeSection
+              return (
+                <a
+                  key={g.section}
+                  href={`#store-section-${slugifySection(g.section)}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setActiveSection(g.section)
+                    const target = document.getElementById(`store-section-${slugifySection(g.section)}`)
+                    const scroller = contentScrollRef.current
+                    if (target && scroller) {
+                      const top = target.offsetTop - 16
+                      scroller.scrollTo({ top, behavior: 'smooth' })
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    background: isActive ? 'var(--ink)' : 'transparent',
+                    color: isActive ? 'var(--accent)' : 'var(--ink)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    transition: 'background 120ms, color 120ms',
+                  }}
+                >
+                  <span>{g.section}</span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: isActive ? 'var(--accent)' : 'var(--muted)',
+                      opacity: isActive ? 0.75 : 1,
+                    }}
+                  >
+                    {g.fields.length}
+                  </span>
+                </a>
+              )
+            })}
+          </nav>
+        </aside>
 
-        <div style={{ padding: '28px 32px 80px', maxWidth: 760 }}>
-          {grouped.map(g => (
-            <section
-              key={g.section}
-              id={`store-section-${slugifySection(g.section)}`}
-              style={{ marginBottom: 40, scrollMarginTop: NAV_OFFSET + 80 }}
-            >
-              <h2
-                style={{
-                  fontFamily: font.heading,
-                  fontWeight: fontWeight.heading,
-                  fontSize: 20,
-                  textTransform: 'uppercase',
-                  letterSpacing: '-0.02em',
-                  color: 'var(--ink)',
-                  marginBottom: 20,
-                  marginTop: 0,
-                  lineHeight: 1.1,
-                }}
+        <div
+          ref={contentScrollRef}
+          key={`content-${activePage}`}
+          style={{
+            overflowY: 'auto',
+            minHeight: 0,
+          }}
+        >
+          <div style={{ padding: '28px 32px 80px', maxWidth: 760 }}>
+            {grouped.map(g => (
+              <section
+                key={g.section}
+                id={`store-section-${slugifySection(g.section)}`}
+                style={{ marginBottom: 40, scrollMarginTop: 16 }}
               >
-                {g.section}
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {g.fields.map(field => (
-                  <FieldRow
-                    key={field.placeholder}
-                    field={field}
-                    value={values[field.placeholder] ?? ''}
-                    onChange={v => updateValue(field.placeholder, v)}
-                    onBlur={() => onFieldBlur(field.placeholder)}
-                    saved={savedSet.has(field.placeholder)}
-                    error={errorMap[field.placeholder]}
-                    isRichtext={htmlPlaceholders.has(field.placeholder)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+                <h2
+                  style={{
+                    fontFamily: font.heading,
+                    fontWeight: fontWeight.heading,
+                    fontSize: 20,
+                    textTransform: 'uppercase',
+                    letterSpacing: '-0.02em',
+                    color: 'var(--ink)',
+                    marginBottom: 20,
+                    marginTop: 0,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {g.section}
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {g.fields.map(field => (
+                    <FieldRow
+                      key={field.placeholder}
+                      field={field}
+                      value={values[field.placeholder] ?? ''}
+                      onChange={v => updateValue(field.placeholder, v)}
+                      onBlur={() => onFieldBlur(field.placeholder)}
+                      saved={savedSet.has(field.placeholder)}
+                      error={errorMap[field.placeholder]}
+                      isRichtext={htmlPlaceholders.has(field.placeholder)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         </div>
       </div>
     </div>
