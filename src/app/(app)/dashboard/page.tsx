@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import BrandSync from './BrandSync'
 
@@ -9,32 +9,40 @@ export default async function DashboardPage({
   searchParams: Promise<{ brand?: string }>
 }) {
   const { brand: brandParam } = await searchParams
+
+  // Read the `activeBrandId` cookie written by BrandSync. This lets direct
+  // /dashboard loads (no ?brand= param) resolve to the user's last-rendered
+  // brand on the first pass, so BrandSync no longer needs to router.replace()
+  // and re-fire every Supabase query in this page.
+  const cookieStore = await cookies()
+  const cookieBrandId = cookieStore.get('activeBrandId')?.value
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // First name for the welcome heading — parsed from profiles.full_name.
-  // Falls back to nothing (heading reads "Welcome back.") when profile or
-  // full_name is missing.
-  let firstName: string | null = null
-  if (user?.id) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .maybeSingle()
-    const fullName = (profile?.full_name || '').trim()
-    if (fullName) firstName = fullName.split(/\s+/)[0] || null
-  }
+  // profiles (for welcome heading) + brands list in parallel. RLS gates
+  // brands selects through brand_members (see 20260413_brand_teams_fix.sql),
+  // so filtering by user_id here would miss invited brands.
+  const [brandsRes, profileRes] = await Promise.all([
+    supabase
+      .from('brands')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false }),
+    user?.id
+      ? supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null as { full_name: string | null } | null, error: null }),
+  ])
 
-  // RLS gates `brands` selects through brand_members (see
-  // 20260413_brand_teams_fix.sql), so filtering by user_id here would miss
-  // brands the user was invited to. Removing the filter unblocks invited
-  // members from seeing their brands on the dashboard.
-  const { data: brands } = await supabase
-    .from('brands')
-    .select('*')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
+  const brands = brandsRes.data
+
+  let firstName: string | null = null
+  const fullName = (profileRes.data?.full_name || '').trim()
+  if (fullName) firstName = fullName.split(/\s+/)[0] || null
 
   if (!brands?.length) {
     return (
@@ -47,7 +55,11 @@ export default async function DashboardPage({
     )
   }
 
-  const brand = brands.find((b: any) => b.id === brandParam) || brands[0]
+  // Priority: URL ?brand= param (explicit navigation always wins) → cookie
+  // (user's last-rendered brand) → brands[0] (fallback).
+  const cookieBrand = cookieBrandId ? brands.find((b: any) => b.id === cookieBrandId) : null
+  const paramBrand = brandParam ? brands.find((b: any) => b.id === brandParam) : null
+  const brand = paramBrand || cookieBrand || brands[0]
 
   const completenessFields = [
     { key: 'logo_url',        label: 'Logo' },
@@ -57,10 +69,66 @@ export default async function DashboardPage({
     { key: 'products',        label: 'Products' },
   ]
 
-  const { count: imageCount } = await supabase
-    .from('brand_images')
-    .select('*', { count: 'exact', head: true })
-    .eq('brand_id', brand.id)
+  // ── Meta Ads performance window — computed before the parallel fetch so
+  // the insights query can use it inside Promise.all.
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const insightsCutoff = thirtyDaysAgo.toISOString().split('T')[0]
+
+  // All 7 brand-scoped queries run in parallel. The two prior `generated_content`
+  // email reads (latest-1-with-content and all-rows-for-campaign-set) collapse
+  // into a single select, ordered desc — `[0]` feeds the "latest email" pill,
+  // the full list feeds the per-campaign existence Set below.
+  const [
+    imageCountRes,
+    campaignsRes,
+    generatedEmailsRes,
+    creativesRowsRes,
+    emailTemplateCountRes,
+    teamCountRes,
+    insightRowsRes,
+  ] = await Promise.all([
+    supabase
+      .from('brand_images')
+      .select('*', { count: 'exact', head: true })
+      .eq('brand_id', brand.id),
+    supabase
+      .from('campaigns')
+      .select('*')
+      .eq('brand_id', brand.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('generated_content')
+      .select('id, campaign_id, content, created_at')
+      .eq('brand_id', brand.id)
+      .eq('type', 'email')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('saved_creatives')
+      .select('id, campaign_id, meta_ad_id, meta_ad_status')
+      .eq('brand_id', brand.id),
+    supabase
+      .from('email_templates')
+      .select('*', { count: 'exact', head: true })
+      .eq('brand_id', brand.id),
+    supabase
+      .from('brand_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('brand_id', brand.id),
+    supabase
+      .from('brand_insight_rows')
+      .select('ad_name, spend, purchases, purchase_value, roas, impressions, clicks, creative_image_url, creative_title, date')
+      .eq('brand_id', brand.id)
+      .gte('date', insightsCutoff)
+      .order('date', { ascending: false }),
+  ])
+
+  const imageCount = imageCountRes.count
+  const campaigns = campaignsRes.data
+  const creativesRows = creativesRowsRes.data
+  const emailTemplateCount = emailTemplateCountRes.count
+  const teamCount = teamCountRes.count
+  const insightRows = insightRowsRes.data
 
   const hasImages = (imageCount || 0) > 0
   const imageScore = (imageCount || 0) >= 3 ? 1 : 0
@@ -74,26 +142,11 @@ export default async function DashboardPage({
   const totalFields = completenessFields.length + 1
   const completenessPercent = Math.round((completedCount / totalFields) * 100)
 
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('*')
-    .eq('brand_id', brand.id)
-    .order('created_at', { ascending: false })
-
   const latestCampaign = campaigns?.[0]
 
-  // ── Performance snapshot data ──
-  // Latest email generated for this brand. `generated_content.content` is a
-  // JSON string with the shape { html, subject, config } — we parse it to
-  // pull out the subject for the snapshot pill.
-  const { data: latestEmailRows } = await supabase
-    .from('generated_content')
-    .select('id, campaign_id, content, created_at')
-    .eq('brand_id', brand.id)
-    .eq('type', 'email')
-    .order('created_at', { ascending: false })
-    .limit(1)
-  const latestEmailRow = latestEmailRows?.[0] || null
+  // ── Generated email derivations (single query, both consumers) ──
+  const generatedEmailRows = generatedEmailsRes.data
+  const latestEmailRow = generatedEmailRows?.[0] || null
   let latestEmailSubject: string | null = null
   if (latestEmailRow?.content) {
     try {
@@ -105,14 +158,13 @@ export default async function DashboardPage({
       latestEmailSubject = null
     }
   }
+  const emailsByCampaign = new Set<string>()
+  for (const row of generatedEmailRows || []) {
+    if (row.campaign_id) emailsByCampaign.add(row.campaign_id)
+  }
 
-  // Saved creatives + Meta-launched split. Single fetch feeds both the
-  // "Creatives" and "Ads launched" pills plus the per-campaign roll-up
-  // rendered in the campaigns list below.
-  const { data: creativesRows } = await supabase
-    .from('saved_creatives')
-    .select('id, campaign_id, meta_ad_id, meta_ad_status')
-    .eq('brand_id', brand.id)
+  // Saved creatives + Meta-launched split — feeds the "Creatives" and
+  // "Ads launched" pills plus the per-campaign roll-up below.
   const creativesCount = creativesRows?.length || 0
   const launchedAds = (creativesRows || []).filter((c: any) => !!c.meta_ad_id)
   const launchedCount = launchedAds.length
@@ -124,29 +176,6 @@ export default async function DashboardPage({
     if (c.campaign_id) {
       creativesByCampaign.set(c.campaign_id, (creativesByCampaign.get(c.campaign_id) || 0) + 1)
     }
-  }
-
-  // Email templates count
-  const { count: emailTemplateCount } = await supabase
-    .from('email_templates')
-    .select('*', { count: 'exact', head: true })
-    .eq('brand_id', brand.id)
-
-  // Team members count
-  const { count: teamCount } = await supabase
-    .from('brand_members')
-    .select('*', { count: 'exact', head: true })
-    .eq('brand_id', brand.id)
-
-  // Per-campaign email existence for the enhanced campaigns list
-  const { data: campaignEmailRows } = await supabase
-    .from('generated_content')
-    .select('campaign_id')
-    .eq('brand_id', brand.id)
-    .eq('type', 'email')
-  const emailsByCampaign = new Set<string>()
-  for (const row of campaignEmailRows || []) {
-    if (row.campaign_id) emailsByCampaign.add(row.campaign_id)
   }
 
   // Snapshot display strings
@@ -162,21 +191,6 @@ export default async function DashboardPage({
   const adsDisplay = launchedCount === 0
     ? 'None yet'
     : `${launchedCount} · ${activeAdCount} active${pausedCount ? ` · ${pausedCount} paused` : ''}`
-
-  // ── Meta Ads performance (last 30 days) ──
-  // One row per ad per day from brand_insight_rows. Rows are pulled in
-  // date-desc order so the first occurrence of an ad_name carries the
-  // most-recent creative snapshot (used for the top-creatives strip).
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const insightsCutoff = thirtyDaysAgo.toISOString().split('T')[0]
-
-  const { data: insightRows } = await supabase
-    .from('brand_insight_rows')
-    .select('ad_name, spend, purchases, purchase_value, roas, impressions, clicks, creative_image_url, creative_title, date')
-    .eq('brand_id', brand.id)
-    .gte('date', insightsCutoff)
-    .order('date', { ascending: false })
 
   const hasInsights = !!(insightRows && insightRows.length > 0)
   const totalSpend = (insightRows || []).reduce((s, r: any) => s + Number(r.spend || 0), 0)

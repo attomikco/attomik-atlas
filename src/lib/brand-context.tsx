@@ -78,14 +78,23 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
     async function load() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      // Run getUser and the brands list in parallel. getUser() usually
+      // resolves from the local JWT, but the brands select is a real
+      // round-trip — overlapping them shaves the common load path down
+      // to a single network leg.
+      //
+      // RLS now filters brands through brand_members (see
+      // 20260413_brand_teams_fix.sql). Filtering by user_id here would
+      // miss brands the user was invited to, so we let RLS do the work.
+      const [{ data: { user } }, { data: brandsData }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('brands')
+          .select('id, name, primary_color, logo_url')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false }),
+      ])
       if (!user?.id) { setBrandsLoaded(true); return }
-      // RLS now filters by brand_members (see 20260413_brand_teams_fix.sql).
-      // Filtering by user_id here would miss brands the user was invited to.
-      const { data } = await supabase.from('brands')
-        .select('id, name, primary_color, logo_url')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
+      const data = brandsData
       if (data?.length) {
         setBrands(data)
         const validSaved = saved && data.find(b => b.id === saved)
@@ -104,19 +113,26 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
           }
         } catch {}
 
-        // Restore active campaign only if it belongs to the resolved brand
+        // Restore active campaign only if it belongs to the resolved brand.
+        // Single fetch: pull the full row up front and validate brand_id
+        // in memory. The previous code did two sequential round trips —
+        // one to check brand_id, another to hydrate the rest of the row.
         if (savedCampaignId) {
-          const { data: campaign } = await supabase
+          const { data: campaign, error } = await supabase
             .from('campaigns')
-            .select('brand_id')
+            .select('id, name, goal, offer, key_message, angle, type, status, brand_id, scheduled_at')
             .eq('id', savedCampaignId)
             .maybeSingle()
           if (campaign && campaign.brand_id === resolvedId) {
             setActiveCampaignIdState(savedCampaignId)
-            fetchCampaign(savedCampaignId)
-          } else {
-            // Campaign belongs to a different brand — clear it
+            setActiveCampaign(campaign as ActiveCampaign)
+          } else if (campaign) {
+            // Belongs to a different brand — drop it.
             localStorage.removeItem('attomik_active_campaign_id')
+          } else {
+            // Not found / deleted / no access — clear stale state.
+            localStorage.removeItem('attomik_active_campaign_id')
+            if (error) console.warn('[brand-context] Active campaign no longer accessible, cleared:', savedCampaignId, error.message)
           }
         }
       } else if (saved) {

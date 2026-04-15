@@ -1,0 +1,104 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "type": "header",
+  "name": "Header group",
+  "sections": {
+    "theme_announcement": {
+      "type": "theme__announcement",
+      "blocks": {
+        "announcement_bBj77R": {
+          "type": "announcement",
+          "settings": {
+            "content": "<p><strong>Free Shipping on orders over $50</strong></p>"
+          }
+        }
+      },
+      "block_order": [
+        "announcement_bBj77R"
+      ],
+      "settings": {
+        "announcement_delay": 0,
+        "color_scheme": "color__bg-primary color__primary",
+        "layout_alignment": "center",
+        "enable_margin": true,
+        "visibility": "",
+        "show_account_link": false,
+        "show_localization": false
+      }
+    },
+    "theme_header": {
+      "type": "theme__header",
+      "blocks": {
+        "86febd87-0857-43dd-ace4-2774b4713659": {
+          "type": "button",
+          "settings": {
+            "button_label": "Shop Now",
+            "button_url": "",
+            "color_button": "btn--smaller btn--outline-alt"
+          }
+        },
+        "e2236372-4821-4844-b930-d328b46f901a": {
+          "type": "content",
+          "settings": {
+            "menu": "shop",
+            "heading": "Block heading",
+            "content": "<p>Describe a product, make announcements, or inform customers about a promotion.</p>",
+            "button_label": "Button",
+            "url": "shopify://collections/all",
+            "show_image_as_background": false,
+            "enable_autoplay": true,
+            "enable_mute_toggle": true,
+            "enable_loop": true,
+            "spacing_minimum_height": 250,
+            "enable_padding": true,
+            "color_scheme": "color__bg-body !color__text",
+            "color_border": "outline--width color__outline-divider-1",
+            "color_button": "btn--small btn--plain !color__text",
+            "enable_gradient": false,
+            "text_position": "below",
+            "layout_y_alignment": "justify-end",
+            "layout_x_alignment": "left"
+          }
+        }
+      },
+      "block_order": [
+        "86febd87-0857-43dd-ace4-2774b4713659",
+        "e2236372-4821-4844-b930-d328b46f901a"
+      ],
+      "settings": {
+        "logo_default": "shopify://shop_images/White_no_background.png",
+        "logo_desktop_height": 50,
+        "logo_mobile_height": 40,
+        "bar_layout_desktop": "left",
+        "bar_default_color_scheme": "color__bg-secondary color__secondary",
+        "bar_overlay_color_scheme": "color__bg-secondary color__secondary",
+        "bar_default_color_border": "!color__border-transparent",
+        "bar_overlay_color_border": "!color__border-transparent",
+        "bar_button_cart_type": "icon",
+        "bar_button_search_type": "none",
+        "bar_button_login_type": "none",
+        "bar_button_menu_type": "icon",
+        "bar_capitilization": "",
+        "bar_font": "type__nav",
+        "bar_link_as_button": true,
+        "show_localization": false,
+        "enable_margin": true,
+        "dropdown_color_scheme": "color__bg-overlay-1 !color__text",
+        "dropdown_color_border": "!color__border-transparent",
+        "visibility": ""
+      }
+    }
+  },
+  "order": [
+    "theme_announcement",
+    "theme_header"
+  ]
+}

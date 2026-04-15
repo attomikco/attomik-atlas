@@ -1,0 +1,1238 @@
+[
+  {
+    "key": "hero_banner__image_background_desktop",
+    "type": "image",
+    "section": "hero_banner",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "hero_banner__image_background_mobile",
+    "type": "image",
+    "section": "hero_banner",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "hero_banner__heading_1__content",
+    "type": "text",
+    "section": "hero_banner",
+    "instructions": "Write the hero headline — punchy, memorable, under 8 words"
+  },
+  {
+    "key": "hero_banner__content_1__content",
+    "type": "text",
+    "section": "hero_banner",
+    "instructions": "Write hero subheadline in <p> tags — 1-2 sentences supporting the headline"
+  },
+  {
+    "key": "hero_banner__buttons_1__button_label",
+    "type": "text",
+    "section": "hero_banner",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "hero_banner__buttons_1__button_url",
+    "type": "url",
+    "section": "hero_banner",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "marquee_ticker__heading_1__content",
+    "type": "text",
+    "section": "marquee_ticker",
+    "instructions": "Write a short differentiator phrase for the scrolling ticker (2-4 words, e.g. 'Organic Ingredients')"
+  },
+  {
+    "key": "marquee_ticker__image_1__image",
+    "type": "image",
+    "section": "marquee_ticker",
+    "instructions": "Brand logo/icon for ticker divider — provide shopify://shop_images/... or null"
+  },
+  {
+    "key": "marquee_ticker__heading_2__content",
+    "type": "text",
+    "section": "marquee_ticker",
+    "instructions": "Write a short differentiator phrase for the scrolling ticker (2-4 words, e.g. 'Organic Ingredients')"
+  },
+  {
+    "key": "marquee_ticker__image_2__image",
+    "type": "image",
+    "section": "marquee_ticker",
+    "instructions": "Brand logo/icon for ticker divider — provide shopify://shop_images/... or null"
+  },
+  {
+    "key": "marquee_ticker__heading_3__content",
+    "type": "text",
+    "section": "marquee_ticker",
+    "instructions": "Write a short differentiator phrase for the scrolling ticker (2-4 words, e.g. 'Organic Ingredients')"
+  },
+  {
+    "key": "marquee_ticker__image_3__image",
+    "type": "image",
+    "section": "marquee_ticker",
+    "instructions": "Brand logo/icon for ticker divider — provide shopify://shop_images/... or null"
+  },
+  {
+    "key": "value_props__heading",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write the value props section heading"
+  },
+  {
+    "key": "value_props__content",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write section intro copy in <p> tags — brand philosophy in 1-2 sentences"
+  },
+  {
+    "key": "value_props__button_label",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "value_props__pillar_1__icon",
+    "type": "image",
+    "section": "value_props",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "value_props__pillar_1__heading",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write a value proposition headline (3-6 words)"
+  },
+  {
+    "key": "value_props__pillar_1__content",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write a value proposition description in <p> tags (1-2 sentences)"
+  },
+  {
+    "key": "value_props__pillar_2__icon",
+    "type": "image",
+    "section": "value_props",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "value_props__pillar_2__heading",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write a value proposition headline (3-6 words)"
+  },
+  {
+    "key": "value_props__pillar_2__content",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write a value proposition description in <p> tags (1-2 sentences)"
+  },
+  {
+    "key": "value_props__pillar_3__icon",
+    "type": "image",
+    "section": "value_props",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "value_props__pillar_3__heading",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write a value proposition headline (3-6 words)"
+  },
+  {
+    "key": "value_props__pillar_3__content",
+    "type": "text",
+    "section": "value_props",
+    "instructions": "Write a value proposition description in <p> tags (1-2 sentences)"
+  },
+  {
+    "key": "product_grid__collection",
+    "type": "collection",
+    "section": "product_grid",
+    "instructions": "Shopify collection handle for this product grid"
+  },
+  {
+    "key": "features_mobile__content_1__heading",
+    "type": "text",
+    "section": "features_mobile",
+    "instructions": "Write a feature card headline — how the product works or feels"
+  },
+  {
+    "key": "features_mobile__content_1__content",
+    "type": "text",
+    "section": "features_mobile",
+    "instructions": "Write feature description in <p> tags — explain the benefit"
+  },
+  {
+    "key": "features_mobile__content_1__url",
+    "type": "url",
+    "section": "features_mobile",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "features_mobile__content_1__image",
+    "type": "image",
+    "section": "features_mobile",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "features_mobile__content_2__heading",
+    "type": "text",
+    "section": "features_mobile",
+    "instructions": "Write a feature card headline — how the product works or feels"
+  },
+  {
+    "key": "features_mobile__content_2__content",
+    "type": "text",
+    "section": "features_mobile",
+    "instructions": "Write feature description in <p> tags — explain the benefit"
+  },
+  {
+    "key": "features_mobile__content_2__image",
+    "type": "image",
+    "section": "features_mobile",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "press_slider__testimonial_1__content",
+    "type": "text",
+    "section": "press_slider",
+    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+  },
+  {
+    "key": "press_slider__testimonial_1__logo",
+    "type": "image",
+    "section": "press_slider",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "press_slider__testimonial_2__content",
+    "type": "text",
+    "section": "press_slider",
+    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+  },
+  {
+    "key": "press_slider__testimonial_2__logo",
+    "type": "image",
+    "section": "press_slider",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "press_slider__testimonial_3__content",
+    "type": "text",
+    "section": "press_slider",
+    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+  },
+  {
+    "key": "press_slider__testimonial_3__logo",
+    "type": "image",
+    "section": "press_slider",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "press_slider__testimonial_4__content",
+    "type": "text",
+    "section": "press_slider",
+    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+  },
+  {
+    "key": "press_slider__testimonial_4__logo",
+    "type": "image",
+    "section": "press_slider",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "press_slider__testimonial_5__content",
+    "type": "text",
+    "section": "press_slider",
+    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+  },
+  {
+    "key": "press_slider__testimonial_5__logo",
+    "type": "image",
+    "section": "press_slider",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "features_detail_mobile__content_1__heading",
+    "type": "text",
+    "section": "features_detail_mobile",
+    "instructions": "Write a feature card headline — how the product works or feels"
+  },
+  {
+    "key": "features_detail_mobile__content_1__content",
+    "type": "text",
+    "section": "features_detail_mobile",
+    "instructions": "Write feature description in <p> tags — explain the benefit"
+  },
+  {
+    "key": "features_detail_mobile__content_1__image",
+    "type": "image",
+    "section": "features_detail_mobile",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "features_detail_mobile__content_2__heading",
+    "type": "text",
+    "section": "features_detail_mobile",
+    "instructions": "Write a feature card headline — how the product works or feels"
+  },
+  {
+    "key": "features_detail_mobile__content_2__content",
+    "type": "text",
+    "section": "features_detail_mobile",
+    "instructions": "Write feature description in <p> tags — explain the benefit"
+  },
+  {
+    "key": "features_detail_mobile__content_2__image",
+    "type": "image",
+    "section": "features_detail_mobile",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "features_detail_desktop__content_1__heading",
+    "type": "text",
+    "section": "features_detail_desktop",
+    "instructions": "Write a feature card headline — how the product works or feels"
+  },
+  {
+    "key": "features_detail_desktop__content_1__content",
+    "type": "text",
+    "section": "features_detail_desktop",
+    "instructions": "Write feature description in <p> tags — explain the benefit"
+  },
+  {
+    "key": "features_detail_desktop__content_1__button_label",
+    "type": "text",
+    "section": "features_detail_desktop",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "features_detail_desktop__content_1__url",
+    "type": "url",
+    "section": "features_detail_desktop",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "features_detail_desktop__content_2__image",
+    "type": "image",
+    "section": "features_detail_desktop",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "features_detail_desktop__content_3__image",
+    "type": "image",
+    "section": "features_detail_desktop",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "features_detail_desktop__content_4__heading",
+    "type": "text",
+    "section": "features_detail_desktop",
+    "instructions": "Write a feature card headline — how the product works or feels"
+  },
+  {
+    "key": "features_detail_desktop__content_4__content",
+    "type": "text",
+    "section": "features_detail_desktop",
+    "instructions": "Write feature description in <p> tags — explain the benefit"
+  },
+  {
+    "key": "features_detail_desktop__content_4__button_label",
+    "type": "text",
+    "section": "features_detail_desktop",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "features_detail_desktop__content_4__url",
+    "type": "url",
+    "section": "features_detail_desktop",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "ingredients_grid__heading",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write the ingredients section heading"
+  },
+  {
+    "key": "ingredients_grid__pillar_1__icon",
+    "type": "image",
+    "section": "ingredients_grid",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "ingredients_grid__pillar_1__heading",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write an ingredient or feature name"
+  },
+  {
+    "key": "ingredients_grid__pillar_1__content",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write ingredient benefit description in <p> tags (1-2 sentences)"
+  },
+  {
+    "key": "ingredients_grid__pillar_2__icon",
+    "type": "image",
+    "section": "ingredients_grid",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "ingredients_grid__pillar_2__heading",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write an ingredient or feature name"
+  },
+  {
+    "key": "ingredients_grid__pillar_2__content",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write ingredient benefit description in <p> tags (1-2 sentences)"
+  },
+  {
+    "key": "ingredients_grid__pillar_3__icon",
+    "type": "image",
+    "section": "ingredients_grid",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "ingredients_grid__pillar_3__heading",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write an ingredient or feature name"
+  },
+  {
+    "key": "ingredients_grid__pillar_3__content",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write ingredient benefit description in <p> tags (1-2 sentences)"
+  },
+  {
+    "key": "ingredients_grid__pillar_4__icon",
+    "type": "image",
+    "section": "ingredients_grid",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "ingredients_grid__pillar_4__heading",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write an ingredient or feature name"
+  },
+  {
+    "key": "ingredients_grid__pillar_4__content",
+    "type": "text",
+    "section": "ingredients_grid",
+    "instructions": "Write ingredient benefit description in <p> tags (1-2 sentences)"
+  },
+  {
+    "key": "comparison_table__table_headings",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Write comma-separated column headers: 'Brand Name, Everyone Else'"
+  },
+  {
+    "key": "comparison_table__content_1__label",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Write a comparison row label — a feature or attribute name"
+  },
+  {
+    "key": "comparison_table__content_1__tooltip",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Write a brief tooltip explanation"
+  },
+  {
+    "key": "comparison_table__content_1__column_4_content",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Generate appropriate column_4_content content"
+  },
+  {
+    "key": "comparison_table__content_2__label",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Write a comparison row label — a feature or attribute name"
+  },
+  {
+    "key": "comparison_table__content_2__tooltip",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Write a brief tooltip explanation"
+  },
+  {
+    "key": "comparison_table__content_3__label",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Write a comparison row label — a feature or attribute name"
+  },
+  {
+    "key": "comparison_table__content_3__column_4_content",
+    "type": "text",
+    "section": "comparison_table",
+    "instructions": "Generate appropriate column_4_content content"
+  },
+  {
+    "key": "subscription_mobile__content_1__heading",
+    "type": "text",
+    "section": "subscription_mobile",
+    "instructions": "Write subscription CTA headline"
+  },
+  {
+    "key": "subscription_mobile__content_1__content",
+    "type": "text",
+    "section": "subscription_mobile",
+    "instructions": "Write subscription benefits copy in <p> tags with checkmark list items"
+  },
+  {
+    "key": "subscription_mobile__content_1__button_label",
+    "type": "text",
+    "section": "subscription_mobile",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "subscription_mobile__content_1__url",
+    "type": "url",
+    "section": "subscription_mobile",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "subscription_mobile__content_1__image",
+    "type": "image",
+    "section": "subscription_mobile",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "subscription_desktop__content_1__heading",
+    "type": "text",
+    "section": "subscription_desktop",
+    "instructions": "Write subscription CTA headline"
+  },
+  {
+    "key": "subscription_desktop__content_1__content",
+    "type": "text",
+    "section": "subscription_desktop",
+    "instructions": "Write subscription benefits copy in <p> tags with checkmark list items"
+  },
+  {
+    "key": "subscription_desktop__content_1__button_label",
+    "type": "text",
+    "section": "subscription_desktop",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "subscription_desktop__content_1__url",
+    "type": "url",
+    "section": "subscription_desktop",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "subscription_desktop__content_2__image",
+    "type": "image",
+    "section": "subscription_desktop",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "faq__heading",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write the FAQ section heading"
+  },
+  {
+    "key": "faq__content_1__heading",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a realistic FAQ question customers would ask"
+  },
+  {
+    "key": "faq__content_1__content",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+  },
+  {
+    "key": "faq__content_2__heading",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a realistic FAQ question customers would ask"
+  },
+  {
+    "key": "faq__content_2__content",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+  },
+  {
+    "key": "faq__content_3__heading",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a realistic FAQ question customers would ask"
+  },
+  {
+    "key": "faq__content_3__content",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+  },
+  {
+    "key": "faq__content_4__heading",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a realistic FAQ question customers would ask"
+  },
+  {
+    "key": "faq__content_4__content",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+  },
+  {
+    "key": "faq__content_5__heading",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a realistic FAQ question customers would ask"
+  },
+  {
+    "key": "faq__content_5__content",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+  },
+  {
+    "key": "faq__content_6__heading",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a realistic FAQ question customers would ask"
+  },
+  {
+    "key": "faq__content_6__content",
+    "type": "text",
+    "section": "faq",
+    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+  },
+  {
+    "key": "founder_mobile__content_1__heading",
+    "type": "text",
+    "section": "founder_mobile",
+    "instructions": "Write founder/origin story headline"
+  },
+  {
+    "key": "founder_mobile__content_1__content",
+    "type": "text",
+    "section": "founder_mobile",
+    "instructions": "Write founder story description in <p> tags (2-3 sentences)"
+  },
+  {
+    "key": "founder_mobile__content_1__url",
+    "type": "url",
+    "section": "founder_mobile",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "founder_mobile__content_1__image",
+    "type": "image",
+    "section": "founder_mobile",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "founder_desktop__content_1__image",
+    "type": "image",
+    "section": "founder_desktop",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "founder_desktop__content_2__heading",
+    "type": "text",
+    "section": "founder_desktop",
+    "instructions": "Write founder/origin story headline"
+  },
+  {
+    "key": "founder_desktop__content_2__content",
+    "type": "text",
+    "section": "founder_desktop",
+    "instructions": "Write founder story description in <p> tags (2-3 sentences)"
+  },
+  {
+    "key": "founder_desktop__content_2__button_label",
+    "type": "text",
+    "section": "founder_desktop",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "founder_desktop__content_2__url",
+    "type": "url",
+    "section": "founder_desktop",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "customer_reviews__heading",
+    "type": "text",
+    "section": "customer_reviews",
+    "instructions": "Write the reviews section heading"
+  },
+  {
+    "key": "customer_reviews__testimonial_1__content",
+    "type": "text",
+    "section": "customer_reviews",
+    "instructions": "Write a realistic customer review in <p> tags — specific, emotional, mentions the product"
+  },
+  {
+    "key": "customer_reviews__testimonial_1__title",
+    "type": "text",
+    "section": "customer_reviews",
+    "instructions": "Write reviewer name in <p> tags (e.g. '<p>Sarah K.</p>')"
+  },
+  {
+    "key": "customer_reviews__testimonial_1__avatar",
+    "type": "image",
+    "section": "customer_reviews",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "customer_reviews__testimonial_2__content",
+    "type": "text",
+    "section": "customer_reviews",
+    "instructions": "Write a realistic customer review in <p> tags — specific, emotional, mentions the product"
+  },
+  {
+    "key": "customer_reviews__testimonial_2__title",
+    "type": "text",
+    "section": "customer_reviews",
+    "instructions": "Write reviewer name in <p> tags (e.g. '<p>Sarah K.</p>')"
+  },
+  {
+    "key": "customer_reviews__testimonial_2__avatar",
+    "type": "image",
+    "section": "customer_reviews",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "customer_reviews__testimonial_3__content",
+    "type": "text",
+    "section": "customer_reviews",
+    "instructions": "Write a realistic customer review in <p> tags — specific, emotional, mentions the product"
+  },
+  {
+    "key": "customer_reviews__testimonial_3__title",
+    "type": "text",
+    "section": "customer_reviews",
+    "instructions": "Write reviewer name in <p> tags (e.g. '<p>Sarah K.</p>')"
+  },
+  {
+    "key": "customer_reviews__testimonial_3__avatar",
+    "type": "image",
+    "section": "customer_reviews",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "bottom_banner__image_background_desktop",
+    "type": "image",
+    "section": "bottom_banner",
+    "instructions": "Brand image — set to null (brand uploads their own)"
+  },
+  {
+    "key": "bottom_banner__heading_1__content",
+    "type": "text",
+    "section": "bottom_banner",
+    "instructions": "Write a bold closing CTA headline — drives urgency or aspiration"
+  },
+  {
+    "key": "bottom_banner__content_1__content",
+    "type": "text",
+    "section": "bottom_banner",
+    "instructions": "Write closing section body copy in <p> tags — reinforce the brand promise"
+  },
+  {
+    "key": "bottom_banner__buttons_1__button_label",
+    "type": "text",
+    "section": "bottom_banner",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "bottom_banner__buttons_1__button_url",
+    "type": "url",
+    "section": "bottom_banner",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "product_slider__collection",
+    "type": "collection",
+    "section": "product_slider",
+    "instructions": "Shopify collection handle for this product grid"
+  },
+  {
+    "key": "product_slider__heading",
+    "type": "text",
+    "section": "product_slider",
+    "instructions": "Write product slider section heading"
+  },
+  {
+    "key": "product_slider__content_1__heading",
+    "type": "text",
+    "section": "product_slider",
+    "instructions": "Write product slider section heading"
+  },
+  {
+    "key": "product_slider__content_1__content",
+    "type": "text",
+    "section": "product_slider",
+    "instructions": "Write section content in <p> tags"
+  },
+  {
+    "key": "product_slider__content_1__button_label",
+    "type": "text",
+    "section": "product_slider",
+    "instructions": "Write a clear CTA button label (2-4 words)"
+  },
+  {
+    "key": "product_slider__content_1__url",
+    "type": "url",
+    "section": "product_slider",
+    "instructions": "Shopify internal URL (shopify://collections/... or shopify://pages/...) or empty string"
+  },
+  {
+    "key": "pdp_badge_text",
+    "type": "text",
+    "section": "pdp_badge",
+    "instructions": "Write a short eyebrow claim for the product badge (e.g. '🇲🇽 Hecho en México · Real Fruit'). Lead with origin, key ingredient, or certification. Under 6 words. No generic claims like 'Premium Quality'."
+  },
+  {
+    "key": "pdp_badge_emoji",
+    "type": "text",
+    "section": "pdp_badge",
+    "instructions": "Single emoji prefix matching brand personality (e.g. 🇲🇽 for origin, 🌿 for clean/natural, ✦ for premium, 🔬 for clinical). Must reinforce the badge_text claim, not decorate."
+  },
+  {
+    "key": "pdp_badge_bg_color",
+    "type": "color",
+    "section": "pdp_badge",
+    "instructions": "Hex background color for the badge. Use the brand primary color (e.g. '#D4266A'). Must pass contrast check against badge_font_color."
+  },
+  {
+    "key": "pdp_badge_font_color",
+    "type": "color",
+    "section": "pdp_badge",
+    "instructions": "Hex text color for the badge. Must contrast against badge_bg_color. Use '#ffffff' on dark backgrounds, '#1a1a1a' on light backgrounds."
+  },
+  {
+    "key": "pdp_checklist_item_1",
+    "type": "text",
+    "section": "pdp_checklist",
+    "instructions": "Product benefit bullet 1. Start with a specific ingredient or quality differentiator, not a generic claim. One line, under 8 words. Example: 'Real hibiscus, not artificial flavoring'."
+  },
+  {
+    "key": "pdp_checklist_item_2",
+    "type": "text",
+    "section": "pdp_checklist",
+    "instructions": "Product benefit bullet 2. Cover a different value prop from item 1. Highlight a unique feature or certification. One line, under 8 words."
+  },
+  {
+    "key": "pdp_checklist_item_3",
+    "type": "text",
+    "section": "pdp_checklist",
+    "instructions": "Product benefit bullet 3. Cover format, variety, or dietary claim distinct from items 1-2. One line, under 8 words."
+  },
+  {
+    "key": "pdp_checklist_item_4",
+    "type": "text",
+    "section": "pdp_checklist",
+    "instructions": "Product benefit bullet 4. Focus on quantity or value (e.g. '50 servings per bag'). One line, under 8 words. Leave blank if fewer than 4 benefits."
+  },
+  {
+    "key": "pdp_checklist_item_5",
+    "type": "text",
+    "section": "pdp_checklist",
+    "instructions": "Product benefit bullet 5. Focus on convenience or ease of use (e.g. 'Just add water'). One line, under 8 words. Leave blank if fewer than 5 benefits."
+  },
+  {
+    "key": "pdp_checklist_value_tag",
+    "type": "text",
+    "section": "pdp_checklist",
+    "instructions": "Value proposition tag label displayed above the value text (e.g. '★ Best Value', '★ Most Popular', '★ Fan Favorite'). 2-3 words with a star prefix."
+  },
+  {
+    "key": "pdp_checklist_value_text",
+    "type": "text",
+    "section": "pdp_checklist",
+    "instructions": "Value proposition description highlighting the best deal with specific math (e.g. '1kg — 100 glasses, 27¢ each'). Include quantity, unit count, and per-unit cost. Never vague."
+  },
+  {
+    "key": "pdp_checklist_check_color",
+    "type": "color",
+    "section": "pdp_checklist",
+    "instructions": "Hex color for checkmark circles. Use brand primary color. Must be visible against white background."
+  },
+  {
+    "key": "pdp_perks_label",
+    "type": "text",
+    "section": "pdp_perks",
+    "instructions": "Header label for the perks marquee (e.g. 'Subscriber Perks', 'Member Benefits'). 2-3 words, describes what the perks are for."
+  },
+  {
+    "key": "pdp_perks_item_1",
+    "type": "text",
+    "section": "pdp_perks",
+    "instructions": "Subscription perk 1. Lead with the specific benefit (e.g. 'Save 15% on every order'). Include a number or percentage. Under 6 words."
+  },
+  {
+    "key": "pdp_perks_item_2",
+    "type": "text",
+    "section": "pdp_perks",
+    "instructions": "Subscription perk 2. Different benefit from item 1 (e.g. 'Free shipping every delivery'). Under 6 words."
+  },
+  {
+    "key": "pdp_perks_item_3",
+    "type": "text",
+    "section": "pdp_perks",
+    "instructions": "Subscription perk 3. Address flexibility or trust (e.g. 'Cancel or pause anytime'). Under 6 words."
+  },
+  {
+    "key": "pdp_perks_item_4",
+    "type": "text",
+    "section": "pdp_perks",
+    "instructions": "Subscription perk 4. Address convenience (e.g. 'Auto-delivered, never run out'). Under 6 words. Leave blank if fewer than 4 perks."
+  },
+  {
+    "key": "pdp_perks_item_5",
+    "type": "text",
+    "section": "pdp_perks",
+    "instructions": "Subscription perk 5. Additional benefit (e.g. 'Priority customer support'). Under 6 words. Leave blank if fewer than 5 perks."
+  },
+  {
+    "key": "pdp_perks_header_bg",
+    "type": "color",
+    "section": "pdp_perks",
+    "instructions": "Hex background color for the perks header bar. Use brand primary or accent color. Must contrast against header_text."
+  },
+  {
+    "key": "pdp_perks_header_text",
+    "type": "color",
+    "section": "pdp_perks",
+    "instructions": "Hex text color for the perks header label. Must contrast against header_bg. Typically '#ffffff' on dark or '#1a1a1a' on light."
+  },
+  {
+    "key": "pdp_perks_marquee_bg",
+    "type": "color",
+    "section": "pdp_perks",
+    "instructions": "Hex background color for the scrolling marquee area. Use '#ffffff' or a very light tint for readability."
+  },
+  {
+    "key": "pdp_perks_marquee_text",
+    "type": "color",
+    "section": "pdp_perks",
+    "instructions": "Hex text color for the scrolling marquee items. Use '#1a1a1a' or brand body text color. Must be readable against marquee_bg."
+  },
+  {
+    "key": "pdp_variant_option_name",
+    "type": "text",
+    "section": "pdp_variant_cards",
+    "instructions": "Exact Shopify product option name that variant cards should display (e.g. 'Size', 'Pack', 'Flavor'). Must match the option name in Shopify admin exactly, case-sensitive."
+  },
+  {
+    "key": "pdp_free_shipping_threshold",
+    "type": "text",
+    "section": "pdp_variant_cards",
+    "instructions": "Dollar amount threshold for showing free shipping badge on variant cards (e.g. '50'). Number only, no dollar sign. Variants priced at or above this show 'Ships Free'."
+  },
+  {
+    "key": "pdp_popular_badge_bg",
+    "type": "color",
+    "section": "pdp_variant_cards",
+    "instructions": "Hex background color for the 'Popular' badge on variant cards. Use a secondary or accent brand color that differs from best_badge_bg."
+  },
+  {
+    "key": "pdp_best_badge_bg",
+    "type": "color",
+    "section": "pdp_variant_cards",
+    "instructions": "Hex background color for the 'Best Value' badge on variant cards. Use brand primary color or a strong accent. Must differ from popular_badge_bg."
+  },
+  {
+    "key": "pdp_ingredients_content",
+    "type": "richtext",
+    "section": "pdp_accordion",
+    "instructions": "Ingredients or key materials list for the product accordion tab. Use <p> tags. For food/beverage brands list actual or representative ingredients. For skincare list key active ingredients. For supplements list key ingredients and amounts. Keep it realistic and category-appropriate. 3-5 lines."
+  },
+  {
+    "key": "pdp_shipping_content",
+    "type": "richtext",
+    "section": "pdp_accordion",
+    "instructions": "Shipping information for the product accordion tab. Use <p> tags. Include estimated delivery time, free shipping threshold if applicable, and return policy. Keep it concise — 2-3 short paragraphs."
+  },
+  {
+    "key": "announcement_text",
+    "type": "richtext",
+    "section": "announcement",
+    "instructions": "Write a short announcement bar message with a specific offer or benefit (e.g. 'Free Shipping On Orders Over $50' or 'Subscribe & Save 15%'). Under 10 words. Must include a number or concrete benefit."
+  },
+  {
+    "key": "header_button_label",
+    "type": "text",
+    "section": "header",
+    "instructions": "Write the header CTA button label (2-3 words, e.g. 'Shop Now', 'Browse All', 'Get Started')."
+  },
+  {
+    "key": "header_button_url",
+    "type": "url",
+    "section": "header",
+    "instructions": "Shopify internal URL for the header CTA button (e.g. 'shopify://collections/all') or empty string."
+  },
+  {
+    "key": "nav_link_1_label",
+    "type": "text",
+    "section": "navigation",
+    "instructions": "Primary navigation link 1 label. Typically 'Shop' or 'Products'. One word preferred."
+  },
+  {
+    "key": "nav_link_1_url",
+    "type": "url",
+    "section": "navigation",
+    "instructions": "Shopify internal URL for nav link 1 (e.g. 'shopify://collections/all') or empty string."
+  },
+  {
+    "key": "nav_link_2_label",
+    "type": "text",
+    "section": "navigation",
+    "instructions": "Primary navigation link 2 label. Typically 'About' or 'Our Story'. One word preferred."
+  },
+  {
+    "key": "nav_link_2_url",
+    "type": "url",
+    "section": "navigation",
+    "instructions": "Shopify internal URL for nav link 2 (e.g. 'shopify://pages/about') or empty string."
+  },
+  {
+    "key": "nav_link_3_label",
+    "type": "text",
+    "section": "navigation",
+    "instructions": "Primary navigation link 3 label. Typically 'Subscribe' or 'FAQ'. One word preferred."
+  },
+  {
+    "key": "nav_link_3_url",
+    "type": "url",
+    "section": "navigation",
+    "instructions": "Shopify internal URL for nav link 3 (e.g. 'shopify://pages/faq') or empty string."
+  },
+  {
+    "key": "nav_link_4_label",
+    "type": "text",
+    "section": "navigation",
+    "instructions": "Primary navigation link 4 label. Typically 'Contact' or 'Help'. One word preferred. Leave blank if only 3 nav links needed."
+  },
+  {
+    "key": "nav_link_4_url",
+    "type": "url",
+    "section": "navigation",
+    "instructions": "Shopify internal URL for nav link 4 or empty string. Leave blank if only 3 nav links needed."
+  },
+  {
+    "key": "footer_tagline",
+    "type": "text",
+    "section": "footer",
+    "instructions": "Brand one-liner displayed below the logo in the footer. Under 10 words. Captures the brand promise or positioning (e.g. 'Simply Great Coffee', 'Real Fruit, Real Flavor')."
+  },
+  {
+    "key": "footer_about_heading",
+    "type": "text",
+    "section": "footer",
+    "instructions": "Footer content block heading. Usually 'About Us' or 'Our Story'. 2-3 words."
+  },
+  {
+    "key": "footer_about_content",
+    "type": "richtext",
+    "section": "footer",
+    "instructions": "Short brand description for the footer content block. 2-3 sentences explaining what the brand is and what it stands for. Warm and concise. Wrap in <p> tags."
+  },
+  {
+    "key": "footer_newsletter_heading",
+    "type": "text",
+    "section": "footer",
+    "instructions": "Footer newsletter section heading (e.g. 'Stay in the Loop', 'Join the Club'). 3-5 words, action-oriented."
+  },
+  {
+    "key": "footer_newsletter_content",
+    "type": "richtext",
+    "section": "footer",
+    "instructions": "Footer newsletter description in <p> tags. One sentence explaining what subscribers get. Be specific (e.g. 'early access, member pricing, brewing tips')."
+  },
+  {
+    "key": "footer_newsletter_button",
+    "type": "text",
+    "section": "footer",
+    "instructions": "Footer newsletter submit button label (e.g. 'Subscribe', 'Join', 'Sign Up'). One word preferred."
+  },
+  {
+    "key": "footer_newsletter_disclaimer",
+    "type": "richtext",
+    "section": "footer",
+    "instructions": "Footer newsletter legal disclaimer in <p> tags. Short opt-in consent text or empty string."
+  },
+  {
+    "key": "footer_instagram_url",
+    "type": "url",
+    "section": "footer",
+    "instructions": "Full Instagram profile URL (e.g. 'https://instagram.com/brandname') or empty string."
+  },
+  {
+    "key": "footer_tiktok_url",
+    "type": "url",
+    "section": "footer",
+    "instructions": "Full TikTok profile URL (e.g. 'https://tiktok.com/@brandname') or empty string."
+  },
+  {
+    "key": "footer_facebook_url",
+    "type": "url",
+    "section": "footer",
+    "instructions": "Full Facebook page URL (e.g. 'https://facebook.com/brandname') or empty string."
+  },
+  {
+    "key": "footer_cta_label",
+    "type": "text",
+    "section": "footer",
+    "instructions": "Footer content-block button label (e.g. 'Shop All', 'Our Story'). 1-3 words. Leave empty string if no CTA wanted."
+  },
+  {
+    "key": "footer_cta_url",
+    "type": "url",
+    "section": "footer",
+    "instructions": "Shopify internal URL for the footer content-block button (shopify://collections/... or shopify://pages/...). Empty string if footer_cta_label is empty."
+  },
+  {
+    "key": "footer_instagram_handle",
+    "type": "text",
+    "section": "footer",
+    "instructions": "Instagram handle without the @ (e.g. 'jolenecoffee'). Infer from scraped brand data: prefer an explicit handle in scraped content, otherwise derive from the brand name (lowercase, strip spaces and punctuation — e.g. 'Jolene Coffee' → 'jolenecoffee'). This is a best-guess; the client can override in Shopify admin. Return empty string if you cannot produce a plausible handle."
+  },
+  {
+    "key": "footer_richtext_heading",
+    "type": "text",
+    "section": "footer",
+    "instructions": "Visible main text of the footer Rich Text section — plain text, NO HTML. Format exactly: 'Follow us @HANDLE' where HANDLE is footer_instagram_handle (e.g. 'Follow us @jolenecoffee'). The theme renders this as the primary text in the block; do not include <a>, <p>, or any markup — Shopify will strip it since the field type is `text`, not `richtext`. If footer_instagram_handle is empty, return empty string."
+  },
+  {
+    "key": "footer_richtext_content",
+    "type": "richtext",
+    "section": "footer",
+    "instructions": "Unused — always return empty string. Kept as a placeholder wired to the Rich Text section's `content` setting in case we re-enable a body paragraph later."
+  },
+  {
+    "key": "_note_footer_nav_menus",
+    "type": "note",
+    "section": "footer",
+    "instructions": "Footer navigation columns (Shop / Company / Support link groups) are rendered by the theme__footer section's `menu` blocks, which resolve Shopify admin linklists by handle (main-menu, customer-account-main-menu, footer). They CANNOT be populated by the factory — they must be configured per store in Shopify Admin → Online Store → Navigation. This is a non-generatable placeholder entry; the generation pipeline skips type 'note'."
+  },
+  {
+    "key": "footer_legal_text",
+    "type": "richtext",
+    "section": "footer",
+    "instructions": "Legal disclaimer text for the footer in <p> tags. Important for functional beverages, supplements, or health-adjacent products. Include FDA disclaimer if applicable, or general copyright notice."
+  },
+  {
+    "key": "about_hero_heading",
+    "type": "text",
+    "section": "about",
+    "instructions": "Write the About page headline (e.g. 'Our Story', 'How It Started'). 2-4 words, editorial not corporate."
+  },
+  {
+    "key": "about_hero_subhead",
+    "type": "richtext",
+    "section": "about",
+    "instructions": "Write a one-paragraph brand origin summary in <p> tags. 2-3 sentences covering what the brand is, where it came from, and why it exists. Specific and human, not corporate boilerplate."
+  },
+  {
+    "key": "about_founding_year",
+    "type": "text",
+    "section": "about",
+    "instructions": "Year the brand was founded (e.g. '2021'). Infer from brand data or use a plausible recent year if unknown."
+  },
+  {
+    "key": "about_founder_name",
+    "type": "text",
+    "section": "about",
+    "instructions": "Founder full name. Use the actual founder name if available from brand data, otherwise leave as 'Our Founders'."
+  },
+  {
+    "key": "about_founder_title",
+    "type": "text",
+    "section": "about",
+    "instructions": "Founder title (e.g. 'Co-Founder & CEO', 'Founder'). Keep it simple and authentic."
+  },
+  {
+    "key": "about_founder_story",
+    "type": "richtext",
+    "section": "about",
+    "instructions": "Write a 2-3 paragraph founder narrative in <p> tags. Paragraph 1: the personal problem or moment that sparked the idea. Paragraph 2: the journey from idea to product — specific details about sourcing, formulation, or process. Paragraph 3: where the brand is now and what drives it forward. Must feel personal and specific, not templated."
+  },
+  {
+    "key": "about_mission_heading",
+    "type": "text",
+    "section": "about",
+    "instructions": "Mission section heading. 2-4 words (e.g. 'What We Stand For', 'Our Mission'). Editorial tone."
+  },
+  {
+    "key": "about_mission_body",
+    "type": "richtext",
+    "section": "about",
+    "instructions": "Write the brand mission statement in <p> tags. One clear sentence that captures the brand's purpose. Follow with 1-2 sentences expanding on how the brand delivers on that mission. No jargon, no buzzwords."
+  },
+  {
+    "key": "about_value_1_heading",
+    "type": "text",
+    "section": "about",
+    "instructions": "First brand value heading. 2-3 words, noun-based (e.g. 'Radical Transparency', 'Clean Sourcing'). Must be distinct from values 2 and 3."
+  },
+  {
+    "key": "about_value_1_body",
+    "type": "richtext",
+    "section": "about",
+    "instructions": "First brand value description in <p> tags. 1-2 sentences explaining what this value means in practice — give a concrete example, not an abstract claim."
+  },
+  {
+    "key": "about_value_2_heading",
+    "type": "text",
+    "section": "about",
+    "instructions": "Second brand value heading. 2-3 words, distinct from values 1 and 3. Cover a different dimension (if value 1 is about ingredients, value 2 should be about people or process)."
+  },
+  {
+    "key": "about_value_2_body",
+    "type": "richtext",
+    "section": "about",
+    "instructions": "Second brand value description in <p> tags. 1-2 sentences with a concrete example. Must not overlap with value 1."
+  },
+  {
+    "key": "about_value_3_heading",
+    "type": "text",
+    "section": "about",
+    "instructions": "Third brand value heading. 2-3 words, distinct from values 1 and 2. Cover the remaining dimension (e.g. community, sustainability, innovation)."
+  },
+  {
+    "key": "about_value_3_body",
+    "type": "richtext",
+    "section": "about",
+    "instructions": "Third brand value description in <p> tags. 1-2 sentences with a concrete example. Must not overlap with values 1 or 2."
+  },
+  {
+    "key": "about_cta_heading",
+    "type": "text",
+    "section": "about",
+    "instructions": "End-of-page CTA heading. 4-7 words, drives action or aspiration (e.g. 'Ready to Taste the Difference'). No period."
+  },
+  {
+    "key": "about_cta_body",
+    "type": "richtext",
+    "section": "about",
+    "instructions": "CTA supporting copy in <p> tags. 1-2 sentences reinforcing the brand promise and inviting the reader to act."
+  },
+  {
+    "key": "about_cta_label",
+    "type": "text",
+    "section": "about",
+    "instructions": "CTA button label. 2-3 words (e.g. 'Shop Now', 'Try It', 'Get Started')."
+  },
+  {
+    "key": "about_cta_url",
+    "type": "url",
+    "section": "about",
+    "instructions": "Shopify internal URL for the CTA button (e.g. 'shopify://collections/all') or empty string."
+  }
+]

@@ -1,0 +1,368 @@
+<!-- snippets/product__variant-cards.liquid -->
+{% comment %}
+  Variant selector displayed as visual cards instead of pills.
+  Hooks into the theme's existing Alpine.js option system.
+
+  Accepts:
+  - block: {object} The block object with settings.
+
+  Usage:
+    {% render 'product__variant-cards', block: block %}
+{% endcomment %}
+
+{%- liquid
+  assign target_option = block.settings.option_name | downcase
+  assign card_option = nil
+  assign card_option_position = nil
+
+  if target_option != blank
+    for opt in product.options_with_values
+      assign opt_name_down = opt.name | downcase
+      if opt_name_down == target_option
+        assign card_option = opt
+        assign card_option_position = opt.position
+        break
+      endif
+    endfor
+  endif
+
+  if card_option == nil and product.options_with_values.size > 0
+    assign card_option = product.options_with_values.first
+    assign card_option_position = card_option.position
+  endif
+
+  # Parse metafield config
+  assign vc_config_raw = product.metafields.attomik.variant_cards.value
+  assign has_config = false
+  if vc_config_raw != blank
+    assign has_config = true
+  endif
+
+  # Free shipping threshold (convert dollars to cents)
+  assign fs_threshold_cents = 0
+  if block.settings.free_shipping_threshold != blank
+    assign fs_threshold_cents = block.settings.free_shipping_threshold | times: 100
+  endif
+
+  # Option position index (0-based for variant.options array)
+  assign option_index = card_option_position | minus: 1
+
+  # Count option values and get first variant price for savings calc
+  assign option_count = 0
+  assign first_variant_price = product.variants.first.price
+  if card_option
+    assign option_count = card_option.values | size
+  endif
+-%}
+
+{% if card_option == nil %}
+  {% comment %} Option not found — render nothing {% endcomment %}
+{% else %}
+
+  <style>
+    @media (min-width: 769px) {
+      .ac-vc-grid--{{ section.id }} {
+        grid-template-columns: repeat({{ block.settings.desktop_columns | default: 4 }}, 1fr) !important;
+      }
+    }
+  </style>
+
+  <div
+    class="w-full px-4"
+    style="
+      padding-top:{{ block.settings.spacing_top }}px;
+      padding-bottom:{{ block.settings.spacing_bottom }}px;
+    "
+    {{ block.shopify_attributes }}
+  >
+    {% comment %} Option label {% endcomment %}
+    <div class="mb-3 flex justify-between">
+      <label class="type--small font-bold">
+        {{ card_option.name }}
+        {% for value in card_option.values %}
+          <span
+            class="font-normal"
+            :class="{
+              'inline': option{{ card_option_position }} == `{{ value | replace: ' ', '+' | base64_encode }}`,
+              'hidden': option{{ card_option_position }} != `{{ value | replace: ' ', '+' | base64_encode }}`
+            }"
+            x-cloak
+          >: {{ value -}}</span>
+        {% endfor %}
+      </label>
+    </div>
+
+    {% comment %} Card grid {% endcomment %}
+    {%- liquid
+      assign variant_count = card_option.values | size
+      assign popular_index = variant_count | minus: 1 | divided_by: 2
+      assign last_index = variant_count | minus: 1
+
+      assign popular_value = card_option.values[popular_index]
+      assign popular_encoded = popular_value | replace: ' ', '+' | base64_encode
+
+      assign popular_variant = nil
+      for v in product.variants
+        assign v_opt_encoded = v.options[option_index] | replace: ' ', '+' | base64_encode
+        if v_opt_encoded == popular_encoded
+          assign popular_variant = v
+          break
+        endif
+      endfor
+    -%}
+    <div
+      class="ac-vc-grid ac-vc-grid--{{ section.id }}"
+      style="align-items:stretch;"
+      {% if popular_variant and variant_count > 2 %}
+        x-init="
+          $nextTick(() => {
+            option{{ card_option_position }} = `{{ popular_encoded }}`;
+            handleProductFormChange(null, '{{ section.id }}', '{{ product.handle | handle }}', '{{ card_option_position }}', '{{ popular_value.id }}');
+          });
+        "
+      {% endif %}
+    >
+      {% for value in card_option.values %}
+        {%- liquid
+          assign value_encoded = value | replace: ' ', '+' | base64_encode
+
+          # Find the variant that matches this option value (using encoded comparison like theme does)
+          assign card_variant = nil
+          for v in product.variants
+            assign v_opt_encoded = v.options[option_index] | replace: ' ', '+' | base64_encode
+            if v_opt_encoded == value_encoded
+              assign card_variant = v
+              break
+            endif
+          endfor
+
+          # Check availability
+          assign option_available = false
+          for v in product.variants
+            if v.available
+              assign v_opt_encoded = v.options[option_index] | replace: ' ', '+' | base64_encode
+              if v_opt_encoded == value_encoded
+                assign option_available = true
+                break
+              endif
+            endif
+          endfor
+
+          # Get metafield config for this value
+          assign val_config = nil
+          if has_config
+            assign val_str = value | strip
+            for cfg in vc_config_raw
+              if cfg.value == val_str
+                assign val_config = cfg
+                break
+              endif
+            endfor
+            if val_config == nil
+              assign val_handle = value | handleize
+              for cfg in vc_config_raw
+                assign cfg_handle = cfg.value | handleize
+                if cfg_handle == val_handle
+                  assign val_config = cfg
+                  break
+                endif
+              endfor
+            endif
+          endif
+
+          # === BADGE ===
+          assign badge_text = ''
+          assign badge_type = 'best'
+          if val_config and val_config.badge != blank
+            assign badge_text = val_config.badge
+            if val_config.badge_color == 'secondary'
+              assign badge_type = 'popular'
+            endif
+          elsif option_available
+            if forloop.index0 == popular_index and forloop.index0 != 0 and forloop.index0 != last_index
+              assign badge_text = 'Popular'
+              assign badge_type = 'popular'
+            elsif forloop.index0 == last_index and variant_count > 1
+              assign badge_text = 'Best Value'
+              assign badge_type = 'best'
+            endif
+          endif
+
+          # === PER-UNIT LABEL ===
+          assign per_unit_label = ''
+          if val_config and val_config.per_unit_label != blank
+            assign per_unit_label = val_config.per_unit_label
+          endif
+
+          # === SAVINGS (compare-at price first, then vs first variant) ===
+          assign savings_pct = 0
+          assign savings_label = ''
+          assign has_compare_at = false
+          if card_variant and card_variant.compare_at_price and card_variant.compare_at_price > card_variant.price
+            assign has_compare_at = true
+          endif
+          if val_config and val_config.savings_label != blank
+            assign savings_label = val_config.savings_label
+          elsif card_variant
+            if has_compare_at
+              assign base_price = card_variant.compare_at_price
+            else
+              assign base_price = first_variant_price
+            endif
+            if base_price and base_price > 0 and base_price > card_variant.price
+              assign price_diff = base_price | minus: card_variant.price
+              assign savings_pct = price_diff | times: 100 | divided_by: base_price
+              if savings_pct > 0
+                assign savings_label = 'SAVE ' | append: savings_pct | append: '%'
+              endif
+            endif
+          endif
+
+          # === FREE SHIPPING ===
+          assign show_free_shipping = false
+          if val_config and val_config.show_free_shipping == true
+            assign show_free_shipping = true
+          elsif fs_threshold_cents > 0 and card_variant
+            if card_variant.price >= fs_threshold_cents
+              assign show_free_shipping = true
+            endif
+          endif
+        -%}
+
+        <button
+          type="button"
+          class="ac-vc-card{% unless option_available %} ac-vc-card--unavailable{% endunless %}"
+          style="
+            background: {{ block.settings.card_bg }};
+            border: {{ block.settings.card_border_width }}px solid {{ block.settings.card_border_color }};
+            border-radius: {{ block.settings.card_border_radius }}px;
+            padding: 12px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+          "
+          :style="option{{ card_option_position }} == `{{ value_encoded }}`
+            ? { background: '{{ block.settings.card_selected_bg }}', borderColor: '{{ block.settings.card_selected_border }}', borderWidth: '2px' }
+            : {}"
+          data-option-value-id="{{ value.id }}"
+          data-option-position="{{ card_option_position }}"
+          data-variant-id="{% if card_variant %}{{ card_variant.id }}{% endif %}"
+          data-value="{{ value_encoded }}"
+          @click="
+            option{{ card_option_position }} = `{{ value_encoded }}`;
+            {% if value.product_url %}
+              handleCombinedListing('{{ value.product_url }}', '{{ section.id }}');
+            {% else %}
+              handleProductFormChange(null, '{{ section.id }}', '{{ product.handle | handle }}', '{{ card_option_position }}', '{{ value.id }}');
+            {% endif %}
+          "
+          :disabled="product_loading"
+          title="{{ value }}"
+        >
+
+          {% if badge_text != blank %}
+            <span
+              class="ac-vc-badge"
+              style="
+                {% if badge_type == 'popular' %}
+                  background: {{ block.settings.popular_badge_bg }};
+                  color: {{ block.settings.popular_badge_text }};
+                {% else %}
+                  background: {{ block.settings.best_badge_bg }};
+                  color: {{ block.settings.best_badge_text }};
+                {% endif %}
+                font-size: {{ block.settings.badge_font_size }}px;
+                border-radius: {{ block.settings.badge_border_radius }}px;
+              "
+            >{{ badge_text }}</span>
+          {% endif %}
+
+          <div class="ac-vc-card__inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+
+            <div
+              class="ac-vc-name"
+              style="
+                font-size: {{ block.settings.name_font_size }}px;
+                font-weight: {{ block.settings.name_font_weight }};
+                color: {{ block.settings.name_color }};
+                font-family: var(--type__font-heading-family, sans-serif);
+              "
+            >{{ value }}</div>
+
+            {% if option_available %}
+
+              {% if card_variant %}
+                <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                  <span
+                    class="ac-vc-price"
+                    style="
+                      font-size: {{ block.settings.price_font_size }}px;
+                      color: {{ block.settings.price_color }};
+                      font-family: var(--type__font-body-family, sans-serif);
+                      font-weight: 700;
+                    "
+                  >{{ card_variant.price | money }}</span>
+                  {% if has_compare_at %}
+                    <span
+                      class="ac-vc-compare"
+                      style="
+                        font-size: {{ block.settings.price_font_size | minus: 2 }}px;
+                        color: {{ block.settings.price_color }};
+                        opacity: 0.45;
+                        text-decoration: line-through;
+                        font-family: var(--type__font-body-family, sans-serif);
+                      "
+                    >{{ card_variant.compare_at_price | money }}</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              {% if block.settings.show_per_unit and per_unit_label != blank %}
+                <div
+                  class="ac-vc-perunit"
+                  style="
+                    font-size: {{ block.settings.price_font_size }}px;
+                    color: {{ block.settings.price_color }};
+                    font-family: var(--type__font-body-family, sans-serif);
+                    margin-top: 2px;
+                  "
+                >{{ per_unit_label }}</div>
+              {% endif %}
+
+              {% if savings_label != blank %}
+                <div
+                  class="ac-vc-savings"
+                  style="
+                    font-size: {{ block.settings.savings_font_size }}px;
+                    color: {{ block.settings.savings_color }};
+                    font-family: var(--type__font-body-family, sans-serif);
+                    font-weight: 700;
+                    margin-top: 2px;
+                  "
+                >{{ savings_label }}</div>
+              {% endif %}
+
+              {% if show_free_shipping %}
+                <div
+                  class="ac-vc-shipping"
+                  style="
+                    font-size: {{ block.settings.shipping_font_size }}px;
+                    color: {{ block.settings.shipping_color }};
+                    font-family: var(--type__font-body-family, sans-serif);
+                    margin-top: 2px;
+                  "
+                >🚚 Ships Free</div>
+              {% endif %}
+
+            {% else %}
+              <div class="ac-vc-soldout">Sold Out</div>
+            {% endif %}
+
+          </div>
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}

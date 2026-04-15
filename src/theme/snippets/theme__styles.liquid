@@ -1,0 +1,411 @@
+{% # theme-check-disable AssetPreload %}
+<!-- snippets/theme__styles.liquid -->
+{% comment %}
+  All CSS for theme comes in through here.
+
+  Usage:
+    {% render 'theme__styles' %}
+
+  Globals:
+    - settings.type_font_body: set font family for body text
+    - settings.type_font_heading: set font family for heading text
+    - settings.type_font_nav: set font family for navigation text
+    - settings.color_background_body: set the body background color for light mode
+    - settings.color_background_body_dark: set the body background color for dark mode
+    - settings.color_foreground_body: set the body foreground for light mode (used for text color)
+    - settings.color_foreground_body_alt: set the body foreground for dark mode (used for text color)
+    - settings.color_background_primary: set the primary background color for light mode
+    - settings.background_primary_dark: set the primary background color for dark mode
+    - settings.color_foreground_primary: set the primary foreground for light mode
+    - settings.foreground_primary_dark: set the primary foreground for dark mode
+    - settings.color_background_secondary: set the secondary background color for light mode
+    - settings.background_secondary_dark: set the secondary background color for dark mode
+    - settings.color_foreground_secondary: set the secondary foreground for light mode
+    - settings.foreground_secondary_dark: set the secondary foreground for dark mode
+    - settings.border_button_radius: set the border radius for buttons
+    - settings.border_input_radius: set the border radius for input elements
+    - settings.border_element_radius: set the border radius for secondary elements
+    - settings.border_width: set the border width
+    - settings.border_dark: set the border color for dark mode
+    - settings.type_base_size: set base size for font size
+    - settings.type_button_capitilization: set capitilization for button text
+{% endcomment %}
+
+{% comment %} Load fonts {% endcomment %}
+{% unless settings.type_font_body.system? %}
+  <link
+    rel="preload"
+    as="font"
+    href="{{ settings.type_font_body | font_url }}"
+    type="font/woff2"
+    crossorigin
+  >
+{% endunless %}
+{% unless settings.type_font_heading.system? %}
+  <link
+    rel="preload"
+    as="font"
+    href="{{ settings.type_font_heading | font_url }}"
+    type="font/woff2"
+    crossorigin
+  >
+{% endunless %}
+{% unless settings.type_font_nav.system? %}
+  <link
+    rel="preload"
+    as="font"
+    href="{{ settings.type_font_nav | font_url }}"
+    type="font/woff2"
+    crossorigin
+  >
+{% endunless %}
+
+{% comment %} Reset animation classes when js not available {% endcomment %}
+<noscript>
+  <style>
+    .js-animation.opacity-0 {
+      opacity: 100 !important;
+    }
+    .js-animation.translate-y-4,
+    .js-animation.translate-y-8 {
+      transform: translateY(0) !important;
+    }
+    .js-image {
+      opacity: 100 !important;
+    }
+    .js-picture {
+      animation: none !important;
+      opacity: 1 !important;
+      filter: blur(0) !important;
+      transform: scale(1) !important;
+    }
+    .no-js--hide {
+      display: none !important;
+    }
+    .no-js--block {
+      display: block !important;
+    }
+  </style>
+</noscript>
+
+{% comment %} Set values {% endcomment %}
+{% liquid
+  assign type_font_body = settings.type_font_body
+  assign type_font_body_bold = settings.type_font_body | font_modify: 'weight', 'bold'
+  assign type_font_body_italic = settings.type_font_body | font_modify: 'style', 'italic'
+  assign type_font_heading = settings.type_font_heading
+  assign type_font_nav = settings.type_font_nav
+
+  assign background_body = settings.color_background_body
+  assign foreground_body = settings.color_foreground_body
+  assign foreground_body_alt = settings.color_foreground_body_alt
+  assign background_primary = settings.color_background_primary
+  assign foreground_primary = settings.color_foreground_primary
+  assign background_secondary = settings.color_background_secondary
+  assign foreground_secondary = settings.color_foreground_secondary
+  assign background_tertiary = settings.color_background_tertiary
+  assign foreground_tertiary = settings.color_foreground_tertiary
+
+  assign brightness_body = background_body | color_brightness
+  if brightness_body > 50
+    assign background_neutral = background_body | color_darken: 6 | color_mix: settings.color_background_primary, 40 | color_lighten: 40
+    assign background_plain = background_body | color_darken: 10 | color_modify: 'alpha', 0.2 | color_to_hex
+
+    assign background_overlay_1 = background_body | color_darken: 10 | color_modify: 'alpha', 0.2 | color_to_hex
+    assign background_overlay_2 = background_body | color_darken: 30 | color_modify: 'alpha', 0.3 | color_to_hex
+    assign background_overlay_3 = background_body | color_darken: 50 | color_modify: 'alpha', 0.4 | color_to_hex
+    assign background_shade_1 = background_body | color_darken: 10 | color_modify: 'alpha', 0.2
+    assign background_shade_2 = background_body | color_darken: 30 | color_modify: 'alpha', 0.3
+    assign background_shade_3 = background_body | color_darken: 50 | color_modify: 'alpha', 0.4
+    assign background_unshade_1 = background_body | color_darken: 10 | color_modify: 'alpha', 0.4
+    assign background_unshade_2 = background_body | color_darken: 20 | color_modify: 'alpha', 0.6
+    assign background_unshade_3 = background_body | color_darken: 30 | color_modify: 'alpha', 0.8
+
+    assign border_divider_1 = background_body | color_darken: 30 | color_modify: 'alpha', 0.3
+    assign border_divider_2 = background_body | color_darken: 30 | color_modify: 'alpha', 0.6
+    assign border_divider_3 = background_body | color_darken: 30 | color_modify: 'alpha', 0.8
+    assign border_selected_1 = background_body | color_darken: 60 | color_modify: 'alpha', 0.6
+    assign border_selected_2 = background_body | color_darken: 60 | color_modify: 'alpha', 0.8
+  else
+    assign background_neutral = background_body | color_lighten: 6 | color_mix: settings.color_background_primary, 40 | color_lighten: 40
+    assign background_plain = background_body | color_lighten: 10 | color_modify: 'alpha', 0.2 | color_to_hex
+
+    assign background_overlay_1 = background_body | color_lighten: 10 | color_modify: 'alpha', 0.2 | color_to_hex
+    assign background_overlay_2 = background_body | color_lighten: 30 | color_modify: 'alpha', 0.3 | color_to_hex
+    assign background_overlay_3 = background_body | color_lighten: 50 | color_modify: 'alpha', 0.4 | color_to_hex
+    assign background_shade_1 = background_body | color_lighten: 10 | color_modify: 'alpha', 0.2
+    assign background_shade_2 = background_body | color_lighten: 30 | color_modify: 'alpha', 0.3
+    assign background_shade_3 = background_body | color_lighten: 50 | color_modify: 'alpha', 0.4
+    assign background_unshade_1 = background_body | color_darken: 10 | color_modify: 'alpha', 0.2
+    assign background_unshade_2 = background_body | color_darken: 30 | color_modify: 'alpha', 0.3
+    assign background_unshade_3 = background_body | color_darken: 50 | color_modify: 'alpha', 0.4
+
+    assign border_divider_1 = background_body | color_lighten: 30 | color_modify: 'alpha', 0.3
+    assign border_divider_2 = background_body | color_lighten: 30 | color_modify: 'alpha', 0.6
+    assign border_divider_3 = background_body | color_lighten: 30 | color_modify: 'alpha', 0.8
+    assign border_selected_1 = background_body | color_lighten: 60 | color_modify: 'alpha', 0.6
+    assign border_selected_2 = background_body | color_lighten: 60 | color_modify: 'alpha', 0.8
+  endif
+
+  case settings.input_button_style
+    when 'standard'
+      assign border_primary = background_primary
+      assign border_secondary = background_secondary
+      assign border_tertiary = background_tertiary
+      assign border_neutral = background_neutral
+      assign border_plain = background_plain
+    when 'darker'
+      assign border_primary = background_primary | color_darken: 10
+      assign border_secondary = background_secondary | color_darken: 10
+      assign border_tertiary = background_tertiary | color_darken: 10
+      assign border_neutral = background_neutral | color_darken: 10
+      assign border_plain = background_plain | color_darken: 10
+    when 'lighter'
+      assign border_primary = background_primary | color_lighten: 10
+      assign border_secondary = background_secondary | color_lighten: 10
+      assign border_tertiary = background_tertiary | color_lighten: 10
+      assign border_neutral = background_neutral | color_lighten: 10
+      assign border_plain = background_plain | color_lighten: 10
+  endcase
+
+  case settings.input_field_color_border
+    when 'color__border-divider-1'
+      assign input_border = border_divider_1
+    when 'color__border-selected-1'
+      assign input_border = border_selected_1
+    when 'color__border-primary'
+      assign input_border = border_primary
+    when 'color__border-secondary'
+      assign input_border = border_secondary
+    when 'color__border-tertiary'
+      assign input_border = border_tertiary
+  endcase
+
+  case settings.input_field_color_background
+    when 'color__bg-body'
+      assign input_background = background_body
+      assign input_text = foreground_body
+    when 'color__bg-shade-2'
+      assign input_background = background_shade_2
+    when 'bg-transparent'
+      assign input_background = 'transparent'
+  endcase
+%}
+
+{% comment %} Create css values {% endcomment %}
+{% style %}
+  {{ type_font_body | font_face: font_display: 'swap' }}
+  {{ type_font_body_bold | font_face: font_display: 'swap' }}
+  {{ type_font_body_italic | font_face: font_display: 'swap' }}
+  {{ type_font_heading | font_face: font_display: 'swap' }}
+  {{ type_font_nav | font_face: font_display: 'swap' }}
+  {% assign scale_ratio = settings.type_scale_ratio | divided_by: 100.00 %}
+
+  :root {
+    --color__background-body: {{ background_body }};
+
+    --color__text-light: {{ foreground_body }};
+    --color__text-dark: {{ foreground_body_alt }};
+    --color__text-link: {{ background_primary }};
+
+    --color__background-overlay-1: {{ background_overlay_1 }};
+    --color__background-overlay-2: {{ background_overlay_2 }};
+    --color__background-overlay-3: {{ background_overlay_3 }};
+    --color__background-shade-1: {{ background_shade_1 }};
+    --color__background-shade-2: {{ background_shade_2 }};
+    --color__background-shade-3: {{ background_shade_3 }};
+    --color__background-unshade-1: {{ background_unshade_1 }};
+    --color__background-unshade-2: {{ background_unshade_2 }};
+    --color__background-unshade-3: {{ background_unshade_3 }};
+
+    --color__border-divider-1: {{ border_divider_1 }};
+    --color__border-divider-2: {{ border_divider_2 }};
+    --color__border-divider-3: {{ border_divider_3 }};
+    --color__border-selected-1: {{ border_selected_1 }};
+    --color__border-selected-2: {{ border_selected_2 }};
+
+    --color__background-primary: {{ background_primary }};
+    --color__foreground-primary: {{ foreground_primary }};
+
+    --color__background-secondary: {{ background_secondary }};
+    --color__foreground-secondary: {{ foreground_secondary }};
+
+    --color__background-tertiary: {{ background_tertiary }};
+    --color__foreground-tertiary: {{ foreground_tertiary }};
+
+    --color__background-neutral: {{ background_neutral }};
+    --color__foregound-neutral: {{ foreground_body }};
+
+    --color__background-plain: {{ background_plain }};
+    --color__foreground-plain: {{ foreground_body }};
+
+    --color__border-primary: {{ border_primary }};
+    --color__border-secondary: {{ border_secondary }};
+    --color__border-tertiary: {{ border_tertiary }};
+    --color__border-neutral: {{ border_neutral }};
+    --color__border-plain: {{ border_plain }};
+
+    --sizes__border-button-radius: {{ settings.border_button_radius }}px;
+    --sizes__border-input-radius: {{ settings.border_input_radius }}px;
+    {% if settings.border_input_radius > 20 %}
+      --sizes__border-textarea-radius: 20px;
+    {% else %}
+      --sizes__border-textarea-radius: {{ settings.border_input_radius }}px;
+    {% endif %}
+    --sizes__border-element-radius: {{ settings.border_element_radius }}px;
+
+    --sizes__border-button-width: {{ settings.border_button_width }}px;
+    --sizes__border-element-width: {{ settings.border_element_width }}px;
+
+    {% if settings.input_field_border == "bottom" %}
+      --sizes__border-input-width: {{ settings.border_input_width }}px;
+      --sizes__border-input-width-top: 0;
+      --sizes__border-input-width-left: 0;
+      --sizes__border-input-width-right: 0;
+      --sizes__border-input-width-bottom: {{ settings.border_input_width }}px;
+    {% else %}
+      --sizes__border-input-width: {{ settings.border_input_width }}px;
+      --sizes__border-input-width-top: {{ settings.border_input_width }}px;
+      --sizes__border-input-width-left: {{ settings.border_input_width }}px;
+      --sizes__border-input-width-right: {{ settings.border_input_width }}px;
+      --sizes__border-input-width-bottom: {{ settings.border_input_width }}px;
+    {% endif %}
+
+    {% if settings.input_field_border == "none" %}
+      --sizes__border-input-width: 0;
+      --sizes__border-input-width-top: 0;
+      --sizes__border-input-width-left: 0;
+      --sizes__border-input-width-right: 0;
+      --sizes__border-input-width-bottom: 0;
+    {% endif %}
+
+    --sizes__border-input-padding-left: 1rem;
+    --sizes__border-input-padding-right: 1rem;
+
+    {% if settings.input_field_color_background == "bg-transparent" and settings.input_field_border == "bottom" %}
+      --sizes__border-input-padding-left: 0;
+      --sizes__border-input-padding-right: 0;
+    {% endif %}
+
+    {% if settings.input_field_color_background == "bg-transparent" and settings.input_field_border == "none" %}
+      --sizes__border-input-padding-left: 0;
+      --sizes__border-input-padding-right: 0;
+    {% endif %}
+
+    --sizes__gap-width: {{ settings.gap_size }}px;
+
+    --type__font-100: calc(var(--type__font-200) / {{ scale_ratio }});
+    --type__font-200: calc(var(--type__font-300) / {{ scale_ratio }});
+    --type__font-300: {{ settings.type_base_size }}px;
+    --type__font-400: calc(var(--type__font-300) * {{ scale_ratio }});
+    --type__font-500: calc(var(--type__font-400) * {{ scale_ratio }});
+    --type__font-600: calc(var(--type__font-500) * {{ scale_ratio }});
+    --type__font-700: calc(var(--type__font-600) * {{ scale_ratio }});
+    --type__font-800: calc(var(--type__font-700) * {{ scale_ratio }});
+    --type__font-900: calc(var(--type__font-800) * {{ scale_ratio }});
+    --type__font-1000: calc(var(--type__font-900) * {{ scale_ratio }});
+    --type__font-1100: calc(var(--type__font-1000) * {{ scale_ratio }});
+    --type__font-1200: calc(var(--type__font-1100) * {{ scale_ratio }});
+
+    --type__font-smaller: clamp(var(--type__font-100), 1vw + 0.5rem, var(--type__font-200));
+    --type__font-small: clamp(var(--type__font-200), 1vw + 0.5rem, var(--type__font-300));
+    --type__font-base: clamp(var(--type__font-300), 1vw + 0.5rem, var(--type__font-400));
+    --type__font-big: clamp(var(--type__font-400), 1vw + 0.5rem, var(--type__font-500));
+    --type__font-bigger: clamp(var(--type__font-500), 1vw + 0.5rem, var(--type__font-600));
+    --type__font-heading-1: clamp(var(--type__font-800), 4vw + 0.5rem, var(--type__font-1100));
+    --type__font-heading-2: clamp(var(--type__font-700), 4vw + 0.5rem, var(--type__font-1000));
+    --type__font-heading-3: clamp(var(--type__font-600), 4vw + 0.5rem, var(--type__font-900));
+    --type__font-heading-4: clamp(var(--type__font-500), 4vw + 0.5rem, var(--type__font-700));
+    --type__font-heading-5: clamp(var(--type__font-400), 4vw + 0.5rem, var(--type__font-600));
+    --type__font-heading-6: clamp(var(--type__font-300), 4vw + 0.5rem, var(--type__font-500));
+
+    {% if scale_ratio <= 1.08 %}
+      --type__font-heading-line: 1.625;
+    {% else %}
+      --type__font-heading-line: 1.2;
+    {% endif %}
+
+    --spacing__font-smaller: calc(var(--type__font-smaller) * 1.625);
+    --spacing__font-small: calc(var(--type__font-small) * 1.625);
+    --spacing__font-base: calc(var(--type__font-base) * 1.625);
+    --spacing__font-big: calc(var(--type__font-big) * 1.625);
+    --spacing__font-bigger: calc(var(--type__font-bigger) * 1.625);
+
+    --type__font-body-family: {{ settings.type_font_body.family }}, {{ settings.type_font_body.fallback_families }};
+    --type__font-body-style: {{ settings.type_font_body.style }};
+    --type__font-body-weight: {{ settings.type_font_body.weight }};
+    --type__font-header-family: {{ settings.type_font_heading.family }}, {{ settings.type_font_heading.fallback_families }};
+    --type__font-header-style: {{ settings.type_font_heading.style }};
+    --type__font-header-weight: {{ settings.type_font_heading.weight }};
+    --type__font-nav-family: {{ settings.type_font_nav.family }}, {{ settings.type_font_nav.fallback_families }};
+    --type__font-nav-style: {{ settings.type_font_nav.style }};
+    --type__font-nav-weight: {{ settings.type_font_nav.weight }};
+    --type__heading-capiliziation: {{ settings.type_heading_capitilization }};
+    --type__nav-capiliziation: {{ settings.type_nav_capitilization }};
+    --type__button-capiliziation: {{ settings.type_button_capitilization }};
+
+    --inputs__border: {{ input_border | strip }};
+    --inputs__background: {{ input_background | strip }};
+    --inputs__text: {{ input_text | strip }};
+  }
+
+  /* Banner overlaps */
+  .banner--overlap {
+    margin-top: -{{ settings.header_overlap_desktop }}px;
+  }
+  .banner--overlap-content {
+    padding-top: {{ settings.header_overlap_desktop }}px;
+  }
+  .section--overlap {
+    margin-top: -{{ settings.header_overlap_desktop }}px;
+  }
+  @media (max-width: 767px) {
+    .banner--overlap {
+      margin-top: -{{ settings.header_overlap_mobile }}px;
+    }
+    .banner--overlap-content {
+      padding-top: {{ settings.header_overlap_mobile }}px;
+    }
+    .section--overlap {
+      margin-top: -{{ settings.header_overlap_mobile }}px;
+    }
+  }
+
+  /* Banner heights */
+  .banner--h-xl {
+    height: calc(100svh - {{ settings.header_overlap_desktop }}px);
+  }
+  .banner--h-l {
+    height: calc(90svh - {{ settings.header_overlap_desktop }}px);
+  }
+  @media (max-width: 767px) {
+    .banner--h-xl {
+      height: calc(100svh - {{ settings.header_overlap_mobile }}px);
+    }
+    .banner--h-l {
+      height: calc(90svh - {{ settings.header_overlap_mobile }}px);
+    }
+  }
+
+  /* Animate css classes */
+  {% if settings.enable_animated_images %}
+    .js-image{opacity:.8;filter:blur(16px)}
+    .js-image.loaded{opacity:1!important;filter:blur(0)}
+    .js-picture{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
+    .js-picture.loaded{animation:none}
+    .js-picture.loaded .js-placeholder{opacity:0}
+  {% endif %}
+
+  /* Shopify accelerated checkout */
+  shopify-accelerated-checkout {
+    --shopify-accelerated-checkout-button-border-radius: {{ settings.border_button_radius }}px;
+    --shopify-accelerated-checkout-skeleton-background-color: {{ settings.color_background_secondary }};
+    --shopify-accelerated-checkout-button-block-size: 44px;
+  }
+  shopify-accelerated-checkout-cart {
+    --shopify-accelerated-checkout-button-border-radius: {{ settings.border_button_radius }}px;
+    --shopify-accelerated-checkout-inline-alignment: flex-start;
+    --shopify-accelerated-checkout-row-gap: 1rem;
+    --shopify-accelerated-checkout-skeleton-background-color: {{ settings.color_background_body | color_darken: 6 }};
+  }
+{% endstyle %}

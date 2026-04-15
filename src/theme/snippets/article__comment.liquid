@@ -1,0 +1,155 @@
+<!-- snippets/article__comment.liquid -->
+{% comment %}
+  Comments for a blog article.
+
+  Accepts:
+  - block: {Object} Liquid object containing block settings.
+
+  Globals:
+  - settings.x_margin: {string} Determines the horizontal margin.
+
+  Usage:
+    {% render 'article__comment',
+      block: block
+    %}
+
+  Recommendations:
+  - Render this snippet on an article template.
+{% endcomment %}
+
+<section
+  id="article-comments"
+  class="
+    flex flex-col
+    {{ block.settings.color_border }}
+    {{ block.settings.style_border }}
+  "
+  style="
+    padding-top:{{ block.settings.spacing_top }}px;
+    padding-bottom:{{ block.settings.spacing_bottom }}px;
+  "
+>
+  {% paginate article.comments by 10 %}
+    {% comment %} Comments {% endcomment %}
+    {% if article.comments.size > 0 %}
+      <div
+        id="pagination"
+        class="
+          flex w-full
+          {{ block.settings.layout_x_alignment }}
+        "
+      >
+        <div
+          class="border--radius border--width color__border-divider-1 flex max-h-[550px] w-full max-w-3xl flex-col overflow-auto p-4"
+        >
+          {% for comment in article.comments %}
+            <div class="group pb-6">
+              <div
+                class="color__bg-shade-2 mb-2 inline-block rounded-2xl rounded-bl-sm p-2 px-4 md:max-w-3xl "
+              >
+                {{ comment.content }}
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="color__bg-shade-2 inline-flex h-6 w-6 items-center justify-center rounded-full">
+                  <span class="type--smaller">{{ comment.author | truncate: 1, '' | upcase }}</span>
+                </span>
+                <div>
+                  <span class="type--small opacity-50">
+                    {{ comment.author }}
+                  </span>
+                  <span class="type--small animation-300 opacity-0 group-hover:opacity-50">
+                    {{ comment.updated_at | date: format: 'abbreviated_date' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Sticky footer {% endcomment %}
+    <div
+      class="
+        flex w-full flex-col gap-6
+        {{ block.settings.layout_x_alignment }}
+      "
+    >
+      <div class="max-w-3xl">
+        {% render 'component__pagination-default', paginate: paginate %}
+      </div>
+      <div
+        class="w-full max-w-3xl"
+        x-data="{ commenting: false }"
+      >
+        {% form 'new_comment', article, class: 'grid' %}
+          <div
+            x-show="commenting"
+            x-cloak
+          >
+            <label
+              class="sr-only"
+              for="{{ block.id }}_comment_author"
+            >
+              {{ 'labels.name' | t }}
+            </label>
+            <input
+              class="form-input mb-4"
+              id="{{ block.id }}_comment_author"
+              name="comment[author]"
+              type="text"
+              placeholder="{{ 'actions.name_placeholder' | t }}"
+              required
+              value="{{ form.author }}"
+            >
+            <label
+              class="sr-only"
+              for="{{ block.id }}_comment_email"
+            >
+              {{ 'labels.email' | t }}
+            </label>
+            <input
+              class="form-input mb-4"
+              id="{{ block.id }}_comment_email"
+              name="comment[email]"
+              type="email"
+              placeholder="{{ 'actions.email_placeholder' | t }}"
+              required
+              value="{{ form.email }}"
+            >
+          </div>
+          <div
+            class="relative flex w-full items-end"
+            @click="commenting = true"
+          >
+            <textarea
+              class="!pr-10"
+              placeholder="{{ 'actions.leave_a_comment' | t }}"
+              name="comment[body]"
+              required
+              @focus="commenting = true"
+              @click="commenting = true"
+            ></textarea>
+            <button
+              type="submit"
+              class="btn btn--secondary btn--smaller absolute bottom-2 right-2 whitespace-nowrap"
+            >
+              <span class="btn__content">{{ 'actions.post' | t }}</span>
+            </button>
+          </div>
+
+          {% if form.posted_successfully? %}
+            <p class="color__bg-shade-1 type--small border--radius mt-2 p-2">
+              {{ 'info.comment_posted_successfully' | t }}
+            </p>
+          {% endif %}
+          {% if form.errors %}
+            <div class="color__bg-shade-1 type--small border--radius mt-2 p-2">
+              {{ form.errors | default_errors }}
+            </div>
+          {% endif %}
+        {% endform %}
+      </div>
+    </div>
+  {% endpaginate %}
+</section>

@@ -1,0 +1,425 @@
+[
+  {
+    "section_id": "de4cc432-8e1c-49bc-8935-1f94a9d9d797",
+    "section_type": "banner",
+    "block_id": null,
+    "block_type": null,
+    "setting_id": "image_background_desktop",
+    "role": "hero_background",
+    "instructions": "Large landscape lifestyle or product-in-context image, 1920x1080 or wider, suitable as a full-bleed hero background on desktop."
+  },
+  {
+    "section_id": "de4cc432-8e1c-49bc-8935-1f94a9d9d797",
+    "section_type": "banner",
+    "block_id": null,
+    "block_type": null,
+    "setting_id": "image_background_mobile",
+    "role": "hero_background",
+    "instructions": "Portrait-oriented hero image, ~1080x1350, subject centered — used as mobile hero background."
+  },
+  {
+    "section_id": "marquee_BqJJTc",
+    "section_type": "marquee",
+    "block_id": "image_3YqJhd",
+    "block_type": "image",
+    "setting_id": "image",
+    "role": "product",
+    "instructions": "Small square product or brand mark for the marquee rotation — transparent background preferred."
+  },
+  {
+    "section_id": "marquee_BqJJTc",
+    "section_type": "marquee",
+    "block_id": "image_VET3xm",
+    "block_type": "image",
+    "setting_id": "image",
+    "role": "product",
+    "instructions": "Small square product or brand mark for the marquee rotation — transparent background preferred."
+  },
+  {
+    "section_id": "marquee_BqJJTc",
+    "section_type": "marquee",
+    "block_id": "image_MFaLCd",
+    "block_type": "image",
+    "setting_id": "image",
+    "role": "product",
+    "instructions": "Small square product or brand mark for the marquee rotation — transparent background preferred."
+  },
+  {
+    "section_id": "d508d7f2-ab32-4de7-b0f5-07c0fc755b51",
+    "section_type": "icon-grid",
+    "block_id": "template--16628482343091__d508d7f2-ab32-4de7-b0f5-07c0fc755b51-icon-1",
+    "block_type": "icon",
+    "setting_id": "icon",
+    "role": "product",
+    "instructions": "Small square icon (SVG or PNG) representing a product feature or benefit."
+  },
+  {
+    "section_id": "d508d7f2-ab32-4de7-b0f5-07c0fc755b51",
+    "section_type": "icon-grid",
+    "block_id": "54152c4b-4fca-46e6-802e-ef313f236c4e",
+    "block_type": "icon",
+    "setting_id": "icon",
+    "role": "product",
+    "instructions": "Small square icon (SVG or PNG) representing a product feature or benefit."
+  },
+  {
+    "section_id": "d508d7f2-ab32-4de7-b0f5-07c0fc755b51",
+    "section_type": "icon-grid",
+    "block_id": "e5b5ea4b-be8f-4673-a833-0ca548dff15c",
+    "block_type": "icon",
+    "setting_id": "icon",
+    "role": "product",
+    "instructions": "Small square icon (SVG or PNG) representing a product feature or benefit."
+  },
+  {
+    "section_id": "content_grid_kXU8Qz",
+    "section_type": "content-grid",
+    "block_id": "content_tbK8Y4",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_kXU8Qz",
+    "section_type": "content-grid",
+    "block_id": "content_UDd3CH",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_qW4RjP",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_qW4RjP",
+    "block_type": "testimonial",
+    "setting_id": "logo",
+    "role": "product",
+    "instructions": "Small brand/publication logo accompanying the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_qW4RjP",
+    "block_type": "testimonial",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Supporting lifestyle image attached to the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_Net3Mq",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_Net3Mq",
+    "block_type": "testimonial",
+    "setting_id": "logo",
+    "role": "product",
+    "instructions": "Small brand/publication logo accompanying the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_Net3Mq",
+    "block_type": "testimonial",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Supporting lifestyle image attached to the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_nAKf8z",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_nAKf8z",
+    "block_type": "testimonial",
+    "setting_id": "logo",
+    "role": "product",
+    "instructions": "Small brand/publication logo accompanying the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_nAKf8z",
+    "block_type": "testimonial",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Supporting lifestyle image attached to the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_7XQnba",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_7XQnba",
+    "block_type": "testimonial",
+    "setting_id": "logo",
+    "role": "product",
+    "instructions": "Small brand/publication logo accompanying the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_7XQnba",
+    "block_type": "testimonial",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Supporting lifestyle image attached to the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_eCjygz",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_eCjygz",
+    "block_type": "testimonial",
+    "setting_id": "logo",
+    "role": "product",
+    "instructions": "Small brand/publication logo accompanying the testimonial."
+  },
+  {
+    "section_id": "testimonial_slider_hTJXnt",
+    "section_type": "testimonial-slider",
+    "block_id": "testimonial_eCjygz",
+    "block_type": "testimonial",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Supporting lifestyle image attached to the testimonial."
+  },
+  {
+    "section_id": "content_grid_3GJfUT",
+    "section_type": "content-grid",
+    "block_id": "content_Xiprzb",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_3GJfUT",
+    "section_type": "content-grid",
+    "block_id": "content_MazXh6",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_zkMhzF",
+    "section_type": "content-grid",
+    "block_id": "content_KRrNeM",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_zkMhzF",
+    "section_type": "content-grid",
+    "block_id": "content_nbkPaz",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_zkMhzF",
+    "section_type": "content-grid",
+    "block_id": "content_dtrDnp",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_zkMhzF",
+    "section_type": "content-grid",
+    "block_id": "content_tdT9JF",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "icon_grid_pAWkqU",
+    "section_type": "icon-grid",
+    "block_id": "icon_x4TXnw",
+    "block_type": "icon",
+    "setting_id": "icon",
+    "role": "product",
+    "instructions": "Small square icon (SVG or PNG) representing a product feature or benefit."
+  },
+  {
+    "section_id": "icon_grid_pAWkqU",
+    "section_type": "icon-grid",
+    "block_id": "icon_c4fYX6",
+    "block_type": "icon",
+    "setting_id": "icon",
+    "role": "product",
+    "instructions": "Small square icon (SVG or PNG) representing a product feature or benefit."
+  },
+  {
+    "section_id": "icon_grid_pAWkqU",
+    "section_type": "icon-grid",
+    "block_id": "icon_YwWaLw",
+    "block_type": "icon",
+    "setting_id": "icon",
+    "role": "product",
+    "instructions": "Small square icon (SVG or PNG) representing a product feature or benefit."
+  },
+  {
+    "section_id": "icon_grid_pAWkqU",
+    "section_type": "icon-grid",
+    "block_id": "icon_a8tFjJ",
+    "block_type": "icon",
+    "setting_id": "icon",
+    "role": "product",
+    "instructions": "Small square icon (SVG or PNG) representing a product feature or benefit."
+  },
+  {
+    "section_id": "content_grid_wGT9Va",
+    "section_type": "content-grid",
+    "block_id": "content_7bQBtz",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_DwtYHh",
+    "section_type": "content-grid",
+    "block_id": "content_6EQNYk",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_DwtYHh",
+    "section_type": "content-grid",
+    "block_id": "content_qyc4mg",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_fAJFeY",
+    "section_type": "content-grid",
+    "block_id": "content_bH8tpB",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_tMrLNn",
+    "section_type": "content-grid",
+    "block_id": "content_hmFDRM",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "content_grid_tMrLNn",
+    "section_type": "content-grid",
+    "block_id": "content_WfQxEw",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "lifestyle",
+    "instructions": "Editorial lifestyle image that supports the content card copy — brand moment, ingredient, or context shot."
+  },
+  {
+    "section_id": "testimonial_grid_ppc7zf",
+    "section_type": "testimonial-grid",
+    "block_id": "testimonial_GdxFz9",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "testimonial_grid_ppc7zf",
+    "section_type": "testimonial-grid",
+    "block_id": "testimonial_4m7Eq8",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "testimonial_grid_ppc7zf",
+    "section_type": "testimonial-grid",
+    "block_id": "testimonial_wUztfP",
+    "block_type": "testimonial",
+    "setting_id": "avatar",
+    "role": "ugc",
+    "instructions": "Square headshot or avatar of the customer giving the testimonial."
+  },
+  {
+    "section_id": "banner_j6wcjX",
+    "section_type": "banner",
+    "block_id": null,
+    "block_type": null,
+    "setting_id": "image_background_desktop",
+    "role": "hero_background",
+    "instructions": "Large landscape lifestyle or product-in-context image, 1920x1080 or wider, suitable as a full-bleed hero background on desktop."
+  },
+  {
+    "section_id": "banner_j6wcjX",
+    "section_type": "banner",
+    "block_id": null,
+    "block_type": null,
+    "setting_id": "image_background_mobile",
+    "role": "hero_background",
+    "instructions": "Portrait-oriented hero image, ~1080x1350, subject centered — used as mobile hero background."
+  },
+  {
+    "section_id": "product_slider_AQDing",
+    "section_type": "product-slider",
+    "block_id": "content_iXr89U",
+    "block_type": "content",
+    "setting_id": "image",
+    "role": "product",
+    "instructions": "Product-in-context shot for the product slider content card."
+  }
+]

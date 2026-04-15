@@ -1,0 +1,114 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "banner": {
+      "type": "collection__banner",
+      "settings": {
+        "enable_image": false,
+        "layout_y_spacing": "min-h-[250px] md:min-h-[350px]",
+        "color_scheme": "color__bg-body color__text",
+        "color_text": "color__text",
+        "color_border": "color__border-divider-1",
+        "enable_gradient": false,
+        "enable_background_overlay": false,
+        "style_border": "",
+        "layout_y_alignment": "items-end",
+        "layout_x_alignment": "justify-center text-center",
+        "enable_header_overlap": true,
+        "enable_margin": true,
+        "enable_max_width": true,
+        "visibility": "",
+        "enable_description": true
+      }
+    },
+    "grid": {
+      "type": "collection__main",
+      "settings": {
+        "spacing_top": 50,
+        "spacing_bottom": 0,
+        "color_scheme": "color__bg-body",
+        "color_background": "#f1f1f1",
+        "color_text": "",
+        "color_border": "!color__border-transparent",
+        "color_filter_bar": "color__bg-body",
+        "enable_color_fade": false,
+        "layout_row_desktop": 3,
+        "layout_row_mobile": 1,
+        "filter_placement": "top",
+        "enable_margin": true,
+        "enable_sort": false,
+        "enable_filter": false,
+        "products_per_page": 12
+      }
+    },
+    "recent": {
+      "type": "recent-slider",
+      "settings": {
+        "heading": "Recently viewed",
+        "content": "",
+        "spacing_top": 100,
+        "spacing_bottom": 0,
+        "color_scheme": "color__bg-body",
+        "color_background": "#f1f1f1",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "enable_color_fade": false,
+        "style_border": "",
+        "card_width_mobile": 10,
+        "card_width_desktop": 4,
+        "layout_x_alignment": "text-center justify-center flex-col items-center",
+        "layout_arrow_alignment": "justify-center",
+        "layout_arrow_placement": "top",
+        "enable_margin": true,
+        "enable_scroll_margin": false,
+        "enable_split": false,
+        "enable_split_heading": false,
+        "visibility": "",
+        "enable_arrows": true,
+        "enable_scrollbar": false
+      }
+    },
+    "article_grid_ncTx4n": {
+      "type": "article-grid",
+      "name": "t:sections.article_grid.name",
+      "settings": {
+        "blog": "",
+        "items_count": 0,
+        "heading": "",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 0,
+        "spacing_bottom": 0,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "style_border": "",
+        "layout_row_desktop": 3,
+        "layout_row_mobile": 1,
+        "layout_x_alignment": "justify-between",
+        "enable_margin": true,
+        "enable_split": false,
+        "enable_split_heading": false,
+        "visibility": ""
+      }
+    }
+  },
+  "order": [
+    "banner",
+    "grid",
+    "recent",
+    "article_grid_ncTx4n"
+  ]
+}

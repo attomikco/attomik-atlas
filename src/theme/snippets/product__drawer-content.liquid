@@ -1,0 +1,45 @@
+<!-- snippets/product__drawer-content.liquid -->
+{% comment %}
+  Block to display a link to open a customizeable drawer drawer.
+
+  Accepts:
+  - blocksettings: {object} Liquid object of block settings.
+
+  Globals:
+  - close_button_color: {string} Class string to set close button color.
+  - close_button_content: {string} Content of the close button.
+
+  Usage:
+    {% render 'product__drawer-content',
+      block: block
+    %}
+
+  Possible enhancements:
+  - Add option to set overlay style to drawer or drawer.
+
+  Recommendations:
+  - This can be used to display a variety of content on product pages in collapsable pannels. For example this block can be used to display a sizing guide page in a drawer.
+{% endcomment %}
+
+{% comment %} Drawer content {% endcomment %}
+{% capture drawer_content %}
+
+  {% comment %} Content {% endcomment %}
+  <div class="p-4">
+    {{ block.settings.page.content }}
+  </div>
+
+{% endcapture %}
+
+{% comment %} Drawer id {% endcomment %}
+{% capture drawer_id %}
+  drawer_{{ block.id }}
+{% endcapture %}
+
+{% render 'component__dragdrawer',
+  drawer_id: drawer_id,
+  mobile_pos: 'bottom',
+  desktop_pos: 'right',
+  enable_full_height: false,
+  content: drawer_content
+%}

@@ -1,26 +1,16 @@
 'use client'
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useBrand } from '@/lib/brand-context'
 
-// Reconciles the server-rendered brand with the context's activeBrandId.
+// Reconciles the server-rendered brand with the context's activeBrandId
+// and mirrors it into the `activeBrandId` cookie so the next no-param
+// /dashboard render can resolve to the same brand on the first pass.
 //
-// Two paths:
-//
-//   1. paramExplicit = true  — the URL had `?brand=X`. The server already
-//      rendered using X, so X is the source of truth. Sync context to match
-//      so the TopNav and the dashboard agree.
-//
-//   2. paramExplicit = false — the URL had no param. The server fell back to
-//      `brands[0]` (the most recent brand). Don't trust that — the user has
-//      a saved brand in localStorage. Wait for BrandProvider to resolve, then
-//      if its activeBrandId disagrees with the server's fallback, redirect
-//      to `/dashboard?brand=<saved>` so the server re-renders with the right
-//      brand. This is what fixes the "every reload teleports me" bug.
-//
-// Important: the OLD version of this component called setActiveBrandId(brandId)
-// unconditionally, which overrode the user's saved brand on every reload of
-// /dashboard. That's the bug we're fixing.
+// The old version called router.replace('/dashboard?brand=<saved>') when
+// context disagreed with the server, which re-fired every Supabase query
+// in the dashboard. Now the server reads the cookie directly, so we can
+// drop the redirect entirely: trust the server-rendered brand and sync
+// context to match.
 export default function BrandSync({
   brandId,
   paramExplicit,
@@ -28,10 +18,16 @@ export default function BrandSync({
   brandId: string
   paramExplicit: boolean
 }) {
-  const router = useRouter()
   const { activeBrandId, brandsLoaded, setActiveBrandId } = useBrand()
 
   useEffect(() => {
+    // Mirror the server-rendered brand into a long-lived cookie. The
+    // dashboard server component reads this cookie to resolve the right
+    // brand on the next no-param load.
+    if (typeof document !== 'undefined' && brandId) {
+      document.cookie = `activeBrandId=${brandId}; path=/; max-age=31536000; SameSite=Lax`
+    }
+
     if (paramExplicit) {
       // URL was authoritative — sync context to match.
       if (brandId && brandId !== activeBrandId) {
@@ -41,17 +37,14 @@ export default function BrandSync({
     }
 
     // No URL param. Wait for context to finish resolving its brand from
-    // localStorage / first-brand-fallback. If activeBrandId is null after
-    // load, the user has zero brands; nothing to do.
+    // localStorage. If it disagrees with the server-rendered brand, trust
+    // the server (which read from the cookie) and sync context — no
+    // redirect, so we don't double-render all the dashboard queries.
     if (!brandsLoaded || !activeBrandId) return
-
-    // If the server-rendered brand doesn't match the user's saved brand,
-    // navigate to put it back. router.replace() avoids polluting the back
-    // stack with the wrong-brand intermediate state.
     if (activeBrandId !== brandId) {
-      router.replace(`/dashboard?brand=${activeBrandId}`)
+      setActiveBrandId(brandId)
     }
-  }, [brandId, paramExplicit, activeBrandId, brandsLoaded, router, setActiveBrandId])
+  }, [brandId, paramExplicit, activeBrandId, brandsLoaded, setActiveBrandId])
 
   return null
 }

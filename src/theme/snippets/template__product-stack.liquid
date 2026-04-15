@@ -1,0 +1,159 @@
+<!-- snippets/template__product-stack.liquid -->
+{% comment %}
+  Upsell item with button to add to cart
+
+  Usage:
+    {% render 'template__product-stack' %}
+
+  Recommendations:
+    - Must be used within a <template> tag with AlpineJS enabled
+{% endcomment %}
+
+<div
+  class="
+    border--radius upsell group relative flex w-full flex-none justify-center overflow-hidden whitespace-normal
+    {{ settings.product_card_color_border }}
+  "
+  x-show="item.available"
+  x-data="
+    {
+      button_loading: false
+    }
+  "
+>
+  {% comment %} Content {% endcomment %}
+  <div
+    class="
+      flex w-full items-start
+      {{ settings.product_card_color_scheme }}
+    "
+  >
+    {% comment %} Image {% endcomment %}
+    <div
+      class="flex h-full w-[25%] flex-none justify-center overflow-hidden"
+    >
+      <a
+        class="color__bg-shade-2 flex aspect-[1/1] h-full w-full items-center object-cover hover:opacity-100"
+        :href="`${item.url}`"
+      >
+        <img
+          class="color__bg-shade-2 h-full w-full object-cover"
+          width="200"
+          height="200"
+          loading="lazy"
+          :src="`${ item.featured_image }&width=750`"
+          :alt="`${ item.title }`"
+        >
+      </a>
+    </div>
+
+    {% comment %} Content {% endcomment %}
+    <div
+      class="flex h-full w-full flex-grow items-start justify-between gap-4 p-4 text-left"
+    >
+      {% comment %} Title and price {% endcomment %}
+      <div>
+        <h3
+          class="type__body type--base"
+          x-text="item.title"
+        ></h3>
+        {% if settings.product_card_show_prices %}
+          <span
+            x-html="Shopify.formatMoney(item.price)"
+          >
+          </span>
+        {% endif %}
+      </div>
+
+      {% comment %} Quick add {% endcomment %}
+      <div
+        class="flex gap-1"
+      >
+        <form
+          class="flex flex-wrap"
+          action="{{ routes.cart_add_url }}"
+          method="post"
+          enctype="multipart/form-data"
+          x-data="
+            {
+              current_variant_id: item.variants[0].id,
+              current_variant_selling_plan_id: 0,
+              quantity: 1,
+            }
+          "
+          @submit.prevent="
+            button_loading = true;
+            addCartItem(current_variant_id, current_variant_selling_plan_id, quantity, true);
+            setTimeout(function(){ button_loading = false}, 500);
+          "
+        >
+          {% comment %} Add to cart {% endcomment %}
+          <div
+            x-show="item.variants.length == 1"
+          >
+            <input
+              name="id"
+              type="hidden"
+              :value="current_variant_id"
+            >
+            <label
+              class="sr-only"
+              :for="'quantity_t_upsell_grid_item_' + item.id + '-{{ section.id }}'"
+            >
+              {{ 'labels.quantity' | t }}
+            </label>
+            <input
+              name="quantity"
+              type="hidden"
+              value="1"
+              min="1"
+              max=""
+              aria-label="{{ 'labels.quantity' | t }}"
+              :id="'quantity_t_upsell_grid_item_' + item.id + '-{{ section.id }}'"
+              x-model="quantity"
+            >
+            <button
+              class="btn btn--secondary btn--smaller"
+              :class="
+                {
+                  'animate-pulse': button_loading
+                }
+              "
+              type="submit"
+              role="button"
+            >
+              <div class="btn__content">
+                {{ 'actions.add' | t }}
+              </div>
+            </button>
+          </div>
+
+          {% comment %} Open quick add overlay {% endcomment %}
+          <div
+            x-show="item.variants.length > 1"
+          >
+            <button
+              class="btn btn--secondary btn--smaller"
+              :class="
+                {
+                  'animate-pulse': button_loading
+                }
+              "
+              type="button"
+              role="button"
+              @click="
+                button_loading = true;
+                fetchAndRenderQuickAdd(item.handle);
+                setTimeout(function(){ button_loading = false}, 500);
+              "
+            >
+              <div class="btn__content">
+                {{ 'actions.add' | t }}
+              </div>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

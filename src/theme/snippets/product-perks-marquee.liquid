@@ -1,0 +1,93 @@
+<!-- snippets/product-perks-marquee.liquid -->
+{% comment %}
+  Scrolling marquee of perks/benefits with configurable items.
+
+  Accepts:
+  - block: {object} The block object with settings.
+
+  Usage:
+    {% render 'product-perks-marquee', block: block %}
+{% endcomment %}
+
+{%- liquid
+  assign label = block.settings.label | default: 'Subscriber Perks'
+  assign speed = block.settings.speed | default: 20
+  assign items_str = ''
+  if block.settings.perk_1 != blank
+    assign items_str = items_str | append: block.settings.perk_1 | append: '|||'
+  endif
+  if block.settings.perk_2 != blank
+    assign items_str = items_str | append: block.settings.perk_2 | append: '|||'
+  endif
+  if block.settings.perk_3 != blank
+    assign items_str = items_str | append: block.settings.perk_3 | append: '|||'
+  endif
+  if block.settings.perk_4 != blank
+    assign items_str = items_str | append: block.settings.perk_4 | append: '|||'
+  endif
+  if block.settings.perk_5 != blank
+    assign items_str = items_str | append: block.settings.perk_5 | append: '|||'
+  endif
+  assign items_array = items_str | split: '|||'
+-%}
+
+{% if items_array.size > 0 %}
+  <div
+    class="w-full"
+    {{ block.shopify_attributes }}
+  >
+    <div
+      class="ac-perks"
+      style="
+        border: {{ block.settings.border_width }}px solid {{ block.settings.border_color }};
+        border-radius: {{ block.settings.border_radius }}px;
+        overflow: hidden;
+        margin: 8px 16px;
+      "
+    >
+      <div
+        class="ac-perks__header"
+        style="
+          background-color: {{ block.settings.header_bg }};
+          color: {{ block.settings.header_text }};
+        "
+      >
+        <svg class="ac-perks__icon" viewBox="0 0 24 24"><path d="M21 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"></path><path d="M17 12H3"></path><path d="M21 12l-4-4"></path><path d="M21 12l-4 4"></path></svg>
+        <span
+          class="ac-perks__label"
+          style="
+            font-size: {{ block.settings.header_font_size }}px;
+            font-weight: {{ block.settings.header_font_weight }};
+          "
+        >{{ label }}</span>
+      </div>
+      <div
+        class="ac-perks__marquee"
+        style="
+          background-color: {{ block.settings.marquee_bg }};
+          color: {{ block.settings.marquee_text }};
+        "
+      >
+        <div class="ac-perks__track" style="--ac-marquee-speed: {{ speed }}s;">
+          {% for pass in (1..2) %}
+            <div class="ac-perks__set">
+              {% for item in items_array %}
+                <div
+                  class="ac-perks__item"
+                  style="
+                    font-size: {{ block.settings.marquee_font_size }}px;
+                    font-weight: {{ block.settings.marquee_font_weight }};
+                  "
+                >
+                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  {{ item }}
+                </div>
+                <div class="ac-perks__dot"></div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}

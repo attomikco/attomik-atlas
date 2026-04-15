@@ -1,0 +1,231 @@
+<!-- sections/quick-edit.liquid -->
+{% comment %}
+  Use section rendering API to load and inject quick-edit form for product thumbnails.
+  Globals:
+  - color_background_overlay: {string} Sets the background color of the overlay.
+  - enable_animations: {boolean} Indicates if animations should be enabled.
+  - enable_quick_image: {boolean} Indicates if quick image should be enabled.
+  - product_card_enable_count: {boolean} Indicates if variant count should be displayed on thumbnails.
+  - product_card_enable_sku: {boolean} Indicates if SKU should be displayed on thumbnails.
+  - product_card_enable_vendor: {boolean} Indicates if vendor should be displayed on thumbnails.
+  - product_card_enable_type: {boolean} Indicates if product type should be displayed on thumbnails.
+
+  Recommendations:
+  - Use variant dropdown selectors for products that have lots of variant options.
+{% endcomment %}
+
+{% capture script_product %}
+  {% render 'script__product',
+    enable_default_selling_plan_widget: true,
+    enable_default_variant: true,
+  %}
+{% endcapture %}
+
+<section
+  class="js-product-{{ section.id }} fixed inset-0 z-50 overflow-hidden "
+  role="dialog"
+  aria-modal="true"
+  aria-label="{{ 'labels.menu' | t }}"
+  x-data="
+    {
+      quick_edit: true,
+      pos_y: 0,
+      dragging: false
+    }
+  "
+  @keyup.escape.window="
+    quick_edit = false;
+    enable_body_scrolling = true;
+    has_overlay = false;
+  "
+  x-show="quick_edit"
+  x-cloak
+>
+  {% comment %} Overlay {% endcomment %}
+  <div
+    class="absolute inset-0 h-full w-full backdrop-blur-sm"
+    style="background: {{ settings.color_background_overlay }};"
+    aria-hidden="true"
+    @click="
+      quick_edit = false;
+      enable_body_scrolling = true;
+      has_overlay = false;
+    "
+    x-show="quick_edit"
+    {% if settings.enable_animations %}
+      x-transition:enter="animation-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="animation-300"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+    {% endif %}
+    x-cloak
+  ></div>
+
+  {% comment %} Drawer {% endcomment %}
+  <div
+    class="
+      fixed bottom-0 left-0 right-0
+      flex max-h-[95svh] w-screen justify-end md:bottom-0 md:left-auto md:right-0
+      md:top-0 md:h-full md:max-h-full md:max-w-md
+    "
+    :class="
+      [
+        dragging ? '' : 'animation-300'
+      ]
+    "
+    @touchend.window="
+      dragging = false;
+      start_y: 0,
+      pos_y = 0;
+    "
+    @touchstart="
+      dragging = true;
+      start_y = $event.touches[0].clientY;
+    "
+    @touchmove.window="
+      if (dragging) {
+        let deltaY = $event.touches[0].clientY - start_y;
+        if (deltaY > 0) {
+          pos_y = deltaY;
+          if (pos_y > window.innerHeight / 3) {
+            dragging = false;
+            pos_y = 1200;
+            quick_edit = false;
+            enable_body_scrolling = true;
+            has_overlay = false;
+          }
+        } else {
+          pos_y = 0;
+        }
+      }
+    "
+    :style="      'transform: translate(0px, ' + pos_y + 'px)'"
+    x-trap="quick_edit"
+    x-show="quick_edit"
+    {% if settings.enable_animations %}
+      {% capture transition_start %}
+        !translate-y-full md:!translate-y-0
+      {% endcapture %}
+      x-transition:enter="animation-300 opacity-0 {{ transition_start | strip }}"
+      x-transition:enter-start="opacity-0 {{ transition_start | strip }}"
+      x-transition:enter-end="!translate-y-0 opacity-100"
+      x-transition:leave="animation-300 !translate-y-0 opacity-100"
+      x-transition:leave-start="!translate-y-0 opacity-100"
+      x-transition:leave-end="opacity-0 {{ transition_start | strip }}"
+    {% endif %}
+    x-cloak
+  >
+    {% comment %} Contents {% endcomment %}
+    <div class="w-screen">
+      <div class="color__bg-body color__text flex h-full flex-col overflow-y-auto overscroll-none">
+        <div
+          class="h-full"
+          x-data="{{ script_product }}"
+          x-init="initProductForm();"
+          x-ref="formContainer"
+        >
+          <form
+            class="flex h-full w-full flex-wrap md:flex-col"
+            method="post"
+            action="{{ routes.cart_add_url }}"
+            id="product_form_{{ product.id }}-{{ section.id }}"
+            accept-charset="UTF-8"
+            enctype="multipart/form-data"
+            @submit.prevent="
+              editCartItem(edit_quantity, edit_variant, current_variant_id, current_variant_selling_plan_id);
+              button_loading = true;
+              quick_add = false;
+              quick_edit = false;
+              enable_body_scrolling = true;
+              has_overlay = false;
+              setTimeout(function(){ button_loading = false}, 500);
+            "
+            x-on:keydown.enter.prevent=""
+          >
+            {% comment %} Top bar {% endcomment %}
+            <section class="border--b-width color__bg-body sticky top-0 z-10 flex w-full items-center justify-between p-4">
+              <span>{{ product.title }}</span>
+              <button
+                class="
+                  btn
+                  {{ settings.close_button_color }}
+                "
+                type="button"
+                title="{{ 'actions.close' | t }}"
+                @click="
+                  quick_edit = false;
+                  quick_add = false;
+                  enable_body_scrolling = true;
+                  has_overlay = false;
+                "
+              >
+                {% if settings.close_button_content contains 'icon' %}
+                  {% render 'component__icon', icon: 'x', size: '20' %}
+                {% endif %}
+                {% if settings.close_button_content contains 'text' %}
+                  <span
+                    {% if settings.close_button_content contains 'icon' %}
+                      class="ml-1"
+                    {% endif %}
+                  >
+                    {{ 'actions.close' | t }}
+                  </span>
+                {% endif %}
+              </button>
+            </section>
+
+            {% comment %} Images {% endcomment %}
+            {% if settings.enable_quick_image and product.featured_image != blank %}
+              <div class="border--b-width color__border-divider-1">
+                {% render 'product__gallery-slider', is_overlay: true %}
+              </div>
+            {% endif %}
+
+            {% comment %} Details and actions {% endcomment %}
+            <div
+              class="flex w-full flex-grow flex-col flex-wrap"
+            >
+              {% comment %} Details {% endcomment %}
+              <div
+                class="color__bg-body flex flex-col gap-4 p-4"
+              >
+                <div
+                  x-show="current_variant_exists"
+                >
+                  {% render 'product__price' %}
+                </div>
+                <a
+                  href="{{ product.url }}"
+                >
+                  {{ 'actions.learn_more' | t }}
+                </a>
+              </div>
+
+              {% comment %} Description {% endcomment %}
+              {% if settings.enable_quick_description and product.description != blank %}
+                <div class="color__bg-body type--small flex flex-col pb-4">
+                  {% render 'product__description' %}
+                  <div class="px-4"></div>
+                </div>
+              {% endif %}
+
+              {% comment %} Options {% endcomment %}
+              <div class="options-{{ section.id }} color__bg-body border--t-width color__border-divider-1 py-4">
+                {% render 'product__options', enable_default_selling_plan_widget: true %}
+              </div>
+
+              {% comment %} Actions {% endcomment %}
+              <div
+                class="color__bg-body border--t-width color__border-divider-1 sticky bottom-0 z-10 flex w-full flex-grow flex-wrap content-end items-end py-4"
+              >
+                {% render 'product__add', is_featured: false, is_edit_section: true %}
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -32,7 +32,7 @@ function BrandSwitchIndicator() {
 
 function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const showCampaignBar = ['/creatives', '/copy', '/newsletter'].some(p => pathname.startsWith(p))
+  const showCampaignBar = ['/creatives', '/copy', '/newsletter', '/store'].some(p => pathname.startsWith(p))
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream, #f8f7f4)' }}>
       <BrandSwitchIndicator />

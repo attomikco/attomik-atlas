@@ -1,0 +1,85 @@
+<!-- snippets/product-checklist.liquid -->
+{% comment %}
+  Product checklist using theme-native patterns.
+
+  Accepts:
+  - block: {object} The block object with settings.
+
+  Usage:
+    {% render 'product-checklist', block: block %}
+{% endcomment %}
+
+<div
+  class="w-full px-4"
+  style="
+    padding-top:{{ block.settings.spacing_top }}px;
+    padding-bottom:{{ block.settings.spacing_bottom }}px;
+  "
+  {{ block.shopify_attributes }}
+>
+  <ul class="ac-checklist">
+    {% if block.settings.item_1 != blank %}
+      <li class="ac-checklist__item">
+        <span class="ac-checklist__check" style="background: {{ block.settings.check_color }};">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="ac-checklist__text">{{ block.settings.item_1 }}</span>
+      </li>
+    {% endif %}
+    {% if block.settings.item_2 != blank %}
+      <li class="ac-checklist__item">
+        <span class="ac-checklist__check" style="background: {{ block.settings.check_color }};">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="ac-checklist__text">{{ block.settings.item_2 }}</span>
+      </li>
+    {% endif %}
+    {% if block.settings.item_3 != blank %}
+      <li class="ac-checklist__item">
+        <span class="ac-checklist__check" style="background: {{ block.settings.check_color }};">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="ac-checklist__text">{{ block.settings.item_3 }}</span>
+      </li>
+    {% endif %}
+    {% if block.settings.item_4 != blank %}
+      <li class="ac-checklist__item">
+        <span class="ac-checklist__check" style="background: {{ block.settings.check_color }};">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="ac-checklist__text">{{ block.settings.item_4 }}</span>
+      </li>
+    {% endif %}
+    {% if block.settings.item_5 != blank %}
+      <li class="ac-checklist__item">
+        <span class="ac-checklist__check" style="background: {{ block.settings.check_color }};">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="ac-checklist__text">{{ block.settings.item_5 }}</span>
+      </li>
+    {% endif %}
+
+    {% if block.settings.value_prop_text != blank %}
+      <li
+        class="ac-checklist__value-prop"
+        style="
+          background: {{ block.settings.value_bg | default: '#f5f5f5' }};
+          color: {{ block.settings.value_text_color | default: '#1a1a1a' }};
+          border: {{ block.settings.value_border_width | default: 1 }}px solid {{ block.settings.value_border_color | default: '#e0e0e0' }};
+          border-radius: {{ block.settings.value_border_radius | default: 8 }}px;
+        "
+      >
+        {% unless block.settings.value_prop_tag == blank %}
+          <span
+            class="ac-checklist__value-tag"
+            style="
+              background: {{ block.settings.value_tag_bg | default: '#000000' }};
+              color: {{ block.settings.value_tag_text | default: '#ffffff' }};
+            "
+          >{{ block.settings.value_prop_tag }}</span>
+        {% endunless %}
+        <span class="ac-checklist__value-text">{{ block.settings.value_prop_text }}</span>
+      </li>
+    {% endif %}
+  </ul>
+</div>

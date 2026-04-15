@@ -1,0 +1,64 @@
+<!-- snippets/product-badge.liquid -->
+{% comment %}
+  Product eyebrow badge with full style controls.
+
+  Accepts:
+  - block: {object} The block object with settings.
+
+  Usage:
+    {% render 'product-badge', block: block %}
+{% endcomment %}
+
+{%- liquid
+  assign badge_font_size = block.settings.font_size | default: 12
+  assign badge_font_weight = block.settings.font_weight | default: '700'
+  assign badge_text_transform = block.settings.text_transform | default: 'uppercase'
+  assign badge_letter_spacing = block.settings.letter_spacing | default: 1
+  assign badge_padding_x = block.settings.padding_x | default: 14
+  assign badge_padding_y = block.settings.padding_y | default: 6
+  assign badge_border_width = block.settings.border_width | default: 1
+  assign badge_border_radius = block.settings.border_radius | default: 20
+  assign bg_opacity = block.settings.bg_opacity | default: 100 | divided_by: 100.0
+  assign border_opacity = block.settings.border_opacity | default: 100 | divided_by: 100.0
+  assign badge_border_color = block.settings.border_color | default: block.settings.badge_bg_color
+-%}
+
+<div
+  class="w-full px-4"
+  style="
+    padding-top:{{ block.settings.spacing_top }}px;
+    padding-bottom:{{ block.settings.spacing_bottom }}px;
+  "
+>
+  <div
+    {{ block.shopify_attributes }}
+    style="
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      width: fit-content !important;
+      font-family: var(--type__font-heading-family, var(--type__font-body-family, sans-serif)) !important;
+      font-size: {{ badge_font_size }}px !important;
+      font-weight: {{ badge_font_weight }} !important;
+      text-transform: {{ badge_text_transform }} !important;
+      letter-spacing: {{ badge_letter_spacing }}px !important;
+      color: {{ block.settings.badge_font_color | default: '#ffffff' }} !important;
+      background-color: {{ block.settings.badge_bg_color | default: '#000000' | color_modify: 'alpha', bg_opacity }} !important;
+      border: {{ badge_border_width }}px solid {{ badge_border_color | color_modify: 'alpha', border_opacity }} !important;
+      border-radius: {{ badge_border_radius }}px !important;
+      padding: {{ badge_padding_y }}px {{ badge_padding_x }}px !important;
+      line-height: 1.4 !important;
+    "
+  >
+    {% if block.settings.badge_emoji != blank %}
+      <span style="font-size: {{ badge_font_size }}px !important;">{{ block.settings.badge_emoji }}</span>
+    {% endif %}
+    <span style="
+      font-size: {{ badge_font_size }}px !important;
+      font-weight: {{ badge_font_weight }} !important;
+      text-transform: {{ badge_text_transform }} !important;
+      letter-spacing: {{ badge_letter_spacing }}px !important;
+      font-family: inherit !important;
+    ">{{ block.settings.badge_text | default: 'Badge Text' }}</span>
+  </div>
+</div>

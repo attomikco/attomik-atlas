@@ -1,0 +1,84 @@
+{% if section.settings.enabled %}
+  {% render 'product-badge',
+    badge_text: section.settings.badge_text,
+    badge_emoji: section.settings.badge_emoji,
+    color_scheme: section.settings.color_scheme,
+    style: section.settings.style,
+    text_transform: section.settings.text_transform
+  %}
+{% endif %}
+
+{% schema %}
+{
+  "name": "Product Badge",
+  "tag": "div",
+  "class": "section-product-badge",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Show badge",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "badge_text",
+      "label": "Badge text",
+      "default": "Premium Quality"
+    },
+    {
+      "type": "text",
+      "id": "badge_emoji",
+      "label": "Emoji prefix (optional)",
+      "info": "Displayed before the text, e.g. ✨ or ✦"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Badge style",
+      "options": [
+        { "value": "filled", "label": "Filled" },
+        { "value": "outline", "label": "Outline" },
+        { "value": "subtle", "label": "Subtle (low opacity background)" }
+      ],
+      "default": "subtle"
+    },
+    {
+      "type": "select",
+      "id": "text_transform",
+      "label": "Text style",
+      "options": [
+        { "value": "uppercase", "label": "Uppercase" },
+        { "value": "capitalize", "label": "Capitalize" },
+        { "value": "none", "label": "Normal" }
+      ],
+      "default": "uppercase"
+    },
+    {
+      "type": "select",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "options": [
+        { "value": "color__bg-body color__text", "label": "Body" },
+        { "value": "color__bg-neutral color__text", "label": "Neutral" },
+        { "value": "color__bg-overlay-1 color__text", "label": "Overlay 1" },
+        { "value": "color__bg-overlay-2 color__text", "label": "Overlay 2" },
+        { "value": "color__bg-overlay-3 color__text", "label": "Overlay 3" },
+        { "value": "color__bg-shade-1 color__text", "label": "Shade 1" },
+        { "value": "color__bg-shade-2 color__text", "label": "Shade 2" },
+        { "value": "color__bg-shade-3 color__text", "label": "Shade 3" },
+        { "value": "color__bg-primary color__primary", "label": "Primary" },
+        { "value": "color__bg-secondary color__secondary", "label": "Secondary" },
+        { "value": "color__bg-tertiary color__tertiary", "label": "Tertiary" }
+      ],
+      "default": "color__bg-primary color__primary"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Badge",
+      "category": "Product"
+    }
+  ]
+}
+{% endschema %}

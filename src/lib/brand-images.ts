@@ -12,9 +12,14 @@ export function getPressImages(images: BrandImage[]): BrandImage[] {
   return images.filter(img => img.tag === 'press')
 }
 
-/** Every image that can appear inside an ad/email template — excludes logos + press */
+/** AI-generated images — kept in their own bucket so the picker can show them separately */
+export function getGeneratedImages(images: BrandImage[]): BrandImage[] {
+  return images.filter(img => img.tag === 'generated')
+}
+
+/** Every image that can appear inside an ad/email template — excludes logos, press, and generated */
 export function getContentImages(images: BrandImage[]): BrandImage[] {
-  return images.filter(img => img.tag !== 'logo' && img.tag !== 'press')
+  return images.filter(img => img.tag !== 'logo' && img.tag !== 'press' && img.tag !== 'generated')
 }
 
 /**

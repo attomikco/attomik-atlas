@@ -176,14 +176,18 @@ export default function OnboardingWizard() {
 
     const slug = brandName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).slice(2, 6)
 
-    // If logged in, assign brand to current user
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
-
+    // Always create the brand unclaimed (no user_id / client_email) regardless
+    // of whether the visitor is logged in. Claim happens in one of two places:
+    //   - anonymous visitor → sign-up via AccountModal on the preview page →
+    //     /auth/confirm sets user_id
+    //   - logged-in visitor → explicit "Save this brand" CTA on the preview
+    //     page → /api/brands/[id]/claim sets user_id
+    // This prevents the wizard from silently piling unwanted brands into a
+    // logged-in user's workspace just from running the wizard.
     const { data: brand, error: brandErr } = await supabase.from('brands').insert({
       name: brandName.trim(),
       slug,
       website: website.trim() || null,
-      ...(currentUser ? { user_id: currentUser.id, client_email: currentUser.email } : {}),
       primary_color: primaryColor || null,
       secondary_color: secondaryColor || null,
       accent_color: accentColor || null,

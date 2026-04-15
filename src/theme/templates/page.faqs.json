@@ -1,0 +1,231 @@
+{
+  "sections": {
+    "main": {
+      "type": "page__main",
+      "disabled": true,
+      "settings": {
+        "spacing_top": 100,
+        "spacing_bottom": 100,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "enable_color_fade": false,
+        "style_border": "",
+        "layout_x_alignment": "justify-start",
+        "enable_margin": true,
+        "enable_max_width": true,
+        "visibility": ""
+      }
+    },
+    "text_bgq73p": {
+      "type": "text",
+      "name": "t:sections.text.name",
+      "settings": {
+        "heading": "",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 100,
+        "spacing_bottom": 50,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "style_border": "",
+        "style_text_alignment": "text-center",
+        "layout_x_alignment": "justify-center",
+        "layout_column_width": 80,
+        "enable_margin": true,
+        "visibility": ""
+      }
+    },
+    "accordions_yp3Q4Q": {
+      "type": "accordions",
+      "blocks": {
+        "content_AUMRTD": {
+          "type": "content",
+          "settings": {
+            "heading": "What makes these different from regular wipes?",
+            "content": "",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": true
+          }
+        },
+        "content_xBhFVz": {
+          "type": "content",
+          "settings": {
+            "heading": "Will this dry my skin out?",
+            "content": "<p>No. Our formula hydrates while it cleanses.</p><p>We remove excess oil and buildup without triggering rebound dryness.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        },
+        "content_XPVEc6": {
+          "type": "content",
+          "settings": {
+            "heading": "Is it safe for acne-prone skin?",
+            "content": "<p>Yes. It\u2019s non-comedogenic and designed to prevent sweat-driven breakouts by keeping pores clear after activity.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        },
+        "content_X4hUxB": {
+          "type": "content",
+          "settings": {
+            "heading": "Is this just for teens?",
+            "content": "<p>No. It\u2019s built for anyone who trains hard and sweats \u2014 youth athletes, college, pros, weekend warriors.</p><p>If you sweat, it\u2019s for you.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        },
+        "content_hew4er": {
+          "type": "content",
+          "settings": {
+            "heading": "Can I use this on my body too?",
+            "content": "<p>Yes. Safe for face, neck, chest, and back \u2014 anywhere sweat and friction cause irritation..</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        },
+        "content_77NVND": {
+          "type": "content",
+          "settings": {
+            "heading": "Does it contain alcohol?",
+            "content": "<p>No harsh alcohols.<br/><br/>No parabens.<br/><br/>No unnecessary fragrance.</p><p>Dermatology tested and hypoallergenic.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        },
+        "content_ERMCGz": {
+          "type": "content",
+          "settings": {
+            "heading": "How often can I use it?",
+            "content": "<p>Daily. Even multiple times per day if needed.</p><p>The formula is designed for repeat sweat cycles.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        }
+      },
+      "block_order": [
+        "content_AUMRTD",
+        "content_xBhFVz",
+        "content_XPVEc6",
+        "content_X4hUxB",
+        "content_hew4er",
+        "content_77NVND",
+        "content_ERMCGz"
+      ],
+      "name": "t:sections.accordions.name",
+      "settings": {
+        "heading": "Product FAQs",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 100,
+        "spacing_bottom": 50,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "heading_font": "type__body type--base",
+        "style_border": "",
+        "layout_x_alignment": "justify-between",
+        "enable_margin": true,
+        "enable_split": true,
+        "enable_split_heading": false,
+        "visibility": ""
+      }
+    },
+    "accordions_azJYgA": {
+      "type": "accordions",
+      "blocks": {
+        "content_LrUC8E": {
+          "type": "content",
+          "settings": {
+            "heading": "Do you offer free shipping?",
+            "content": "<p>Yes! We offer free shipping on all U.S. orders over $50.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": true
+          }
+        },
+        "content_Qf8tbG": {
+          "type": "content",
+          "settings": {
+            "heading": "How much is shipping for orders under $50?",
+            "content": "<p>For orders below $50, we charge a flat rate of $4.99 for standard ground shipping anywhere in the U.S.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        },
+        "content_4NEg6E": {
+          "type": "content",
+          "settings": {
+            "heading": "How long does shipping take?",
+            "content": "<p>Standard ground delivery typically takes 3\u20137 business days, depending on your location.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        },
+        "content_9kXgM9": {
+          "type": "content",
+          "settings": {
+            "heading": "Do you ship nationwide?",
+            "content": "<p>Yes, we ship anywhere in the United States using standard ground service.</p>",
+            "icon": "",
+            "color_scheme": "btn",
+            "enable_open": false
+          }
+        }
+      },
+      "block_order": [
+        "content_LrUC8E",
+        "content_Qf8tbG",
+        "content_4NEg6E",
+        "content_9kXgM9"
+      ],
+      "name": "t:sections.accordions.name",
+      "settings": {
+        "heading": "Shipping FAQs",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 100,
+        "spacing_bottom": 100,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "heading_font": "type__body type--base",
+        "style_border": "",
+        "layout_x_alignment": "justify-between",
+        "enable_margin": true,
+        "enable_split": true,
+        "enable_split_heading": false,
+        "visibility": ""
+      }
+    }
+  },
+  "order": [
+    "main",
+    "text_bgq73p",
+    "accordions_yp3Q4Q",
+    "accordions_azJYgA"
+  ]
+}

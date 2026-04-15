@@ -1,0 +1,173 @@
+<!-- snippets/component__video.liquid -->
+{% comment %}
+  Responive video component
+
+  Accepts:
+  - video: {Object} video object to be displayed.
+  - background_class: {string} Classes to set the background of the container.
+  - container_class: {string} Additional classes to add to the video container.
+  - video_class: {string} Additional classes to add to the video.
+  - ratio_class: {string} Classes to set the aspect ratio of the video. If not included video aspect ratio will be used.
+  - enable_custom_controls: {boolean} If set to true, video controls (play, pause, etc.) will be visible.
+  - enable_default_controls: {boolean} If set to true, video controls (play, pause, etc.) will be visible.
+  - enable_mute_toggle: {boolean} If set to true, provides an option to mute or unmute the video's audio.
+  - enable_play_button: {boolean} If set to true, provides a play button to play the video.
+  - enable_autoplay: {boolean} If set to true, the video will start playing as soon as it's ready.
+  - enable_loop: {boolean} If set to true, the video will loop back to the beginning once finished.
+
+  Usage:
+    {% render 'component__video',
+      video: video,
+      background_class: 'color__bg-shade-2',
+      container_class: 'my-class',
+      video_class: 'my-class',
+      ratio_class: 'aspect-ratio-16/9',
+      enable_custom_controls: true,
+      enable_default_controls: true,
+      enable_mute_toggle: true,
+      enable_play_button: true,
+      enable_autoplay: true,
+      enable_loop: true
+    %}
+{% endcomment %}
+
+<div
+  class="
+    group/video relative h-full w-full overflow-hidden
+    {{ background_class }}
+    {{ container_class }}
+    {% if ratio_class %}
+      {{ ratio_class }}
+    {% endif %}
+  "
+  style="
+    {% unless ratio_class %}
+      {% if video.aspect_ratio %}
+        aspect-ratio:{{ video.aspect_ratio }};
+      {% else %}
+        aspect-ratio: 16 / 9;
+      {% endif %}
+    {% endunless %}
+  "
+  x-data="
+    {
+      video_muted: true,
+      video_playing: {% if enable_autoplay %} true {% else %} false {% endif %}
+    }
+  "
+>
+  <video
+    class="
+      absolute left-0 top-0 h-full w-full
+      {{ video_class }}
+    "
+    style="aspect-ratio:{{ video.aspect_ratio }};"
+    muted
+    playsinline
+    poster="{{ video.preview_image | image_url: width: 1200 }}"
+    {% if enable_default_controls %}
+      controls="controls"
+    {% endif %}
+    {% if enable_autoplay %}
+      autoplay
+    {% endif %}
+    {% if enable_loop %}
+      loop
+    {% endif %}
+    x-ref="video-{{ section.id }}{{ block.id }}"
+  >
+    {% for source in video.sources %}
+      {% # theme-check-disable RemoteAsset %}
+      <source src="{{ source.url }}" type="{{ source.mime_type }}">
+      {% # theme-check-enable RemoteAsset %}
+    {% endfor %}
+  </video>
+
+  {% if enable_custom_controls %}
+    <div class="border--radius animation-300 color__bg-unshade-1 absolute left-2 top-2 z-20 flex flex-col backdrop-blur-sm group-hover/video:opacity-100 md:opacity-0">
+      <button
+        class="border--radius hover:color__bg-unshade-1 pointer-events-auto flex w-full items-center justify-center overflow-hidden p-2"
+        title="{{ 'actions.pause' | t }}"
+        type="button"
+        x-ref="pauseBtn-{{ section.index }}"
+        @click.prevent="
+          $refs['video-{{ section.id }}{{ block.id }}'].pause();
+          video_playing = false;
+        "
+        x-show="video_playing"
+        x-cloak
+      >
+        {% render 'component__icon', icon: 'pause', size: '16' %}
+      </button>
+      <button
+        class="border--radius hover:color__bg-unshade-1 pointer-events-auto flex w-full items-center justify-center overflow-hidden p-2"
+        title="{{ 'actions.pause' | t }}"
+        type="button"
+        x-ref="playBtn"
+        @click.prevent="
+          $refs['video-{{ section.id }}{{ block.id }}'].play();
+          video_playing = true;
+        "
+        x-show="!video_playing"
+        x-cloak
+      >
+        {% render 'component__icon', icon: 'play', size: '16' %}
+      </button>
+      {% if enable_mute_toggle %}
+        <button
+          class="border--radius pointer-events-auto flex w-full items-center justify-center overflow-hidden p-2"
+          title="{{ 'actions.mute' | t }}"
+          type="button"
+          x-ref="muteBtn-{{ section.index }}"
+          @click.prevent="
+            $refs['video-{{ section.id }}{{ block.id }}'].muted = true;
+            video_muted = true;
+          "
+          x-show="!video_muted"
+          x-cloak
+        >
+          {% render 'component__icon', icon: 'volume', size: '16' %}
+        </button>
+        <button
+          class="border--radius pointer-events-auto flex w-full items-center justify-center overflow-hidden p-2"
+          title="{{ 'actions.unmute' | t }}"
+          type="button"
+          x-ref="unmuteBtn"
+          @click.prevent="
+            $refs['video-{{ section.id }}{{ block.id }}'].muted = false;
+            video_muted = false;
+          "
+          x-show="video_muted"
+          x-cloak
+        >
+          {% render 'component__icon', icon: 'volume-x', size: '16' %}
+        </button>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if enable_play_button %}
+    <button
+      class="absolute bottom-0 top-0 z-10 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden"
+      type="button"
+      x-ref="playBtn-{{ section.index }}"
+      @click.prevent="
+        $refs['video-{{ section.id }}{{ block.id }}'].play();
+        $refs['video-{{ section.id }}{{ block.id }}'].currentTime = 0;
+        $refs['video-{{ section.id }}{{ block.id }}'].controls = true;
+        $refs['video-{{ section.id }}{{ block.id }}'].muted = false;
+        $refs['playBtn-{{ section.index }}'].style.display = 'none';
+        video_playing = true;
+      "
+    >
+      <span
+        class="
+          btn btn--smaller btn--plain absolute
+          {{ section.settings.color_button }}
+        "
+      >
+        {{ 'actions.play' | t }}
+      </span>
+    </button>
+  {% endif %}
+</div>

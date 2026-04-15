@@ -116,18 +116,70 @@ export default function PreviewClient({
   const [activating, setActivating] = useState(false)
   const [showAccountModal, setShowAccountModal] = useState(false)
 
-  // Listen for #signup hash (from layout "Get full access" button)
+  // Auth + claim state for the "Save this brand" CTA. The wizard creates the
+  // brand unclaimed (user_id=null) regardless of whether the visitor is logged
+  // in. For logged-in visitors we show a CTA that claims the brand via
+  // /api/brands/[id]/claim. Anonymous visitors still go through the sign-up
+  // → /auth/confirm claim flow.
+  const [authedUserId, setAuthedUserId] = useState<string | null>(null)
+  const [brandClaimedByUserId, setBrandClaimedByUserId] = useState<string | null>(
+    (brand as unknown as { user_id?: string | null })?.user_id || null
+  )
+  const [savingBrandToWorkspace, setSavingBrandToWorkspace] = useState(false)
+  const [saveBrandError, setSaveBrandError] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setAuthedUserId(user?.id || null)
+    })
+  }, [supabase])
+
+  const brandIsUnclaimed = brandClaimedByUserId === null
+  const viewerCanSaveBrand = !!authedUserId && brandIsUnclaimed
+
+  async function saveBrandToWorkspace() {
+    if (!authedUserId) {
+      setShowAccountModal(true)
+      return
+    }
+    setSavingBrandToWorkspace(true)
+    setSaveBrandError(null)
+    try {
+      const res = await fetch(`/api/brands/${brand.id}/claim`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setSaveBrandError(data?.error || `Save failed (HTTP ${res.status})`)
+        return
+      }
+      setBrandClaimedByUserId(authedUserId)
+      localStorage.setItem('attomik_active_brand_id', brand.id)
+      router.push(`/dashboard?brand=${brand.id}`)
+    } catch (e) {
+      setSaveBrandError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSavingBrandToWorkspace(false)
+    }
+  }
+
+  // Listen for #signup hash (from layout "Get full access" button). Logged-in
+  // viewers of an unclaimed brand get routed to the save-to-workspace flow
+  // instead of the sign-up modal — the top-bar button becomes a "save" action.
   useEffect(() => {
     const checkHash = () => {
       if (window.location.hash === '#signup') {
-        setShowAccountModal(true)
         history.replaceState(null, '', window.location.pathname)
+        if (authedUserId && brandIsUnclaimed) {
+          saveBrandToWorkspace()
+        } else {
+          setShowAccountModal(true)
+        }
       }
     }
     checkHash()
     window.addEventListener('hashchange', checkHash)
     return () => window.removeEventListener('hashchange', checkHash)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authedUserId, brandIsUnclaimed])
 
   async function requireAuth(onAuthed: () => void) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -645,6 +697,48 @@ export default function PreviewClient({
       {/* Persistent black screen gate */}
       {!previewReady && (
         <div style={{ position: 'fixed', inset: 0, background: colors.ink, zIndex: zIndex.reelOverlay, pointerEvents: 'none' }} />
+      )}
+
+      {/* Save this brand CTA — only for logged-in viewers of an unclaimed
+          brand. The onboarding wizard no longer auto-assigns brands to logged
+          in users, so this is the explicit "save to workspace" action. */}
+      {viewerCanSaveBrand && (
+        <div
+          style={{
+            position: 'sticky', top: 72, zIndex: 40,
+            background: colors.accent, color: colors.ink,
+            padding: '14px 24px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 16, flexWrap: 'wrap',
+            borderBottom: `1px solid ${colors.ink}`,
+          }}
+        >
+          <div style={{
+            fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 13,
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+          }}>
+            This brand is not in your workspace yet
+          </div>
+          <button
+            onClick={saveBrandToWorkspace}
+            disabled={savingBrandToWorkspace}
+            style={{
+              background: colors.ink, color: colors.accent,
+              fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              padding: '9px 20px', borderRadius: 999, border: 'none',
+              cursor: savingBrandToWorkspace ? 'wait' : 'pointer',
+              opacity: savingBrandToWorkspace ? 0.6 : 1,
+            }}
+          >
+            {savingBrandToWorkspace ? 'Saving…' : 'Save this brand →'}
+          </button>
+          {saveBrandError && (
+            <div style={{ fontSize: 12, color: colors.ink, fontWeight: 600 }}>
+              {saveBrandError}
+            </div>
+          )}
+        </div>
       )}
 
       {/* MagicModal */}

@@ -1,0 +1,227 @@
+{
+  "type": "footer",
+  "name": "Footer group",
+  "sections": {
+    "text_zM9YDz": {
+      "type": "text",
+      "name": "t:sections.text.name",
+      "settings": {
+        "heading": "Follow us @jolenecoffee",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 100,
+        "spacing_bottom": 0,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "style_border": "",
+        "style_text_alignment": "text-center",
+        "layout_x_alignment": "justify-center",
+        "layout_column_width": 80,
+        "enable_margin": true,
+        "visibility": ""
+      }
+    },
+    "17739382817d8ab216": {
+      "type": "apps",
+      "blocks": {
+        "moast_carousel_UDqLxp": {
+          "type": "shopify://apps/moast/blocks/carousel/1ac7547b-5443-446c-868c-7fab4566ee16",
+          "settings": {
+            "dynamic": false,
+            "feed": "default",
+            "feed_usage": "back_up",
+            "header": "",
+            "slide_type": "cards",
+            "product_cards": "none",
+            "autoplay_mode": "none",
+            "autoscroll_duration": 0,
+            "slide_size": "250",
+            "aspect_ratio": "vertical",
+            "border": 0,
+            "border_color": "linear-gradient(to right, #833ab4, #fd1d1d, #fcb045)",
+            "slide_rounding": "20",
+            "slide_spacing": 16,
+            "padding_top": 40,
+            "pagination": "below",
+            "alignment": "center",
+            "click_action": "fullscreen",
+            "float_location": "bottom_right",
+            "float_size": "medium",
+            "show_captions": false,
+            "custom_css": ""
+          }
+        }
+      },
+      "block_order": [
+        "moast_carousel_UDqLxp"
+      ],
+      "settings": {
+        "spacing_top": 0,
+        "spacing_bottom": 0,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "enable_color_fade": false,
+        "style_border": "border--b-width",
+        "enable_margin": true
+      }
+    },
+    "liquid_4B4dQU": {
+      "type": "liquid",
+      "disabled": true,
+      "custom_css": [
+        "h1 span {font-size: 0.8em; font-weight: 800 !important;}"
+      ],
+      "name": "t:sections.liquid.name",
+      "settings": {
+        "liquid": "<div class=\"klaviyo-form-YzfmSk\"></div>",
+        "spacing_top": 100,
+        "spacing_bottom": 100,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "enable_color_fade": false,
+        "style_border": "",
+        "enable_margin": true,
+        "visibility": ""
+      }
+    },
+    "theme_footer": {
+      "type": "theme__footer",
+      "blocks": {
+        "8b0229c8-8723-4619-8f3c-231ae18fa063": {
+          "type": "newsletter",
+          "disabled": true,
+          "settings": {
+            "heading": "Never Run Out",
+            "content": "<p>Get early access to new flavors, brewing tips, and subscriber-only pricing.</p>",
+            "button": "Subscribe",
+            "disclaimer": "",
+            "success": "<p>Success! You've been subscribed.</p>"
+          }
+        },
+        "content_LVnE3Q": {
+          "type": "content",
+          "settings": {
+            "heading": "Bold Coffee for Bold Moments",
+            "content": "<p>Jolene Coffee was born from a simple belief that great coffee should be both ethically sourced and perfectly brewed. We slow-brew every batch for 12 hours to deliver smooth, bold flavor without compromise.</p>",
+            "button_label": "Shop Coffee",
+            "button_url": "",
+            "logo_desktop_height": 70,
+            "logo_mobile_height": 50
+          }
+        },
+        "menu_4BT7N9": {
+          "type": "menu",
+          "settings": {
+            "menu": "main-menu"
+          }
+        },
+        "menu_8KHPH9": {
+          "type": "menu",
+          "settings": {
+            "menu": "customer-account-main-menu"
+          }
+        },
+        "menu_RBdmkT": {
+          "type": "menu",
+          "settings": {
+            "menu": "footer"
+          }
+        }
+      },
+      "block_order": [
+        "8b0229c8-8723-4619-8f3c-231ae18fa063",
+        "content_LVnE3Q",
+        "menu_4BT7N9",
+        "menu_8KHPH9",
+        "menu_RBdmkT"
+      ],
+      "settings": {
+        "spacing_top": 110,
+        "spacing_bottom": 100,
+        "main_color_scheme": "color__bg-secondary color__secondary",
+        "main_color_border": "color__border-divider-1",
+        "main_color_button": "btn--small btn--outline-alt",
+        "main_layout_x_alignment": "justify-between",
+        "sub_color_scheme": "color__bg-primary color__primary",
+        "sub_color_border": "color__border-divider-1",
+        "sub_links": "",
+        "sub_show_account_link": true,
+        "sub_show_localization": true,
+        "sub_show_payment_icons": true,
+        "sub_enable_follow_on_shop": false,
+        "visibility": ""
+      }
+    },
+    "content_grid_7bmHTi": {
+      "type": "content-grid",
+      "blocks": {
+        "content_MFX46p": {
+          "type": "content",
+          "settings": {
+            "heading": "",
+            "content": "",
+            "button_label": "",
+            "url": "",
+            "show_image_as_background": false,
+            "enable_autoplay": true,
+            "enable_mute_toggle": true,
+            "enable_loop": true,
+            "spacing_minimum_height": 0,
+            "enable_padding": false,
+            "color_scheme": "color__bg-transparent",
+            "color_border": "",
+            "color_text": "color__text",
+            "color_button": "btn--small btn--neutral",
+            "enable_gradient": false,
+            "text_position": "below",
+            "layout_y_alignment": "justify-end",
+            "layout_x_alignment": "left",
+            "layout_row_span": "row-span-1",
+            "layout_col_span": "col-span-1 md:col-span-1"
+          }
+        }
+      },
+      "block_order": [
+        "content_MFX46p"
+      ],
+      "settings": {
+        "heading": "",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 20,
+        "spacing_bottom": 0,
+        "color_scheme": "color__bg-overlay-1",
+        "color_background": "#fff4eb",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "style_border": "",
+        "layout_row_desktop": 1,
+        "layout_row_mobile": 1,
+        "layout_x_alignment": "justify-between",
+        "enable_margin": true,
+        "enable_split": false,
+        "enable_split_heading": false,
+        "visibility": ""
+      }
+    }
+  },
+  "order": [
+    "text_zM9YDz",
+    "17739382817d8ab216",
+    "liquid_4B4dQU",
+    "theme_footer",
+    "content_grid_7bmHTi"
+  ]
+}

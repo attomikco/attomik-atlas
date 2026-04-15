@@ -1,0 +1,353 @@
+/* ============================================
+   ATTOMIK CUSTOM BLOCKS
+   Custom CSS for Attomik Base Theme blocks.
+   Uses theme CSS variables for consistency
+   but adds our own design layer on top.
+   ============================================ */
+
+/* --- DESIGN TOKENS --- */
+:root {
+  --ac-primary: var(--color-primary, #000000);
+  --ac-primary-fg: var(--color-primary-foreground, #ffffff);
+  --ac-secondary: var(--color-secondary, #ffffff);
+  --ac-secondary-fg: var(--color-secondary-foreground, #000000);
+  --ac-body-bg: var(--color-background, #ffffff);
+  --ac-body-text: var(--color-foreground, #1a1a1a);
+  --ac-border: rgba(0,0,0,0.1);
+  --ac-radius-sm: 4px;
+  --ac-radius-md: 8px;
+  --ac-radius-lg: 12px;
+  --ac-radius-pill: 100px;
+  --ac-font-heading: var(--font-heading-family);
+  --ac-font-body: var(--font-body-family);
+  --ac-font-weight-bold: var(--font-body-weight-bold);
+  --ac-font-weight-heading: var(--font-heading-weight);
+  --ac-letter-spacing: var(--font-heading-letter-spacing);
+  --ac-text-transform: var(--font-heading-text-transform);
+}
+
+/* --- PRODUCT BADGE --- */
+.ac-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  font-family: var(--ac-font-heading);
+  font-size: calc(0.6875 * var(--font-body-scale, 1) * 1rem);
+  font-weight: var(--ac-font-weight-heading);
+  letter-spacing: var(--ac-letter-spacing);
+  text-transform: var(--ac-text-transform);
+  padding: 6px 14px;
+  border-radius: var(--inputs-radius, var(--ac-radius-sm));
+  white-space: nowrap;
+}
+.ac-badge--filled {
+  background: var(--ac-badge-bg, var(--ac-primary));
+  color: var(--ac-badge-color, var(--ac-primary-fg));
+  border: 1.5px solid transparent;
+}
+.ac-badge--outline {
+  background: transparent;
+  color: var(--ac-badge-color, currentColor);
+  border: 1.5px solid currentColor;
+}
+.ac-badge--subtle {
+  color: var(--ac-badge-color, currentColor);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border: 1.5px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+.ac-badge__emoji {
+  flex-shrink: 0;
+}
+.ac-badge__text {
+  display: flex;
+  align-items: center;
+}
+
+/* --- PRODUCT CHECKLIST --- */
+.ac-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ac-checklist__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ac-checklist__check {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ac-checklist__check svg {
+  width: 10px;
+  height: 10px;
+  stroke: #fff;
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ac-checklist__text {
+  font-family: var(--ac-font-body);
+  font-size: calc(0.9375 * var(--font-body-scale, 1) * 1rem);
+  line-height: 1.5;
+}
+.ac-checklist__value-prop {
+  border-radius: var(--ac-radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.ac-checklist__value-tag {
+  font-family: var(--ac-font-heading);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: var(--ac-radius-sm);
+  white-space: nowrap;
+}
+.ac-checklist__value-text {
+  font-family: var(--ac-font-body);
+  font-size: calc(0.9375 * var(--font-body-scale, 1) * 1rem);
+  line-height: 1.5;
+}
+
+/* --- PRODUCT PERKS MARQUEE --- */
+.ac-perks {
+  border-radius: var(--ac-radius-lg);
+  overflow: hidden;
+  margin: 8px 16px;
+}
+.ac-perks__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  position: relative;
+}
+.ac-perks__header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.15;
+}
+.ac-perks__label {
+  font-family: var(--ac-font-heading);
+  font-size: calc(0.6875 * var(--font-body-scale, 1) * 1rem);
+  font-weight: var(--ac-font-weight-heading);
+  letter-spacing: var(--ac-letter-spacing);
+  text-transform: var(--ac-text-transform);
+  line-height: 1;
+}
+.ac-perks__icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.ac-perks__marquee {
+  overflow: hidden;
+}
+.ac-perks__track {
+  display: flex;
+  width: fit-content;
+  animation: ac-marquee var(--ac-marquee-speed, 20s) linear infinite;
+}
+.ac-perks__set {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+  padding-right: 16px;
+}
+.ac-perks__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-family: var(--ac-font-body);
+  font-size: calc(0.8125 * var(--font-body-scale, 1) * 1rem);
+  font-weight: var(--font-body-weight, 400);
+}
+.ac-perks__item svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.ac-perks__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+  flex-shrink: 0;
+}
+@keyframes ac-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-perks__track {
+    animation-play-state: paused;
+  }
+}
+
+/* --- VARIANT CARDS --- */
+.ac-vc-grid {
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+  grid-template-columns: repeat(2, 1fr);
+}
+.ac-vc-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: #fff;
+  border: 1.5px solid var(--ac-border);
+  border-radius: var(--ac-radius-lg);
+  padding: 20px 16px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.ac-vc-card:hover {
+  border-color: color-mix(in srgb, var(--ac-primary) 50%, transparent);
+}
+.ac-vc-card--selected {
+  border: 2px solid var(--ac-primary);
+  background-color: color-mix(in srgb, var(--ac-primary) 5%, transparent);
+}
+.ac-vc-card--unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ac-vc-card--unavailable:hover {
+  border-color: var(--ac-border);
+}
+.ac-vc-card__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  width: 100%;
+}
+.ac-vc-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--ac-font-heading);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--ac-radius-pill);
+  line-height: 1.3;
+  z-index: 1;
+}
+.ac-vc-badge--popular {
+  background: var(--ac-secondary);
+  color: var(--ac-secondary-fg);
+}
+.ac-vc-badge--best {
+  background: var(--ac-primary);
+  color: var(--ac-primary-fg);
+}
+.ac-vc-name {
+  font-family: var(--ac-font-heading);
+  font-size: 16px;
+  font-weight: var(--ac-font-weight-heading);
+  text-transform: var(--ac-text-transform);
+  line-height: 1.2;
+  text-align: center;
+}
+.ac-vc-price {
+  font-family: var(--font-body-family, sans-serif);
+  font-size: 13px;
+  text-align: center;
+  margin-top: 4px;
+}
+.ac-vc-perunit {
+  font-family: var(--font-body-family, sans-serif);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 2px;
+}
+.ac-vc-savings {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 2px;
+  color: var(--ac-primary);
+}
+.ac-vc-soldout {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.5;
+}
+.ac-vc-shipping {
+  font-family: var(--font-body-family, sans-serif);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* --- SHARED UTILITIES --- */
+.ac-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ac-options-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  clip: rect(0,0,0,0) !important;
+}

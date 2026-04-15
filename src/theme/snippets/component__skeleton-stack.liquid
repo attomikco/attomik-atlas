@@ -1,0 +1,44 @@
+<!-- snippets/component__skeleton-stack.liquid -->
+{% comment %}
+  This is a placeholder for upsell items while they are loading. It is used in the product section as a placeholder when loading in product upsells.
+
+  Globals:
+  - product_card_enable_tagline: {boolean} Display a short description.
+
+  Usage:
+    {% render 'component__skeleton-stack' %}
+
+  Recommendations:
+  - This snippet is best used in the product section as a placeholder when loading in product upsells.
+{% endcomment %}
+
+<div
+  class="
+    border--radius upsell group relative flex w-full flex-none justify-center overflow-hidden whitespace-normal
+    {{ settings.product_card_color_border }}
+  "
+>
+  <div
+    class="
+      flex w-full items-start
+      {{ settings.product_card_color_scheme }}
+    "
+  >
+    {% comment %} Image {% endcomment %}
+    <div
+      class="flex h-full w-[25%] flex-none justify-center overflow-hidden"
+    >
+      <div
+        class="color__bg-shade-2 flex aspect-[1/1] h-full w-full items-center object-cover"
+      ></div>
+    </div>
+
+    {% comment %} Content {% endcomment %}
+    <div
+      class="flex h-full w-full flex-grow items-start justify-between gap-4 p-4 text-left"
+    >
+      <div class="color__bg-shade-2 border--radius height--base block w-3/5"></div>
+      <div class="color__bg-shade-2 border--radius height--base block w-3/5"></div>
+    </div>
+  </div>
+</div>

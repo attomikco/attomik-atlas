@@ -1,0 +1,104 @@
+<!-- snippets/product__linked-products.liquid -->
+{% comment %}
+  Block to display a swatch of linked products.
+
+  Accepts:
+  - block: {object} Liquid object of block settings.
+  - is_featured: {boolean} Whether this is being rendered in a featured-product section.
+  - product: {object} The product object to use for linked products.
+
+  Usage:
+    {% render 'product__linked-products',
+      block: block,
+      is_featured: false,
+      product: product
+     %}
+
+  Pro tips:
+    - This snippet requires a product with a metafield named "linked_collection" of type "collection_reference"
+{% endcomment %}
+
+{% liquid
+  # Set swatch size
+  assign swatch_size = ''
+  case settings.product_swatch_style
+    when 'small'
+      assign swatch_size = '!w-8 !h-8'
+    when 'medium'
+      assign swatch_size = '!w-16 !h-16'
+    when 'large'
+      assign swatch_size = '!w-24 !h-24'
+  endcase
+
+  # Initialize slider_size to 0
+  assign slider_size = 0
+
+  # Try to get linked products
+  assign linked_products = null
+  if product.metafields.custom.linked_collection.value.products != blank
+    assign linked_products = product.metafields.custom.linked_collection.value.products
+  endif
+%}
+
+{% if linked_products != blank or request.design_mode %}
+  <div
+    id="product-linked-products"
+    class="
+      px-4
+      mt-4
+      {{ block.settings.color_scheme }}
+      {{ block.settings.color_border }}
+      {{ block.settings.style_border }}
+    "
+    style="
+      padding-top:{{ block.settings.spacing_top }}px;
+      padding-bottom:{{ block.settings.spacing_bottom }}px;
+      margin-left: auto;
+      margin-right: auto;
+    "
+  >
+    {% if block.settings.linked_products_title != empty %}
+      <p class="type--smaller mb-2 opacity-75">{{ block.settings.linked_products_title }}</p>
+    {% endif %}
+
+    {% if linked_products != blank %}
+      {% capture slides %}
+        {% for linked_product in linked_products %}
+          <div 
+            class="flex flex-none snap-center justify-center {% if settings.enable_animations %}motion-safe:scroll-fadeinhalf-inline-2-20{% endif %}" 
+            {% if section.settings.show_images %}style="width:{{ section.settings.style_size }}px;"{% endif %}
+            x-bind:data-slide="{{ forloop.index0 }}"
+            x-intersect:enter.half="index = {{ forloop.index0 }};">
+            <button
+              class="btn btn--plain btn--small focus:border--focus--inset hover:border--focus--inset bg-contain bg-center {{ swatch_size }}"
+              :class="{
+                'btn--plain border--focus--inset' : '{{ product.handle }}' == '{{ linked_product.handle }}',
+                'btn--plain' : '{{ product.handle }}' != '{{ linked_product.handle }}'
+              }"
+              style="background-image: url('{{ linked_product.featured_image | image_url: width: 128 }}');"
+              aria-label="{{ linked_product.title }}"
+              type="button"
+              @click="window.location.href = '{{ linked_product.url }}'"
+            ></button>
+          </div>
+          {% assign slider_size = slider_size | plus: 1 %}
+        {% endfor %}
+      {% endcapture %}
+
+      <div class="flex justify-center">
+        {% render 'component__slider',
+          container_class: '!padding--r-element !padding--l-element',
+          slider_size: slider_size,
+          slides: slides,
+          enable_arrows_over_alt: true,
+          enable_arrows_over_single: true,
+          enable_scroll_margin: false,
+          enable_default_gap: true,
+          disable_scroll_padding: true
+        %}
+      </div>
+    {% elsif request.design_mode %}
+      <p class="type--smaller mb-0 opacity-75">To use linked products, add a metafield to this product.</p>
+    {% endif %}
+  </div>
+{% endif %}

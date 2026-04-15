@@ -124,7 +124,7 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
         file_name: fileName, storage_path: storagePath,
         mime_type: file.type, size_bytes: file.size,
         tag: autoTag, alt_text: null, width, height,
-        source_url: null,
+        source_url: null, source: null,
       }
       uploaded.push(newImage)
 

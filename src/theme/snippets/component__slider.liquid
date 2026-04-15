@@ -1,0 +1,597 @@
+<!-- snippets/component__slider.liquid -->
+{% comment %}
+  This is a standard slider component used for displaying a series of items in a scrollable horizontal layout. It is highly customizable with several options for tailoring its appearance and behavior.
+
+  Accepts:
+  - container_class: {string} This is a string that sets the classes for the slider container. It allows for custom styling of the slider container.
+  - parent_class: {string} This is a string that sets the classes for the parent container. It allows for custom styling of the parent container.
+  - slider_size: {integer} This sets the size of the slider. It determines how many items are within the slider.
+  - slides: {Object} Object that contains all the slide items. Each item represents a single slide in the slider.
+  - auto_scroll_delay: {integer} This sets the delay between each slide in the slider. It determines how long each slide should be displayed before transitioning to the next one. Leave blank to disable autoplay.
+  - enable_first_snap: {boolean} This indicates whether the first slide should be snapped to the center.
+  - enable_arrows: {boolean} This indicates whether default arrows should be shown.
+  - enable_force_arrow_display: {boolean} This indicates whether the arrows should be shown regardless of the slider size.
+  - enable_arrows_over: {boolean} This indicates whether alternative arrows should be shown.
+  - enable_arrows_over_single: {boolean} This indicates whether only one arrow should be shown.
+  - enable_indicators: {boolean} This indicates whether slider indicators are shown.
+  - enable_scrollbar: {boolean} This indicates whether the scrollbar should be shown.
+  - enable_scroll_margin: {boolean} This indicates whether the scroll margin should be shown.
+  - enable_default_gap: {boolean} This indicates whether the default gap should be used. Set to true to use gap-4 instead of setting.gap_size.
+  - disable_scroll_padding: {boolean} This indicates whether the scroll padding should be disabled.
+  - disable_smooth_scroll: {boolean} This indicates whether the smooth scroll should be disabled.
+  - layout_arrow_alignment: {string} This sets the alignment of the arrows. Can be set to 'justify-start', 'justify-center', or 'justify-end'.
+  - layout_arrow_placement: {string} This sets the placement of the arrows. Can be set to top/bottom/under
+
+  Usage:
+    {% capture slides %}
+      {% for block in section.blocks %}
+        ...
+      {% endfor %}
+    {% endcapture %}
+    {% render 'component__slider',
+      container_class: 'px-4',
+      parent_class: '',
+      slider_size: section.blocks.size,
+      slides: slides,
+      auto_scroll_delay: 1000,
+      enable_first_snap: false,
+      enable_arrows: false,
+      enable_force_arrow_display: false,
+      enable_arrows_over: false,
+      enable_arrows_over_single: false,
+      enable_indicators: false,
+      enable_scrollbar: true,
+      enable_scroll_margin: false,
+      enable_default_gap: true,
+      disable_scroll_padding: true,
+      disable_smooth_scroll: true,
+      layout_arrow_alignment: 'justify-end',
+      layout_arrow_placement: 'under'
+    %}
+
+  Recommendations:
+  - Use this snippet when you need to display a series of items in a horizontal scrollable layout. It is especially useful for product or image galleries.
+  - Customize the appearance of the slider by passing in custom classes through the 'container_class' parameter.
+  - Enable alternative arrow styles for a different look and feel by setting 'enable_arrows_over' to true.
+{% endcomment %}
+
+<div
+  class="
+    relative flex w-full max-w-[100vw] flex-wrap
+    {{ parent_class }}
+  "
+  x-data="
+    {
+
+      index: 0, // the current active slide
+      show_arrows: false, // hide arrows by default
+
+      width: '0%',
+      currentWidth: 0,
+      incrementPlaying: true,
+      incrementCount: {{ auto_scroll_delay }}000 / 100,
+      incrementInterval: null,
+
+      init() {
+        {% if enable_first_snap %}
+          this.scrollToIndex(0);
+        {% endif %}
+      },
+
+      // check if slider extends width
+      isOverflown(element) {
+        return element.scrollWidth > element.clientWidth;
+      },
+
+      // scroll to a specific item
+      scrollToIndex(indexToScroll) {
+        let slider = this.$refs.slider;
+        let currentSlide = slider.querySelector('[data-slide=&quot;' + indexToScroll + '&quot;]');
+        if (currentSlide) {
+          let sliderWidth = slider.offsetWidth;
+          let currentSlidePosition = currentSlide.offsetLeft;
+          let currentSlideWidth = currentSlide.offsetWidth;
+          let centerPosition = currentSlidePosition + currentSlideWidth / 2 - sliderWidth / 2;
+          slider.scrollTo({
+            top: 0,
+            left: centerPosition,
+            {% if disable_smooth_scroll %}
+              behavior: 'instant'
+            {% else %}
+              behavior: 'smooth'
+            {% endif %}
+          });
+          {% if auto_scroll_delay > 0 %}
+            this.resetAutoIncrement();
+          {% endif %}
+        }
+      },
+
+      // scroll to next item
+      scrollNext() {
+        let slider = this.$refs.slider;
+        {% if disable_smooth_scroll %}
+          let nextScrollPosition = slider.scrollLeft + slider.clientWidth;
+        {% else %}
+          let nextScrollPosition = slider.scrollLeft + slider.clientWidth/2;
+        {% endif %}
+        if (nextScrollPosition >= slider.scrollWidth - slider.clientWidth/2 || this.index === {{ slider_size }}) {
+          this.scrollToIndex(0);
+        } else {
+          slider.scrollTo({
+            top: 0,
+            left: nextScrollPosition,
+            {% if disable_smooth_scroll %}
+              behavior: 'instant'
+            {% else %}
+              behavior: 'smooth'
+            {% endif %}
+          });
+        }
+        {% if auto_scroll_delay > 0 %}
+          this.resetAutoIncrement();
+        {% endif %}
+      },
+
+      // scroll to previous item
+      scrollBack() {
+        let slider = this.$refs.slider;
+        {% if disable_smooth_scroll %}
+          let previousScrollPosition = slider.scrollLeft - slider.clientWidth;
+        {% else %}
+          let previousScrollPosition = slider.scrollLeft - slider.clientWidth/2;
+        {% endif %}
+        if (previousScrollPosition <= 0) {
+          this.scrollToIndex({{ slider_size }});
+        } else {
+          slider.scrollTo({
+            top: 0,
+            left: previousScrollPosition,
+            {% if disable_smooth_scroll %}
+              behavior: 'instant'
+            {% else %}
+              behavior: 'smooth'
+            {% endif %}
+          });
+        }
+        {% if auto_scroll_delay > 0 %}
+          this.resetAutoIncrement();
+        {% endif %}
+      },
+
+      // auto move to next slide
+      autoIncrement() {
+        const incrementAmount = 100 / this.incrementCount;
+        this.incrementInterval = setInterval(() => {
+          this.currentWidth += incrementAmount;
+          this.width = this.currentWidth + '%';
+          if (this.currentWidth >= 100) {
+            this.scrollNext();
+            this.resetAutoIncrement();
+          }
+        }, 100);
+      },
+
+      // reset auto increment
+      resetAutoIncrement() {
+        clearInterval(this.incrementInterval);
+        this.currentWidth = 0;
+        this.width = this.currentWidth + '%';
+        if (this.incrementPlaying) {
+          this.autoIncrement();
+        }
+      },
+
+      // pause auto increment
+      pauseIncrement() {
+        this.incrementPlaying = false;
+        clearInterval(this.incrementInterval);
+      },
+
+      // resume auto increment
+      resumeIncrement() {
+        if (!this.incrementPlaying) {
+          this.incrementPlaying = true;
+          this.autoIncrement();
+        }
+      },
+
+    }
+  "
+  x-init="init()"
+>
+  <div
+    class="
+      group relative flex w-full flex-col
+      {% if enable_scroll_margin %}
+        {{ settings.x_margin }}
+      {% endif %}
+    "
+  >
+    {% comment %} Slides {% endcomment %}
+    <div
+      class="
+        inline-flex w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth whitespace-nowrap
+        {{ container_class }}
+        {% if enable_default_gap %}
+          gap-2
+        {% endif %}
+        {% if enable_scrollbar %}
+          showscrollbar pb-4
+        {% else %}
+          hidescrollbar
+        {% endif %}
+        {% unless enable_scroll_margin %}
+          {% if section.settings.enable_margin %}
+            {% if disable_scroll_padding == false %}
+              {% unless section.settings.enable_split %}
+                {% case settings.x_margin %}
+                  {% when 'window--full' %}
+                    scrollwindow--full
+                  {% when 'window--wide' %}
+                    scrollwindow--wide
+                  {% when 'window' %}
+                    scrollwindow
+                  {% when 'window--narrow' %}
+                    scrollwindow--narrow
+                {% endcase %}
+              {% endunless %}
+            {% endif %}
+          {% else %}
+            {% if disable_scroll_padding == false %}
+              scrollwindow--full
+            {% endif %}
+          {% endif %}
+        {% endunless %}
+      "
+      style="
+        scroll-padding: {{ settings.border_element_width }}px;
+        padding-top: {{ settings.border_element_width }}px;
+        {% if enable_scrollbar %}
+          padding-bottom: {{ settings.gap_size }}px;
+        {% else %}
+          padding-bottom: {{ settings.border_element_width }}px;
+        {% endif %}
+        {% unless enable_default_gap %}
+          gap: {{ settings.gap_size }}px;
+        {% endunless %}
+        {% if enable_scroll_margin %}
+          padding-left: {{ settings.border_element_width }}px;
+          padding-right: {{ settings.border_element_width }}px;
+        {% endif %}
+      "
+      x-ref="slider"
+      x-init="
+        setTimeout(function(){
+          if (isOverflown($el)) show_arrows = true
+        }, 400);
+      "
+    >
+      {{ slides }}
+    </div>
+
+    {% comment %} Default arrows {% endcomment %}
+    {% if enable_arrows or enable_indicators %}
+      <div
+        class="
+          animation-300 left-0 right-0 z-10 flex w-full
+          {{ layout_arrow_alignment }}
+          {% capture margin_class %}
+            {% if section.settings.enable_margin %}
+              {{ settings.x_margin }}
+            {% else %}
+              window--full
+            {% endif %}
+          {% endcapture %}
+
+          {% case layout_arrow_placement %}
+            {% when 'top' %}
+              absolute top-4
+              {% unless disable_smooth_scroll %}opacity-0 group-hover:opacity-100 animation-300{% endunless %}
+              {% unless disable_scroll_padding %}{{ margin_class }}{% endunless %}
+
+            {% when 'bottom' %}
+              absolute bottom-4
+              {% unless disable_smooth_scroll %}opacity-0 group-hover:opacity-100 animation-300{% endunless %}
+              {% unless disable_scroll_padding %}{{ margin_class }}{% endunless %}
+
+            {% when 'under' %}
+              relative py-4
+              {% unless disable_scroll_padding or enable_scroll_margin %}
+                {{ margin_class }}
+              {% endunless %}
+          {% endcase %}
+        "
+        style="
+          {% if enable_scrollbar and layout_arrow_placement == 'under' %}
+            padding-bottom: {{ settings.gap_size }}px;
+            padding-top: {{ settings.gap_size }}px;
+          {% endif %}
+        "
+        {% unless enable_force_arrow_display %}
+          x-show="show_arrows"
+          x-cloak
+        {% endunless %}
+      >
+        <div
+          class="
+            flex items-center justify-center gap-2
+            {% unless layout_arrow_placement == 'under' %}
+              {% if disable_scroll_padding == false %}
+                px-4
+              {% endif %}
+            {% endunless %}
+          "
+        >
+          {% if enable_arrows %}
+            <div>
+              <button
+                class="btn btn--unshade btn--smaller cursor-w-resize !p-2"
+                style="cursor: w-resize;"
+                title="{{ 'actions.previous' | t }}"
+                type="button"
+                {% if settings.enable_animations %}
+                  x-transition:enter="animation-300"
+                  x-transition:enter-start="opacity-0"
+                  x-transition:enter-end="opacity-100"
+                  x-transition:leave="animation-300"
+                  x-transition:leave-start="opacity-100"
+                  x-transition:leave-end="opacity-0"
+                {% endif %}
+                @click="scrollBack();"
+              >
+                {% render 'component__icon', icon: 'chevron-left', size: '16', class: '' %}
+              </button>
+            </div>
+          {% endif %}
+          {% if enable_indicators and slider_size > 0 %}
+            <div
+              class="color__bg-unshade-2 border__button--radius relative flex h-full flex-wrap items-center justify-center gap-1 overflow-hidden px-4 py-2 backdrop-blur-sm {{ indicator_class }}"
+            >
+              {% if auto_scroll_delay > 0 %}
+                <button
+                  class="flex leading-none"
+                  title="{{ 'actions.pause' | t }}"
+                  type="button"
+                  x-show="incrementPlaying"
+                  @click="pauseIncrement();"
+                >
+                  {% render 'component__icon', icon: 'pause', size: '16', class: '' %}
+                </button>
+                <button
+                  class="flex leading-none"
+                  title="{{ 'actions.pause' | t }}"
+                  type="button"
+                  x-show="!incrementPlaying"
+                  @click="resumeIncrement();"
+                >
+                  {% render 'component__icon', icon: 'play', size: '16', class: '' %}
+                </button>
+              {% endif %}
+              {% if slider_size > 10 %}
+                <span class="type--smaller flex gap-1">
+                  <span
+                    class="leading-none"
+                    x-text="index+1"
+                    >1</span
+                  >
+                  <span
+                    class="leading-none"
+                    >/</span
+                  >
+                  <span
+                    class="leading-none"
+                  >
+                    {{ slider_size | plus: 1 }}
+                  </span>
+                </span>
+              {% else %}
+                {% for i in (0..slider_size) %}
+                  <button
+                    class="animation-300--all focus-visible:border--focus--inset color__bg-text border__button--radius h-1 w-2 opacity-25"
+                    :class="
+                      {
+                        '!opacity-100 !w-6': index === {{ i }}
+                      }
+                    "
+                    type="button"
+                    aria-label="slider_button_{{ i }}"
+                    @click="scrollToIndex({{ i }});"
+                  ></button>
+                {% endfor %}
+              {% endif %}
+
+              {% if auto_scroll_delay > 0 %}
+                <div
+                  class="pointer-events-none absolute bottom-0 left-0 right-0 top-0 z-10 w-full"
+                  x-init="autoIncrement()"
+                >
+                  <div class="h-full">
+                    <div
+                      class="color__bg-text h-full opacity-10 transition-all duration-100"
+                      :style="{ width: width }"
+                    ></div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+          {% if enable_arrows %}
+            <div>
+              <button
+                class="btn btn--unshade btn--smaller cursor-e-resize !p-2"
+                style="cursor: e-resize;"
+                title="{{ 'actions.next' | t }}"
+                type="button"
+                {% if settings.enable_animations %}
+                  x-transition:enter="animation-300"
+                  x-transition:enter-start="opacity-0"
+                  x-transition:enter-end="opacity-100"
+                  x-transition:leave="animation-300"
+                  x-transition:leave-start="opacity-100"
+                  x-transition:leave-end="opacity-0"
+                {% endif %}
+                @click="scrollNext();"
+              >
+                {% render 'component__icon', icon: 'chevron-right', size: '16', class: '' %}
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Alternative arrows {% endcomment %}
+    {% if enable_arrows_over %}
+      <div
+        class="animation-300 pointer-events-auto absolute left-0 top-1/2 z-10 hidden h-full -translate-y-1/2 justify-start opacity-0 mix-blend-difference focus-within:opacity-100 group-hover:opacity-100 md:flex"
+      >
+        <button
+          class="!color__bg-transparent h-full cursor-w-resize !rounded-none !border-0 px-4"
+          style="cursor: w-resize;"
+          title="{{ 'actions.previous' | t }}"
+          type="button"
+          {% if settings.enable_animations %}
+            x-transition:enter="animation-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="animation-300"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+          {% endif %}
+          x-show="show_arrows"
+          x-cloak
+          @click="scrollBack();"
+        >
+          <span
+            class="btn btn--smaller btn--outline-alt !cursor-w-resize !border-0 !p-0"
+          >
+            {% render 'component__icon', icon: 'chevron-left', size: '16', class: '' %}
+          </span>
+        </button>
+      </div>
+      <div
+        class="animation-300 pointer-events-auto absolute right-0 top-1/2 z-10 hidden h-full -translate-y-1/2 justify-end opacity-0 mix-blend-difference focus-within:opacity-100 group-hover:opacity-100 md:flex"
+      >
+        <button
+          class="!color__bg-transparent h-full cursor-e-resize !rounded-none !border-0 px-4"
+          style="cursor: e-resize;"
+          type="button"
+          title="{{ 'actions.next' | t }}"
+          {% if settings.enable_animations %}
+            x-transition:enter="animation-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="animation-300"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+          {% endif %}
+          x-show="show_arrows"
+          x-cloak
+          @click="scrollNext();"
+        >
+          <span
+            class="btn btn--smaller btn--outline-alt !cursor-e-resize !border-0 !p-0"
+          >
+            {% render 'component__icon', icon: 'chevron-right', size: '16', class: '' %}
+          </span>
+        </button>
+      </div>
+    {% endif %}
+
+    {% comment %} Secondary arrows {% endcomment %}
+    {% if enable_arrows_over_alt %}
+      <div
+        class="
+          pointer-events-none absolute left-0 right-0 top-0 z-10 flex w-full items-center
+          {% if section.settings.enable_margin %}
+            {{ settings.x_margin }}
+          {% endif %}
+          {% if enable_arrows_over_single %}
+            justify-end
+          {% else %}
+            justify-between
+          {% endif %}
+        "
+      >
+        {% unless enable_arrows_over_single %}
+          <div
+            class="animation-300 pointer-events-auto flex items-center justify-start opacity-0 focus-within:opacity-100 group-hover:opacity-100"
+          >
+            <button
+              class="btn btn--unshade btn--smaller cursor-w-resize !p-1"
+              title="{{ 'actions.previous' | t }}"
+              type="button"
+              {% if settings.enable_animations %}
+                x-transition:enter="animation-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="animation-300"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+              {% endif %}
+              x-show="show_arrows"
+              x-cloak
+              @click="scrollBack();"
+            >
+              {% render 'component__icon', icon: 'chevron-left', size: '14', class: '' %}
+            </button>
+          </div>
+        {% endunless %}
+        <div
+          class="animation-300 pointer-events-auto flex items-center justify-start opacity-0 focus-within:opacity-100 group-hover:opacity-100"
+        >
+          <button
+            class="btn btn--unshade btn--smaller cursor-w-resize !p-1"
+            title="{{ 'actions.previous' | t }}"
+            type="button"
+            {% if settings.enable_animations %}
+              x-transition:enter="animation-300"
+              x-transition:enter-start="opacity-0"
+              x-transition:enter-end="opacity-100"
+              x-transition:leave="animation-300"
+              x-transition:leave-start="opacity-100"
+              x-transition:leave-end="opacity-0"
+            {% endif %}
+            x-show="show_arrows"
+            x-cloak
+            @click="scrollNext();"
+          >
+            {% render 'component__icon', icon: 'chevron-right', size: '14', class: '' %}
+          </button>
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Alternative indicators {% endcomment %}
+    {% if enable_indicators_alt %}
+      <div
+        class="animation-300 absolute bottom-0 left-0 right-0 z-20 flex w-full mix-blend-difference"
+      >
+        <div
+          class="flex w-full items-center justify-center"
+        >
+          {% if enable_indicators_alt and slider_size > 0 %}
+            <div
+              class="relative flex h-full w-full flex-nowrap items-end justify-center gap-1 overflow-hidden"
+            >
+              {% for i in (0..slider_size) %}
+                <button
+                  class="animation-300--all focus-visible:border--focus--inset color__bg-body h-1 w-full opacity-25 hover:h-2"
+                  :class="
+                    {
+                      '!opacity-75': index === {{ i }}
+                    }
+                  "
+                  type="button"
+                  aria-label="slider_button_{{ i }}"
+                  @click="scrollToIndex({{ i }});"
+                ></button>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>

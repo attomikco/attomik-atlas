@@ -1,0 +1,74 @@
+{% render 'product-checklist',
+  block_items: section.blocks,
+  color_scheme: section.settings.color_scheme
+%}
+
+{% schema %}
+{
+  "name": "Product Checklist",
+  "tag": "div",
+  "class": "section-product-checklist",
+  "settings": [
+    {
+      "type": "select",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "options": [
+        { "value": "color__bg-primary color__primary", "label": "Primary" },
+        { "value": "color__bg-secondary color__secondary", "label": "Secondary" },
+        { "value": "color__bg-tertiary color__tertiary", "label": "Tertiary" },
+        { "value": "color__bg-body color__text", "label": "Body" }
+      ],
+      "default": "color__bg-primary color__primary"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "item",
+      "name": "Checklist item",
+      "settings": [
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Item text",
+          "default": "Product benefit"
+        }
+      ]
+    },
+    {
+      "type": "value_prop",
+      "name": "Value prop highlight",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "tag_label",
+          "label": "Tag label",
+          "default": "★ Best Value"
+        },
+        {
+          "type": "text",
+          "id": "value_text",
+          "label": "Value text",
+          "default": "Best price per serving"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 8,
+  "presets": [
+    {
+      "name": "Product Checklist",
+      "category": "Product",
+      "blocks": [
+        { "type": "item", "settings": { "text": "Made with real, whole ingredients" } },
+        { "type": "item", "settings": { "text": "No artificial colors or flavors" } },
+        { "type": "item", "settings": { "text": "Third-party tested for purity" } },
+        { "type": "item", "settings": { "text": "Ships fresh within 48 hours" } },
+        { "type": "item", "settings": { "text": "Subscribe and save 15% on every order" } },
+        { "type": "value_prop", "settings": { "tag_label": "★ Best Value", "value_text": "Bundle pack — lowest price per unit" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,142 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "page__main",
+      "disabled": true,
+      "settings": {
+        "spacing_top": 100,
+        "spacing_bottom": 100,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "enable_color_fade": false,
+        "style_border": "",
+        "layout_x_alignment": "justify-start",
+        "enable_margin": true,
+        "enable_max_width": true,
+        "visibility": ""
+      }
+    },
+    "text_ReNbFi": {
+      "type": "text",
+      "name": "t:sections.text.name",
+      "settings": {
+        "heading": "",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 100,
+        "spacing_bottom": 100,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "style_border": "",
+        "style_text_alignment": "text-center",
+        "layout_x_alignment": "justify-center",
+        "layout_column_width": 80,
+        "enable_margin": true,
+        "visibility": ""
+      }
+    },
+    "content_grid_nhRx6H": {
+      "type": "content-grid",
+      "blocks": {
+        "content_yU3YBw": {
+          "type": "content",
+          "settings": {
+            "heading": "",
+            "content": "",
+            "button_label": "",
+            "url": "",
+            "show_image_as_background": false,
+            "enable_autoplay": true,
+            "enable_mute_toggle": true,
+            "enable_loop": true,
+            "spacing_minimum_height": 250,
+            "enable_padding": true,
+            "color_scheme": "color__bg-body color__text",
+            "color_border": "",
+            "color_text": "color__text",
+            "color_button": "btn--small btn--outline",
+            "enable_gradient": false,
+            "text_position": "below",
+            "layout_y_alignment": "justify-end",
+            "layout_x_alignment": "left",
+            "layout_row_span": "row-span-1",
+            "layout_col_span": "col-span-1 md:col-span-1"
+          }
+        },
+        "content_Kbxk6r": {
+          "type": "content",
+          "settings": {
+            "heading": "",
+            "content": "",
+            "button_label": "",
+            "url": "",
+            "show_image_as_background": true,
+            "enable_autoplay": true,
+            "enable_mute_toggle": true,
+            "enable_loop": true,
+            "spacing_minimum_height": 500,
+            "enable_padding": true,
+            "color_scheme": "color__bg-body color__text",
+            "color_border": "",
+            "color_text": "color__text",
+            "color_button": "btn--small btn--outline",
+            "enable_gradient": false,
+            "text_position": "below",
+            "layout_y_alignment": "justify-end",
+            "layout_x_alignment": "left",
+            "layout_row_span": "row-span-1",
+            "layout_col_span": "col-span-1 md:col-span-1"
+          }
+        }
+      },
+      "block_order": [
+        "content_yU3YBw",
+        "content_Kbxk6r"
+      ],
+      "name": "t:sections.content_grid.name",
+      "settings": {
+        "heading": "",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 0,
+        "spacing_bottom": 0,
+        "color_scheme": "color__bg-body",
+        "color_background": "#ffffff",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "style_border": "",
+        "layout_row_desktop": 2,
+        "layout_row_mobile": 1,
+        "layout_x_alignment": "justify-between",
+        "enable_margin": true,
+        "enable_split": false,
+        "enable_split_heading": false,
+        "visibility": ""
+      }
+    }
+  },
+  "order": [
+    "main",
+    "text_ReNbFi",
+    "content_grid_nhRx6H"
+  ]
+}

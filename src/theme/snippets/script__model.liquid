@@ -1,0 +1,40 @@
+<script
+  id="ProductJSON-{{ product.id }}"
+  type="application/json"
+>
+  {{ product.media | where: 'media_type', 'model' | json }}
+</script>
+<script
+  type="module"
+>
+  window.ProductModel = {
+    loadShopifyXR() {
+      Shopify.loadFeatures([
+        {
+          name: 'shopify-xr',
+          version: '1.0',
+          onLoad: this.setupShopifyXR.bind(this),
+        },
+      ]);
+    },
+
+    setupShopifyXR(errors) {
+      if (errors) return;
+
+      if (!window.ShopifyXR) {
+        document.addEventListener('shopify_xr_initialized', () => this.setupShopifyXR());
+        return;
+      }
+
+      document.querySelectorAll('[id^="ProductJSON-"]').forEach((modelJSON) => {
+        window.ShopifyXR.addModels(JSON.parse(modelJSON.textContent));
+        modelJSON.remove();
+      });
+      window.ShopifyXR.setupXRElements();
+    },
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.ProductModel) window.ProductModel.loadShopifyXR();
+  });
+</script>

@@ -1,0 +1,63 @@
+{
+  "sections": {
+    "4d71a7fc-31e4-4d1b-9f64-ee684d510004": {
+      "type": "text",
+      "settings": {
+        "heading": "Get in touch",
+        "content": "",
+        "button_label": "",
+        "button_url": "",
+        "spacing_top": 100,
+        "spacing_bottom": 20,
+        "color_scheme": "color__bg-body",
+        "color_background": "#fff4eb",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn btn--secondary",
+        "enable_color_fade": false,
+        "style_border": "",
+        "style_text_alignment": "",
+        "layout_x_alignment": "",
+        "layout_column_width": 100,
+        "enable_margin": true,
+        "visibility": ""
+      }
+    },
+    "main": {
+      "type": "contact",
+      "blocks": {
+        "05f0770c-d945-4152-b78d-638e974d04f9": {
+          "type": "field",
+          "settings": {
+            "input_label": "Message",
+            "input_placeholder": "Enter your message",
+            "input_type": "textarea"
+          }
+        }
+      },
+      "block_order": [
+        "05f0770c-d945-4152-b78d-638e974d04f9"
+      ],
+      "settings": {
+        "heading": "",
+        "spacing_top": 20,
+        "spacing_bottom": 100,
+        "color_scheme": "color__bg-body",
+        "color_background": "#fff4eb",
+        "color_text": "",
+        "color_border": "color__border-divider-1",
+        "color_button": "btn",
+        "enable_color_fade": false,
+        "style_border": "",
+        "layout_x_alignment": "justify-start",
+        "enable_margin": true,
+        "enable_max_width": true,
+        "visibility": ""
+      }
+    }
+  },
+  "order": [
+    "4d71a7fc-31e4-4d1b-9f64-ee684d510004",
+    "main"
+  ]
+}

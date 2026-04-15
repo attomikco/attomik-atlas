@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { href: '/copy', label: 'Copy Creator' },
   { href: '/newsletter', label: 'Email' },
   { href: '/landing-page', label: 'Landing Page' },
+  { href: '/store', label: 'Store' },
   { href: '/campaigns', label: 'Campaigns' },
   { href: '/insights', label: 'Insights' },
 ]
@@ -69,6 +70,7 @@ export default function TopNav() {
     if (href === '/newsletter') return `/newsletter?brand=${id}`
     if (href === '/copy') return `/copy?brand=${id}`
     if (href === '/landing-page') return `/landing-page?brand=${id}`
+    if (href === '/store') return `/store?brand=${id}`
     if (href === '/insights') return `/insights?brand=${id}`
     return href
   }

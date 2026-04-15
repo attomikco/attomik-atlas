@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { BrandImage } from '@/types'
 import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
-import { Download, Sparkles, Loader2, Check } from 'lucide-react'
+import { Download, Sparkles, Loader2, Check, Wand2 } from 'lucide-react'
 import { TextPosition } from './templates/types'
 import { Callout } from './templates/types'
 import { TEMPLATES, SIZES } from './templates/registry'
@@ -102,6 +102,8 @@ export default function CreativeBuilder({
   const [exporting, setExporting] = useState(false)
   const [exportingAll, setExportingAll] = useState(false)
   const [exportToast, setExportToast] = useState<string | null>(null)
+  const [generatingImage, setGeneratingImage] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
   const [previewContainerW, setPreviewContainerW] = useState(600)
   const leftPanelRef = useRef<HTMLDivElement>(null)
 
@@ -760,8 +762,39 @@ FB_DESCRIPTION: <under 12 words>`,
   // non-Shopify brands use tag='product'. Lifestyle covers everything else.
   const { productImages, lifestyleImages } = bucketBrandImages(images, getBusinessType(brand))
   const otherImages = images.filter(i =>
-    i.tag !== 'product' && i.tag !== 'shopify' && i.tag !== 'lifestyle' && i.tag !== 'background'
+    i.tag !== 'product' && i.tag !== 'shopify' && i.tag !== 'lifestyle' && i.tag !== 'background' && i.tag !== 'generated'
   )
+  // AI-generated images — newest first so freshly generated images appear at the top
+  const generatedImages = [...images]
+    .filter(i => i.tag === 'generated')
+    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+
+  async function generateImage() {
+    if (!brandId || generatingImage) return
+    setGeneratingImage(true)
+    setGenerateError(null)
+    try {
+      const res = await fetch('/api/images/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || 'request failed')
+      // Re-fetch images so the new row hydrates with the same shape as the rest
+      const { data } = await supabase.from('brand_images').select('*').eq('brand_id', brandId).order('created_at')
+      if (data) {
+        setImages(data)
+        const newest = [...data].filter(i => i.tag === 'generated').sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0]
+        if (newest) setSelectedImageId(newest.id)
+      }
+    } catch (e) {
+      console.error('[generateImage]', e)
+      setGenerateError('Generation failed, try again')
+      setTimeout(() => setGenerateError(null), 4000)
+    } finally {
+      setGeneratingImage(false)
+    }
+  }
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
@@ -955,6 +988,48 @@ FB_DESCRIPTION: <under 12 words>`,
             {images.length === 0 && (
               <div style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: '24px 0' }}>No images</div>
             )}
+
+            {/* ── AI GENERATED SECTION ── */}
+            <div style={{ marginTop: images.length > 0 ? 20 : 0, paddingTop: images.length > 0 ? 16 : 0, borderTop: images.length > 0 ? '1px solid rgba(0,0,0,0.08)' : 'none' }}>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>AI GENERATED</div>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#999', lineHeight: 1.4, marginBottom: 10 }}>AI-generated lifestyle scenes — place your product on top</div>
+              <button
+                onClick={generateImage}
+                disabled={generatingImage || !brandId}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  width: '100%', padding: '10px 12px', borderRadius: 8,
+                  background: generatingImage ? '#1a1a1a' : '#000', color: '#fff',
+                  fontFamily: 'DM Mono, monospace', fontSize: 11, fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  border: 'none', cursor: generatingImage ? 'default' : 'pointer',
+                  opacity: generatingImage ? 0.7 : 1, marginBottom: 8,
+                }}
+              >
+                {generatingImage ? (
+                  <>
+                    <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Generating...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 size={14} /> Generate Background
+                  </>
+                )}
+              </button>
+              {generateError && (
+                <div style={{ fontSize: 11, color: '#d4183d', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>{generateError}</div>
+              )}
+              {generatedImages.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {generatedImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

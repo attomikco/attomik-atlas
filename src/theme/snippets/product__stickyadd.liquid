@@ -1,0 +1,224 @@
+<!-- snippets/product__stickyadd.liquid -->
+{% comment %}
+  This file is a stickybar that displays a fixed add to cart button on product pages.
+
+  Accepts:
+  - blocksettings: {object} Liquid object of block settings.
+
+  Usage:
+    {% render 'product__stickyadd',
+      block: block
+    %}
+
+  Globals:
+  - layout_horizontal: {string} Class string to set horizontal margin.
+  - type_seperator: {string} Settting to set divider as a dot or line.
+
+  Recommendations:
+  - This snippet only works on product pages.
+{% endcomment %}
+
+<div
+  id="product-stickyadd"
+  class="
+    animation-300 fixed z-30 w-auto
+
+    {% if block.settings.position == "left" %}
+      left-0 bottom-0 right-0 md:left-4 md:right-auto md:bottom-4 md:margin--gap shadow-md md:w-[500px] md:border--radius
+    {% endif %}
+
+    {% if block.settings.position == "right" %}
+      right-0 left-0 bottom-0 md:left-auto md:right-4 md:bottom-4 md:margin--gap shadow-md md:w-[500px] md:border--radius
+    {% endif %}
+
+    {% if block.settings.position == "center" %}
+      left-0 right-0 bottom-0 md:margin--gap md:bottom-4 !mx-auto shadow-md md:border--radius
+      {% if settings.x_margin contains 'window--narrow' %}
+        max--narrow
+      {% endif %}
+      {% if settings.x_margin contains 'window' %}
+        max
+      {% endif %}
+      {% if settings.x_margin contains 'window--wide' %}
+        max--wide
+      {% endif %}
+    {% endif %}
+
+    {% if block.settings.position == "full" %}
+      left-0 bottom-0 w-full
+    {% endif %}
+
+    {{ block.settings.color_scheme }}
+    {{ block.settings.color_border }}
+  "
+  x-ref="stickyadd"
+  x-init="
+    if (window.innerWidth <= 768) {
+      {% if block.settings.position == 'full' %}
+        sticky_bar_height_left = $refs.stickyadd.offsetHeight + {{ settings.type_base_size }};
+        sticky_bar_height_right = $refs.stickyadd.offsetHeight + {{ settings.type_base_size }};
+      {% else %}
+        sticky_bar_height_left = $refs.stickyadd.offsetHeight + {{ settings.type_base_size | times: 2 }};
+        sticky_bar_height_right = $refs.stickyadd.offsetHeight + {{ settings.type_base_size | times: 2 }};
+      {% endif %}
+    }
+    else {
+      {% case block.settings.position %}
+        {% when 'left' %}
+          sticky_bar_height_left = $refs.stickyadd.offsetHeight + {{ settings.type_base_size | times: 2 }};
+        {% when 'right' %}
+          sticky_bar_height_right = $refs.stickyadd.offsetHeight + {{ settings.type_base_size | times: 2 }};
+        {% when 'full' %}
+          sticky_bar_height_left = $refs.stickyadd.offsetHeight;
+          sticky_bar_height_right = $refs.stickyadd.offsetHeight;
+      {% endcase %}
+    }
+  "
+  {% if block.settings.on_scroll %}
+    :class="
+      {
+        'invisible opacity-0': !stickyadd,
+        'visible opacity-100': stickyadd
+      }
+    "
+  {% endif %}
+>
+  <div class="{{ settings.x_margin }} p-4 md:p-6">
+    <div
+      class="flex flex-row flex-wrap items-center justify-between gap-4"
+    >
+      {% comment %} Content {% endcomment %}
+      {% unless block.settings.content == blank %}
+        <div
+          class="
+            hidden w-full flex-col gap-2 md:block md:w-auto
+            {% if block.settings.position == "full" %}
+              md:w-auto
+            {% endif %}
+          "
+        >
+          <div>
+            {{ block.settings.content }}
+          </div>
+        </div>
+      {% endunless %}
+
+      {% comment %} Action and options {% endcomment %}
+      <div
+        class="
+          flex w-full items-center gap-4 md:flex-row
+          {% if block.settings.position == "center" or block.settings.position == "full" %}
+            md:w-auto
+          {% endif %}
+        "
+      >
+        {% comment %} Options {% endcomment %}
+        {% unless product.has_only_default_variant %}
+          <div
+            class="inline-flex min-w-0 grow text-left"
+            x-show="all_options_selected"
+          >
+            <button
+              class="border__input--radius border__input color__border-input color__bg-input border--input-padding hover:border__input--hover focus:border__input--focus relative w-full min-w-[256px] cursor-pointer appearance-none px-4 py-2"
+              type="button"
+              @click="document.getElementById('js-options-' + '{{ section.id }}' + '-' + '{{ product.id }}').scrollIntoView();"
+            >
+              {% comment %} Text and swatch {% endcomment %}
+              {% for variant in product.variants %}
+                <span
+                  class="bottom-0 left-2 top-0 flex h-full items-center gap-4 pr-8"
+                  x-show="current_variant_id == {{ variant.id }}"
+                  x-cloak
+                >
+                  {% comment %} Text {% endcomment %}
+                  <span class="block truncate">{{ variant.title }}</span>
+                </span>
+              {% endfor %}
+
+              {% comment %} Chevron icon {% endcomment %}
+              <div class="absolute bottom-0 right-4 top-0 flex h-full items-center">
+                {% render 'component__icon', icon: 'chevron-down', size: '20' %}
+              </div>
+            </button>
+          </div>
+        {% endunless %}
+
+        {% comment %} Actions {% endcomment %}
+        <div class="shrink-0">
+          {% comment %} Choose options, if non selected {% endcomment %}
+          <button
+            class="btn btn--load btn--plain !w-full"
+            :class="{ 'btn--loading' : cart_loading && button_loading }"
+            type="button"
+            role="button"
+            disabled
+            :disabled="button_loading"
+            @click="
+              failed_clicked = true;
+              document.getElementById('js-options-' + '{{ section.id }}' + '-' + '{{ product.id }}').scrollIntoView();
+            "
+            x-show="!all_options_selected"
+            x-cloak
+          >
+            <div class="btn__content">
+              {{ 'actions.choose_options' | t }}
+            </div>
+          </button>
+
+          {% comment %} Sold out, if selected option unavailable {% endcomment %}
+          <button
+            class="btn btn--load btn--plain !w-full"
+            :class="{ 'btn--loading' : cart_loading && button_loading }"
+            type="button"
+            role="button"
+            disabled
+            :disabled="button_loading"
+            x-show="!current_variant_available && current_variant_exists && all_options_selected"
+            x-cloak
+          >
+            <div class="btn__content">
+              {{ 'labels.sold_out' | t }}
+            </div>
+          </button>
+
+          {% comment %} Unavailable, if selected option unavailable {% endcomment %}
+          <button
+            class="btn btn--load btn--plain !w-full"
+            :class="{ 'btn--loading' : cart_loading && button_loading }"
+            type="button"
+            role="button"
+            disabled
+            :disabled="button_loading"
+            x-show="!current_variant_exists && all_options_selected"
+            x-cloak
+          >
+            <div class="btn__content">
+              {{ 'labels.unavailable' | t }}
+            </div>
+          </button>
+
+          {% comment %} Add to cart {% endcomment %}
+          <button
+            class="btn btn--load !w-full {{ block.settings.color_button }}"
+            type="submit"
+            role="button"
+            :class="{ 'btn--loading' : cart_loading && button_loading }"
+            :disabled="button_loading"
+            x-show="current_variant_exists && current_variant_available && all_options_selected"
+          >
+            <div class="btn__content">
+              {% if product.metafields.custom.button_text %}
+                {{ product.metafields.custom.button_text }}
+              {% else %}
+                {{ 'actions.add' | t }}
+              {% endif %}
+            </div>
+            <div class="btn__spinner">
+              {% render 'component__icon', icon: 'spinner', size: '24', class: '' %}
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

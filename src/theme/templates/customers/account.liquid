@@ -1,0 +1,138 @@
+<!-- templates/customers/account.liquid -->
+
+<section>
+  <div
+    class="
+      py-12
+      {{ settings.x_margin }}
+      {{ settings.x_alignment }}
+    "
+  >
+    {% comment %} Heading {% endcomment %}
+    <div class="mb-4 flex w-full max-w-prose flex-col gap-4">
+      <h1>
+        {{ 'labels.account' | t }}
+      </h1>
+      <div>
+        <a href="{{ routes.account_logout_url }}" class="btn btn--plain btn--smaller">{{ 'actions.log_out' | t }}</a>
+      </div>
+    </div>
+
+    {% comment %} Content {% endcomment %}
+    <div class="border--t-width color__border-divider-1 flex flex-wrap items-start gap-y-8 pt-8 md:gap-x-16 md:gap-y-0">
+      {% comment %} Sidebar {% endcomment %}
+      <div class="border--b-width color__border-divider-1 w-full grow pb-8 md:w-auto">
+        <p class="type__heading mb-4">
+          {{ 'labels.account_details' | t }}
+        </p>
+        <div class="type--small mb-4">
+          <p class="mb-1">
+            {{ customer.name }}
+          </p>
+          <p class="mb-1">
+            {{ customer.email }}
+          </p>
+          {% if customer.default_address %}
+            <p class="mb-1">{{ customer.default_address.address1 }}</p>
+            {% if customer.default_address.address2 != blank %}
+              <p class="mb-1">{{ customer.default_address.address2 }}</p>
+            {% endif %}
+            <p class="mb-1">
+              {{ customer.default_address.city }},
+              {% if customer.default_address.province_code %}
+                {{ customer.default_address.province_code }}
+              {% endif %}
+              , {{ customer.default_address.country_code }}
+            </p>
+            <p class="mb-1">{{ customer.default_address.zip_code }}</p>
+            <p class="mb-0">{{ customer.default_address.phone }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <a href="{{ routes.account_addresses_url }}" class="btn btn--plain btn--smaller">
+            {{- 'actions.view_addresses' | t -}}
+            ({{ customer.addresses_count }})</a
+          >
+        </div>
+      </div>
+
+      {% comment %} Main content {% endcomment %}
+      <div class="w-full md:w-2/3">
+        <p class="type__heading mb-2">
+          {{ 'labels.orders' | t }}
+        </p>
+
+        {% paginate customer.orders by 10 %}
+          <table class="min-w-full">
+            <tbody class="hover:color__bg-shade-1">
+              {% for order in customer.orders %}
+                <tr class="border--b-width color__border-divider-1 py-2">
+                  <td class="py-4">
+                    {{ order.name | link_to: order.customer_url }}
+                    <dl class="m-0">
+                      <dd class="type--small m-0 truncate opacity-75">{{ order.line_items.size }} items</dd>
+                    </dl>
+                    <dl class="m-0 md:hidden">
+                      <dd class="mb-0 mt-1 truncate">
+                        {% render 'component__format-price', price: order.total_net_amount %}
+                      </dd>
+                      <dd class="mb-0 mt-1 truncate">
+                        {{ order.created_at | date: format: 'abbreviated_date' }}
+                      </dd>
+                    </dl>
+                  </td>
+                  <td class="hidden py-4 align-bottom md:table-cell">
+                    {% render 'component__format-price', price: order.total_net_amount %}
+                  </td>
+                  <td class="hidden py-4 align-bottom md:table-cell">
+                    {{ order.created_at | date: format: 'abbreviated_date' }}
+                  </td>
+                  <td class="py-4 text-right align-bottom">
+                    {% render 'component__badge',
+                      background: 'body',
+                      text: 'body',
+                      border: 'body',
+                      icon: '',
+                      content: order.financial_status
+                    %}
+                    {% render 'component__badge',
+                      background: 'body',
+                      text: 'body',
+                      border: 'body',
+                      icon: '',
+                      content: order.fulfillment_status
+                    %}
+                    {% assign reorder_url = '' %}
+                    {% for line_item in order.line_items %}
+                      {% capture reorder_url %}{{ reorder_url | append: line_item.variant_id | append: ':' | append: line_item.quantity | append: ',' }}{% endcapture %}
+                    {% endfor %}
+                    <a href="{{ '/cart/' | append: reorder_url }}" class="btn btn--smaller btn--secondary">Reorder</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <section class="py-4">
+            <div class="text-center">
+              <span>{{ 'labels.showing_pages' | t }}</span>
+              <span>{{ paginate.current_page }}</span>
+              {{ 'labels.of' | t | downcase }}
+              <span>{{ paginate.pages }}</span>
+            </div>
+            <div class="text-center">
+              {% if paginate.previous.is_link %}
+                <a class="btn btn--small btn--plain" href="{{ paginate.previous.url }}">
+                  {{- paginate.previous.title -}}
+                </a>
+              {% endif %}
+              {% if paginate.next.is_link %}
+                <a class="btn btn--small btn--plain" href="{{ paginate.next.url }}">{{ paginate.next.title }}</a>
+              {% endif %}
+            </div>
+          </section>
+        {% endpaginate %}
+      </div>
+    </div>
+  </div>
+</section>
