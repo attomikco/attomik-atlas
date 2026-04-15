@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authorizeOwnerOrAdmin } from '@/lib/authorize-store'
 import { listThemes, putAsset } from '@/lib/shopify'
+import { colorsToThemeSettings, parseThemeColors } from '@/lib/store-colors'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -111,7 +112,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Serialize the 4 generated files and push them via Admin Asset API.
   const variantIndex = typeof storeTheme.selected_variant === 'number' ? storeTheme.selected_variant : 0
   const variants = Array.isArray(storeTheme.color_variants) ? storeTheme.color_variants : []
-  const settings = variants[variantIndex]?.theme_settings ?? variants[0]?.theme_settings ?? null
+  const activeVariant = variants[variantIndex] ?? variants[0] ?? null
+  const baseSettings = activeVariant?.theme_settings ?? null
+
+  // Prefer the 9-slot `colors` object when present: it's the source of truth
+  // the editor UI writes to, and the deploy must mirror it into the Shopify
+  // `config/settings_data.json` keys. For legacy rows without `colors`, fall
+  // back to the stored theme_settings as-is.
+  const variantColors = parseThemeColors(activeVariant?.colors)
+  const settings = baseSettings
+    ? (variantColors
+        ? { ...baseSettings, ...colorsToThemeSettings(variantColors) }
+        : baseSettings)
+    : null
 
   // All 4 blobs run through stripImageUrls before serialization — see the
   // helper for the rationale. The original storeTheme row is untouched.

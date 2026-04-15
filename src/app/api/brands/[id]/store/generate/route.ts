@@ -5,6 +5,13 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { buildBrandSystemPrompt } from '@/lib/anthropic'
 import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
+import {
+  THEME_COLOR_KEYS,
+  colorsToThemeSettings,
+  isValidHex,
+  neutralColorsForVariant,
+  type ThemeColors,
+} from '@/lib/store-colors'
 import type { Brand, BrandImage } from '@/types'
 
 export const runtime = 'nodejs'
@@ -38,6 +45,7 @@ interface VariableEntry {
 
 interface ColorVariant {
   name: string
+  colors: ThemeColors
   theme_settings: Record<string, string>
 }
 
@@ -184,101 +192,78 @@ function injectImageAssignments(
 // Step 1 — Color System Generation
 // ---------------------------------------------------------------------------
 
-const NEUTRAL_LIGHT: Record<string, string> = {
-  color_background_body: '#ffffff',
-  color_foreground_body: '#1a1a1a',
-  color_foreground_body_alt: '#ffffff',
-  color_background_primary: '#000000',
-  color_foreground_primary: '#ffffff',
-  color_background_secondary: '#2c2c2c',
-  color_foreground_secondary: '#ffffff',
-  color_background_tertiary: '#f5f5f5',
-  color_foreground_tertiary: '#1a1a1a',
-  color_bar: '#ffffff',
-  color_background_overlay: 'linear-gradient(0deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.2) 100%)',
+const VARIANT_NAMES: Array<'light' | 'dark' | 'alt_light' | 'alt_dark'> = [
+  'light', 'dark', 'alt_light', 'alt_dark',
+]
+
+function buildVariant(name: ColorVariant['name'], colors: ThemeColors): ColorVariant {
+  return { name, colors, theme_settings: colorsToThemeSettings(colors) }
 }
 
-function mapColorVariants(variants: Record<string, Record<string, string>>): ColorVariant[] {
-  const names = ['light', 'dark', 'alt_light', 'alt_dark']
-  return names.map(name => {
-    const v = variants[name]
-    if (!v) return { name, theme_settings: { ...NEUTRAL_LIGHT } }
-    return {
-      name,
-      theme_settings: {
-        color_background_body: v.body || '#ffffff',
-        color_foreground_body: v.text || '#1a1a1a',
-        color_foreground_body_alt: v.alternativeText || '#ffffff',
-        color_background_primary: v.primaryBackground || '#000000',
-        color_foreground_primary: v.primaryForeground || '#ffffff',
-        color_background_secondary: v.secondaryBackground || '#2c2c2c',
-        color_foreground_secondary: v.secondaryForeground || '#ffffff',
-        color_background_tertiary: v.tertiaryBackground || '#f5f5f5',
-        color_foreground_tertiary: v.tertiaryForeground || '#1a1a1a',
-        color_bar: v.mobileBar || v.body || '#ffffff',
-        color_background_overlay: v.overlayBackground || 'linear-gradient(0deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.2) 100%)',
-      },
-    }
-  })
+// Coerce whatever Claude returned for a single variant into a ThemeColors
+// object, falling back to the neutral defaults slot-by-slot so a partial
+// response still yields a valid variant.
+function coerceColors(
+  raw: unknown,
+  variant: 'light' | 'dark' | 'alt_light' | 'alt_dark',
+  primary: string,
+  secondary: string
+): ThemeColors {
+  const fallback = neutralColorsForVariant(primary, secondary, variant)
+  if (!raw || typeof raw !== 'object') return fallback
+  const r = raw as Record<string, unknown>
+  const out: ThemeColors = { ...fallback }
+  for (const key of THEME_COLOR_KEYS) {
+    const value = r[key]
+    if (isValidHex(value)) out[key] = value
+  }
+  return out
 }
 
 async function generateColorVariants(primary: string, secondary: string): Promise<ColorVariant[]> {
-  const systemPrompt = `You are a color system generator for ecommerce themes. Given a primary brand color and secondary color, generate 4 theme variants. Return ONLY valid JSON — no markdown, no explanation.
+  const systemPrompt = `You are a color system generator for ecommerce themes. Given a primary brand color and secondary brand color, generate 4 theme variants (light, dark, alt_light, alt_dark).
 
-Return this exact structure:
-{
-  "light": {
-    "body": "#ffffff",
-    "text": "#1a1a1a",
-    "alternativeText": "#ffffff",
-    "primaryBackground": "<primary color>",
-    "primaryForeground": "<contrast text for primary>",
-    "secondaryBackground": "<secondary color>",
-    "secondaryForeground": "<contrast text for secondary>",
-    "tertiaryBackground": "<very light tint of primary>",
-    "tertiaryForeground": "#1a1a1a"
-  },
-  "dark": {
-    "body": "#0a0a0a",
-    "text": "#f5f5f5",
-    "alternativeText": "#0a0a0a",
-    "primaryBackground": "<primary color>",
-    "primaryForeground": "<contrast text for primary>",
-    "secondaryBackground": "<secondary color>",
-    "secondaryForeground": "<contrast text for secondary>",
-    "tertiaryBackground": "#1a1a1a",
-    "tertiaryForeground": "#f5f5f5"
-  },
-  "alt_light": {
-    "body": "<warm off-white derived from primary>",
-    "text": "#1a1a1a",
-    "alternativeText": "#ffffff",
-    "primaryBackground": "<darker shade of primary>",
-    "primaryForeground": "#ffffff",
-    "secondaryBackground": "<muted secondary>",
-    "secondaryForeground": "#ffffff",
-    "tertiaryBackground": "<light warm neutral>",
-    "tertiaryForeground": "#1a1a1a"
-  },
-  "alt_dark": {
-    "body": "<very dark shade of primary>",
-    "text": "#f0f0f0",
-    "alternativeText": "#0a0a0a",
-    "primaryBackground": "<bright/saturated primary>",
-    "primaryForeground": "#0a0a0a",
-    "secondaryBackground": "<light secondary>",
-    "secondaryForeground": "#0a0a0a",
-    "tertiaryBackground": "<dark mid-tone>",
-    "tertiaryForeground": "#f0f0f0"
-  }
-}
+Each variant must return ALL 9 named color slots. The slots are:
+
+- "body": the main page background color.
+- "text": the primary text color sitting on "body". Must pass WCAG AA contrast (4.5:1) against "body".
+- "alternative_text": a light/dark text color used on top of dark/colored sections. For light variants, use #ffffff or near-white; for dark variants, use #0a0a0a or near-black.
+- "primary_background": use the brand's PRIMARY color exactly (or a shade of it for alt variants). This is the primary button background and link accent color.
+- "primary_foreground": text color that sits on "primary_background". Must pass WCAG AA contrast against primary_background. Usually #ffffff on dark primaries, #1a1a1a on light primaries.
+- "secondary_background": use the brand's SECONDARY color exactly (or a muted/shaded version for alt variants). This is the secondary button background.
+- "secondary_foreground": text color on "secondary_background", WCAG AA compliant.
+- "tertiary_background": a subtle neutral or very-light tint, used for tertiary button backgrounds and section contrast. Never the primary or secondary color at full saturation.
+- "tertiary_foreground": text color on "tertiary_background", WCAG AA compliant.
+
+Variant guidance:
+- "light": white/off-white body, dark text. primary_background = brand primary exactly.
+- "dark": near-black body (#0a0a0a range), near-white text. primary_background = brand primary exactly, or a slightly brighter version if needed for contrast.
+- "alt_light": warm off-white body derived from the brand palette, darker primary_background (shaded version of primary for a more premium feel).
+- "alt_dark": very dark body (shade of primary mixed with black), brighter/saturated primary_background, darker foregrounds where it makes sense.
 
 Rules:
-- All values must be valid hex colors
-- Primary and secondary backgrounds must maintain the brand's identity
-- Foreground colors must pass WCAG AA contrast against their backgrounds
-- Light variants have white/off-white body, dark variants have near-black body
-- Tertiary is always a subtle, muted tone — never the brand color at full saturation`
+- Every value must be a valid 7-character hex string (e.g. "#D4266A"). No named colors, no rgb(), no shorthand.
+- Every *_foreground slot must pass WCAG AA contrast (4.5:1) against its paired *_background. Check contrast before returning.
+- The "primary_background" and "secondary_background" slots must keep the brand's identity — use the exact hex the brand provided for the main light and dark variants; only shift hue/shade for the alt variants.
+- Return ONLY valid JSON, no markdown, no explanation, no preamble.
+
+Exact return structure:
+{
+  "light": {
+    "body": "#......",
+    "text": "#......",
+    "alternative_text": "#......",
+    "primary_background": "#......",
+    "primary_foreground": "#......",
+    "secondary_background": "#......",
+    "secondary_foreground": "#......",
+    "tertiary_background": "#......",
+    "tertiary_foreground": "#......"
+  },
+  "dark": { ...same 9 keys... },
+  "alt_light": { ...same 9 keys... },
+  "alt_dark": { ...same 9 keys... }
+}`
 
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
@@ -293,32 +278,16 @@ Rules:
   if (!block || block.type !== 'text') throw new Error('No response from color generation')
   let json = block.text.trim()
   if (json.startsWith('```')) json = json.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-  return mapColorVariants(JSON.parse(json))
+  const parsed = JSON.parse(json) as Record<string, unknown>
+  return VARIANT_NAMES.map(name =>
+    buildVariant(name, coerceColors(parsed[name], name, primary, secondary))
+  )
 }
 
 function neutralVariantsFallback(primary: string, secondary: string): ColorVariant[] {
-  return [
-    { name: 'light', theme_settings: { ...NEUTRAL_LIGHT, color_background_primary: primary, color_background_secondary: secondary } },
-    { name: 'dark', theme_settings: {
-      color_background_body: '#0a0a0a', color_foreground_body: '#f5f5f5',
-      color_foreground_body_alt: '#0a0a0a',
-      color_background_primary: primary, color_foreground_primary: '#ffffff',
-      color_background_secondary: secondary, color_foreground_secondary: '#ffffff',
-      color_background_tertiary: '#1a1a1a', color_foreground_tertiary: '#f5f5f5',
-      color_bar: '#0a0a0a',
-      color_background_overlay: 'linear-gradient(0deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.2) 100%)',
-    }},
-    { name: 'alt_light', theme_settings: { ...NEUTRAL_LIGHT, color_background_primary: primary, color_background_secondary: secondary } },
-    { name: 'alt_dark', theme_settings: {
-      color_background_body: '#111111', color_foreground_body: '#f0f0f0',
-      color_foreground_body_alt: '#111111',
-      color_background_primary: primary, color_foreground_primary: '#ffffff',
-      color_background_secondary: secondary, color_foreground_secondary: '#ffffff',
-      color_background_tertiary: '#1e1e1e', color_foreground_tertiary: '#f0f0f0',
-      color_bar: '#111111',
-      color_background_overlay: 'linear-gradient(0deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.2) 100%)',
-    }},
-  ]
+  return VARIANT_NAMES.map(name =>
+    buildVariant(name, neutralColorsForVariant(primary, secondary, name))
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -724,11 +693,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Inject image URLs into merged index.json
     const indexJson = injectImageAssignments(index, assignments)
 
-    // Step 4 — assemble color variants over base-settings
+    // Step 4 — assemble color variants over base-settings. Each variant keeps
+    // its 9-slot `colors` object (for the editor UI + deploy-time mapping) AND
+    // its merged Shopify `theme_settings` (for backward compat with anything
+    // that reads theme_settings directly).
     const baseSettings = await loadJSON<Record<string, unknown>>('templates/store/base-settings.json')
     delete baseSettings._comment
     const mergedVariants = colorVariants.map(v => ({
       name: v.name,
+      colors: v.colors,
       theme_settings: { ...baseSettings, ...v.theme_settings } as Record<string, string>,
     }))
 

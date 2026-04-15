@@ -45,7 +45,7 @@ BLOCK MENU (pick only what fits the brief):
 - 01a: Hero Image — always include
 - 01b: Hero Text — always include
 - 01c: CTA Button — always include
-- 02: Promo Code — only if there's a discount or offer
+- 02: Promo Code — enable whenever the brief mentions a discount, coupon, code, % off, $ off, free shipping, or any concrete offer
 - 03: 3-Pillar Feature — good for welcome/brand intro emails
 - 04: Story / Nostalgia — good for brand story, welcome series
 - 05: Product Feature — good for product launch, promotion
@@ -77,13 +77,110 @@ PRODUCT FEATURE BLOCK (05) GUIDANCE:
 - When "05" is enabled, productName MUST NEVER be empty. Pick a flagship product from PRODUCTS (not always the first — choose the most iconic). productBody1 hooks on the single most compelling benefit (1-2 sentences). productBody2 goes sensory/experiential or drops social proof (1-2 sentences). Both bodies must contain real, specific copy — not generic filler.
 - Only omit "05" when PRODUCTS is "No products specified" or when the brief explicitly says no product spotlight.
 
-Return a COMPLETE JSON object that matches the MasterEmailConfig shape. Include:
-- "enabledBlocks": array of block IDs you've chosen from the menu above (e.g. ["01a","01b","01c","04","05","07","09"])
-- "subjectLine" (30-60 chars) and "previewText" (40-90 chars, continues the subject without repeating)
-- All copy fields for the blocks you enabled — headlines, eyebrows, bodies, CTAs, etc.
-- For blocks you did NOT enable, leave their copy fields as empty strings
-- Use "${brand.name}" directly — never "[Brand Name]" placeholder
-- Do NOT include emailColors, imageAssignments, or image URLs — those are handled separately
+PROMO BLOCK (02) — BRIEF EXTRACTION RULE:
+- Parse the BRIEF for any concrete offer: percent-off ("20% off", "save 25%"), dollar-off ("$10 off"), free shipping, BOGO, free gift, etc.
+- If ANY such offer exists in the brief, you MUST enable "02" AND emit all promo fields — never fall back to a generic "15% Off / SAVE15" placeholder.
+- promoDiscount must mirror the brief exactly: "20% off" → "20% Off", "25% off" → "25% Off", "$10 off" → "$10 Off", "free shipping" → "Free Shipping".
+- promoCode must be brand-specific and reflect the discount value: e.g. if brand is "Jolene" and discount is 20%, use "JOLENE20" (not "SAVE15", "WELCOME10", "FIRST15", or anything generic).
+- promoSubtitle, promoEyebrow, promoExpiry, promoCta must all be written fresh for this brief — do NOT reuse "Exclusive Offer / Your First Order / Claim Your Discount" wording unless the brief explicitly calls for it.
+- If the brief has NO offer at all, omit "02" from enabledBlocks and leave all promo fields as empty strings.
+
+CROSS-FIELD CONSTRAINTS:
+- subjectLine + previewText are a two-part hook. previewText CONTINUES the subject; it must not repeat or rephrase it.
+- heroHeadline is punchy (3-7 words). heroBody elaborates with specifics — they must not rephrase each other.
+- pillar1/2/3 must be three genuinely distinct value props on different axes.
+- calloutHeadline must offer a DIFFERENT angle than heroHeadline.
+- FAQ answers must address real purchase objections — not recap hero/product content.
+
+Return a COMPLETE JSON object with the fields below. Use "${brand.name}" directly — never "[Brand Name]" placeholder. Fields for blocks you did NOT enable should be empty strings (or empty arrays for testimonials/products/faqItems). Do NOT include emailColors, imageAssignments, or image URLs — those are handled separately.
+
+{
+  "enabledBlocks": ["01a","01b","01c", "..."],
+  "subjectLine": "30-60 chars, punchy and specific",
+  "previewText": "40-90 chars, continues the subject (does not repeat it)",
+  "announcementText": "Top banner text, under 40 chars",
+  "heroEyebrow": "2-4 word eyebrow",
+  "heroHeadline": "Punchy 3-7 word hook",
+  "heroBody": "3 sentences, ~60 words, benefit-focused and specific",
+  "heroCta": "2-4 word CTA",
+  "heroCtaUrl": "${brand.website || ''}",
+  "promoEyebrow": "2-3 word label (only when '02' enabled)",
+  "promoDiscount": "Mirrors the brief exactly — e.g. '20% Off' / '$10 Off' / 'Free Shipping'",
+  "promoSubtitle": "Subtitle under discount",
+  "promoCode": "Brand-specific CAPS code reflecting the discount value",
+  "promoExpiry": "Expiry/terms line",
+  "promoCta": "2-4 word CTA",
+  "promoCtaUrl": "${brand.website || ''}",
+  "pillarsEyebrow": "2-4 word label",
+  "pillarsHeadline": "3-6 word headline",
+  "pillar1Icon": "Single unicode symbol",
+  "pillar1Label": "2-3 word label",
+  "pillar1Body": "1 sentence, specific value prop",
+  "pillar2Icon": "Single unicode symbol",
+  "pillar2Label": "2-3 word label — different axis than pillar 1",
+  "pillar2Body": "1 sentence",
+  "pillar3Icon": "Single unicode symbol",
+  "pillar3Label": "2-3 word label — different axis than pillars 1 & 2",
+  "pillar3Body": "1 sentence",
+  "storyEyebrow": "2-3 word label",
+  "storyHeadline": "3-7 word headline",
+  "storyBody": "3-4 sentences, sensory and emotional",
+  "storyQuote": "A memorable line that plausibly comes FROM storyBody",
+  "storyQuoteAttribution": "— Founder name or '— ${brand.name}'",
+  "storyClosing": "1-2 sentence brand promise that lands the narrative",
+  "productBadge": "'Best Seller' / 'Fan Favorite' / etc.",
+  "productName": "Flagship product from PRODUCTS list",
+  "productBody1": "1-2 sentences on the single most compelling benefit",
+  "productBody2": "1-2 sentences — sensory, experiential, or social proof",
+  "productCta": "2-4 word CTA",
+  "productCtaUrl": "${brand.website || ''}",
+  "calloutEyebrow": "2-3 word label",
+  "calloutHeadline": "4-8 word headline — different angle than heroHeadline",
+  "calloutBody": "1-2 sentences supporting the callout",
+  "calloutCta": "2-4 word CTA",
+  "calloutCtaUrl": "${brand.website || ''}",
+  "howToEyebrow": "2-4 word label",
+  "howToHeadline": "3-5 word headline",
+  "howToSubheadline": "1 sentence",
+  "step1Label": "1-2 words — literal product-use step",
+  "step1Body": "1 sentence",
+  "step2Label": "1-2 words",
+  "step2Body": "1 sentence",
+  "step3Label": "1-2 words",
+  "step3Body": "1 sentence",
+  "howToNote": "Short practical note",
+  "howToCta": "2-4 word CTA",
+  "howToCtaUrl": "${brand.website || ''}",
+  "testimonialsEyebrow": "2-4 word label",
+  "testimonialsHeadline": "2-4 word headline",
+  "testimonials": [
+    {"quote": "Angle A (taste/experience)", "author": "First L."},
+    {"quote": "Angle B (quality/craft)", "author": "First L."},
+    {"quote": "Angle C (ritual/lifestyle)", "author": "First L."}
+  ],
+  "youllAlsoLoveEyebrow": "2-3 word label",
+  "youllAlsoLoveHeadline": "3-5 word headline",
+  "youllAlsoLoveSubheadline": "1 sentence",
+  "products": [
+    ${products.slice(0, 4).map((p: { name?: string; description?: string }) => `{"name": "${p.name || ''}", "description": "${(p.description || '').replace(/"/g, '\\"').slice(0, 80)}", "url": "${brand.website || ''}"}`).join(',\n    ')}
+  ],
+  "faqEyebrow": "2-3 word label",
+  "faqHeadline": "3-5 word headline",
+  "faqItems": [
+    {"question": "Shipping or returns objection", "answer": "1-3 sentences"},
+    {"question": "How-it-works / product-use objection", "answer": "1-3 sentences"},
+    {"question": "Differentiation / 'why this brand' objection", "answer": "1-3 sentences"}
+  ],
+  "faqCta": "3-5 word CTA",
+  "faqCtaUrl": "${brand.website || ''}",
+  "igEyebrow": "2-3 word label",
+  "igHeadline": "3-5 word headline",
+  "igHandle": "@${brand.name.toLowerCase().replace(/\s+/g, '')}",
+  "igUrl": "",
+  "igCta": "3-5 word CTA",
+  "footerTagline": "Brand tagline, under 50 chars",
+  "instagramUrl": ""
+}
 
 Respond with ONLY the JSON object. No markdown, no explanation.`
 
@@ -191,8 +288,46 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
     product: existingAssignments.product || (productPick ? toUrl(productPick) : ''),
   }
 
+  // Promo block safety net — if '02' is enabled, we must NEVER let
+  // DEFAULT_MASTER_CONFIG's "15% Off / SAVE15 / Your First Order / Exclusive
+  // Offer" placeholders leak through when the AI returns partial or missing
+  // promo fields. The old behavior merged defaults first, so any field the AI
+  // omitted silently fell back to the generic "welcome offer" copy — that's
+  // exactly what the user reported as "I asked for 20% off but it kept 15%
+  // Welcome Offer". Strip the defaults before the merge so the AI output is
+  // the only source of promo copy; if the AI still dropped promoDiscount,
+  // extract it from the brief via regex so the user's intent survives.
+  const defaultsForMerge: Partial<MasterEmailConfig> = { ...DEFAULT_MASTER_CONFIG }
+  const wantsPromo = Array.isArray(generatedConfig.enabledBlocks) && generatedConfig.enabledBlocks.includes('02')
+  if (wantsPromo) {
+    defaultsForMerge.promoEyebrow = ''
+    defaultsForMerge.promoDiscount = ''
+    defaultsForMerge.promoSubtitle = ''
+    defaultsForMerge.promoCode = ''
+    defaultsForMerge.promoExpiry = ''
+    defaultsForMerge.promoCta = ''
+    // Brief-driven fallback for promoDiscount if the AI left it blank.
+    const discountFromBrief = (() => {
+      const pct = brief.match(/(\d{1,3})\s*%\s*off/i)
+      if (pct) return `${pct[1]}% Off`
+      const dol = brief.match(/\$\s*(\d{1,4})\s*off/i)
+      if (dol) return `$${dol[1]} Off`
+      if (/free\s*shipping/i.test(brief)) return 'Free Shipping'
+      return ''
+    })()
+    if (discountFromBrief && (typeof generatedConfig.promoDiscount !== 'string' || !generatedConfig.promoDiscount.trim())) {
+      generatedConfig.promoDiscount = discountFromBrief
+      console.warn('[email-templates generate] promoDiscount missing, extracted from brief:', discountFromBrief)
+    }
+    if (typeof generatedConfig.promoCode !== 'string' || !generatedConfig.promoCode.trim()) {
+      const digits = (generatedConfig.promoDiscount || '').match(/\d+/)?.[0]
+      const brandSlug = (brand.name || 'SAVE').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || 'SAVE'
+      generatedConfig.promoCode = `${brandSlug}${digits || ''}`
+    }
+  }
+
   const finalConfig: MasterEmailConfig = {
-    ...DEFAULT_MASTER_CONFIG,
+    ...(defaultsForMerge as MasterEmailConfig),
     ...generatedConfig,
     enabledBlocks: generatedConfig.enabledBlocks || DEFAULT_MASTER_CONFIG.enabledBlocks,
     emailColors: existingConfig.emailColors ?? null,

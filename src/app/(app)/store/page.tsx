@@ -5,6 +5,12 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
 import { colors, font, fontWeight, fontSize, radius, spacing } from '@/lib/design-tokens'
+import ColorPickerPopover from '@/components/ui/ColorPickerPopover'
+import {
+  THEME_COLOR_KEYS,
+  THEME_COLOR_LABELS,
+  type ThemeColors,
+} from '@/lib/store-colors'
 
 type CredentialStatus = {
   connected: boolean
@@ -97,6 +103,7 @@ export default function StorePage() {
       <CredentialsSection brandId={activeBrandId} creds={creds} onSaved={refresh} />
       <BaseThemeSection brandId={activeBrandId} creds={creds} onInstalled={refresh} />
       <GenerateSection brandId={activeBrandId} creds={creds} theme={theme} onGenerated={refresh} />
+      <ThemeColorsSection brandId={activeBrandId} theme={theme} onSaved={refresh} />
       <DeploySection brandId={activeBrandId} creds={creds} theme={theme} onDeployed={refresh} />
     </div>
   )
@@ -765,6 +772,249 @@ function DeploySection({ brandId, creds, theme, onDeployed }: {
       {error && (
         <div style={{ marginTop: spacing[3], color: '#b91c1c', fontSize: fontSize.caption }}>{error}</div>
       )}
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section 3.5 — Theme Colors (9-slot editor)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type StoredVariant = {
+  name?: string
+  colors?: Partial<ThemeColors> | null
+  theme_settings?: Record<string, string>
+}
+
+function parseStoredVariants(raw: unknown): StoredVariant[] {
+  if (!Array.isArray(raw)) return []
+  return raw as StoredVariant[]
+}
+
+const NEUTRAL_LIGHT_COLORS: ThemeColors = {
+  body: '#ffffff',
+  text: '#1a1a1a',
+  alternative_text: '#ffffff',
+  primary_background: '#000000',
+  primary_foreground: '#ffffff',
+  secondary_background: '#2c2c2c',
+  secondary_foreground: '#ffffff',
+  tertiary_background: '#f5f5f5',
+  tertiary_foreground: '#1a1a1a',
+}
+
+function readVariantColors(variant: StoredVariant | undefined): ThemeColors {
+  const base: ThemeColors = { ...NEUTRAL_LIGHT_COLORS }
+  if (!variant?.colors) return base
+  for (const key of THEME_COLOR_KEYS) {
+    const value = (variant.colors as Record<string, unknown>)[key]
+    if (typeof value === 'string') base[key] = value
+  }
+  return base
+}
+
+function ThemeColorsSection({ brandId, theme, onSaved }: {
+  brandId: string
+  theme: StoreTheme | null
+  onSaved: () => void
+}) {
+  const [brandPalette, setBrandPalette] = useState<string[]>([])
+  const [workingColors, setWorkingColors] = useState<ThemeColors>(NEUTRAL_LIGHT_COLORS)
+  const [variantIndex, setVariantIndex] = useState<number>(0)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [justSaved, setJustSaved] = useState(false)
+  const saveTimerRef = useRef<number | null>(null)
+  const pendingRef = useRef<Partial<ThemeColors>>({})
+
+  const variants = parseStoredVariants(theme?.color_variants)
+  const hasMultipleVariants = variants.length > 1
+
+  // Hydrate local state from the row whenever the theme changes or the user
+  // switches variants. This also runs on first mount when the server data
+  // first lands.
+  useEffect(() => {
+    if (!theme) return
+    const storedIndex = typeof theme.selected_variant === 'number' ? theme.selected_variant : 0
+    setVariantIndex(prev => (prev === 0 && storedIndex !== 0 ? storedIndex : prev))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme?.id])
+
+  useEffect(() => {
+    if (!theme) return
+    const parsed = parseStoredVariants(theme.color_variants)
+    const target = parsed[variantIndex] ?? parsed[0]
+    setWorkingColors(readVariantColors(target))
+    pendingRef.current = {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme?.id, variantIndex])
+
+  // Fetch brand primary/secondary so the picker has real brand swatches,
+  // matching the presets pattern the email editor uses.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('brands')
+        .select('primary_color, secondary_color')
+        .eq('id', brandId)
+        .maybeSingle()
+      if (cancelled) return
+      const palette = [data?.primary_color, data?.secondary_color]
+        .filter((c): c is string => typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c))
+      setBrandPalette(palette)
+    })()
+    return () => { cancelled = true }
+  }, [brandId])
+
+  const presets = Array.from(new Set([
+    ...brandPalette,
+    ...Object.values(workingColors).filter(v => /^#[0-9a-fA-F]{6}$/.test(v)),
+    '#ffffff', '#f5f5f5', '#1a1a1a', '#0a0a0a',
+  ]))
+
+  const saveConfig = useCallback(async (payload: {
+    colors?: Partial<ThemeColors>
+    selected_variant?: number
+  }) => {
+    if (!theme) return
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/brands/${brandId}/store/${theme.id}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Save failed')
+      pendingRef.current = {}
+      setJustSaved(true)
+      onSaved()
+      setTimeout(() => setJustSaved(false), 1600)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }, [brandId, theme, onSaved])
+
+  function scheduleSave() {
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = window.setTimeout(() => {
+      const batch = pendingRef.current
+      if (Object.keys(batch).length === 0) return
+      saveConfig({ colors: batch })
+    }, 500)
+  }
+
+  function updateSlot(key: keyof ThemeColors, value: string) {
+    setWorkingColors(prev => ({ ...prev, [key]: value }))
+    pendingRef.current = { ...pendingRef.current, [key]: value }
+    scheduleSave()
+  }
+
+  async function saveAllNow() {
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+    await saveConfig({ colors: { ...workingColors } })
+  }
+
+  async function switchVariant(index: number) {
+    // Flush any pending per-field changes on the current variant first so we
+    // don't lose edits when the local state is replaced.
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+    if (Object.keys(pendingRef.current).length > 0) {
+      await saveConfig({ colors: pendingRef.current })
+    }
+    setVariantIndex(index)
+    saveConfig({ selected_variant: index })
+  }
+
+  if (!theme) return null
+
+  return (
+    <Card title="Theme colors" subtitle="Edit the 9 color slots for the selected variant. Changes auto-save and take effect on the next Deploy.">
+      {hasMultipleVariants && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2], marginBottom: spacing[4] }}>
+          {variants.map((v, i) => {
+            const active = i === variantIndex
+            return (
+              <button
+                key={`${v.name || 'variant'}-${i}`}
+                onClick={() => switchVariant(i)}
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: fontSize.xs,
+                  fontWeight: fontWeight.bold,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  padding: '8px 14px',
+                  borderRadius: radius.pill,
+                  border: active ? `1.5px solid ${colors.ink}` : '1px solid var(--border)',
+                  background: active ? colors.ink : colors.paper,
+                  color: active ? colors.accent : colors.ink,
+                  cursor: 'pointer',
+                }}
+              >
+                {v.name || `Variant ${i + 1}`}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], marginBottom: spacing[4] }}>
+        {THEME_COLOR_KEYS.map(key => (
+          <div
+            key={key}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[3],
+              padding: '10px 12px',
+              borderRadius: radius.md,
+              border: '1px solid var(--border)',
+              background: colors.paper,
+            }}
+          >
+            <ColorPickerPopover
+              value={workingColors[key]}
+              onChange={hex => updateSlot(key, hex)}
+              presets={presets}
+              triggerSize={36}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: fontSize.xs,
+                fontWeight: fontWeight.bold,
+                color: colors.ink,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}>
+                {THEME_COLOR_LABELS[key]}
+              </div>
+              <div style={{ fontFamily: font.mono, fontSize: fontSize.xs, color: colors.muted }}>
+                {workingColors[key].toUpperCase()}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: spacing[3], alignItems: 'center', flexWrap: 'wrap' }}>
+        <Button onClick={saveAllNow} disabled={saving}>
+          {saving ? 'Saving…' : 'Save colors'}
+        </Button>
+        {justSaved && (
+          <span style={{ color: '#00a86b', fontSize: fontSize.caption, fontWeight: fontWeight.bold }}>
+            Saved
+          </span>
+        )}
+        {error && (
+          <span style={{ color: '#b91c1c', fontSize: fontSize.caption }}>{error}</span>
+        )}
+      </div>
     </Card>
   )
 }
