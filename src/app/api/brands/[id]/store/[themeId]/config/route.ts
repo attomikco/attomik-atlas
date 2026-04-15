@@ -35,6 +35,12 @@ export async function PATCH(
 
   const partial = sanitizePartialColors(body.colors)
   const nextVariantIndex = typeof body.selected_variant === 'number' ? body.selected_variant : null
+  console.log('[store/config PATCH] incoming', {
+    brandId,
+    themeId,
+    colors: partial,
+    selected_variant: nextVariantIndex,
+  })
   if (Object.keys(partial).length === 0 && nextVariantIndex === null) {
     return NextResponse.json({ error: 'Nothing to update — provide a valid `colors` object or `selected_variant` index' }, { status: 400 })
   }
@@ -126,8 +132,24 @@ export async function PATCH(
     .single()
 
   if (updateErr || !updated) {
+    console.error('[store/config PATCH] update failed', { brandId, themeId, error: updateErr?.message })
     return NextResponse.json({ error: updateErr?.message || 'Update failed' }, { status: 500 })
   }
+
+  // Log the exact colors block we persisted so we can confirm the DB write
+  // from the server logs. Trimmed to the selected variant to keep the line
+  // readable — color_variants can be 4 entries of ~1KB each.
+  const persistedVariants: Array<Record<string, unknown>> = Array.isArray(updated.color_variants)
+    ? updated.color_variants
+    : []
+  const persistedIndex = typeof updated.selected_variant === 'number' ? updated.selected_variant : 0
+  const persistedVariant = persistedVariants[persistedIndex] || null
+  console.log('[store/config PATCH] persisted', {
+    brandId,
+    themeId,
+    selected_variant: updated.selected_variant,
+    persisted_colors: persistedVariant ? (persistedVariant as { colors?: unknown }).colors : null,
+  })
 
   return NextResponse.json({ ok: true, theme: updated })
 }

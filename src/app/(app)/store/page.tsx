@@ -103,7 +103,7 @@ export default function StorePage() {
       <CredentialsSection brandId={activeBrandId} creds={creds} onSaved={refresh} />
       <BaseThemeSection brandId={activeBrandId} creds={creds} onInstalled={refresh} />
       <GenerateSection brandId={activeBrandId} creds={creds} theme={theme} onGenerated={refresh} />
-      <ThemeColorsSection brandId={activeBrandId} theme={theme} onSaved={refresh} />
+      <ThemeColorsSection brandId={activeBrandId} theme={theme} />
       <DeploySection brandId={activeBrandId} creds={creds} theme={theme} onDeployed={refresh} />
     </div>
   )
@@ -779,7 +779,21 @@ function DeploySection({ brandId, creds, theme, onDeployed }: {
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 3.5 — Theme Colors (9-slot editor)
 // ─────────────────────────────────────────────────────────────────────────────
-
+//
+// State model (important — this is why we don't call onSaved()):
+// - `variantColorsList` is authoritative local state, one ThemeColors entry
+//   per color variant. Initialized from the parent `theme` prop on mount or
+//   when `theme.id` flips (a brand-new theme row landed).
+// - `workingColors` is derived from `variantColorsList[variantIndex]`.
+// - On PATCH success we overwrite that entry from the returned row so the
+//   UI reflects what's actually in the DB, merging any newer in-flight
+//   pending edits on top so the user's typing doesn't get clobbered.
+// - We NEVER call a parent refresh() from here. Refreshing the parent sets
+//   `loading=true` in useStoreData, which makes StorePage render its
+//   "Loading…" branch and unmount the whole section — that was the reload
+//   the user was seeing. Keeping writes local means the row updates and the
+//   UI updates in lockstep without touching the parent data fetch.
+//
 type StoredVariant = {
   name?: string
   colors?: Partial<ThemeColors> | null
@@ -813,44 +827,38 @@ function readVariantColors(variant: StoredVariant | undefined): ThemeColors {
   return base
 }
 
-function ThemeColorsSection({ brandId, theme, onSaved }: {
+function ThemeColorsSection({ brandId, theme }: {
   brandId: string
   theme: StoreTheme | null
-  onSaved: () => void
 }) {
   const [brandPalette, setBrandPalette] = useState<string[]>([])
-  const [workingColors, setWorkingColors] = useState<ThemeColors>(NEUTRAL_LIGHT_COLORS)
+  const [variantNames, setVariantNames] = useState<string[]>([])
+  const [variantColorsList, setVariantColorsList] = useState<ThemeColors[]>([])
   const [variantIndex, setVariantIndex] = useState<number>(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
   const saveTimerRef = useRef<number | null>(null)
+  const justSavedTimerRef = useRef<number | null>(null)
   const pendingRef = useRef<Partial<ThemeColors>>({})
+  const themeIdRef = useRef<string | null>(null)
 
-  const variants = parseStoredVariants(theme?.color_variants)
-  const hasMultipleVariants = variants.length > 1
-
-  // Hydrate local state from the row whenever the theme changes or the user
-  // switches variants. This also runs on first mount when the server data
-  // first lands.
+  // Hydrate ONCE when a theme row lands (or when the row id changes, e.g.
+  // after a fresh /generate replaces the row). Subsequent saves do NOT
+  // re-run this — the PATCH response syncs state directly.
   useEffect(() => {
     if (!theme) return
-    const storedIndex = typeof theme.selected_variant === 'number' ? theme.selected_variant : 0
-    setVariantIndex(prev => (prev === 0 && storedIndex !== 0 ? storedIndex : prev))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme?.id])
-
-  useEffect(() => {
-    if (!theme) return
+    if (themeIdRef.current === theme.id) return
+    themeIdRef.current = theme.id
     const parsed = parseStoredVariants(theme.color_variants)
-    const target = parsed[variantIndex] ?? parsed[0]
-    setWorkingColors(readVariantColors(target))
+    setVariantNames(parsed.map((v, i) => v.name || `Variant ${i + 1}`))
+    setVariantColorsList(parsed.map(v => readVariantColors(v)))
+    const storedIndex = typeof theme.selected_variant === 'number' ? theme.selected_variant : 0
+    setVariantIndex(storedIndex >= 0 && storedIndex < parsed.length ? storedIndex : 0)
     pendingRef.current = {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme?.id, variantIndex])
+  }, [theme])
 
-  // Fetch brand primary/secondary so the picker has real brand swatches,
-  // matching the presets pattern the email editor uses.
+  // Fetch brand primary/secondary for picker presets (one-shot per brand).
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -868,80 +876,134 @@ function ThemeColorsSection({ brandId, theme, onSaved }: {
     return () => { cancelled = true }
   }, [brandId])
 
+  // Cleanup pending timers if the section unmounts.
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+      if (justSavedTimerRef.current) window.clearTimeout(justSavedTimerRef.current)
+    }
+  }, [])
+
+  const workingColors = variantColorsList[variantIndex] ?? NEUTRAL_LIGHT_COLORS
+  const hasMultipleVariants = variantNames.length > 1
+
   const presets = Array.from(new Set([
     ...brandPalette,
     ...Object.values(workingColors).filter(v => /^#[0-9a-fA-F]{6}$/.test(v)),
     '#ffffff', '#f5f5f5', '#1a1a1a', '#0a0a0a',
   ]))
 
-  const saveConfig = useCallback(async (payload: {
-    colors?: Partial<ThemeColors>
-    selected_variant?: number
-  }) => {
-    if (!theme) return
+  // Central save — takes a batch of slot overrides, PATCHes, and on success
+  // replaces the entry for `variantIndex` in variantColorsList with the
+  // server-confirmed values. Any pending edits that arrived while the
+  // request was in flight get merged on top so the UI doesn't lose them.
+  const saveColorsBatch = useCallback(async (batch: Partial<ThemeColors>): Promise<boolean> => {
+    if (!theme) return false
     setSaving(true)
     setError(null)
     try {
       const res = await fetch(`/api/brands/${brandId}/store/${theme.id}/config`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ colors: batch }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Save failed')
-      pendingRef.current = {}
+
+      const returnedVariants = parseStoredVariants(data.theme?.color_variants)
+      const returnedAtIndex = returnedVariants[variantIndex]
+      if (returnedAtIndex) {
+        const confirmed = readVariantColors(returnedAtIndex)
+        setVariantColorsList(prev => prev.map((entry, i) => {
+          if (i !== variantIndex) return entry
+          // Merge any edits that came in during the round trip so the user
+          // doesn't see their own typing reverted.
+          return { ...confirmed, ...pendingRef.current }
+        }))
+      }
+
       setJustSaved(true)
-      onSaved()
-      setTimeout(() => setJustSaved(false), 1600)
+      if (justSavedTimerRef.current) window.clearTimeout(justSavedTimerRef.current)
+      justSavedTimerRef.current = window.setTimeout(() => setJustSaved(false), 1600)
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
+      return false
     } finally {
       setSaving(false)
     }
-  }, [brandId, theme, onSaved])
+  }, [brandId, theme, variantIndex])
+
+  const flushPending = useCallback(async () => {
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    if (Object.keys(pendingRef.current).length === 0) return
+    const batch = { ...pendingRef.current }
+    pendingRef.current = {}
+    await saveColorsBatch(batch)
+  }, [saveColorsBatch])
 
   function scheduleSave() {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
     saveTimerRef.current = window.setTimeout(() => {
-      const batch = pendingRef.current
-      if (Object.keys(batch).length === 0) return
-      saveConfig({ colors: batch })
+      saveTimerRef.current = null
+      void flushPending()
     }, 500)
   }
 
+  // Local-only update for the active variant's slot. This is the path the
+  // ColorPickerPopover's onChange takes — state updates immediately, no
+  // refetch, no router refresh, no remount. The debounced save fires 500ms
+  // after the last change.
   function updateSlot(key: keyof ThemeColors, value: string) {
-    setWorkingColors(prev => ({ ...prev, [key]: value }))
+    setVariantColorsList(prev => prev.map((entry, i) =>
+      i === variantIndex ? { ...entry, [key]: value } : entry
+    ))
     pendingRef.current = { ...pendingRef.current, [key]: value }
     scheduleSave()
   }
 
   async function saveAllNow() {
-    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
-    await saveConfig({ colors: { ...workingColors } })
-  }
-
-  async function switchVariant(index: number) {
-    // Flush any pending per-field changes on the current variant first so we
-    // don't lose edits when the local state is replaced.
-    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
-    if (Object.keys(pendingRef.current).length > 0) {
-      await saveConfig({ colors: pendingRef.current })
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
     }
-    setVariantIndex(index)
-    saveConfig({ selected_variant: index })
+    pendingRef.current = {}
+    await saveColorsBatch({ ...workingColors })
   }
 
-  if (!theme) return null
+  async function switchVariant(nextIndex: number) {
+    if (nextIndex === variantIndex) return
+    // Flush any pending per-slot edits to the current variant before we
+    // swap state out — otherwise they'd be lost.
+    await flushPending()
+    setVariantIndex(nextIndex)
+    // Persist the new selected_variant so reloads land on the same tab.
+    if (!theme) return
+    try {
+      await fetch(`/api/brands/${brandId}/store/${theme.id}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selected_variant: nextIndex }),
+      })
+    } catch {
+      // non-fatal — tab still switches locally
+    }
+  }
+
+  if (!theme || variantColorsList.length === 0) return null
 
   return (
     <Card title="Theme colors" subtitle="Edit the 9 color slots for the selected variant. Changes auto-save and take effect on the next Deploy.">
       {hasMultipleVariants && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2], marginBottom: spacing[4] }}>
-          {variants.map((v, i) => {
+          {variantNames.map((name, i) => {
             const active = i === variantIndex
             return (
               <button
-                key={`${v.name || 'variant'}-${i}`}
+                key={`${name}-${i}`}
                 onClick={() => switchVariant(i)}
                 style={{
                   fontFamily: font.mono,
@@ -957,7 +1019,7 @@ function ThemeColorsSection({ brandId, theme, onSaved }: {
                   cursor: 'pointer',
                 }}
               >
-                {v.name || `Variant ${i + 1}`}
+                {name}
               </button>
             )
           })}
