@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
 import { colors, font, fontWeight, fontSize, radius, spacing } from '@/lib/design-tokens'
@@ -218,95 +219,146 @@ function Badge({ status }: { status: StoreTheme['last_deploy_status'] }) {
 // Section 1 — Credentials
 // ─────────────────────────────────────────────────────────────────────────────
 
+const SHOP_INPUT_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/
+
 function CredentialsSection({ brandId, creds, onSaved }: {
   brandId: string
   creds: CredentialStatus | null
   onSaved: () => void
 }) {
-  const [storeUrl, setStoreUrl] = useState('')
-  const [token, setToken] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [savedShopName, setSavedShopName] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
 
+  const [shopInput, setShopInput] = useState('')
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [disconnectError, setDisconnectError] = useState<string | null>(null)
+  const [showConnected, setShowConnected] = useState(false)
+
+  // Prefill the shop input with the currently connected domain (disabled
+  // when connected, so editing it has no effect — it's a display aid).
   useEffect(() => {
-    if (creds?.shopify_store_url) setStoreUrl(creds.shopify_store_url)
+    if (creds?.shopify_store_url) setShopInput(creds.shopify_store_url)
   }, [creds?.shopify_store_url])
 
-  async function save() {
-    setSaving(true)
-    setError(null)
-    setSavedShopName(null)
+  // Success + error banners are driven by query params set by the callback.
+  const oauthError = searchParams?.get('oauth_error') || null
+  const connectedFlag = searchParams?.get('connected') === 'true'
+
+  useEffect(() => {
+    if (!connectedFlag) return
+    setShowConnected(true)
+    onSaved() // re-fetch status so the connected banner populates
+    // Strip the ?connected=true and ?oauth_error= params from the URL so a
+    // refresh doesn't re-trigger the toast.
+    const params = new URLSearchParams(Array.from(searchParams?.entries() || []))
+    params.delete('connected')
+    params.delete('oauth_error')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname)
+    const timer = setTimeout(() => setShowConnected(false), 4000)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectedFlag])
+
+  const shopValid = SHOP_INPUT_REGEX.test(shopInput.trim())
+
+  function connect() {
+    if (!shopValid) return
+    const shop = shopInput.trim().toLowerCase()
+    // Full-page navigation — OAuth flow cannot run inside a fetch.
+    window.location.href = `/api/shopify/install?shop=${encodeURIComponent(shop)}&brandId=${encodeURIComponent(brandId)}`
+  }
+
+  async function disconnect() {
+    if (!confirm('Disconnect this store? Your generated theme row is kept — only the credentials are cleared.')) return
+    setDisconnecting(true)
+    setDisconnectError(null)
     try {
-      const res = await fetch(`/api/brands/${brandId}/store/credentials`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shopify_store_url: storeUrl, shopify_access_token: token }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to save')
-      setSavedShopName(data.shop_name || null)
-      setToken('')
+      const res = await fetch(`/api/brands/${brandId}/store/credentials`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to disconnect')
       onSaved()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save')
+      setDisconnectError(e instanceof Error ? e.message : 'Failed to disconnect')
     } finally {
-      setSaving(false)
+      setDisconnecting(false)
     }
   }
 
   return (
-    <Card title="Shopify credentials" subtitle="Connect your store using a Custom App access token. Create one in your Shopify Admin → Settings → Apps and sales channels → Develop apps.">
+    <Card title="Shopify connection" subtitle="Connect your Shopify store via OAuth. Attomik redirects you to Shopify to approve the install, then stores an offline access token for theme operations.">
+      {showConnected && (
+        <div style={{ marginBottom: spacing[4], padding: '10px 14px', borderRadius: radius.md, background: 'rgba(0,255,151,0.12)', border: '1px solid rgba(0,255,151,0.3)', color: '#00a86b', fontSize: fontSize.body, fontWeight: fontWeight.bold }}>
+          Shopify connected successfully
+        </div>
+      )}
+      {oauthError && !showConnected && (
+        <div style={{ marginBottom: spacing[4], padding: '10px 14px', borderRadius: radius.md, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', color: '#b91c1c', fontSize: fontSize.caption }}>
+          OAuth failed: {oauthError.replace(/_/g, ' ')}. Try the connect flow again.
+        </div>
+      )}
       {creds?.connected && (
-        <div style={{ marginBottom: spacing[4], padding: '10px 14px', borderRadius: radius.md, background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.25)', color: '#00a86b', fontSize: fontSize.body, fontWeight: fontWeight.bold }}>
-          Connected to {creds.shop_name || creds.shopify_store_url}
+        <div style={{ marginBottom: spacing[4], padding: '10px 14px', borderRadius: radius.md, background: 'rgba(0,255,151,0.1)', border: '1px solid rgba(0,255,151,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontFamily: font.mono, fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+              padding: '4px 10px', borderRadius: radius.pill,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              background: 'rgba(0,255,151,0.2)', color: '#00a86b',
+            }}>
+              Connected
+            </span>
+            <span style={{ color: colors.ink, fontSize: fontSize.body, fontWeight: fontWeight.bold, fontFamily: font.mono }}>
+              {creds.shopify_store_url}
+            </span>
+            {creds.shop_name && creds.shop_name !== creds.shopify_store_url && (
+              <span style={{ color: colors.muted, fontSize: fontSize.caption }}>· {creds.shop_name}</span>
+            )}
+          </div>
+          <Button variant="secondary" onClick={disconnect} disabled={disconnecting}>
+            {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+          </Button>
         </div>
       )}
       {creds && !creds.connected && creds.error && (
         <div style={{ marginBottom: spacing[4], padding: '10px 14px', borderRadius: radius.md, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', color: '#b91c1c', fontSize: fontSize.caption }}>
-          {creds.error}
+          {creds.error} — reconnect to refresh the token.
         </div>
       )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], marginBottom: spacing[3] }}>
-        <div>
-          <label style={{ display: 'block', fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-            Store URL
-          </label>
-          <Input
-            type="text"
-            placeholder="my-brand.myshopify.com"
-            value={storeUrl}
-            onChange={e => setStoreUrl(e.target.value)}
-          />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-            Access token
-          </label>
-          <Input
-            type="password"
-            placeholder={creds?.connected ? '•••••••••• (saved)' : 'shpat_...'}
-            value={token}
-            onChange={e => setToken(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {error && (
-        <div style={{ marginBottom: spacing[3], color: '#b91c1c', fontSize: fontSize.caption }}>{error}</div>
-      )}
-      {savedShopName && (
-        <div style={{ marginBottom: spacing[3], color: '#00a86b', fontSize: fontSize.caption }}>Saved. Connected to {savedShopName}.</div>
+      {disconnectError && (
+        <div style={{ marginBottom: spacing[3], color: '#b91c1c', fontSize: fontSize.caption }}>{disconnectError}</div>
       )}
 
-      <Button onClick={save} disabled={saving || !storeUrl || !token}>
-        {saving ? 'Validating…' : creds?.connected ? 'Update credentials' : 'Save credentials'}
-      </Button>
       {!creds?.connected && (
-        <div style={{ marginTop: spacing[3], fontSize: fontSize.xs, color: colors.muted }}>
-          Create a Custom App in your Shopify Admin to get an access token. Grant it <code style={{ fontFamily: font.mono }}>read_themes</code> and <code style={{ fontFamily: font.mono }}>write_themes</code> scopes.
-        </div>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: spacing[3], marginBottom: spacing[3], alignItems: 'end' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                Shopify store domain
+              </label>
+              <Input
+                type="text"
+                placeholder="my-brand.myshopify.com"
+                value={shopInput}
+                onChange={e => setShopInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && shopValid) connect() }}
+              />
+            </div>
+            <Button onClick={connect} disabled={!shopValid}>
+              Connect Shopify
+            </Button>
+          </div>
+          {shopInput && !shopValid && (
+            <div style={{ color: '#b91c1c', fontSize: fontSize.xs, marginBottom: spacing[2] }}>
+              Enter a domain like <code style={{ fontFamily: font.mono }}>my-brand.myshopify.com</code>
+            </div>
+          )}
+          <div style={{ fontSize: fontSize.xs, color: colors.muted }}>
+            You&apos;ll be redirected to Shopify to approve the install. The token comes back automatically — no copy-paste.
+          </div>
+        </>
       )}
     </Card>
   )

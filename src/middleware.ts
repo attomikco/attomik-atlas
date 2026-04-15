@@ -12,6 +12,11 @@ const publicPaths = [
 function isPublic(pathname: string): boolean {
   if (publicPaths.includes(pathname)) return true
   if (pathname.startsWith('/preview/')) return true
+  // /api/* is public at middleware level; individual routes enforce their
+  // own auth. The Shopify OAuth install/callback pair is listed explicitly
+  // so future tightening of /api protection can't break the OAuth bounce.
+  if (pathname.startsWith('/api/shopify/install')) return true
+  if (pathname.startsWith('/api/shopify/callback')) return true
   if (pathname.startsWith('/api/')) return true
   if (pathname.startsWith('/render')) return true
   return false

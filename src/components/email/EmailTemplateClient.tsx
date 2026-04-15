@@ -511,14 +511,27 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         console.error('[saveConfig] template patch failed:', e)
       }
     } else {
-      const existingNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
+      // CRITICAL: brand.notes is TEXT, not jsonb. Re-read it from the DB
+      // before merging instead of using the React-prop `brand.notes` that
+      // was captured when this component first mounted — otherwise a save
+      // here would stomp any keys (shopify token, meta credentials, etc.)
+      // added by another flow after page load.
+      const { data: freshRow } = await supabase
+        .from('brands')
+        .select('notes')
+        .eq('id', brand.id)
+        .single()
+      const currentNotes = (() => {
+        try { return freshRow?.notes ? JSON.parse(freshRow.notes) : {} } catch { return {} }
+      })()
+      const updatedNotes = { ...currentNotes, email_config: config }
       await supabase.from('brands').update({
-        notes: JSON.stringify({ ...existingNotes, email_config: config }),
+        notes: JSON.stringify(updatedNotes),
       }).eq('id', brand.id)
     }
     setSaving(false)
     setIsDirty(false)
-  }, [activeTemplateId, config, brand.id, brand.notes, supabase])
+  }, [activeTemplateId, config, brand.id, supabase])
 
   // Point the ref used by scheduleAutoSave at the latest saveConfig after
   // every render so timeouts scheduled before a state change still fire

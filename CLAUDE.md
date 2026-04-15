@@ -17,6 +17,43 @@ Attomik Marketing OS is an AI-powered marketing tool for CPG brands. Brand teams
 
 ---
 
+## CRITICAL DATA RULES
+
+**`brand.notes` is `TEXT`, not `JSONB`.** Always `JSON.parse()` → merge in JS → `JSON.stringify()` → save. Never use Supabase jsonb operators (`||`) on this column.
+
+The safe write pattern — use it every time, no exceptions:
+
+```ts
+// 1. Read — fresh from the DB, never from React state or a captured variable
+const { data: brand } = await supabase
+  .from('brands')
+  .select('notes')
+  .eq('id', brandId)
+  .single()
+
+// 2. Parse
+const currentNotes = JSON.parse(brand?.notes || '{}')
+
+// 3. Merge in JS
+const updatedNotes = { ...currentNotes, ...newKeys }
+
+// 4. Stringify + save
+await supabase
+  .from('brands')
+  .update({ notes: JSON.stringify(updatedNotes) })
+  .eq('id', brandId)
+```
+
+Anti-patterns that will corrupt or stomp data:
+- `update({ notes: existingNotes || newJson })` — the JS `||` short-circuits; you'll persist whichever side won, not a merge.
+- `update({ notes: brand.notes + ',' + moreJson })` — raw string concat is not JSON.
+- Reading `brand.notes` from React state / a server prop / a variable captured earlier in a long-running request and merging against that — any parallel flow (OAuth callback, email save, Klaviyo push, Meta save, store install) that mutated `notes` between the stale read and the write will be silently stomped. Always re-read from the DB immediately before the merge.
+- Any `.rpc('jsonb_merge_...')` / raw SQL `||` variant — the column is TEXT, so these won't merge, they'll cast.
+
+The same rule applies to every other `TEXT` column that holds JSON (e.g. the `font_heading`/`font_body` strings that downstream code has to `JSON.parse` before use). If in doubt, treat it as TEXT.
+
+---
+
 ## CRITICAL RULES — NEVER BREAK THESE
 
 1. **Git: commit locally is OK, never push** — commit changes when asked, but never push to remote unless explicitly told to
@@ -622,10 +659,39 @@ Credentials and install state live in `brand.notes` JSON (same pattern as Klaviy
 | Key | Value |
 |---|---|
 | `shopify_store_url` | normalized host (no `https://`, no trailing slash), e.g. `jolene-coffee.myshopify.com` |
-| `shopify_access_token` | Custom App admin access token (`shpat_...`). Server-only — the GET credentials route strips this before returning. |
+| `shopify_access_token` | Offline admin API access token obtained via OAuth. Server-only — the GET credentials route strips this before returning. |
 | `shopify_api_version` | always `'2024-10'` — imported from `SHOPIFY_API_VERSION` in `src/lib/shopify.ts` |
-| `shopify_token_saved_at` | ISO timestamp for the POST credentials call |
+| `shopify_token_saved_at` | ISO timestamp written by the OAuth callback (or legacy POST credentials call) |
 | `shopify_base_theme_installed_at` | ISO timestamp set by `install-base-theme` after a clean run |
+
+### Shopify OAuth (how the token is obtained)
+
+Tokens come from a non-embedded OAuth authorization-code flow with offline access — **never paste-a-token**. Two public API routes bounce the user between Attomik and Shopify:
+
+| Route | Purpose |
+|---|---|
+| `GET /api/shopify/install?shop=<myshopify.com>&brandId=<uuid>` | Validates the shop host, generates a nonce, writes a signed `shopify_oauth_state` httpOnly cookie (`{ nonce, brandId, shop }`, 10-min TTL), and 302s to `https://<shop>/admin/oauth/authorize` with scopes `read_themes,write_themes,read_content,write_content`. |
+| `GET /api/shopify/callback` | Verifies the nonce from the cookie, re-verifies the shop host, runs Shopify's HMAC-SHA256 check (remove `hmac`, sort remaining params alphabetically, join as `k=v&k=v`, HMAC with `SHOPIFY_CLIENT_SECRET`, constant-time compare the hex digest), exchanges `code` for an offline `access_token` at `https://<shop>/admin/oauth/access_token`, merges the Shopify keys into `brand.notes` via the service-role admin client, clears the state cookie, and 302s to `/store?brand=<brandId>&connected=true`. Any failure redirects to `/store?brand=<brandId>&oauth_error=<reason>` so the UI can surface the error. |
+
+**Both routes are explicitly public** in `src/middleware.ts` (`isPublic` treats `/api/shopify/install` and `/api/shopify/callback` as public, in addition to the blanket `/api/` allowance). They must bypass auth because the callback arrives from Shopify's servers and the install route is hit before any session guarantees.
+
+**Required env vars** (see `.env.local`):
+
+| Key | Value |
+|---|---|
+| `SHOPIFY_CLIENT_ID` | Client ID from the Shopify Dev Dashboard app |
+| `SHOPIFY_CLIENT_SECRET` | Client secret from the Shopify Dev Dashboard — server-only, never expose with `NEXT_PUBLIC_` |
+| `NEXT_PUBLIC_APP_URL` | Full public origin of the Marketing OS app, e.g. `https://app.attomik.co`. Used to build the `redirect_uri` the install route passes to Shopify. Must match the registered redirect URI in the Dev Dashboard exactly (including protocol, host, and no trailing slash). |
+
+**Shopify Dev Dashboard setup:**
+- **Redirect URL** (must be registered): `{NEXT_PUBLIC_APP_URL}/api/shopify/callback`
+- **Scopes:** `read_themes`, `write_themes`, `read_content`, `write_content`
+- **App type:** non-embedded (no App Bridge, no embedded admin surfaces)
+- **Access token type:** offline (no token refresh — the token lives until the merchant uninstalls the app)
+
+**Disconnect:** `DELETE /api/brands/[id]/store/credentials` (any brand member) strips all `shopify_*` keys from `brand.notes` without touching other integrations. The Store page exposes this as a "Disconnect" button on the connected banner.
+
+**Why no SDK:** Shopify's OAuth handshake is simple enough that plain `fetch()` + `crypto.createHmac` is shorter than pulling in `@shopify/shopify-api` and fighting its runtime assumptions. Keep it that way.
 
 ### Generate pipeline (5 steps)
 

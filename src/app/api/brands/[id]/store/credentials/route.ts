@@ -161,3 +161,37 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     shopify_base_theme_installed_at: baseInstalledAt,
   })
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const { supabase, error, status } = await authorizeBrandMember(id)
+  if (error) return NextResponse.json({ error }, { status })
+
+  const { data: brand, error: brandErr } = await supabase
+    .from('brands')
+    .select('id, notes')
+    .eq('id', id)
+    .maybeSingle()
+  if (brandErr || !brand) {
+    return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
+  }
+
+  const notes = parseNotes(brand.notes)
+  // Strip every Shopify-related key so the brand is cleanly disconnected.
+  // Leaves Klaviyo, Meta, email_config, font blobs, etc untouched.
+  delete notes.shopify_store_url
+  delete notes.shopify_access_token
+  delete notes.shopify_api_version
+  delete notes.shopify_token_saved_at
+  delete notes.shopify_base_theme_installed_at
+
+  const { error: updateErr } = await supabase
+    .from('brands')
+    .update({ notes: JSON.stringify(notes) })
+    .eq('id', id)
+  if (updateErr) {
+    return NextResponse.json({ error: 'Failed to clear credentials', details: updateErr.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
+}

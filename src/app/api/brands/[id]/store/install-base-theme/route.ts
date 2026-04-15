@@ -143,8 +143,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (failed === 0) {
         // Mark base theme as installed in brand.notes so the /store page
         // can surface the status without re-listing the remote theme.
+        //
+        // CRITICAL: re-read notes right before writing. brand.notes is TEXT,
+        // not jsonb — there's no atomic server-side merge. The install can
+        // take minutes streaming files to Shopify, and unrelated routes
+        // (OAuth callback, email save, etc.) may have touched brand.notes
+        // in the meantime. Using the `notes` snapshot captured at request
+        // start would silently stomp those changes.
+        const { data: freshRow } = await supabase
+          .from('brands')
+          .select('notes')
+          .eq('id', brandId)
+          .maybeSingle()
+        const currentNotes = parseNotes(freshRow?.notes)
         const updated = {
-          ...notes,
+          ...currentNotes,
           shopify_base_theme_installed_at: new Date().toISOString(),
         }
         await supabase.from('brands').update({ notes: JSON.stringify(updated) }).eq('id', brandId)

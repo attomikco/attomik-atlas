@@ -286,6 +286,30 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
     const savedProducts = products.filter(p => p.name.trim()).map(p => ({
       name: p.name.trim(), description: p.description.trim() || null, price_range: p.price.trim() || null, image: p.image || null,
     }))
+    // CRITICAL: brand.notes is TEXT, not jsonb. Re-fetch the current notes
+    // value from the DB right before writing — the React prop `brand.notes`
+    // was captured on mount and may be stale relative to any parallel flow
+    // (OAuth callback, email save, Klaviyo push, etc.) that touched notes
+    // since the page loaded. Merging against a stale baseline would silently
+    // stomp whatever those flows added.
+    const { data: freshRow } = await supabase
+      .from('brands')
+      .select('notes')
+      .eq('id', brand.id)
+      .single()
+    const currentNotes = tryParse(freshRow?.notes) || {}
+    const mergedNotes = {
+      ...currentNotes,
+      logo_url_light: logoLight || null,
+      never_words: neverWords.length ? neverWords : null,
+      extra_colors: colors.slice(4).map(c => ({ label: c.label, value: c.value })),
+      klaviyo_api_key: klaviyoKey || null,
+      default_cta: defaultCta || null,
+      meta_access_token: metaToken || null,
+      meta_ad_account_id: metaAdAccountId || null,
+      meta_page_id: metaPageId || null,
+      meta_token_saved_at: metaToken ? (metaTokenSavedAt || new Date().toISOString()) : null,
+    }
     const { error } = await supabase.from('brands').update({
       name, website: website || null, mission: mission || null,
       target_audience: targetAudience || null, brand_voice: brandVoice || null,
@@ -298,18 +322,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       font_heading: fonts[0]?.family ? { family: fonts[0].family, weight: fonts[0].weight || '700', transform: fonts[0].transform || 'none', letterSpacing: 'normal' } : null,
       font_body: fonts[1]?.family ? { family: fonts[1].family, weight: fonts[1].weight || '400', transform: fonts[1].transform || 'none', letterSpacing: 'normal' } : null,
       logo_url: logoDark || null,
-      notes: JSON.stringify({
-        ...tryParse(brand.notes),
-        logo_url_light: logoLight || null,
-        never_words: neverWords.length ? neverWords : null,
-        extra_colors: colors.slice(4).map(c => ({ label: c.label, value: c.value })),
-        klaviyo_api_key: klaviyoKey || null,
-        default_cta: defaultCta || null,
-        meta_access_token: metaToken || null,
-        meta_ad_account_id: metaAdAccountId || null,
-        meta_page_id: metaPageId || null,
-        meta_token_saved_at: metaToken ? (metaTokenSavedAt || new Date().toISOString()) : null,
-      }),
+      notes: JSON.stringify(mergedNotes),
       products: savedProducts.length ? savedProducts : null,
     }).eq('id', brand.id)
     setSaving(false)
@@ -374,16 +387,36 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         const whiteBlob = await makeWhiteLogo(file)
         whiteUrl = await uploadToStorage(`${brand.id}/logo_light.png`, whiteBlob, 'image/png')
       } catch {}
-      const prevNotes = tryParse(brand.notes) || {}
-      const nextNotes = whiteUrl ? { ...prevNotes, logo_url_light: whiteUrl } : prevNotes
-      await supabase.from('brands').update({
-        logo_url: url,
-        ...(whiteUrl ? { notes: JSON.stringify(nextNotes) } : {}),
-      }).eq('id', brand.id)
-      if (whiteUrl) setLogoLight(whiteUrl)
+      if (whiteUrl) {
+        // Re-read notes from DB before merging. brand.notes is TEXT — any
+        // merge off a stale React prop would stomp concurrent writes.
+        const { data: freshRow } = await supabase
+          .from('brands')
+          .select('notes')
+          .eq('id', brand.id)
+          .single()
+        const currentNotes = tryParse(freshRow?.notes) || {}
+        const nextNotes = { ...currentNotes, logo_url_light: whiteUrl }
+        await supabase.from('brands').update({
+          logo_url: url,
+          notes: JSON.stringify(nextNotes),
+        }).eq('id', brand.id)
+        setLogoLight(whiteUrl)
+      } else {
+        await supabase.from('brands').update({ logo_url: url }).eq('id', brand.id)
+      }
     } else {
       setLogoLight(url)
-      await supabase.from('brands').update({ notes: JSON.stringify({ ...tryParse(brand.notes), logo_url_light: url }) }).eq('id', brand.id)
+      // Re-read notes from DB before merging. brand.notes is TEXT — any
+      // merge off a stale React prop would stomp concurrent writes.
+      const { data: freshRow } = await supabase
+        .from('brands')
+        .select('notes')
+        .eq('id', brand.id)
+        .single()
+      const currentNotes = tryParse(freshRow?.notes) || {}
+      const nextNotes = { ...currentNotes, logo_url_light: url }
+      await supabase.from('brands').update({ notes: JSON.stringify(nextNotes) }).eq('id', brand.id)
     }
   }
 
@@ -524,7 +557,16 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       //    Never touches user-only keys inside notes.
       if (opts.colors) {
         const scrapedColors = (detect.allColors || detect.colors || []) as string[]
-        const existingNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
+        // CRITICAL: brand.notes is TEXT, not jsonb. Re-read from DB before
+        // merging — rescrape is a long operation (scrape + image upload),
+        // during which another flow could have mutated notes. Using the
+        // React-prop `brand.notes` here would stomp those changes.
+        const { data: freshRow } = await supabase
+          .from('brands')
+          .select('notes')
+          .eq('id', brand.id)
+          .single()
+        const existingNotes = (() => { try { return freshRow?.notes ? JSON.parse(freshRow.notes) : {} } catch { return {} } })()
         const mergedNotes = { ...existingNotes, scraped_colors: scrapedColors.length > 0 ? scrapedColors : (existingNotes.scraped_colors ?? null) }
         const colorUpdate: Record<string, string | null> = {}
         if (detect.colors?.[0]) colorUpdate.primary_color = detect.colors[0]
