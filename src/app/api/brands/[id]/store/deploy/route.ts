@@ -14,6 +14,40 @@ function parseNotes(raw: unknown): Record<string, unknown> {
   return {}
 }
 
+// Shopify's Asset API rejects theme JSON where an image-type setting holds
+// an external URL — it expects a Shopify Files resource ID instead. The
+// generator stores raw URLs from `brand_images` directly in image slots so
+// the editor can render them, but those can't be pushed as-is. Until we
+// wire up a Shopify Files upload step, strip every http(s) URL string from
+// the JSON before handing it to `putAsset`. This is a pure deploy-time
+// transformation — the stored `store_themes` row keeps the raw URLs so
+// future deploys pick them up once we have real Shopify file IDs.
+//
+// The walk is depth-first, null-safe, and treats arrays and objects
+// structurally. We only null the value when the string STARTS with the
+// scheme, so narrative copy like "visit https://example.com for details"
+// survives — those paragraphs don't start with http(s). Shopify-scheme
+// links (shopify://pages/about) and relative paths (/collections/all) are
+// also preserved.
+function stripImageUrls(json: unknown): unknown {
+  if (json === null || json === undefined) return json
+  if (typeof json === 'string') {
+    if (json.startsWith('https://') || json.startsWith('http://')) return null
+    return json
+  }
+  if (Array.isArray(json)) {
+    return json.map(stripImageUrls)
+  }
+  if (typeof json === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(json as Record<string, unknown>)) {
+      out[key] = stripImageUrls(value)
+    }
+    return out
+  }
+  return json
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: brandId } = await params
   const { supabase, error, status } = await authorizeOwnerOrAdmin(brandId)
@@ -79,21 +113,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const variants = Array.isArray(storeTheme.color_variants) ? storeTheme.color_variants : []
   const settings = variants[variantIndex]?.theme_settings ?? variants[0]?.theme_settings ?? null
 
+  // All 4 blobs run through stripImageUrls before serialization — see the
+  // helper for the rationale. The original storeTheme row is untouched.
   const assets: Array<{ key: string; value: string }> = []
   if (storeTheme.index_json) {
-    assets.push({ key: 'templates/index.json', value: JSON.stringify(storeTheme.index_json, null, 2) })
+    assets.push({
+      key: 'templates/index.json',
+      value: JSON.stringify(stripImageUrls(storeTheme.index_json), null, 2),
+    })
   }
   if (storeTheme.product_json) {
-    assets.push({ key: 'templates/product.json', value: JSON.stringify(storeTheme.product_json, null, 2) })
+    assets.push({
+      key: 'templates/product.json',
+      value: JSON.stringify(stripImageUrls(storeTheme.product_json), null, 2),
+    })
   }
   if (storeTheme.footer_group_json) {
-    assets.push({ key: 'sections/footer-group.json', value: JSON.stringify(storeTheme.footer_group_json, null, 2) })
+    assets.push({
+      key: 'sections/footer-group.json',
+      value: JSON.stringify(stripImageUrls(storeTheme.footer_group_json), null, 2),
+    })
   }
   if (settings) {
     // Shopify's config/settings_data.json wraps theme settings under
     // `current`. Preserve that shape so the merchant's saved settings
     // aren't wiped out — we overwrite current but leave presets alone.
-    const settingsData = { current: settings, presets: {} as Record<string, unknown> }
+    // The theme_settings block may also carry image URLs (logo fields,
+    // favicon, etc.) — strip those too before pushing.
+    const cleanSettings = stripImageUrls(settings)
+    const settingsData = { current: cleanSettings, presets: {} as Record<string, unknown> }
     assets.push({ key: 'config/settings_data.json', value: JSON.stringify(settingsData, null, 2) })
   }
 
