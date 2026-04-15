@@ -602,7 +602,7 @@ function GenerateSection({ brandId, creds, theme, onGenerated }: {
             </Button>
             {theme && (
               <Link
-                href={`/store/${theme.id}`}
+                href={`/store/${theme.id}?brand=${brandId}`}
                 style={{
                   fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold,
                   color: colors.muted, textDecoration: 'none',

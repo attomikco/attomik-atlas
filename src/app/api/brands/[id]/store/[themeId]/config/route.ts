@@ -7,17 +7,26 @@ import {
   sanitizePartialColors,
   type ThemeColors,
 } from '@/lib/store-colors'
+import { writeAtPath } from '@/lib/store-fields'
 
 export const runtime = 'nodejs'
 
+type CopySource = 'index_json' | 'product_json' | 'footer_group_json'
+const COPY_SOURCES: readonly CopySource[] = ['index_json', 'product_json', 'footer_group_json'] as const
+
 // PATCH /api/brands/[id]/store/[themeId]/config
-// Body: { colors?: Partial<ThemeColors>, selected_variant?: number }
 //
-// Merges the incoming colors into the selected variant's `colors` object,
-// regenerates that variant's `theme_settings` via colorsToThemeSettings, and
-// returns the updated store_themes row. Legacy rows where the variant has
-// no `colors` object get seeded from the neutral fallback so the first edit
-// lands on a valid base.
+// Accepts three shapes:
+//   1. { colors: Partial<ThemeColors>, selected_variant?: number }
+//      — Merges into color_variants[selected_variant].colors, regenerates
+//        that variant's theme_settings via colorsToThemeSettings.
+//   2. { selected_variant: number }
+//      — Just flips the selected variant pointer.
+//   3. { section: 'index_json' | 'product_json' | 'footer_group_json',
+//        path: 'sections.abc.settings.heading',
+//        value: '<new copy>' }
+//      — Writes a single copy field via writeAtPath (safe: never creates
+//        keys, never clobbers non-strings). Used by the copy editor page.
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; themeId: string }> }
@@ -26,23 +35,89 @@ export async function PATCH(
   const { supabase, error, status } = await authorizeBrandMember(brandId)
   if (error) return NextResponse.json({ error }, { status })
 
-  let body: { colors?: unknown; selected_variant?: unknown }
+  let body: {
+    colors?: unknown
+    selected_variant?: unknown
+    section?: unknown
+    path?: unknown
+    value?: unknown
+  }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
+  // ── Branch 3: copy write ──────────────────────────────────────────────
+  // Detected when `section` and `path` are both present. We handle this
+  // BEFORE falling through to the color branch so a mixed payload can't
+  // confuse the dispatcher.
+  if (typeof body.section === 'string' && typeof body.path === 'string') {
+    const section = body.section as CopySource
+    if (!COPY_SOURCES.includes(section)) {
+      return NextResponse.json({ error: `Invalid section: ${body.section}` }, { status: 400 })
+    }
+    const path = body.path
+    const value = typeof body.value === 'string' ? body.value : ''
+    // Guard against obviously malformed paths before we hit the DB.
+    if (!path.startsWith('sections.')) {
+      return NextResponse.json({ error: 'Path must start with "sections."' }, { status: 400 })
+    }
+    console.log('[store/config PATCH] copy', { brandId, themeId, section, path, valueLength: value.length })
+
+    const { data: storeTheme, error: themeErr } = await supabase
+      .from('store_themes')
+      .select('*')
+      .eq('id', themeId)
+      .eq('brand_id', brandId)
+      .maybeSingle()
+    if (themeErr || !storeTheme) {
+      return NextResponse.json({ error: 'Theme not found' }, { status: 404 })
+    }
+
+    const sourceJson = storeTheme[section]
+    if (!sourceJson || typeof sourceJson !== 'object') {
+      return NextResponse.json({ error: `Section ${section} has no content on this theme` }, { status: 400 })
+    }
+
+    // Deep-clone via structuredClone so the write on the in-memory copy
+    // doesn't mutate the object we just read from Supabase (which is
+    // irrelevant here since we write it back, but the pattern is safer if
+    // the handler ever grows side effects).
+    const cloned = structuredClone(sourceJson)
+    const ok = writeAtPath(cloned, path, value)
+    if (!ok) {
+      return NextResponse.json({ error: `Path not writable — ${path} does not exist or is not a string field on ${section}` }, { status: 400 })
+    }
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('store_themes')
+      .update({ [section]: cloned, updated_at: new Date().toISOString() })
+      .eq('id', themeId)
+      .eq('brand_id', brandId)
+      .select()
+      .single()
+
+    if (updateErr || !updated) {
+      console.error('[store/config PATCH] copy update failed', { brandId, themeId, error: updateErr?.message })
+      return NextResponse.json({ error: updateErr?.message || 'Update failed' }, { status: 500 })
+    }
+
+    console.log('[store/config PATCH] copy persisted', { brandId, themeId, section, path })
+    return NextResponse.json({ ok: true, theme: updated })
+  }
+
+  // ── Branch 1 + 2: color / variant-pointer write ──────────────────────
   const partial = sanitizePartialColors(body.colors)
   const nextVariantIndex = typeof body.selected_variant === 'number' ? body.selected_variant : null
-  console.log('[store/config PATCH] incoming', {
+  console.log('[store/config PATCH] colors', {
     brandId,
     themeId,
     colors: partial,
     selected_variant: nextVariantIndex,
   })
   if (Object.keys(partial).length === 0 && nextVariantIndex === null) {
-    return NextResponse.json({ error: 'Nothing to update — provide a valid `colors` object or `selected_variant` index' }, { status: 400 })
+    return NextResponse.json({ error: 'Nothing to update — provide a valid `colors` object, `selected_variant` index, or `{ section, path, value }`' }, { status: 400 })
   }
 
   // Load the theme row — themeId is the store_themes row UUID, not the
