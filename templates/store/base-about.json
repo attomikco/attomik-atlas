@@ -6,7 +6,7 @@
         "heading_1": {
           "type": "heading",
           "settings": {
-            "content": "",
+            "content": "{{about_hero_heading}}",
             "font_size_mobile": 34,
             "font_size_desktop": 50
           }
@@ -14,7 +14,7 @@
         "content_1": {
           "type": "content",
           "settings": {
-            "content": ""
+            "content": "{{about_hero_subhead}}"
           }
         }
       },
@@ -23,7 +23,7 @@
         "content_1"
       ],
       "settings": {
-        "url": "",
+        "url": "{{about_hero_image_background}}",
         "show_image": true,
         "show_video_background_mobile": false,
         "layout_y_spacing": "banner--h-lg",
@@ -51,7 +51,7 @@
             "heading": "",
             "content": "",
             "button_label": "",
-            "url": "",
+            "url": "{{about_founder_image}}",
             "show_image_as_background": true,
             "enable_autoplay": true,
             "enable_mute_toggle": true,
@@ -73,8 +73,8 @@
         "founder_content": {
           "type": "content",
           "settings": {
-            "heading": "",
-            "content": "",
+            "heading": "{{about_founder_name}}",
+            "content": "{{about_founder_story}}",
             "button_label": "",
             "url": "",
             "show_image_as_background": false,
@@ -126,8 +126,8 @@
     "about_mission": {
       "type": "text",
       "settings": {
-        "heading": "",
-        "content": "",
+        "heading": "{{about_mission_heading}}",
+        "content": "{{about_mission_body}}",
         "button_label": "",
         "button_url": "",
         "spacing_top": 100,
@@ -153,8 +153,8 @@
           "type": "icon",
           "settings": {
             "icon_height": "h-14",
-            "heading": "",
-            "content": "",
+            "heading": "{{about_value_1_heading}}",
+            "content": "{{about_value_1_body}}",
             "enable_padding": true,
             "color_scheme": "color__bg-body color__text",
             "color_border": "",
@@ -168,8 +168,8 @@
           "type": "icon",
           "settings": {
             "icon_height": "h-14",
-            "heading": "",
-            "content": "",
+            "heading": "{{about_value_2_heading}}",
+            "content": "{{about_value_2_body}}",
             "enable_padding": true,
             "color_scheme": "color__bg-body color__text",
             "color_border": "",
@@ -183,8 +183,8 @@
           "type": "icon",
           "settings": {
             "icon_height": "h-14",
-            "heading": "",
-            "content": "",
+            "heading": "{{about_value_3_heading}}",
+            "content": "{{about_value_3_body}}",
             "enable_padding": true,
             "color_scheme": "color__bg-body color__text",
             "color_border": "",
@@ -229,7 +229,7 @@
         "cta_heading": {
           "type": "heading",
           "settings": {
-            "content": "",
+            "content": "{{about_cta_heading}}",
             "font_size_mobile": 34,
             "font_size_desktop": 50
           }
@@ -237,14 +237,14 @@
         "cta_content": {
           "type": "content",
           "settings": {
-            "content": ""
+            "content": "{{about_cta_body}}"
           }
         },
         "cta_buttons": {
           "type": "buttons",
           "settings": {
-            "button_label": "",
-            "button_url": "",
+            "button_label": "{{about_cta_label}}",
+            "button_url": "{{about_cta_url}}",
             "color_button": "btn",
             "secondary_button_label": "",
             "secondary_button_url": "",
@@ -261,7 +261,7 @@
         "cta_buttons"
       ],
       "settings": {
-        "url": "",
+        "url": "{{about_cta_image_background}}",
         "show_image": true,
         "show_video_background_mobile": true,
         "layout_y_spacing": "banner--h-xl",

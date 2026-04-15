@@ -536,6 +536,7 @@ interface MergedTemplates {
   index: Record<string, unknown>
   product: Record<string, unknown>
   footerGroup: Record<string, unknown>
+  about: Record<string, unknown>
 }
 
 async function mergeTemplates(values: Record<string, string>): Promise<MergedTemplates> {
@@ -559,7 +560,16 @@ async function mergeTemplates(values: Record<string, string>): Promise<MergedTem
   const footerStr = applyValuesToTemplate(JSON.stringify(baseFooter), values)
   const footerGroup = JSON.parse(footerStr)
 
-  return { index, product, footerGroup }
+  // About page — fourth merged template. Same string-substitution pipeline
+  // as the other three. Image placeholders on the about sections are
+  // classified as type=image in variable-map (→ __NULL__) and then filled
+  // by injectImageAssignments using the image-map.json entries that target
+  // sections.about_hero / about_founder / about_cta.
+  const baseAbout = await loadJSON<Record<string, unknown>>('templates/store/base-about.json')
+  const aboutStr = applyValuesToTemplate(JSON.stringify(baseAbout), values)
+  const about = JSON.parse(aboutStr)
+
+  return { index, product, footerGroup, about }
 }
 
 // ---------------------------------------------------------------------------
@@ -688,10 +698,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const generatedValues = await generateVariableValues(brief, brand as Brand, campaign)
 
     // Step 3 — merge
-    const { index, product, footerGroup } = await mergeTemplates(generatedValues)
+    const { index, product, footerGroup, about } = await mergeTemplates(generatedValues)
 
-    // Inject image URLs into merged index.json
+    // Inject image URLs into the merged index.json AND about.json. The
+    // image-map.json entries for `about_hero` / `about_founder` /
+    // `about_cta` target the about JSON; everything else targets index.
+    // injectImageAssignments safely no-ops on section_ids that don't
+    // exist in whichever root it's walking, so calling it twice
+    // partitions the assignment list naturally.
     const indexJson = injectImageAssignments(index, assignments)
+    const aboutJson = injectImageAssignments(about, assignments)
 
     // Step 4 — assemble color variants over base-settings. Each variant keeps
     // its 9-slot `colors` object (for the editor UI + deploy-time mapping) AND
@@ -714,6 +730,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       index_json: indexJson,
       product_json: product,
       footer_group_json: footerGroup,
+      about_json: aboutJson,
       image_assignments: assignments,
       updated_at: new Date().toISOString(),
     }

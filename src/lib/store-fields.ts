@@ -20,8 +20,9 @@
 import baseTemplate from '../../templates/store/base-template.json'
 import basePdp from '../../templates/store/base-pdp.json'
 import baseFooter from '../../templates/store/base-footer-group.json'
+import baseAbout from '../../templates/store/base-about.json'
 
-export type StoreFieldSource = 'index_json' | 'product_json' | 'footer_group_json'
+export type StoreFieldSource = 'index_json' | 'product_json' | 'footer_group_json' | 'about_json'
 export type StoreFieldType = 'short' | 'long' | 'url'
 
 export interface StoreFieldSpec {
@@ -232,6 +233,30 @@ const PRIORITY_FIELDS: PriorityField[] = [
   { placeholder: 'footer_newsletter_button',                        editorSection: 'Footer',          editorOrder: 16, label: 'Subscribe button',      type: 'short' },
   { placeholder: 'footer_newsletter_disclaimer',                    editorSection: 'Footer',          editorOrder: 16, label: 'Newsletter disclaimer', type: 'long'  },
   { placeholder: 'footer_richtext_heading',                         editorSection: 'Footer',          editorOrder: 16, label: 'Social heading',        type: 'short' },
+
+  // ── About Hero (order 17 — base-about.json sections.about_hero) ────────
+  { placeholder: 'about_hero_heading',                              editorSection: 'About Hero',              editorOrder: 17, label: 'Headline',             type: 'short' },
+  { placeholder: 'about_hero_subhead',                              editorSection: 'About Hero',              editorOrder: 17, label: 'Subheadline',          type: 'long'  },
+
+  // ── About Founder (order 18 — base-about.json sections.about_founder) ──
+  { placeholder: 'about_founder_name',                              editorSection: 'About Founder',           editorOrder: 18, label: 'Founder / team name',  type: 'short' },
+  { placeholder: 'about_founder_story',                             editorSection: 'About Founder',           editorOrder: 18, label: 'Founder story',        type: 'long'  },
+
+  // ── About Mission & Values (order 19 — sections.about_mission + about_values) ──
+  { placeholder: 'about_mission_heading',                           editorSection: 'About Mission & Values', editorOrder: 19, label: 'Mission heading',      type: 'short' },
+  { placeholder: 'about_mission_body',                              editorSection: 'About Mission & Values', editorOrder: 19, label: 'Mission body',         type: 'long'  },
+  { placeholder: 'about_value_1_heading',                           editorSection: 'About Mission & Values', editorOrder: 19, label: 'Value 1 title',        type: 'short' },
+  { placeholder: 'about_value_1_body',                              editorSection: 'About Mission & Values', editorOrder: 19, label: 'Value 1 body',         type: 'long'  },
+  { placeholder: 'about_value_2_heading',                           editorSection: 'About Mission & Values', editorOrder: 19, label: 'Value 2 title',        type: 'short' },
+  { placeholder: 'about_value_2_body',                              editorSection: 'About Mission & Values', editorOrder: 19, label: 'Value 2 body',         type: 'long'  },
+  { placeholder: 'about_value_3_heading',                           editorSection: 'About Mission & Values', editorOrder: 19, label: 'Value 3 title',        type: 'short' },
+  { placeholder: 'about_value_3_body',                              editorSection: 'About Mission & Values', editorOrder: 19, label: 'Value 3 body',         type: 'long'  },
+
+  // ── About CTA (order 20 — base-about.json sections.about_cta) ──────────
+  { placeholder: 'about_cta_heading',                               editorSection: 'About CTA',               editorOrder: 20, label: 'Headline',             type: 'short' },
+  { placeholder: 'about_cta_body',                                  editorSection: 'About CTA',               editorOrder: 20, label: 'Body',                 type: 'long'  },
+  { placeholder: 'about_cta_label',                                 editorSection: 'About CTA',               editorOrder: 20, label: 'Button label',         type: 'short' },
+  { placeholder: 'about_cta_url',                                   editorSection: 'About CTA',               editorOrder: 20, label: 'Button URL',           type: 'url'   },
 ]
 
 // ─── Direct (non-placeholder) fields ─────────────────────────────────────────
@@ -314,9 +339,11 @@ function collectPlaceholderPaths(
 const INDEX_PATHS = new Map<string, string>()
 const PDP_PATHS = new Map<string, string>()
 const FOOTER_PATHS = new Map<string, string>()
+const ABOUT_PATHS = new Map<string, string>()
 collectPlaceholderPaths(baseTemplate, INDEX_PATHS)
 collectPlaceholderPaths(basePdp, PDP_PATHS)
 collectPlaceholderPaths(baseFooter, FOOTER_PATHS)
+collectPlaceholderPaths(baseAbout, ABOUT_PATHS)
 
 function resolveSource(placeholder: string): { source: StoreFieldSource; path: string } | null {
   const indexPath = INDEX_PATHS.get(placeholder)
@@ -325,6 +352,8 @@ function resolveSource(placeholder: string): { source: StoreFieldSource; path: s
   if (pdpPath) return { source: 'product_json', path: pdpPath }
   const footerPath = FOOTER_PATHS.get(placeholder)
   if (footerPath) return { source: 'footer_group_json', path: footerPath }
+  const aboutPath = ABOUT_PATHS.get(placeholder)
+  if (aboutPath) return { source: 'about_json', path: aboutPath }
   return null
 }
 

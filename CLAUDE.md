@@ -627,6 +627,8 @@ Always use direct fetch to Meta Graph API — no facebook-nodejs-business-sdk or
 
 ## STORE (Shopify theme factory)
 
+**Store is accessed via the user avatar dropdown → Admin → Store.** Only visible to `pablo@attomik.co`. The gate is a hardcoded email check in `src/components/ui/TopNav.tsx` (`SUPER_ADMIN_EMAIL` constant); the Admin section of the avatar dropdown only renders when `user.email === SUPER_ADMIN_EMAIL`. The `/store` routes themselves are still protected by the existing `/store/:path*` middleware matcher, so non-admin users can't reach the feature even if they type the URL — they just won't see it in the nav. When Store is ready to expose to clients, move the gate to role-based access via `brand_members.role` (e.g. owner/admin only) rather than a hardcoded email.
+
 The Store tool generates and deploys a Shopify theme for each brand. It ports the legacy `attomik-factory` app into Marketing OS, replacing the CLI-based deploy with direct Admin REST Asset API calls. Scraping is gone — brand data comes from `brands` + `brand_images`.
 
 ### `store_themes` table (`supabase/migrations/20260415_store_themes.sql`)
@@ -643,6 +645,7 @@ One row per brand, unique on `brand_id`. Created on the first successful `/gener
 | `index_json` | jsonb — merged `templates/index.json` with image URLs injected |
 | `product_json` | jsonb — merged `templates/product.json` |
 | `footer_group_json` | jsonb — merged `sections/footer-group.json` |
+| `about_json` | jsonb — merged `templates/page.about.json`. Deploys to `templates/page.about.json` on the Shopify theme. Nullable — legacy rows generated before migration `20260416_store_themes_about.sql` read back NULL until their next `/generate`. |
 | `image_assignments` | jsonb — `ImageAssignment[]` mapping image-map slots to `brand_images` URLs |
 | `shopify_theme_id` | bigint — remote Shopify theme ID the last deploy targeted |
 | `shopify_theme_name` | text — remote Shopify theme display name |
@@ -701,9 +704,9 @@ Route: `POST /api/brands/[id]/store/generate` (any brand member).
 2. **Image pool** — `brand_images` rows are bucketed via `bucketBrandImages()`. The factory's `ROLE_TAG_PRIORITY` map is rewritten to use Marketing OS tags (`shopify` first on product slots so Shopify brands use the clean `/products.json` shots). Round-robin `takeForRole()` assigns images to slots defined in `templates/store/image-map.json`.
 3. **Color variants** — `generateColorVariants()` calls `claude-sonnet-4-20250514` with an inline prompt (no prompt file) asking for 4 variants in a fixed JSON shape, mapped via `mapColorVariants()` to theme-settings keys. On Claude failure, `neutralVariantsFallback()` seeds 4 variants from the brand's primary + secondary.
 4. **Variables (184)** — `generateVariableValues()` prepends `buildBrandSystemPrompt(brand)` so the generator inherits the Marketing OS brand voice, then appends `templates/store/prompts/design-rules.md`, the brief block, optional `CAMPAIGN CONTEXT` block (when the POST body carries `activeCampaignId`), and the factory's long-form generation rules (nav, announcement bar, footer, PDP badge/checklist/perks/variant cards, colors). Claude returns a JSON map keyed by variable name. Truncation repair kicks in if `stop_reason !== 'end_turn'`.
-5. **Template merge + persist** — `applyValuesToTemplate()` does pure string substitution into `base-template.json`, `base-pdp.json`, `base-footer-group.json`, then `base-settings.json` is merged under each color variant. The final row is `upsert(... onConflict: 'brand_id')` into `store_themes`.
+5. **Template merge + persist** — `applyValuesToTemplate()` does pure string substitution into `base-template.json`, `base-pdp.json`, `base-footer-group.json`, and `base-about.json`, then `base-settings.json` is merged under each color variant. `injectImageAssignments()` runs against both `index_json` and `about_json` (the `image-map.json` entries for `about_hero` / `about_founder` / `about_cta` partition into the about JSON naturally). The final row is `upsert(... onConflict: 'brand_id')` into `store_themes`, populating `index_json` / `product_json` / `footer_group_json` / `about_json`.
 
-The factory's `base-about.json` is intentionally skipped — defer until we need an About page template. `templates/store/` is the source of truth for the 6 factory JSON files + `prompts/design-rules.md`.
+`templates/store/` holds the 4 base templates the generator substitutes into (`base-template.json` → homepage, `base-pdp.json` → PDP, `base-footer-group.json` → footer, `base-about.json` → about page) plus `base-settings.json`, `variable-map.json`, `image-map.json`, and `prompts/design-rules.md`.
 
 ### Deploy flow (Admin Asset API, no CLI)
 
@@ -720,7 +723,7 @@ The factory shelled out to `shopify theme push`. Marketing OS never uses the Sho
 | `generate` | POST | Run the 5-step pipeline and upsert `store_themes`. Body can include `{ activeCampaignId }` to inject campaign goal/offer/angle/key_message into the Step 4 prompt. | Any brand member |
 | `themes` | GET | Returns the target store's themes via `listThemes()`, shape `{ themes: [{ id, name, role, preview_url }, ...] }`. | **Owner/admin** |
 | `install-base-theme` | POST | Walks `src/theme/` recursively and PUTs every file to the selected Shopify theme via the Asset API. Streams NDJSON progress events (`{ done, total, file }` and a final `{ status: 'complete' \| 'complete_with_errors' }`). Concurrency 3. Sets `brand.notes.shopify_base_theme_installed_at` on clean completion. | **Owner/admin** |
-| `deploy` | POST | PUTs the 4 generated JSONs (`templates/index.json`, `templates/product.json`, `sections/footer-group.json`, `config/settings_data.json`) to the selected Shopify theme. Updates `store_themes.last_deploy_*`. Returns `{ preview_url }`. **Refuses `role='main'`** — return 400. Body: `{ themeId }`. | **Owner/admin** |
+| `deploy` | POST | PUTs the 5 generated JSONs (`templates/index.json`, `templates/product.json`, `sections/footer-group.json`, `templates/page.about.json`, `config/settings_data.json`) to the selected Shopify theme. Updates `store_themes.last_deploy_*`. Returns `{ preview_url }`. **Refuses `role='main'`** — return 400. Body: `{ themeId }`. `templates/page.about.json` is only pushed when `about_json` is present on the row (legacy rows without it are skipped). | **Owner/admin** |
 | `pull-settings` | POST | GETs `config/settings_data.json` from the selected Shopify theme, unwraps the `current` key, and merges it into `store_themes.color_variants[selected_variant].theme_settings`. | **Owner/admin** |
 
 **`src/lib/authorize-store.ts`** exposes `authorizeOwnerOrAdmin(brandId)` — mirrors the existing `authorizeOwner` pattern in `/api/brands/[id]/members/[userId]/route.ts` but widens the allow-list to both `owner` and `admin` roles.
@@ -734,7 +737,7 @@ Next.js's file tracer bundles `src/theme/` with the serverless function automati
 ### Deploy safety rules
 
 - **Never deploy to a theme with `role='main'`.** The deploy route validates the target against `listThemes()` and returns `400` if the role is `main`. Always push to an unpublished/development theme, preview it, then manually publish in Shopify Admin.
-- **Install the base theme before deploying generated JSONs.** The deploy route only pushes 4 files — it assumes the sections/snippets/layout/assets the templates reference are already on the target theme. The `/store` page disables the Deploy button until `shopify_base_theme_installed_at` is set.
+- **Install the base theme before deploying generated JSONs.** The deploy route only pushes 5 files — it assumes the sections/snippets/layout/assets the templates reference are already on the target theme. The `/store` page disables the Deploy button until `shopify_base_theme_installed_at` is set.
 - **Owner/admin only** for `install-base-theme`, `deploy`, `pull-settings`, and `themes`. Generation and credential management are open to any brand member because they don't touch the remote store.
 - **Store the access token server-side only.** The GET credentials route strips it before returning; never surface it to a client component.
 
@@ -745,12 +748,11 @@ Next.js's file tracer bundles `src/theme/` with the serverless function automati
 | `base-template.json` | factory | Step 3 — homepage merge target |
 | `base-pdp.json` | factory | Step 3 — PDP merge target |
 | `base-footer-group.json` | factory | Step 3 — footer group merge target |
+| `base-about.json` | factory (+ 3 injected `{{image}}` placeholders: `about_hero_image_background`, `about_founder_image`, `about_cta_image_background`) | Step 3 — about page merge target |
 | `base-settings.json` | factory | Step 5 — merged under each color variant |
-| `variable-map.json` | factory | Step 4 — 184 variable definitions, type, instructions |
-| `image-map.json` | factory | Step 2 — image slot definitions (section_id, block_id, setting_id, role) |
+| `variable-map.json` | factory | Step 4 — variable definitions, type, instructions. About section carries 16 copy placeholders + 3 image placeholders. |
+| `image-map.json` | factory + 3 about entries (`about_hero` / `about_founder.blocks.founder_image` / `about_cta`) | Step 2 — image slot definitions (section_id, block_id, setting_id, role). Entries for about sections land in `about_json` at deploy time; `injectImageAssignments()` partitions them by which JSON root actually contains the target section. |
 | `prompts/design-rules.md` | factory | Step 4 — appended to the system prompt after `buildBrandSystemPrompt()` |
-
-`base-about.json` from the factory is intentionally not ported (no About page generation in the MVP).
 
 ---
 

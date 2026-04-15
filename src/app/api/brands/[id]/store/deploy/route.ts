@@ -147,6 +147,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       value: JSON.stringify(stripImageUrls(storeTheme.footer_group_json), null, 2),
     })
   }
+  if (storeTheme.about_json) {
+    assets.push({
+      key: 'templates/page.about.json',
+      value: JSON.stringify(stripImageUrls(storeTheme.about_json), null, 2),
+    })
+  }
   if (settings) {
     // Shopify's config/settings_data.json wraps theme settings under
     // `current`. Preserve that shape so the merchant's saved settings

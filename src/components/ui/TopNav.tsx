@@ -16,10 +16,14 @@ const NAV_LINKS = [
   { href: '/copy', label: 'Copy Creator' },
   { href: '/newsletter', label: 'Email' },
   { href: '/landing-page', label: 'Landing Page' },
-  { href: '/store', label: 'Store' },
   { href: '/campaigns', label: 'Campaigns' },
   { href: '/insights', label: 'Insights' },
 ]
+
+// Super-admin gate for the /store feature. Hardcoded to a single email
+// while Store is internal-only. When the feature is ready to expose to
+// clients, replace this with a `brand_members.role`-based check.
+const SUPER_ADMIN_EMAIL = 'pablo@attomik.co'
 
 export default function TopNav() {
   const pathname = usePathname()
@@ -28,6 +32,10 @@ export default function TopNav() {
   const { user, profile } = useProfile()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL
 
   // full_name is the primary label; fall back to email while the profile is
   // loading or in the unlikely case the first-name modal was bypassed.
@@ -46,10 +54,17 @@ export default function TopNav() {
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false)
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  async function signOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = '/'
+  }
 
   function switchBrand(brand: any) {
     setActiveBrandId(brand.id)
@@ -176,37 +191,129 @@ export default function TopNav() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         {profileLabel && (
-          <Link
-            href="/settings/profile"
-            title={profile?.full_name ? `${profile.full_name} · Profile settings` : 'Profile settings'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '4px 12px 4px 4px', borderRadius: radius.pill,
-              background: colors.gray150, border: '1px solid var(--border)',
-              textDecoration: 'none', transition: `background ${transition.base}`,
-              maxWidth: 180,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = colors.gray200)}
-            onMouseLeave={e => (e.currentTarget.style.background = colors.gray150)}
-          >
-            <InitialsAvatar name={profileLabel} size="sm" />
-            <span style={{
-              fontSize: fontSize.caption, fontWeight: fontWeight.bold,
-              color: colors.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {profileLabel}
-            </span>
-          </Link>
+          <div ref={userMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setUserMenuOpen(p => !p)}
+              title={profile?.full_name ? `${profile.full_name} · Account` : 'Account'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '4px 12px 4px 4px', borderRadius: radius.pill,
+                background: userMenuOpen ? colors.gray200 : colors.gray150,
+                border: '1px solid', borderColor: userMenuOpen ? colors.gray450 : 'var(--border)',
+                cursor: 'pointer', transition: `all ${transition.base}`,
+                maxWidth: 180,
+              }}
+              onMouseEnter={e => { if (!userMenuOpen) e.currentTarget.style.background = colors.gray200 }}
+              onMouseLeave={e => { if (!userMenuOpen) e.currentTarget.style.background = colors.gray150 }}
+            >
+              <InitialsAvatar name={profileLabel} size="sm" />
+              <span style={{
+                fontSize: fontSize.caption, fontWeight: fontWeight.bold,
+                color: colors.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {profileLabel}
+              </span>
+            </button>
+
+            {userMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  background: colors.paper,
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  boxShadow: shadow.dropdown,
+                  minWidth: 200,
+                  zIndex: zIndex.dropdown,
+                  padding: 6,
+                }}
+              >
+                <div style={{
+                  fontSize: 10, fontWeight: fontWeight.bold,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  color: 'var(--muted)', padding: '6px 12px 4px',
+                }}>
+                  Account
+                </div>
+                <Link
+                  href="/settings/profile"
+                  onClick={() => setUserMenuOpen(false)}
+                  style={{
+                    display: 'block',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.ink,
+                    textDecoration: 'none',
+                    transition: `background ${transition.fast}`,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--cream)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  Profile
+                </Link>
+
+                {isSuperAdmin && (
+                  <>
+                    <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                    <div style={{
+                      fontSize: 10, fontWeight: fontWeight.bold,
+                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                      color: 'var(--muted)', padding: '6px 12px 4px',
+                    }}>
+                      Admin
+                    </div>
+                    <Link
+                      href={getBrandNavHref('/store')}
+                      onClick={() => setUserMenuOpen(false)}
+                      style={{
+                        display: 'block',
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        fontSize: 14,
+                        fontWeight: fontWeight.semibold,
+                        color: colors.ink,
+                        textDecoration: 'none',
+                        transition: `background ${transition.fast}`,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--cream)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      Store
+                    </Link>
+                  </>
+                )}
+
+                <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                <button
+                  onClick={() => { setUserMenuOpen(false); signOut() }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: 14,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.ink,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: `background ${transition.fast}`,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--cream)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         )}
-        <button onClick={async () => { const s = createClient(); await s.auth.signOut(); window.location.href = '/' }}
-          style={{ fontSize: fontSize.caption, fontWeight: fontWeight.semibold, color: 'var(--muted)', background: 'none', border: '1px solid var(--border)', borderRadius: radius.pill, padding: '6px 14px', cursor: 'pointer' }}>
-          Log out
-        </button>
-        <Link href="/new" style={{
-          background: colors.ink, color: colors.accent, fontFamily: font.heading,
-          fontWeight: fontWeight.extrabold, fontSize: fontSize.body, padding: '9px 20px', borderRadius: radius.pill,
-          textDecoration: 'none', whiteSpace: 'nowrap',
-        }}>+ New funnel</Link>
       </div>
     </nav>
   )

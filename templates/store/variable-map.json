@@ -3,25 +3,25 @@
     "key": "hero_banner__image_background_desktop",
     "type": "image",
     "section": "hero_banner",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "hero_banner__image_background_mobile",
     "type": "image",
     "section": "hero_banner",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "hero_banner__heading_1__content",
     "type": "text",
     "section": "hero_banner",
-    "instructions": "Write the hero headline — punchy, memorable, under 8 words"
+    "instructions": "Write the hero headline \u2014 punchy, memorable, under 8 words"
   },
   {
     "key": "hero_banner__content_1__content",
     "type": "text",
     "section": "hero_banner",
-    "instructions": "Write hero subheadline in <p> tags — 1-2 sentences supporting the headline"
+    "instructions": "Write hero subheadline in <p> tags \u2014 1-2 sentences supporting the headline"
   },
   {
     "key": "hero_banner__buttons_1__button_label",
@@ -45,7 +45,7 @@
     "key": "marquee_ticker__image_1__image",
     "type": "image",
     "section": "marquee_ticker",
-    "instructions": "Brand logo/icon for ticker divider — provide shopify://shop_images/... or null"
+    "instructions": "Brand logo/icon for ticker divider \u2014 provide shopify://shop_images/... or null"
   },
   {
     "key": "marquee_ticker__heading_2__content",
@@ -57,7 +57,7 @@
     "key": "marquee_ticker__image_2__image",
     "type": "image",
     "section": "marquee_ticker",
-    "instructions": "Brand logo/icon for ticker divider — provide shopify://shop_images/... or null"
+    "instructions": "Brand logo/icon for ticker divider \u2014 provide shopify://shop_images/... or null"
   },
   {
     "key": "marquee_ticker__heading_3__content",
@@ -69,7 +69,7 @@
     "key": "marquee_ticker__image_3__image",
     "type": "image",
     "section": "marquee_ticker",
-    "instructions": "Brand logo/icon for ticker divider — provide shopify://shop_images/... or null"
+    "instructions": "Brand logo/icon for ticker divider \u2014 provide shopify://shop_images/... or null"
   },
   {
     "key": "value_props__heading",
@@ -81,7 +81,7 @@
     "key": "value_props__content",
     "type": "text",
     "section": "value_props",
-    "instructions": "Write section intro copy in <p> tags — brand philosophy in 1-2 sentences"
+    "instructions": "Write section intro copy in <p> tags \u2014 brand philosophy in 1-2 sentences"
   },
   {
     "key": "value_props__button_label",
@@ -93,7 +93,7 @@
     "key": "value_props__pillar_1__icon",
     "type": "image",
     "section": "value_props",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "value_props__pillar_1__heading",
@@ -111,7 +111,7 @@
     "key": "value_props__pillar_2__icon",
     "type": "image",
     "section": "value_props",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "value_props__pillar_2__heading",
@@ -129,7 +129,7 @@
     "key": "value_props__pillar_3__icon",
     "type": "image",
     "section": "value_props",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "value_props__pillar_3__heading",
@@ -153,13 +153,13 @@
     "key": "features_mobile__content_1__heading",
     "type": "text",
     "section": "features_mobile",
-    "instructions": "Write a feature card headline — how the product works or feels"
+    "instructions": "Write a feature card headline \u2014 how the product works or feels"
   },
   {
     "key": "features_mobile__content_1__content",
     "type": "text",
     "section": "features_mobile",
-    "instructions": "Write feature description in <p> tags — explain the benefit"
+    "instructions": "Write feature description in <p> tags \u2014 explain the benefit"
   },
   {
     "key": "features_mobile__content_1__url",
@@ -171,133 +171,133 @@
     "key": "features_mobile__content_1__image",
     "type": "image",
     "section": "features_mobile",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "features_mobile__content_2__heading",
     "type": "text",
     "section": "features_mobile",
-    "instructions": "Write a feature card headline — how the product works or feels"
+    "instructions": "Write a feature card headline \u2014 how the product works or feels"
   },
   {
     "key": "features_mobile__content_2__content",
     "type": "text",
     "section": "features_mobile",
-    "instructions": "Write feature description in <p> tags — explain the benefit"
+    "instructions": "Write feature description in <p> tags \u2014 explain the benefit"
   },
   {
     "key": "features_mobile__content_2__image",
     "type": "image",
     "section": "features_mobile",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "press_slider__testimonial_1__content",
     "type": "text",
     "section": "press_slider",
-    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+    "instructions": "Write a press quote \u2014 short, quotable, from a publication or influencer"
   },
   {
     "key": "press_slider__testimonial_1__logo",
     "type": "image",
     "section": "press_slider",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "press_slider__testimonial_2__content",
     "type": "text",
     "section": "press_slider",
-    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+    "instructions": "Write a press quote \u2014 short, quotable, from a publication or influencer"
   },
   {
     "key": "press_slider__testimonial_2__logo",
     "type": "image",
     "section": "press_slider",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "press_slider__testimonial_3__content",
     "type": "text",
     "section": "press_slider",
-    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+    "instructions": "Write a press quote \u2014 short, quotable, from a publication or influencer"
   },
   {
     "key": "press_slider__testimonial_3__logo",
     "type": "image",
     "section": "press_slider",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "press_slider__testimonial_4__content",
     "type": "text",
     "section": "press_slider",
-    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+    "instructions": "Write a press quote \u2014 short, quotable, from a publication or influencer"
   },
   {
     "key": "press_slider__testimonial_4__logo",
     "type": "image",
     "section": "press_slider",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "press_slider__testimonial_5__content",
     "type": "text",
     "section": "press_slider",
-    "instructions": "Write a press quote — short, quotable, from a publication or influencer"
+    "instructions": "Write a press quote \u2014 short, quotable, from a publication or influencer"
   },
   {
     "key": "press_slider__testimonial_5__logo",
     "type": "image",
     "section": "press_slider",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "features_detail_mobile__content_1__heading",
     "type": "text",
     "section": "features_detail_mobile",
-    "instructions": "Write a feature card headline — how the product works or feels"
+    "instructions": "Write a feature card headline \u2014 how the product works or feels"
   },
   {
     "key": "features_detail_mobile__content_1__content",
     "type": "text",
     "section": "features_detail_mobile",
-    "instructions": "Write feature description in <p> tags — explain the benefit"
+    "instructions": "Write feature description in <p> tags \u2014 explain the benefit"
   },
   {
     "key": "features_detail_mobile__content_1__image",
     "type": "image",
     "section": "features_detail_mobile",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "features_detail_mobile__content_2__heading",
     "type": "text",
     "section": "features_detail_mobile",
-    "instructions": "Write a feature card headline — how the product works or feels"
+    "instructions": "Write a feature card headline \u2014 how the product works or feels"
   },
   {
     "key": "features_detail_mobile__content_2__content",
     "type": "text",
     "section": "features_detail_mobile",
-    "instructions": "Write feature description in <p> tags — explain the benefit"
+    "instructions": "Write feature description in <p> tags \u2014 explain the benefit"
   },
   {
     "key": "features_detail_mobile__content_2__image",
     "type": "image",
     "section": "features_detail_mobile",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "features_detail_desktop__content_1__heading",
     "type": "text",
     "section": "features_detail_desktop",
-    "instructions": "Write a feature card headline — how the product works or feels"
+    "instructions": "Write a feature card headline \u2014 how the product works or feels"
   },
   {
     "key": "features_detail_desktop__content_1__content",
     "type": "text",
     "section": "features_detail_desktop",
-    "instructions": "Write feature description in <p> tags — explain the benefit"
+    "instructions": "Write feature description in <p> tags \u2014 explain the benefit"
   },
   {
     "key": "features_detail_desktop__content_1__button_label",
@@ -315,25 +315,25 @@
     "key": "features_detail_desktop__content_2__image",
     "type": "image",
     "section": "features_detail_desktop",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "features_detail_desktop__content_3__image",
     "type": "image",
     "section": "features_detail_desktop",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "features_detail_desktop__content_4__heading",
     "type": "text",
     "section": "features_detail_desktop",
-    "instructions": "Write a feature card headline — how the product works or feels"
+    "instructions": "Write a feature card headline \u2014 how the product works or feels"
   },
   {
     "key": "features_detail_desktop__content_4__content",
     "type": "text",
     "section": "features_detail_desktop",
-    "instructions": "Write feature description in <p> tags — explain the benefit"
+    "instructions": "Write feature description in <p> tags \u2014 explain the benefit"
   },
   {
     "key": "features_detail_desktop__content_4__button_label",
@@ -357,7 +357,7 @@
     "key": "ingredients_grid__pillar_1__icon",
     "type": "image",
     "section": "ingredients_grid",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "ingredients_grid__pillar_1__heading",
@@ -375,7 +375,7 @@
     "key": "ingredients_grid__pillar_2__icon",
     "type": "image",
     "section": "ingredients_grid",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "ingredients_grid__pillar_2__heading",
@@ -393,7 +393,7 @@
     "key": "ingredients_grid__pillar_3__icon",
     "type": "image",
     "section": "ingredients_grid",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "ingredients_grid__pillar_3__heading",
@@ -411,7 +411,7 @@
     "key": "ingredients_grid__pillar_4__icon",
     "type": "image",
     "section": "ingredients_grid",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "ingredients_grid__pillar_4__heading",
@@ -435,7 +435,7 @@
     "key": "comparison_table__content_1__label",
     "type": "text",
     "section": "comparison_table",
-    "instructions": "Write a comparison row label — a feature or attribute name"
+    "instructions": "Write a comparison row label \u2014 a feature or attribute name"
   },
   {
     "key": "comparison_table__content_1__tooltip",
@@ -453,7 +453,7 @@
     "key": "comparison_table__content_2__label",
     "type": "text",
     "section": "comparison_table",
-    "instructions": "Write a comparison row label — a feature or attribute name"
+    "instructions": "Write a comparison row label \u2014 a feature or attribute name"
   },
   {
     "key": "comparison_table__content_2__tooltip",
@@ -465,7 +465,7 @@
     "key": "comparison_table__content_3__label",
     "type": "text",
     "section": "comparison_table",
-    "instructions": "Write a comparison row label — a feature or attribute name"
+    "instructions": "Write a comparison row label \u2014 a feature or attribute name"
   },
   {
     "key": "comparison_table__content_3__column_4_content",
@@ -501,7 +501,7 @@
     "key": "subscription_mobile__content_1__image",
     "type": "image",
     "section": "subscription_mobile",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "subscription_desktop__content_1__heading",
@@ -531,7 +531,7 @@
     "key": "subscription_desktop__content_2__image",
     "type": "image",
     "section": "subscription_desktop",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "faq__heading",
@@ -549,7 +549,7 @@
     "key": "faq__content_1__content",
     "type": "text",
     "section": "faq",
-    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+    "instructions": "Write a detailed FAQ answer in <p> tags \u2014 specific to this brand"
   },
   {
     "key": "faq__content_2__heading",
@@ -561,7 +561,7 @@
     "key": "faq__content_2__content",
     "type": "text",
     "section": "faq",
-    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+    "instructions": "Write a detailed FAQ answer in <p> tags \u2014 specific to this brand"
   },
   {
     "key": "faq__content_3__heading",
@@ -573,7 +573,7 @@
     "key": "faq__content_3__content",
     "type": "text",
     "section": "faq",
-    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+    "instructions": "Write a detailed FAQ answer in <p> tags \u2014 specific to this brand"
   },
   {
     "key": "faq__content_4__heading",
@@ -585,7 +585,7 @@
     "key": "faq__content_4__content",
     "type": "text",
     "section": "faq",
-    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+    "instructions": "Write a detailed FAQ answer in <p> tags \u2014 specific to this brand"
   },
   {
     "key": "faq__content_5__heading",
@@ -597,7 +597,7 @@
     "key": "faq__content_5__content",
     "type": "text",
     "section": "faq",
-    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+    "instructions": "Write a detailed FAQ answer in <p> tags \u2014 specific to this brand"
   },
   {
     "key": "faq__content_6__heading",
@@ -609,7 +609,7 @@
     "key": "faq__content_6__content",
     "type": "text",
     "section": "faq",
-    "instructions": "Write a detailed FAQ answer in <p> tags — specific to this brand"
+    "instructions": "Write a detailed FAQ answer in <p> tags \u2014 specific to this brand"
   },
   {
     "key": "founder_mobile__content_1__heading",
@@ -633,13 +633,13 @@
     "key": "founder_mobile__content_1__image",
     "type": "image",
     "section": "founder_mobile",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "founder_desktop__content_1__image",
     "type": "image",
     "section": "founder_desktop",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "founder_desktop__content_2__heading",
@@ -675,7 +675,7 @@
     "key": "customer_reviews__testimonial_1__content",
     "type": "text",
     "section": "customer_reviews",
-    "instructions": "Write a realistic customer review in <p> tags — specific, emotional, mentions the product"
+    "instructions": "Write a realistic customer review in <p> tags \u2014 specific, emotional, mentions the product"
   },
   {
     "key": "customer_reviews__testimonial_1__title",
@@ -687,13 +687,13 @@
     "key": "customer_reviews__testimonial_1__avatar",
     "type": "image",
     "section": "customer_reviews",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "customer_reviews__testimonial_2__content",
     "type": "text",
     "section": "customer_reviews",
-    "instructions": "Write a realistic customer review in <p> tags — specific, emotional, mentions the product"
+    "instructions": "Write a realistic customer review in <p> tags \u2014 specific, emotional, mentions the product"
   },
   {
     "key": "customer_reviews__testimonial_2__title",
@@ -705,13 +705,13 @@
     "key": "customer_reviews__testimonial_2__avatar",
     "type": "image",
     "section": "customer_reviews",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "customer_reviews__testimonial_3__content",
     "type": "text",
     "section": "customer_reviews",
-    "instructions": "Write a realistic customer review in <p> tags — specific, emotional, mentions the product"
+    "instructions": "Write a realistic customer review in <p> tags \u2014 specific, emotional, mentions the product"
   },
   {
     "key": "customer_reviews__testimonial_3__title",
@@ -723,25 +723,25 @@
     "key": "customer_reviews__testimonial_3__avatar",
     "type": "image",
     "section": "customer_reviews",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "bottom_banner__image_background_desktop",
     "type": "image",
     "section": "bottom_banner",
-    "instructions": "Brand image — set to null (brand uploads their own)"
+    "instructions": "Brand image \u2014 set to null (brand uploads their own)"
   },
   {
     "key": "bottom_banner__heading_1__content",
     "type": "text",
     "section": "bottom_banner",
-    "instructions": "Write a bold closing CTA headline — drives urgency or aspiration"
+    "instructions": "Write a bold closing CTA headline \u2014 drives urgency or aspiration"
   },
   {
     "key": "bottom_banner__content_1__content",
     "type": "text",
     "section": "bottom_banner",
-    "instructions": "Write closing section body copy in <p> tags — reinforce the brand promise"
+    "instructions": "Write closing section body copy in <p> tags \u2014 reinforce the brand promise"
   },
   {
     "key": "bottom_banner__buttons_1__button_label",
@@ -795,13 +795,13 @@
     "key": "pdp_badge_text",
     "type": "text",
     "section": "pdp_badge",
-    "instructions": "Write a short eyebrow claim for the product badge (e.g. '🇲🇽 Hecho en México · Real Fruit'). Lead with origin, key ingredient, or certification. Under 6 words. No generic claims like 'Premium Quality'."
+    "instructions": "Write a short eyebrow claim for the product badge (e.g. '\ud83c\uddf2\ud83c\uddfd Hecho en M\u00e9xico \u00b7 Real Fruit'). Lead with origin, key ingredient, or certification. Under 6 words. No generic claims like 'Premium Quality'."
   },
   {
     "key": "pdp_badge_emoji",
     "type": "text",
     "section": "pdp_badge",
-    "instructions": "Single emoji prefix matching brand personality (e.g. 🇲🇽 for origin, 🌿 for clean/natural, ✦ for premium, 🔬 for clinical). Must reinforce the badge_text claim, not decorate."
+    "instructions": "Single emoji prefix matching brand personality (e.g. \ud83c\uddf2\ud83c\uddfd for origin, \ud83c\udf3f for clean/natural, \u2726 for premium, \ud83d\udd2c for clinical). Must reinforce the badge_text claim, not decorate."
   },
   {
     "key": "pdp_badge_bg_color",
@@ -849,13 +849,13 @@
     "key": "pdp_checklist_value_tag",
     "type": "text",
     "section": "pdp_checklist",
-    "instructions": "Value proposition tag label displayed above the value text (e.g. '★ Best Value', '★ Most Popular', '★ Fan Favorite'). 2-3 words with a star prefix."
+    "instructions": "Value proposition tag label displayed above the value text (e.g. '\u2605 Best Value', '\u2605 Most Popular', '\u2605 Fan Favorite'). 2-3 words with a star prefix."
   },
   {
     "key": "pdp_checklist_value_text",
     "type": "text",
     "section": "pdp_checklist",
-    "instructions": "Value proposition description highlighting the best deal with specific math (e.g. '1kg — 100 glasses, 27¢ each'). Include quantity, unit count, and per-unit cost. Never vague."
+    "instructions": "Value proposition description highlighting the best deal with specific math (e.g. '1kg \u2014 100 glasses, 27\u00a2 each'). Include quantity, unit count, and per-unit cost. Never vague."
   },
   {
     "key": "pdp_checklist_check_color",
@@ -957,7 +957,7 @@
     "key": "pdp_shipping_content",
     "type": "richtext",
     "section": "pdp_accordion",
-    "instructions": "Shipping information for the product accordion tab. Use <p> tags. Include estimated delivery time, free shipping threshold if applicable, and return policy. Keep it concise — 2-3 short paragraphs."
+    "instructions": "Shipping information for the product accordion tab. Use <p> tags. Include estimated delivery time, free shipping threshold if applicable, and return policy. Keep it concise \u2014 2-3 short paragraphs."
   },
   {
     "key": "announcement_text",
@@ -1101,25 +1101,25 @@
     "key": "footer_instagram_handle",
     "type": "text",
     "section": "footer",
-    "instructions": "Instagram handle without the @ (e.g. 'jolenecoffee'). Infer from scraped brand data: prefer an explicit handle in scraped content, otherwise derive from the brand name (lowercase, strip spaces and punctuation — e.g. 'Jolene Coffee' → 'jolenecoffee'). This is a best-guess; the client can override in Shopify admin. Return empty string if you cannot produce a plausible handle."
+    "instructions": "Instagram handle without the @ (e.g. 'jolenecoffee'). Infer from scraped brand data: prefer an explicit handle in scraped content, otherwise derive from the brand name (lowercase, strip spaces and punctuation \u2014 e.g. 'Jolene Coffee' \u2192 'jolenecoffee'). This is a best-guess; the client can override in Shopify admin. Return empty string if you cannot produce a plausible handle."
   },
   {
     "key": "footer_richtext_heading",
     "type": "text",
     "section": "footer",
-    "instructions": "Visible main text of the footer Rich Text section — plain text, NO HTML. Format exactly: 'Follow us @HANDLE' where HANDLE is footer_instagram_handle (e.g. 'Follow us @jolenecoffee'). The theme renders this as the primary text in the block; do not include <a>, <p>, or any markup — Shopify will strip it since the field type is `text`, not `richtext`. If footer_instagram_handle is empty, return empty string."
+    "instructions": "Visible main text of the footer Rich Text section \u2014 plain text, NO HTML. Format exactly: 'Follow us @HANDLE' where HANDLE is footer_instagram_handle (e.g. 'Follow us @jolenecoffee'). The theme renders this as the primary text in the block; do not include <a>, <p>, or any markup \u2014 Shopify will strip it since the field type is `text`, not `richtext`. If footer_instagram_handle is empty, return empty string."
   },
   {
     "key": "footer_richtext_content",
     "type": "richtext",
     "section": "footer",
-    "instructions": "Unused — always return empty string. Kept as a placeholder wired to the Rich Text section's `content` setting in case we re-enable a body paragraph later."
+    "instructions": "Unused \u2014 always return empty string. Kept as a placeholder wired to the Rich Text section's `content` setting in case we re-enable a body paragraph later."
   },
   {
     "key": "_note_footer_nav_menus",
     "type": "note",
     "section": "footer",
-    "instructions": "Footer navigation columns (Shop / Company / Support link groups) are rendered by the theme__footer section's `menu` blocks, which resolve Shopify admin linklists by handle (main-menu, customer-account-main-menu, footer). They CANNOT be populated by the factory — they must be configured per store in Shopify Admin → Online Store → Navigation. This is a non-generatable placeholder entry; the generation pipeline skips type 'note'."
+    "instructions": "Footer navigation columns (Shop / Company / Support link groups) are rendered by the theme__footer section's `menu` blocks, which resolve Shopify admin linklists by handle (main-menu, customer-account-main-menu, footer). They CANNOT be populated by the factory \u2014 they must be configured per store in Shopify Admin \u2192 Online Store \u2192 Navigation. This is a non-generatable placeholder entry; the generation pipeline skips type 'note'."
   },
   {
     "key": "footer_legal_text",
@@ -1140,28 +1140,16 @@
     "instructions": "Write a one-paragraph brand origin summary in <p> tags. 2-3 sentences covering what the brand is, where it came from, and why it exists. Specific and human, not corporate boilerplate."
   },
   {
-    "key": "about_founding_year",
-    "type": "text",
-    "section": "about",
-    "instructions": "Year the brand was founded (e.g. '2021'). Infer from brand data or use a plausible recent year if unknown."
-  },
-  {
     "key": "about_founder_name",
     "type": "text",
     "section": "about",
     "instructions": "Founder full name. Use the actual founder name if available from brand data, otherwise leave as 'Our Founders'."
   },
   {
-    "key": "about_founder_title",
-    "type": "text",
-    "section": "about",
-    "instructions": "Founder title (e.g. 'Co-Founder & CEO', 'Founder'). Keep it simple and authentic."
-  },
-  {
     "key": "about_founder_story",
     "type": "richtext",
     "section": "about",
-    "instructions": "Write a 2-3 paragraph founder narrative in <p> tags. Paragraph 1: the personal problem or moment that sparked the idea. Paragraph 2: the journey from idea to product — specific details about sourcing, formulation, or process. Paragraph 3: where the brand is now and what drives it forward. Must feel personal and specific, not templated."
+    "instructions": "Write a 2-3 paragraph founder narrative in <p> tags. Paragraph 1: the personal problem or moment that sparked the idea. Paragraph 2: the journey from idea to product \u2014 specific details about sourcing, formulation, or process. Paragraph 3: where the brand is now and what drives it forward. Must feel personal and specific, not templated."
   },
   {
     "key": "about_mission_heading",
@@ -1185,7 +1173,7 @@
     "key": "about_value_1_body",
     "type": "richtext",
     "section": "about",
-    "instructions": "First brand value description in <p> tags. 1-2 sentences explaining what this value means in practice — give a concrete example, not an abstract claim."
+    "instructions": "First brand value description in <p> tags. 1-2 sentences explaining what this value means in practice \u2014 give a concrete example, not an abstract claim."
   },
   {
     "key": "about_value_2_heading",
@@ -1234,5 +1222,23 @@
     "type": "url",
     "section": "about",
     "instructions": "Shopify internal URL for the CTA button (e.g. 'shopify://collections/all') or empty string."
+  },
+  {
+    "key": "about_hero_image_background",
+    "type": "image",
+    "section": "about",
+    "instructions": "Brand image \u2014 set to null (image-map.json fills via lifestyle role at generate time)"
+  },
+  {
+    "key": "about_founder_image",
+    "type": "image",
+    "section": "about",
+    "instructions": "Brand image \u2014 set to null (image-map.json fills via lifestyle role at generate time)"
+  },
+  {
+    "key": "about_cta_image_background",
+    "type": "image",
+    "section": "about",
+    "instructions": "Brand image \u2014 set to null (image-map.json fills via lifestyle role at generate time)"
   }
 ]

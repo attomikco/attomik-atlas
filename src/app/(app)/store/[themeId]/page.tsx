@@ -20,7 +20,7 @@ export default async function StoreCopyEditorPage({
 
   const { data: theme, error: themeErr } = await supabase
     .from('store_themes')
-    .select('id, brand_id, name, index_json, product_json, footer_group_json, shopify_theme_id, shopify_theme_name, last_deploy_status, last_deploy_error, last_deployed_at')
+    .select('id, brand_id, name, index_json, product_json, footer_group_json, about_json, shopify_theme_id, shopify_theme_name, last_deploy_status, last_deploy_error, last_deployed_at')
     .eq('id', themeId)
     .maybeSingle()
 
@@ -56,6 +56,7 @@ export default async function StoreCopyEditorPage({
     index_json: theme.index_json,
     product_json: theme.product_json,
     footer_group_json: theme.footer_group_json,
+    about_json: theme.about_json,
   }
   const initialValues: Record<string, string> = {}
   for (const field of STORE_FIELDS) {

@@ -11,8 +11,8 @@ import { writeAtPath } from '@/lib/store-fields'
 
 export const runtime = 'nodejs'
 
-type CopySource = 'index_json' | 'product_json' | 'footer_group_json'
-const COPY_SOURCES: readonly CopySource[] = ['index_json', 'product_json', 'footer_group_json'] as const
+type CopySource = 'index_json' | 'product_json' | 'footer_group_json' | 'about_json'
+const COPY_SOURCES: readonly CopySource[] = ['index_json', 'product_json', 'footer_group_json', 'about_json'] as const
 
 // PATCH /api/brands/[id]/store/[themeId]/config
 //
