@@ -45,7 +45,7 @@ interface PriorityField {
   type: StoreFieldType
 }
 
-// Six placeholders in variable-map are dangling — `announcement_text`,
+// Four placeholders in variable-map are dangling — `announcement_text`,
 // `footer_about_heading`, `footer_instagram_url`, `footer_tiktok_url`,
 // `footer_facebook_url`, `footer_legal_text`. The generator spends tokens
 // producing values for them, but none of the three base templates wire
@@ -53,78 +53,236 @@ interface PriorityField {
 // nothing to edit. They're intentionally omitted from PRIORITY_FIELDS.
 // (Fixing the generator to stop emitting them is out of scope for the
 // copy editor.)
+//
+// Editor sections and their source sections in the generated JSON (verified
+// against the live Jolene store_themes row 2026-04-15):
+//   Hero            → sections.<banner-uuid>                       (hero_banner__*)
+//   Ticker          → sections.marquee_BqJJTc                       (marquee_ticker__*)
+//   Pillars         → sections.<icon-grid-uuid>                     (value_props__*)
+//   Ingredients     → sections.icon_grid_pAWkqU                     (ingredients_grid__*)
+//   Feature cards   → sections.content_grid_kXU8Qz                  (features_mobile__*)
+//   Feature details → sections.content_grid_3GJfUT +
+//                     sections.content_grid_zkMhzF                  (features_detail_mobile__* + features_detail_desktop__*)
+//   Story           → sections.content_grid_fAJFeY +
+//                     sections.content_grid_tMrLNn                  (founder_mobile__* + founder_desktop__*)
+//   Press           → sections.testimonial_slider_hTJXnt            (press_slider__*)
+//   Testimonials    → sections.testimonial_grid_ppc7zf              (customer_reviews__*)
+//   Comparison      → sections.table_68DHki                         (comparison_table__*)
+//   Subscription    → sections.content_grid_wGT9Va +
+//                     sections.content_grid_DwtYHh                  (subscription_mobile__* + subscription_desktop__*)
+//   Product grid    → sections.product_slider_AQDing                (product_slider__*)
+//   FAQ             → sections.accordions_LrLbTK                    (faq__*)
+//   Bottom banner   → sections.banner_j6wcjX                        (bottom_banner__*)
+//   PDP             → sections.1638995507af787164                   (pdp_*)
+//   Footer          → sections.text_zM9YDz + sections.theme_footer  (footer_*)
 const PRIORITY_FIELDS: PriorityField[] = [
-  // ── Hero ────────────────────────────────────────────────────────────────
-  { placeholder: 'hero_banner__heading_1__content',                editorSection: 'Hero',         editorOrder: 1, label: 'Headline',          type: 'short' },
-  { placeholder: 'hero_banner__content_1__content',                editorSection: 'Hero',         editorOrder: 1, label: 'Subheadline',       type: 'long' },
-  { placeholder: 'hero_banner__buttons_1__button_label',           editorSection: 'Hero',         editorOrder: 1, label: 'Button label',      type: 'short' },
-  { placeholder: 'hero_banner__buttons_1__button_url',             editorSection: 'Hero',         editorOrder: 1, label: 'Button URL',        type: 'url' },
+  // ── Hero (order 1) ──────────────────────────────────────────────────────
+  { placeholder: 'hero_banner__heading_1__content',                 editorSection: 'Hero',            editorOrder: 1,  label: 'Headline',              type: 'short' },
+  { placeholder: 'hero_banner__content_1__content',                 editorSection: 'Hero',            editorOrder: 1,  label: 'Subheadline',           type: 'long'  },
+  { placeholder: 'hero_banner__buttons_1__button_label',            editorSection: 'Hero',            editorOrder: 1,  label: 'Button label',          type: 'short' },
+  { placeholder: 'hero_banner__buttons_1__button_url',              editorSection: 'Hero',            editorOrder: 1,  label: 'Button URL',            type: 'url'   },
 
-  // ── Pillars (value_props) ───────────────────────────────────────────────
-  { placeholder: 'value_props__heading',                           editorSection: 'Pillars',      editorOrder: 2, label: 'Section heading',   type: 'short' },
-  { placeholder: 'value_props__content',                           editorSection: 'Pillars',      editorOrder: 2, label: 'Section body',      type: 'long' },
-  { placeholder: 'value_props__button_label',                      editorSection: 'Pillars',      editorOrder: 2, label: 'Section CTA label', type: 'short' },
-  { placeholder: 'value_props__pillar_1__heading',                 editorSection: 'Pillars',      editorOrder: 2, label: 'Pillar 1 title',    type: 'short' },
-  { placeholder: 'value_props__pillar_1__content',                 editorSection: 'Pillars',      editorOrder: 2, label: 'Pillar 1 body',     type: 'long' },
-  { placeholder: 'value_props__pillar_2__heading',                 editorSection: 'Pillars',      editorOrder: 2, label: 'Pillar 2 title',    type: 'short' },
-  { placeholder: 'value_props__pillar_2__content',                 editorSection: 'Pillars',      editorOrder: 2, label: 'Pillar 2 body',     type: 'long' },
-  { placeholder: 'value_props__pillar_3__heading',                 editorSection: 'Pillars',      editorOrder: 2, label: 'Pillar 3 title',    type: 'short' },
-  { placeholder: 'value_props__pillar_3__content',                 editorSection: 'Pillars',      editorOrder: 2, label: 'Pillar 3 body',     type: 'long' },
+  // ── Ticker (order 2) ────────────────────────────────────────────────────
+  { placeholder: 'marquee_ticker__heading_1__content',              editorSection: 'Ticker',          editorOrder: 2,  label: 'Item 1',                type: 'short' },
+  { placeholder: 'marquee_ticker__heading_2__content',              editorSection: 'Ticker',          editorOrder: 2,  label: 'Item 2',                type: 'short' },
+  { placeholder: 'marquee_ticker__heading_3__content',              editorSection: 'Ticker',          editorOrder: 2,  label: 'Item 3',                type: 'short' },
 
-  // ── Story (founder_mobile) ──────────────────────────────────────────────
-  { placeholder: 'founder_mobile__content_1__heading',             editorSection: 'Story',        editorOrder: 3, label: 'Heading',           type: 'short' },
-  { placeholder: 'founder_mobile__content_1__content',             editorSection: 'Story',        editorOrder: 3, label: 'Body',              type: 'long' },
-  { placeholder: 'founder_mobile__content_1__url',                 editorSection: 'Story',        editorOrder: 3, label: 'Link URL',          type: 'url' },
+  // ── Pillars (order 3) ───────────────────────────────────────────────────
+  { placeholder: 'value_props__heading',                            editorSection: 'Pillars',         editorOrder: 3,  label: 'Section heading',       type: 'short' },
+  { placeholder: 'value_props__content',                            editorSection: 'Pillars',         editorOrder: 3,  label: 'Section body',          type: 'long'  },
+  { placeholder: 'value_props__button_label',                       editorSection: 'Pillars',         editorOrder: 3,  label: 'Section CTA label',     type: 'short' },
+  { placeholder: 'value_props__pillar_1__heading',                  editorSection: 'Pillars',         editorOrder: 3,  label: 'Pillar 1 title',        type: 'short' },
+  { placeholder: 'value_props__pillar_1__content',                  editorSection: 'Pillars',         editorOrder: 3,  label: 'Pillar 1 body',         type: 'long'  },
+  { placeholder: 'value_props__pillar_2__heading',                  editorSection: 'Pillars',         editorOrder: 3,  label: 'Pillar 2 title',        type: 'short' },
+  { placeholder: 'value_props__pillar_2__content',                  editorSection: 'Pillars',         editorOrder: 3,  label: 'Pillar 2 body',         type: 'long'  },
+  { placeholder: 'value_props__pillar_3__heading',                  editorSection: 'Pillars',         editorOrder: 3,  label: 'Pillar 3 title',        type: 'short' },
+  { placeholder: 'value_props__pillar_3__content',                  editorSection: 'Pillars',         editorOrder: 3,  label: 'Pillar 3 body',         type: 'long'  },
 
-  // ── Testimonials (customer_reviews) ─────────────────────────────────────
-  { placeholder: 'customer_reviews__heading',                      editorSection: 'Testimonials', editorOrder: 4, label: 'Section heading',   type: 'short' },
-  { placeholder: 'customer_reviews__testimonial_1__content',       editorSection: 'Testimonials', editorOrder: 4, label: 'Review 1',          type: 'long' },
-  { placeholder: 'customer_reviews__testimonial_1__title',         editorSection: 'Testimonials', editorOrder: 4, label: 'Author 1',          type: 'short' },
-  { placeholder: 'customer_reviews__testimonial_2__content',       editorSection: 'Testimonials', editorOrder: 4, label: 'Review 2',          type: 'long' },
-  { placeholder: 'customer_reviews__testimonial_2__title',         editorSection: 'Testimonials', editorOrder: 4, label: 'Author 2',          type: 'short' },
-  { placeholder: 'customer_reviews__testimonial_3__content',       editorSection: 'Testimonials', editorOrder: 4, label: 'Review 3',          type: 'long' },
-  { placeholder: 'customer_reviews__testimonial_3__title',         editorSection: 'Testimonials', editorOrder: 4, label: 'Author 3',          type: 'short' },
+  // ── Ingredients (order 4) ───────────────────────────────────────────────
+  { placeholder: 'ingredients_grid__heading',                       editorSection: 'Ingredients',     editorOrder: 4,  label: 'Section heading',       type: 'short' },
+  { placeholder: 'ingredients_grid__pillar_1__heading',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 1 title',    type: 'short' },
+  { placeholder: 'ingredients_grid__pillar_1__content',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 1 body',     type: 'long'  },
+  { placeholder: 'ingredients_grid__pillar_2__heading',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 2 title',    type: 'short' },
+  { placeholder: 'ingredients_grid__pillar_2__content',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 2 body',     type: 'long'  },
+  { placeholder: 'ingredients_grid__pillar_3__heading',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 3 title',    type: 'short' },
+  { placeholder: 'ingredients_grid__pillar_3__content',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 3 body',     type: 'long'  },
+  { placeholder: 'ingredients_grid__pillar_4__heading',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 4 title',    type: 'short' },
+  { placeholder: 'ingredients_grid__pillar_4__content',             editorSection: 'Ingredients',     editorOrder: 4,  label: 'Ingredient 4 body',     type: 'long'  },
 
-  // ── FAQ ─────────────────────────────────────────────────────────────────
-  { placeholder: 'faq__heading',                                    editorSection: 'FAQ',          editorOrder: 5, label: 'Section heading',   type: 'short' },
-  { placeholder: 'faq__content_1__heading',                         editorSection: 'FAQ',          editorOrder: 5, label: 'Q1',                type: 'short' },
-  { placeholder: 'faq__content_1__content',                         editorSection: 'FAQ',          editorOrder: 5, label: 'A1',                type: 'long' },
-  { placeholder: 'faq__content_2__heading',                         editorSection: 'FAQ',          editorOrder: 5, label: 'Q2',                type: 'short' },
-  { placeholder: 'faq__content_2__content',                         editorSection: 'FAQ',          editorOrder: 5, label: 'A2',                type: 'long' },
-  { placeholder: 'faq__content_3__heading',                         editorSection: 'FAQ',          editorOrder: 5, label: 'Q3',                type: 'short' },
-  { placeholder: 'faq__content_3__content',                         editorSection: 'FAQ',          editorOrder: 5, label: 'A3',                type: 'long' },
-  { placeholder: 'faq__content_4__heading',                         editorSection: 'FAQ',          editorOrder: 5, label: 'Q4',                type: 'short' },
-  { placeholder: 'faq__content_4__content',                         editorSection: 'FAQ',          editorOrder: 5, label: 'A4',                type: 'long' },
-  { placeholder: 'faq__content_5__heading',                         editorSection: 'FAQ',          editorOrder: 5, label: 'Q5',                type: 'short' },
-  { placeholder: 'faq__content_5__content',                         editorSection: 'FAQ',          editorOrder: 5, label: 'A5',                type: 'long' },
+  // ── Feature cards (order 5 — features_mobile) ──────────────────────────
+  { placeholder: 'features_mobile__content_1__heading',             editorSection: 'Feature cards',   editorOrder: 5,  label: 'Card 1 title',          type: 'short' },
+  { placeholder: 'features_mobile__content_1__content',             editorSection: 'Feature cards',   editorOrder: 5,  label: 'Card 1 body',           type: 'long'  },
+  { placeholder: 'features_mobile__content_1__url',                 editorSection: 'Feature cards',   editorOrder: 5,  label: 'Card 1 link URL',       type: 'url'   },
+  { placeholder: 'features_mobile__content_2__heading',             editorSection: 'Feature cards',   editorOrder: 5,  label: 'Card 2 title',          type: 'short' },
+  { placeholder: 'features_mobile__content_2__content',             editorSection: 'Feature cards',   editorOrder: 5,  label: 'Card 2 body',           type: 'long'  },
 
-  // ── PDP ─────────────────────────────────────────────────────────────────
-  { placeholder: 'pdp_badge_text',                                  editorSection: 'PDP',          editorOrder: 6, label: 'Badge text',        type: 'short' },
-  { placeholder: 'pdp_badge_emoji',                                 editorSection: 'PDP',          editorOrder: 6, label: 'Badge emoji',       type: 'short' },
-  { placeholder: 'pdp_checklist_item_1',                            editorSection: 'PDP',          editorOrder: 6, label: 'Checklist 1',       type: 'short' },
-  { placeholder: 'pdp_checklist_item_2',                            editorSection: 'PDP',          editorOrder: 6, label: 'Checklist 2',       type: 'short' },
-  { placeholder: 'pdp_checklist_item_3',                            editorSection: 'PDP',          editorOrder: 6, label: 'Checklist 3',       type: 'short' },
-  { placeholder: 'pdp_checklist_item_4',                            editorSection: 'PDP',          editorOrder: 6, label: 'Checklist 4',       type: 'short' },
-  { placeholder: 'pdp_checklist_item_5',                            editorSection: 'PDP',          editorOrder: 6, label: 'Checklist 5',       type: 'short' },
-  { placeholder: 'pdp_checklist_value_tag',                         editorSection: 'PDP',          editorOrder: 6, label: 'Value tag',         type: 'short' },
-  { placeholder: 'pdp_checklist_value_text',                        editorSection: 'PDP',          editorOrder: 6, label: 'Value text',        type: 'long' },
-  { placeholder: 'pdp_perks_label',                                 editorSection: 'PDP',          editorOrder: 6, label: 'Perks label',       type: 'short' },
-  { placeholder: 'pdp_perks_item_1',                                editorSection: 'PDP',          editorOrder: 6, label: 'Perk 1',            type: 'short' },
-  { placeholder: 'pdp_perks_item_2',                                editorSection: 'PDP',          editorOrder: 6, label: 'Perk 2',            type: 'short' },
-  { placeholder: 'pdp_perks_item_3',                                editorSection: 'PDP',          editorOrder: 6, label: 'Perk 3',            type: 'short' },
-  { placeholder: 'pdp_perks_item_4',                                editorSection: 'PDP',          editorOrder: 6, label: 'Perk 4',            type: 'short' },
-  { placeholder: 'pdp_perks_item_5',                                editorSection: 'PDP',          editorOrder: 6, label: 'Perk 5',            type: 'short' },
-  { placeholder: 'pdp_ingredients_content',                         editorSection: 'PDP',          editorOrder: 6, label: 'Ingredients',       type: 'long' },
-  { placeholder: 'pdp_shipping_content',                            editorSection: 'PDP',          editorOrder: 6, label: 'Shipping',          type: 'long' },
+  // ── Feature details (order 6 — features_detail_mobile + features_detail_desktop) ──
+  { placeholder: 'features_detail_mobile__content_1__heading',      editorSection: 'Feature details', editorOrder: 6,  label: 'Mobile 1 title',        type: 'short' },
+  { placeholder: 'features_detail_mobile__content_1__content',      editorSection: 'Feature details', editorOrder: 6,  label: 'Mobile 1 body',         type: 'long'  },
+  { placeholder: 'features_detail_mobile__content_2__heading',      editorSection: 'Feature details', editorOrder: 6,  label: 'Mobile 2 title',        type: 'short' },
+  { placeholder: 'features_detail_mobile__content_2__content',      editorSection: 'Feature details', editorOrder: 6,  label: 'Mobile 2 body',         type: 'long'  },
+  { placeholder: 'features_detail_desktop__content_1__heading',     editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 1 title',       type: 'short' },
+  { placeholder: 'features_detail_desktop__content_1__content',     editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 1 body',        type: 'long'  },
+  { placeholder: 'features_detail_desktop__content_1__button_label',editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 1 button',      type: 'short' },
+  { placeholder: 'features_detail_desktop__content_1__url',         editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 1 button URL',  type: 'url'   },
+  { placeholder: 'features_detail_desktop__content_4__heading',     editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 2 title',       type: 'short' },
+  { placeholder: 'features_detail_desktop__content_4__content',     editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 2 body',        type: 'long'  },
+  { placeholder: 'features_detail_desktop__content_4__button_label',editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 2 button',      type: 'short' },
+  { placeholder: 'features_detail_desktop__content_4__url',         editorSection: 'Feature details', editorOrder: 6,  label: 'Desktop 2 button URL',  type: 'url'   },
 
-  // ── Footer ──────────────────────────────────────────────────────────────
-  { placeholder: 'footer_tagline',                                  editorSection: 'Footer',       editorOrder: 7, label: 'Tagline',           type: 'short' },
-  { placeholder: 'footer_about_content',                            editorSection: 'Footer',       editorOrder: 7, label: 'About body',        type: 'long' },
-  { placeholder: 'footer_cta_label',                                editorSection: 'Footer',       editorOrder: 7, label: 'About CTA label',   type: 'short' },
-  { placeholder: 'footer_cta_url',                                  editorSection: 'Footer',       editorOrder: 7, label: 'About CTA URL',     type: 'url' },
-  { placeholder: 'footer_newsletter_heading',                       editorSection: 'Footer',       editorOrder: 7, label: 'Newsletter heading',type: 'short' },
-  { placeholder: 'footer_newsletter_content',                       editorSection: 'Footer',       editorOrder: 7, label: 'Newsletter body',   type: 'long' },
-  { placeholder: 'footer_newsletter_button',                        editorSection: 'Footer',       editorOrder: 7, label: 'Subscribe button',  type: 'short' },
+  // ── Story (order 7 — founder_mobile + founder_desktop) ─────────────────
+  { placeholder: 'founder_mobile__content_1__heading',              editorSection: 'Story',           editorOrder: 7,  label: 'Mobile heading',        type: 'short' },
+  { placeholder: 'founder_mobile__content_1__content',              editorSection: 'Story',           editorOrder: 7,  label: 'Mobile body',           type: 'long'  },
+  { placeholder: 'founder_mobile__content_1__url',                  editorSection: 'Story',           editorOrder: 7,  label: 'Mobile link URL',       type: 'url'   },
+  { placeholder: 'founder_desktop__content_2__heading',             editorSection: 'Story',           editorOrder: 7,  label: 'Desktop heading',       type: 'short' },
+  { placeholder: 'founder_desktop__content_2__content',             editorSection: 'Story',           editorOrder: 7,  label: 'Desktop body',          type: 'long'  },
+  { placeholder: 'founder_desktop__content_2__button_label',        editorSection: 'Story',           editorOrder: 7,  label: 'Desktop button',        type: 'short' },
+  { placeholder: 'founder_desktop__content_2__url',                 editorSection: 'Story',           editorOrder: 7,  label: 'Desktop button URL',    type: 'url'   },
+
+  // ── Press (order 8 — press_slider) ─────────────────────────────────────
+  { placeholder: 'press_slider__testimonial_1__content',            editorSection: 'Press',           editorOrder: 8,  label: 'Quote 1',               type: 'long'  },
+  { placeholder: 'press_slider__testimonial_2__content',            editorSection: 'Press',           editorOrder: 8,  label: 'Quote 2',               type: 'long'  },
+  { placeholder: 'press_slider__testimonial_3__content',            editorSection: 'Press',           editorOrder: 8,  label: 'Quote 3',               type: 'long'  },
+  { placeholder: 'press_slider__testimonial_4__content',            editorSection: 'Press',           editorOrder: 8,  label: 'Quote 4',               type: 'long'  },
+  { placeholder: 'press_slider__testimonial_5__content',            editorSection: 'Press',           editorOrder: 8,  label: 'Quote 5',               type: 'long'  },
+
+  // ── Testimonials (order 9 — customer_reviews) ──────────────────────────
+  { placeholder: 'customer_reviews__heading',                       editorSection: 'Testimonials',    editorOrder: 9,  label: 'Section heading',       type: 'short' },
+  { placeholder: 'customer_reviews__testimonial_1__content',        editorSection: 'Testimonials',    editorOrder: 9,  label: 'Review 1',              type: 'long'  },
+  { placeholder: 'customer_reviews__testimonial_1__title',          editorSection: 'Testimonials',    editorOrder: 9,  label: 'Author 1',              type: 'short' },
+  { placeholder: 'customer_reviews__testimonial_2__content',        editorSection: 'Testimonials',    editorOrder: 9,  label: 'Review 2',              type: 'long'  },
+  { placeholder: 'customer_reviews__testimonial_2__title',          editorSection: 'Testimonials',    editorOrder: 9,  label: 'Author 2',              type: 'short' },
+  { placeholder: 'customer_reviews__testimonial_3__content',        editorSection: 'Testimonials',    editorOrder: 9,  label: 'Review 3',              type: 'long'  },
+  { placeholder: 'customer_reviews__testimonial_3__title',          editorSection: 'Testimonials',    editorOrder: 9,  label: 'Author 3',              type: 'short' },
+
+  // ── Comparison (order 10 — comparison_table) ───────────────────────────
+  { placeholder: 'comparison_table__table_headings',                editorSection: 'Comparison',      editorOrder: 10, label: 'Column headings',       type: 'short' },
+  { placeholder: 'comparison_table__content_1__label',              editorSection: 'Comparison',      editorOrder: 10, label: 'Row 1 label',           type: 'short' },
+  { placeholder: 'comparison_table__content_1__tooltip',            editorSection: 'Comparison',      editorOrder: 10, label: 'Row 1 tooltip',         type: 'short' },
+  { placeholder: 'comparison_table__content_1__column_4_content',   editorSection: 'Comparison',      editorOrder: 10, label: 'Row 1 competitor',      type: 'short' },
+  { placeholder: 'comparison_table__content_2__label',              editorSection: 'Comparison',      editorOrder: 10, label: 'Row 2 label',           type: 'short' },
+  { placeholder: 'comparison_table__content_2__tooltip',            editorSection: 'Comparison',      editorOrder: 10, label: 'Row 2 tooltip',         type: 'short' },
+  { placeholder: 'comparison_table__content_3__label',              editorSection: 'Comparison',      editorOrder: 10, label: 'Row 3 label',           type: 'short' },
+  { placeholder: 'comparison_table__content_3__column_4_content',   editorSection: 'Comparison',      editorOrder: 10, label: 'Row 3 competitor',      type: 'short' },
+
+  // ── Subscription (order 11 — subscription_mobile + subscription_desktop) ──
+  { placeholder: 'subscription_mobile__content_1__heading',         editorSection: 'Subscription',    editorOrder: 11, label: 'Mobile heading',        type: 'short' },
+  { placeholder: 'subscription_mobile__content_1__content',         editorSection: 'Subscription',    editorOrder: 11, label: 'Mobile body',           type: 'long'  },
+  { placeholder: 'subscription_mobile__content_1__button_label',    editorSection: 'Subscription',    editorOrder: 11, label: 'Mobile button',         type: 'short' },
+  { placeholder: 'subscription_mobile__content_1__url',             editorSection: 'Subscription',    editorOrder: 11, label: 'Mobile button URL',     type: 'url'   },
+  { placeholder: 'subscription_desktop__content_1__heading',        editorSection: 'Subscription',    editorOrder: 11, label: 'Desktop heading',       type: 'short' },
+  { placeholder: 'subscription_desktop__content_1__content',        editorSection: 'Subscription',    editorOrder: 11, label: 'Desktop body',          type: 'long'  },
+  { placeholder: 'subscription_desktop__content_1__button_label',   editorSection: 'Subscription',    editorOrder: 11, label: 'Desktop button',        type: 'short' },
+  { placeholder: 'subscription_desktop__content_1__url',            editorSection: 'Subscription',    editorOrder: 11, label: 'Desktop button URL',    type: 'url'   },
+
+  // ── Product grid (order 12 — product_slider) ───────────────────────────
+  { placeholder: 'product_slider__heading',                         editorSection: 'Product grid',    editorOrder: 12, label: 'Section heading',       type: 'short' },
+  { placeholder: 'product_slider__content_1__heading',              editorSection: 'Product grid',    editorOrder: 12, label: 'Callout title',         type: 'short' },
+  { placeholder: 'product_slider__content_1__content',              editorSection: 'Product grid',    editorOrder: 12, label: 'Callout body',          type: 'long'  },
+  { placeholder: 'product_slider__content_1__button_label',         editorSection: 'Product grid',    editorOrder: 12, label: 'Callout button',        type: 'short' },
+  { placeholder: 'product_slider__content_1__url',                  editorSection: 'Product grid',    editorOrder: 12, label: 'Callout button URL',    type: 'url'   },
+
+  // ── FAQ (order 13 — accordions_LrLbTK) ─────────────────────────────────
+  { placeholder: 'faq__heading',                                    editorSection: 'FAQ',             editorOrder: 13, label: 'Section heading',       type: 'short' },
+  { placeholder: 'faq__content_1__heading',                         editorSection: 'FAQ',             editorOrder: 13, label: 'Q1',                    type: 'short' },
+  { placeholder: 'faq__content_1__content',                         editorSection: 'FAQ',             editorOrder: 13, label: 'A1',                    type: 'long'  },
+  { placeholder: 'faq__content_2__heading',                         editorSection: 'FAQ',             editorOrder: 13, label: 'Q2',                    type: 'short' },
+  { placeholder: 'faq__content_2__content',                         editorSection: 'FAQ',             editorOrder: 13, label: 'A2',                    type: 'long'  },
+  { placeholder: 'faq__content_3__heading',                         editorSection: 'FAQ',             editorOrder: 13, label: 'Q3',                    type: 'short' },
+  { placeholder: 'faq__content_3__content',                         editorSection: 'FAQ',             editorOrder: 13, label: 'A3',                    type: 'long'  },
+  { placeholder: 'faq__content_4__heading',                         editorSection: 'FAQ',             editorOrder: 13, label: 'Q4',                    type: 'short' },
+  { placeholder: 'faq__content_4__content',                         editorSection: 'FAQ',             editorOrder: 13, label: 'A4',                    type: 'long'  },
+  { placeholder: 'faq__content_5__heading',                         editorSection: 'FAQ',             editorOrder: 13, label: 'Q5',                    type: 'short' },
+  { placeholder: 'faq__content_5__content',                         editorSection: 'FAQ',             editorOrder: 13, label: 'A5',                    type: 'long'  },
+  { placeholder: 'faq__content_6__heading',                         editorSection: 'FAQ',             editorOrder: 13, label: 'Q6',                    type: 'short' },
+  { placeholder: 'faq__content_6__content',                         editorSection: 'FAQ',             editorOrder: 13, label: 'A6',                    type: 'long'  },
+
+  // ── Bottom banner (order 14) ───────────────────────────────────────────
+  { placeholder: 'bottom_banner__heading_1__content',               editorSection: 'Bottom banner',   editorOrder: 14, label: 'Headline',              type: 'short' },
+  { placeholder: 'bottom_banner__content_1__content',               editorSection: 'Bottom banner',   editorOrder: 14, label: 'Subheadline',           type: 'long'  },
+  { placeholder: 'bottom_banner__buttons_1__button_label',          editorSection: 'Bottom banner',   editorOrder: 14, label: 'Button label',          type: 'short' },
+  { placeholder: 'bottom_banner__buttons_1__button_url',            editorSection: 'Bottom banner',   editorOrder: 14, label: 'Button URL',            type: 'url'   },
+
+  // ── PDP (order 15) ─────────────────────────────────────────────────────
+  { placeholder: 'pdp_badge_text',                                  editorSection: 'PDP',             editorOrder: 15, label: 'Badge text',            type: 'short' },
+  { placeholder: 'pdp_badge_emoji',                                 editorSection: 'PDP',             editorOrder: 15, label: 'Badge emoji',           type: 'short' },
+  { placeholder: 'pdp_checklist_item_1',                            editorSection: 'PDP',             editorOrder: 15, label: 'Checklist 1',           type: 'short' },
+  { placeholder: 'pdp_checklist_item_2',                            editorSection: 'PDP',             editorOrder: 15, label: 'Checklist 2',           type: 'short' },
+  { placeholder: 'pdp_checklist_item_3',                            editorSection: 'PDP',             editorOrder: 15, label: 'Checklist 3',           type: 'short' },
+  { placeholder: 'pdp_checklist_item_4',                            editorSection: 'PDP',             editorOrder: 15, label: 'Checklist 4',           type: 'short' },
+  { placeholder: 'pdp_checklist_item_5',                            editorSection: 'PDP',             editorOrder: 15, label: 'Checklist 5',           type: 'short' },
+  { placeholder: 'pdp_checklist_value_tag',                         editorSection: 'PDP',             editorOrder: 15, label: 'Value tag',             type: 'short' },
+  { placeholder: 'pdp_checklist_value_text',                        editorSection: 'PDP',             editorOrder: 15, label: 'Value text',            type: 'long'  },
+  { placeholder: 'pdp_perks_label',                                 editorSection: 'PDP',             editorOrder: 15, label: 'Perks label',           type: 'short' },
+  { placeholder: 'pdp_perks_item_1',                                editorSection: 'PDP',             editorOrder: 15, label: 'Perk 1',                type: 'short' },
+  { placeholder: 'pdp_perks_item_2',                                editorSection: 'PDP',             editorOrder: 15, label: 'Perk 2',                type: 'short' },
+  { placeholder: 'pdp_perks_item_3',                                editorSection: 'PDP',             editorOrder: 15, label: 'Perk 3',                type: 'short' },
+  { placeholder: 'pdp_perks_item_4',                                editorSection: 'PDP',             editorOrder: 15, label: 'Perk 4',                type: 'short' },
+  { placeholder: 'pdp_perks_item_5',                                editorSection: 'PDP',             editorOrder: 15, label: 'Perk 5',                type: 'short' },
+  { placeholder: 'pdp_ingredients_content',                         editorSection: 'PDP',             editorOrder: 15, label: 'Ingredients body',      type: 'long'  },
+  { placeholder: 'pdp_shipping_content',                            editorSection: 'PDP',             editorOrder: 15, label: 'Shipping body',         type: 'long'  },
+
+  // ── Footer (order 16) ──────────────────────────────────────────────────
+  { placeholder: 'footer_tagline',                                  editorSection: 'Footer',          editorOrder: 16, label: 'Tagline',               type: 'short' },
+  { placeholder: 'footer_about_content',                            editorSection: 'Footer',          editorOrder: 16, label: 'About body',            type: 'long'  },
+  { placeholder: 'footer_cta_label',                                editorSection: 'Footer',          editorOrder: 16, label: 'About CTA label',       type: 'short' },
+  { placeholder: 'footer_cta_url',                                  editorSection: 'Footer',          editorOrder: 16, label: 'About CTA URL',         type: 'url'   },
+  { placeholder: 'footer_newsletter_heading',                       editorSection: 'Footer',          editorOrder: 16, label: 'Newsletter heading',    type: 'short' },
+  { placeholder: 'footer_newsletter_content',                       editorSection: 'Footer',          editorOrder: 16, label: 'Newsletter body',       type: 'long'  },
+  { placeholder: 'footer_newsletter_button',                        editorSection: 'Footer',          editorOrder: 16, label: 'Subscribe button',      type: 'short' },
+  { placeholder: 'footer_newsletter_disclaimer',                    editorSection: 'Footer',          editorOrder: 16, label: 'Newsletter disclaimer', type: 'long'  },
+  { placeholder: 'footer_richtext_heading',                         editorSection: 'Footer',          editorOrder: 16, label: 'Social heading',        type: 'short' },
+]
+
+// ─── Direct (non-placeholder) fields ─────────────────────────────────────────
+// Some editable settings on the base templates are hardcoded string literals,
+// not `{{placeholder}}` references, so the placeholder walker below can't
+// resolve them. We register them here with pre-resolved source + path. These
+// paths were audited directly against the live `store_themes` row on
+// 2026-04-15 and the base template structure (base-pdp.json) — the block IDs
+// are stable across regens because the generator never rewrites them.
+//
+// If a future template edit changes these hardcoded paths, the `DIRECT_FIELDS`
+// entry will still point to the old key. The `readAtPath` call in the editor
+// will return `null` and the field will render as empty; the PATCH route's
+// `writeAtPath` will then refuse the save (the key no longer exists). This is
+// the same silent-drop safety net that the walker uses for unresolved
+// placeholders.
+interface DirectField {
+  source: StoreFieldSource
+  path: string
+  editorSection: string
+  editorOrder: number
+  label: string
+  type: StoreFieldType
+  /**
+   * Synthetic stable key used wherever a field needs to be referenced by
+   * `placeholder` (initial-values map, savedSet, htmlPlaceholders, etc.).
+   * Prefixed with `direct:` so it can't collide with a real placeholder
+   * from variable-map.
+   */
+  syntheticKey: string
+}
+
+const DIRECT_FIELDS: DirectField[] = [
+  {
+    syntheticKey: 'direct:pdp_ingredients_title',
+    source: 'product_json',
+    path: 'sections.1638995507af787164.blocks.accordion_gJ6baw.settings.title',
+    editorSection: 'PDP',
+    editorOrder: 15,
+    label: 'Ingredients title',
+    type: 'short',
+  },
+  {
+    syntheticKey: 'direct:pdp_shipping_title',
+    source: 'product_json',
+    path: 'sections.1638995507af787164.blocks.accordion_ERmP7y.settings.title',
+    editorSection: 'PDP',
+    editorOrder: 15,
+    label: 'Shipping title',
+    type: 'short',
+  },
 ]
 
 // ─── Path resolution ─────────────────────────────────────────────────────────
@@ -174,7 +332,7 @@ function resolveSource(placeholder: string): { source: StoreFieldSource; path: s
 // templates — that would mean variable-map and base templates are out of
 // sync, and the entry is unusable. Better to silently skip than render a
 // field that will fail at save time.
-export const STORE_FIELDS: StoreFieldSpec[] = PRIORITY_FIELDS.flatMap(f => {
+const WALKER_FIELDS: StoreFieldSpec[] = PRIORITY_FIELDS.flatMap(f => {
   const resolved = resolveSource(f.placeholder)
   if (!resolved) {
     console.warn('[store-fields] placeholder not found in any base template:', f.placeholder)
@@ -182,6 +340,22 @@ export const STORE_FIELDS: StoreFieldSpec[] = PRIORITY_FIELDS.flatMap(f => {
   }
   return [{ ...f, ...resolved }]
 })
+
+// DIRECT_FIELDS entries carry their own pre-resolved source + path and get
+// appended to the walker-resolved list. They use a `syntheticKey` as the
+// placeholder ID so lookups by `field.placeholder` work uniformly across
+// both kinds of fields.
+const DIRECT_FIELD_SPECS: StoreFieldSpec[] = DIRECT_FIELDS.map(f => ({
+  placeholder: f.syntheticKey,
+  source: f.source,
+  path: f.path,
+  editorSection: f.editorSection,
+  editorOrder: f.editorOrder,
+  label: f.label,
+  type: f.type,
+}))
+
+export const STORE_FIELDS: StoreFieldSpec[] = [...WALKER_FIELDS, ...DIRECT_FIELD_SPECS]
 
 // Stable ordering — by editor section order, then by original position in
 // PRIORITY_FIELDS so fields appear in the author's intended order.

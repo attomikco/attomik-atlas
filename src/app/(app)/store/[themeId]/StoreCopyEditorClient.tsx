@@ -1,21 +1,29 @@
 'use client'
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { colors, font, fontWeight, fontSize, radius, spacing } from '@/lib/design-tokens'
+import { colors, font, fontWeight, spacing } from '@/lib/design-tokens'
 import type { StoreFieldSpec } from '@/lib/store-fields'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StoreCopyEditorClient
-// Left-sidebar navigation + right content area of per-section field lists.
-// Every field's <input> or <textarea> holds its value in local state; on
-// blur we PATCH /api/brands/[brandId]/store/[themeId]/config with the
-// { section, path, value } shape. Per-field "Saved" chip, no page reload.
+// StoreCopyEditorClient — styling rewrite (no logic changes)
 //
-// Deploy button POSTs /api/brands/[brandId]/store/deploy directly from
-// this page. The target Shopify theme is picked once on mount: we prefer
-// the theme that was last deployed to (store_themes.shopify_theme_id),
-// falling back to the first non-main theme returned by GET /themes. If
-// there's no target we disable the Deploy button and prompt the user.
+// Layout: left sidebar (sticky under TopNav) + right content column. Both
+// live inside a normal document flow so the whole page scrolls with the
+// window — the sidebar uses `position: sticky; top: 72px` to clear the
+// 72px sticky TopNav without getting clipped.
+//
+// Fields: all inputs/textareas inherit Barlow from globals.css (no mono).
+// Labels mirror the Email editor's FieldLabel style (10px / 700 / 0.08em
+// tracking / uppercase / muted color). Input borders use 1.5px solid
+// var(--border) / radius 8 / padding 9×11 to match Email inputs exactly.
+//
+// Richtext handling: the generator wraps some text fields in <p>...</p>
+// (see variable-map.json entries of type=richtext). The editor must show
+// plain text to the user and re-wrap on save. We detect that the incoming
+// value contains HTML tags at initial-load time, stash the field's
+// placeholder in `htmlFields`, strip tags for the display value, and wrap
+// back in <p>…</p> in the save path. No save logic or API call shape
+// changes — just a pre/post transform around the existing code path.
 // ─────────────────────────────────────────────────────────────────────────────
 
 type GroupedFields = {
@@ -43,6 +51,58 @@ type RemoteTheme = {
 }
 
 const SAVED_FLASH_MS = 1500
+const NAV_OFFSET = 72 // matches layout.navHeight in design-tokens.ts
+
+// ─── Richtext helpers ────────────────────────────────────────────────────────
+// Heuristic: treat any value that starts with `<p` or contains a `<tagname>`
+// pattern as HTML. We don't try to parse it — a regex strip is enough for
+// the content Claude generates, which is always simple `<p>…</p>` or
+// occasionally `<p>…</p><p>…</p>`.
+const HTML_RE = /<[a-z][^>]*>/i
+
+function isLikelyHtml(raw: string): boolean {
+  if (!raw) return false
+  if (raw.trim().startsWith('<p')) return true
+  return HTML_RE.test(raw)
+}
+
+function stripHtmlToPlain(html: string): string {
+  if (!html) return ''
+  // Replace paragraph closers with double newlines, then strip any other
+  // tag. Collapse whitespace so a `<p>foo</p><p>bar</p>` becomes
+  // `foo\n\nbar`, matching how users expect multi-paragraph copy to read
+  // in a plain textarea.
+  const withBreaks = html
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+  const stripped = withBreaks.replace(/<[^>]+>/g, '')
+  // Decode the handful of entities Claude emits. Not a full HTML decoder —
+  // just the ones we see in practice.
+  return stripped
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim()
+}
+
+function wrapPlainAsHtml(plain: string): string {
+  if (!plain) return ''
+  // Escape the same entities we decoded above so a user who types `<` or
+  // `&` doesn't corrupt the JSON payload.
+  const escape = (s: string) => s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  // Split on blank lines → one <p> per paragraph.
+  const paragraphs = plain
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0)
+  if (paragraphs.length === 0) return ''
+  return paragraphs.map(p => `<p>${escape(p)}</p>`).join('')
+}
 
 export default function StoreCopyEditorClient({
   brand,
@@ -57,7 +117,24 @@ export default function StoreCopyEditorClient({
   grouped: GroupedFields[]
   initialValues: Record<string, string>
 }) {
-  const [values, setValues] = useState<Record<string, string>>(initialValues)
+  // Compute the set of fields that hold HTML and the corresponding plain
+  // display values just once, at mount. We derive both synchronously from
+  // the `initialValues` prop so we don't need a separate effect.
+  const { displayValues: initialDisplayValues, htmlPlaceholders } = useMemo(() => {
+    const htmlSet = new Set<string>()
+    const display: Record<string, string> = {}
+    for (const [placeholder, raw] of Object.entries(initialValues)) {
+      if (isLikelyHtml(raw)) {
+        htmlSet.add(placeholder)
+        display[placeholder] = stripHtmlToPlain(raw)
+      } else {
+        display[placeholder] = raw
+      }
+    }
+    return { displayValues: display, htmlPlaceholders: htmlSet }
+  }, [initialValues])
+
+  const [values, setValues] = useState<Record<string, string>>(initialDisplayValues)
   const [activeSection, setActiveSection] = useState<string>(grouped[0]?.section || '')
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set())
   const [errorMap, setErrorMap] = useState<Record<string, string>>({})
@@ -72,8 +149,7 @@ export default function StoreCopyEditorClient({
 
   // Fetch the list of non-main Shopify themes once on mount so the deploy
   // button knows where to push. Prefer the row's last-deployed theme; fall
-  // back to the first non-main. If the fetch fails (credentials missing,
-  // network error) we surface the error inline but don't block the editor.
+  // back to the first non-main.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -102,7 +178,6 @@ export default function StoreCopyEditorClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand.id])
 
-  // Clean up any pending saved-flash timers on unmount.
   useEffect(() => {
     const timers = savedTimersRef.current
     return () => {
@@ -111,11 +186,10 @@ export default function StoreCopyEditorClient({
     }
   }, [])
 
-  // Track which section is currently in view. Simple IntersectionObserver
-  // rooted at the scroll container — the first visible section wins.
+  // Scroll-spy for the sidebar's active section. Rooted on the document
+  // (null root) since the whole page now scrolls with the window rather
+  // than a custom scroll container.
   useEffect(() => {
-    const el = document.getElementById('store-editor-scroll')
-    if (!el) return
     const sectionEls = grouped
       .map(g => document.getElementById(`store-section-${slugifySection(g.section)}`))
       .filter((s): s is HTMLElement => !!s)
@@ -131,7 +205,7 @@ export default function StoreCopyEditorClient({
           if (match) setActiveSection(match.section)
         }
       },
-      { root: el, rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+      { root: null, rootMargin: '-80px 0px -60% 0px', threshold: 0 }
     )
     sectionEls.forEach(s => observer.observe(s))
     return () => observer.disconnect()
@@ -143,10 +217,14 @@ export default function StoreCopyEditorClient({
     return map
   }, [grouped])
 
-  const saveField = useCallback(async (placeholder: string, value: string) => {
+  const saveField = useCallback(async (placeholder: string, displayValue: string) => {
     const field = placeholderToField.get(placeholder)
     if (!field) return
-    // Clear any stale error for this field before the request fires.
+    // Richtext fields get re-wrapped in <p> on the way out so the theme's
+    // Liquid rendering still gets valid HTML. Plain text fields go as-is.
+    const valueToSave = htmlPlaceholders.has(placeholder)
+      ? wrapPlainAsHtml(displayValue)
+      : displayValue
     setErrorMap(prev => {
       if (!(placeholder in prev)) return prev
       const next = { ...prev }
@@ -160,7 +238,7 @@ export default function StoreCopyEditorClient({
         body: JSON.stringify({
           section: field.source,
           path: field.path,
-          value,
+          value: valueToSave,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -185,7 +263,7 @@ export default function StoreCopyEditorClient({
     } catch (e) {
       setErrorMap(prev => ({ ...prev, [placeholder]: e instanceof Error ? e.message : 'Save failed' }))
     }
-  }, [brand.id, theme.id, placeholderToField])
+  }, [brand.id, theme.id, placeholderToField, htmlPlaceholders])
 
   function updateValue(placeholder: string, value: string) {
     setValues(prev => ({ ...prev, [placeholder]: value }))
@@ -193,11 +271,7 @@ export default function StoreCopyEditorClient({
 
   function onFieldBlur(placeholder: string) {
     const current = values[placeholder] ?? ''
-    const initial = initialValues[placeholder] ?? ''
-    // Only save when the value actually differs from the last persisted
-    // value. We approximate "last persisted" by the initialValues from
-    // the server load — after a save we don't update initialValues but
-    // re-saving the same string is a harmless no-op.
+    const initial = initialDisplayValues[placeholder] ?? ''
     if (current === initial && !savedSet.has(placeholder)) return
     saveField(placeholder, current)
   }
@@ -234,19 +308,20 @@ export default function StoreCopyEditorClient({
       style={{
         display: 'grid',
         gridTemplateColumns: '260px 1fr',
-        minHeight: 'calc(100vh - 72px)',
+        minHeight: `calc(100vh - ${NAV_OFFSET}px)`,
+        background: 'var(--cream, #f8f7f4)',
       }}
     >
       {/* ── Sidebar ──────────────────────────────────────────── */}
       <aside
         style={{
-          borderRight: `1px solid ${colors.border}`,
-          background: colors.paper,
-          padding: `${spacing[6]} ${spacing[5]}`,
+          borderRight: '1px solid var(--border)',
+          background: 'var(--paper)',
+          padding: `${spacing[6]}px ${spacing[5]}px`,
           position: 'sticky',
-          top: 0,
+          top: NAV_OFFSET,
           alignSelf: 'start',
-          maxHeight: 'calc(100vh - 72px)',
+          maxHeight: `calc(100vh - ${NAV_OFFSET}px)`,
           overflowY: 'auto',
         }}
       >
@@ -256,13 +331,13 @@ export default function StoreCopyEditorClient({
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            fontSize: fontSize.xs,
-            fontWeight: fontWeight.bold,
-            color: colors.muted,
+            fontSize: 11,
+            fontWeight: 700,
+            color: 'var(--muted)',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
             textDecoration: 'none',
-            marginBottom: spacing[5],
+            marginBottom: spacing[6],
           }}
         >
           ← Store
@@ -271,17 +346,17 @@ export default function StoreCopyEditorClient({
           style={{
             fontFamily: font.heading,
             fontWeight: fontWeight.heading,
-            fontSize: fontSize.lg,
+            fontSize: 18,
             textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            color: colors.ink,
+            letterSpacing: '-0.02em',
+            color: 'var(--ink)',
             marginBottom: spacing[5],
             lineHeight: 1.1,
           }}
         >
           Copy editor
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {grouped.map(g => {
             const isActive = g.section === activeSection
             return (
@@ -289,108 +364,111 @@ export default function StoreCopyEditorClient({
                 key={g.section}
                 href={`#store-section-${slugifySection(g.section)}`}
                 onClick={(e) => {
-                  // Smooth scroll inside the right pane instead of the
-                  // browser-default jump, which snaps the whole window.
                   e.preventDefault()
                   setActiveSection(g.section)
                   const target = document.getElementById(`store-section-${slugifySection(g.section)}`)
-                  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  if (target) {
+                    const top = target.getBoundingClientRect().top + window.scrollY - NAV_OFFSET - 16
+                    window.scrollTo({ top, behavior: 'smooth' })
+                  }
                 }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  borderRadius: radius.md,
-                  background: isActive ? colors.ink : 'transparent',
-                  color: isActive ? colors.accent : colors.ink,
-                  fontFamily: font.mono,
-                  fontSize: fontSize.xs,
-                  fontWeight: fontWeight.bold,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  background: isActive ? 'var(--ink)' : 'transparent',
+                  color: isActive ? 'var(--accent)' : 'var(--ink)',
+                  fontSize: 13,
+                  fontWeight: 700,
                   textDecoration: 'none',
                   transition: 'background 120ms, color 120ms',
                 }}
               >
                 <span>{g.section}</span>
-                <span style={{ opacity: 0.6, fontSize: 10 }}>{g.fields.length}</span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: isActive ? 'var(--accent)' : 'var(--muted)',
+                    opacity: isActive ? 0.75 : 1,
+                  }}
+                >
+                  {g.fields.length}
+                </span>
               </a>
             )
           })}
-        </div>
+        </nav>
       </aside>
 
       {/* ── Right pane ────────────────────────────────────────── */}
-      <div
-        id="store-editor-scroll"
-        style={{
-          overflowY: 'auto',
-          maxHeight: 'calc(100vh - 72px)',
-          scrollBehavior: 'smooth',
-        }}
-      >
-        {/* Top bar — brand name + deploy */}
+      <div>
+        {/* Top bar — sticky so it clears the TopNav when the page scrolls */}
         <div
           style={{
             position: 'sticky',
-            top: 0,
-            zIndex: 10,
+            top: NAV_OFFSET,
+            zIndex: 5,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: `${spacing[4]} ${spacing[8]}`,
-            borderBottom: `1px solid ${colors.border}`,
-            background: colors.paper,
+            gap: spacing[4],
+            padding: '20px 32px',
+            borderBottom: '1px solid var(--border)',
+            background: 'rgba(255,255,255,0.97)',
+            backdropFilter: 'blur(12px)',
           }}
         >
           <div>
             <div
               style={{
-                fontSize: fontSize.xs,
-                fontWeight: fontWeight.bold,
+                fontSize: 11,
+                fontWeight: 700,
                 letterSpacing: '0.12em',
                 textTransform: 'uppercase',
-                color: colors.muted,
+                color: 'var(--muted)',
                 marginBottom: 4,
               }}
             >
               {brand.name}
             </div>
-            <div
+            <h1
               style={{
                 fontFamily: font.heading,
                 fontWeight: fontWeight.heading,
-                fontSize: fontSize['2xl'],
+                fontSize: 24,
                 textTransform: 'uppercase',
-                letterSpacing: '-0.01em',
-                color: colors.ink,
+                letterSpacing: '-0.02em',
+                color: 'var(--ink)',
                 lineHeight: 1.1,
+                margin: 0,
               }}
             >
               Shopify copy
-            </div>
+            </h1>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
-            {deployStatus && (
+            {deployStatus && deployStatus !== 'idle' && (
               <span
                 style={{
                   fontFamily: font.mono,
-                  fontSize: fontSize.xs,
-                  fontWeight: fontWeight.bold,
+                  fontSize: 10,
+                  fontWeight: 700,
                   padding: '4px 10px',
-                  borderRadius: radius.pill,
+                  borderRadius: 999,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.08em',
                   background:
                     deployStatus === 'success' ? 'rgba(0,255,151,0.15)' :
                     deployStatus === 'failed'  ? 'rgba(244,63,94,0.12)' :
-                    colors.gray200,
+                    'var(--cream)',
                   color:
                     deployStatus === 'success' ? '#00a86b' :
                     deployStatus === 'failed'  ? '#b91c1c' :
-                    colors.muted,
+                    'var(--muted)',
                 }}
               >
                 {deployStatus}
@@ -402,9 +480,9 @@ export default function StoreCopyEditorClient({
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  fontSize: fontSize.caption,
-                  color: colors.ink,
-                  fontWeight: fontWeight.bold,
+                  fontSize: 12,
+                  color: 'var(--ink)',
+                  fontWeight: 700,
                   textDecoration: 'underline',
                 }}
               >
@@ -416,14 +494,14 @@ export default function StoreCopyEditorClient({
               disabled={deploying || !targetThemeId}
               style={{
                 fontFamily: font.heading,
-                fontWeight: fontWeight.extrabold,
-                fontSize: fontSize.body,
-                letterSpacing: '0.02em',
+                fontWeight: 800,
+                fontSize: 13,
+                letterSpacing: '-0.01em',
                 padding: '10px 20px',
-                borderRadius: radius.pill,
+                borderRadius: 999,
                 border: '1px solid transparent',
-                background: (deploying || !targetThemeId) ? colors.gray200 : colors.ink,
-                color: (deploying || !targetThemeId) ? colors.muted : colors.accent,
+                background: (deploying || !targetThemeId) ? colors.gray200 : 'var(--ink)',
+                color: (deploying || !targetThemeId) ? 'var(--muted)' : 'var(--accent)',
                 cursor: (deploying || !targetThemeId) ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
               }}
@@ -436,13 +514,13 @@ export default function StoreCopyEditorClient({
         {(deployError || themesError) && (
           <div
             style={{
-              margin: `${spacing[4]} ${spacing[8]} 0`,
+              margin: '20px 32px 0',
               padding: '10px 14px',
-              borderRadius: radius.md,
+              borderRadius: 8,
               background: 'rgba(244,63,94,0.08)',
               border: '1px solid rgba(244,63,94,0.2)',
               color: '#b91c1c',
-              fontSize: fontSize.caption,
+              fontSize: 12,
             }}
           >
             {deployError || themesError}
@@ -452,40 +530,39 @@ export default function StoreCopyEditorClient({
         {targetThemeName && (
           <div
             style={{
-              padding: `${spacing[3]} ${spacing[8]} 0`,
-              fontSize: fontSize.xs,
-              color: colors.muted,
-              fontFamily: font.mono,
+              padding: '12px 32px 0',
+              fontSize: 11,
+              color: 'var(--muted)',
             }}
           >
-            Deploying to <strong style={{ color: colors.ink }}>{targetThemeName}</strong>
+            Deploying to <strong style={{ color: 'var(--ink)', fontWeight: 700 }}>{targetThemeName}</strong>
             {deployedAt && ` · last pushed ${new Date(deployedAt).toLocaleString()}`}
           </div>
         )}
 
-        <div style={{ padding: `${spacing[6]} ${spacing[8]} ${spacing[10]}`, maxWidth: 820 }}>
+        <div style={{ padding: '28px 32px 80px', maxWidth: 760 }}>
           {grouped.map(g => (
             <section
               key={g.section}
               id={`store-section-${slugifySection(g.section)}`}
-              style={{ marginBottom: spacing[8], scrollMarginTop: spacing[6] }}
+              style={{ marginBottom: 40, scrollMarginTop: NAV_OFFSET + 80 }}
             >
               <h2
                 style={{
                   fontFamily: font.heading,
                   fontWeight: fontWeight.heading,
-                  fontSize: fontSize.xl,
+                  fontSize: 20,
                   textTransform: 'uppercase',
-                  letterSpacing: '-0.01em',
-                  color: colors.ink,
-                  marginBottom: spacing[4],
+                  letterSpacing: '-0.02em',
+                  color: 'var(--ink)',
+                  marginBottom: 20,
                   marginTop: 0,
                   lineHeight: 1.1,
                 }}
               >
                 {g.section}
               </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {g.fields.map(field => (
                   <FieldRow
                     key={field.placeholder}
@@ -495,6 +572,7 @@ export default function StoreCopyEditorClient({
                     onBlur={() => onFieldBlur(field.placeholder)}
                     saved={savedSet.has(field.placeholder)}
                     error={errorMap[field.placeholder]}
+                    isRichtext={htmlPlaceholders.has(field.placeholder)}
                   />
                 ))}
               </div>
@@ -507,8 +585,29 @@ export default function StoreCopyEditorClient({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Per-field row — short text, long text (auto-resize textarea), url
+// FieldRow — mirrors the Email editor's Field + inputStyle convention.
+// fontFamily on the input/textarea is intentionally omitted so globals.css
+// (`input,select,textarea { font-family: var(--font-sans) }`) takes over.
 // ─────────────────────────────────────────────────────────────────────────────
+
+const INPUT_STYLE: React.CSSProperties = {
+  width: '100%',
+  border: '1.5px solid var(--border)',
+  borderRadius: 8,
+  padding: '9px 11px',
+  fontSize: 13,
+  color: 'var(--ink)',
+  background: 'var(--paper)',
+  boxSizing: 'border-box',
+  outline: 'none',
+}
+
+const TEXTAREA_STYLE: React.CSSProperties = {
+  ...INPUT_STYLE,
+  resize: 'none',
+  minHeight: 44,
+  lineHeight: 1.55,
+}
 
 function FieldRow({
   field,
@@ -517,6 +616,7 @@ function FieldRow({
   onBlur,
   saved,
   error,
+  isRichtext,
 }: {
   field: StoreFieldSpec
   value: string
@@ -524,15 +624,19 @@ function FieldRow({
   onBlur: () => void
   saved: boolean
   error: string | undefined
+  isRichtext: boolean
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  // Auto-resize the textarea to fit its content. Runs on every value
-  // change (including the initial mount) so the initial height is right.
+  // Auto-grow the textarea to fit its content.
   useEffect(() => {
     if (!textareaRef.current) return
     textareaRef.current.style.height = 'auto'
     textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
   }, [value, field.type])
+
+  // Richtext fields always render as textareas so users can write
+  // multi-paragraph copy with blank-line breaks.
+  const useTextarea = field.type === 'long' || isRichtext
 
   return (
     <div>
@@ -541,16 +645,17 @@ function FieldRow({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 6,
+          marginBottom: 5,
+          minHeight: 14,
         }}
       >
         <label
           style={{
-            fontSize: fontSize.xs,
-            fontWeight: fontWeight.bold,
-            color: colors.muted,
-            textTransform: 'uppercase',
+            fontSize: 10,
+            fontWeight: 700,
             letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--muted)',
           }}
         >
           {field.label}
@@ -559,7 +664,7 @@ function FieldRow({
           <span
             style={{
               fontSize: 10,
-              fontWeight: fontWeight.bold,
+              fontWeight: 700,
               color: '#00a86b',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
@@ -572,7 +677,7 @@ function FieldRow({
           <span
             style={{
               fontSize: 10,
-              fontWeight: fontWeight.bold,
+              fontWeight: 700,
               color: '#b91c1c',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
@@ -582,27 +687,14 @@ function FieldRow({
           </span>
         )}
       </div>
-      {field.type === 'long' ? (
+      {useTextarea ? (
         <textarea
           ref={textareaRef}
           value={value}
           onChange={e => onChange(e.target.value)}
           onBlur={onBlur}
           rows={2}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            borderRadius: radius.md,
-            border: `1px solid ${colors.border}`,
-            background: colors.paper,
-            fontFamily: font.mono,
-            fontSize: fontSize.body,
-            color: colors.ink,
-            outline: 'none',
-            resize: 'none',
-            minHeight: 44,
-            lineHeight: 1.5,
-          }}
+          style={TEXTAREA_STYLE}
         />
       ) : (
         <input
@@ -611,17 +703,7 @@ function FieldRow({
           onChange={e => onChange(e.target.value)}
           onBlur={onBlur}
           placeholder={field.type === 'url' ? 'https://' : ''}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            borderRadius: radius.md,
-            border: `1px solid ${colors.border}`,
-            background: colors.paper,
-            fontFamily: field.type === 'url' ? font.mono : font.mono,
-            fontSize: fontSize.body,
-            color: colors.ink,
-            outline: 'none',
-          }}
+          style={INPUT_STYLE}
         />
       )}
     </div>
