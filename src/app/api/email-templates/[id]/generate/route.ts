@@ -38,13 +38,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   ).join('\n') || 'No products specified'
 
   const prompt = `You are building a specific email template. Based on the brief below, decide:
-1. Which blocks to enable (pick only the blocks that serve this email's goal — not all of them)
-2. What copy to write for each enabled block
+1. Which blocks to ENABLE by default (pick only the blocks that serve this email's goal — not all of them)
+2. Write copy for EVERY block — even blocks you did not enable
 
-BLOCK MENU (pick only what fits the brief):
-- 01a: Hero Image — always include
-- 01b: Hero Text — always include
-- 01c: CTA Button — always include
+IMPORTANT: You must generate real, on-brand copy for ALL 13 blocks regardless of whether they are in enabledBlocks. The enabledBlocks array only controls which blocks the user sees by default. When the user later toggles a disabled block on, the copy must already be there — no empty fields.
+
+BLOCK MENU (pick which to ENABLE by default — but write copy for ALL):
+- 01a: Hero Image — always enable
+- 01b: Hero Text — always enable
+- 01c: CTA Button — always enable
 - 02: Promo Code — enable whenever the brief mentions a discount, coupon, code, % off, $ off, free shipping, or any concrete offer
 - 03: 3-Pillar Feature — good for welcome/brand intro emails
 - 04: Story / Nostalgia — good for brand story, welcome series
@@ -52,7 +54,7 @@ BLOCK MENU (pick only what fits the brief):
 - 06: How-To — good for post-purchase, product education
 - 07: Testimonials — good for welcome, abandoned cart, promotion
 - 08: You'll Also Love — good for post-purchase, newsletter
-- 09: Instagram Grid — always
+- 09: Instagram Grid — always enable
 - 11: Callout Card — good for abandoned cart, promotion, urgency
 - 12: FAQ — good for welcome series, post-purchase
 
@@ -75,7 +77,7 @@ ICON RULE:
 PRODUCT FEATURE BLOCK (05) GUIDANCE:
 - If the brand has at least one product in the PRODUCTS list above, include "05" in enabledBlocks for almost every email — Product Feature is the natural place to spotlight a SKU and is rarely wrong to show.
 - When "05" is enabled, productName MUST NEVER be empty. Pick a flagship product from PRODUCTS (not always the first — choose the most iconic). productBody1 hooks on the single most compelling benefit (1-2 sentences). productBody2 goes sensory/experiential or drops social proof (1-2 sentences). Both bodies must contain real, specific copy — not generic filler.
-- Only omit "05" when PRODUCTS is "No products specified" or when the brief explicitly says no product spotlight.
+- Only omit "05" from enabledBlocks when PRODUCTS is "No products specified" or when the brief explicitly says no product spotlight. Even when omitted from enabledBlocks, still write productName/productBody1/productBody2 copy.
 
 PROMO BLOCK (02) — BRIEF EXTRACTION RULE:
 - Parse the BRIEF for any concrete offer: percent-off ("20% off", "save 25%"), dollar-off ("$10 off"), free shipping, BOGO, free gift, etc.
@@ -83,7 +85,7 @@ PROMO BLOCK (02) — BRIEF EXTRACTION RULE:
 - promoDiscount must mirror the brief exactly: "20% off" → "20% Off", "25% off" → "25% Off", "$10 off" → "$10 Off", "free shipping" → "Free Shipping".
 - promoCode must be brand-specific and reflect the discount value: e.g. if brand is "Jolene" and discount is 20%, use "JOLENE20" (not "SAVE15", "WELCOME10", "FIRST15", or anything generic).
 - promoSubtitle, promoEyebrow, promoExpiry, promoCta must all be written fresh for this brief — do NOT reuse "Exclusive Offer / Your First Order / Claim Your Discount" wording unless the brief explicitly calls for it.
-- If the brief has NO offer at all, omit "02" from enabledBlocks and leave all promo fields as empty strings.
+- If the brief has NO offer at all, omit "02" from enabledBlocks but STILL write promo fields with a sensible default offer for the brand (so toggling the block on later shows real content).
 
 CROSS-FIELD CONSTRAINTS:
 - subjectLine + previewText are a two-part hook. previewText CONTINUES the subject; it must not repeat or rephrase it.
@@ -92,7 +94,7 @@ CROSS-FIELD CONSTRAINTS:
 - calloutHeadline must offer a DIFFERENT angle than heroHeadline.
 - FAQ answers must address real purchase objections — not recap hero/product content.
 
-Return a COMPLETE JSON object with the fields below. Use "${brand.name}" directly — never "[Brand Name]" placeholder. Fields for blocks you did NOT enable should be empty strings (or empty arrays for testimonials/products/faqItems). Do NOT include emailColors, imageAssignments, or image URLs — those are handled separately.
+Return a COMPLETE JSON object with ALL fields below filled with real, specific, on-brand content. Use "${brand.name}" directly — never "[Brand Name]" placeholder. EVERY field must have real copy — no empty strings. Do NOT include emailColors, imageAssignments, or image URLs — those are handled separately.
 
 {
   "enabledBlocks": ["01a","01b","01c", "..."],
@@ -186,7 +188,7 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 6000,
+    max_tokens: 8000,
     system: systemPrompt,
     messages: [{ role: 'user', content: prompt }],
   })

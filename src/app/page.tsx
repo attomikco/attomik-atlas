@@ -240,8 +240,8 @@ export default function HomePage() {
 
         @media (max-width: 600px) {
           .url-row { flex-direction: column !important; border: none !important; background: transparent !important; gap: 10px !important; }
-          .url-row input { border: 1px solid ${BORDER_STRONG} !important; background: #fff !important; padding: 16px 18px !important; width: 100% !important; }
-          .url-row button { padding: 16px !important; width: 100% !important; border: none !important; }
+          .url-row input { border: 1px solid ${BORDER_STRONG} !important; background: #fff !important; padding: 16px 18px !important; width: 100% !important; font-variant: small-caps !important; }
+          .url-row button { padding: 16px !important; width: 100% !important; border: none !important; font-variant: small-caps !important; }
           .hero-headline { font-size: 34px !important; }
           .h2-resp { font-size: 28px !important; }
           .cta-headline { font-size: 32px !important; }
@@ -435,8 +435,9 @@ export default function HomePage() {
       </section>
 
       {/* ── 5. CTA FOOTER ───────────────────────────────── */}
-      <section style={{ borderBottom: `1px solid ${BORDER}` }}>
-        <div className="page-pad section-heavy" style={{ padding: '120px 48px', maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
+      <section style={{ borderBottom: `1px solid ${BORDER}`, position: 'relative', overflow: 'hidden' }}>
+        <ParticleCanvas />
+        <div className="page-pad section-heavy" style={{ padding: '120px 48px', maxWidth: 900, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={sectionKicker}>▸ Start now</div>
           <h2 className="h2-resp cta-headline" style={{ ...h2, fontSize: 'clamp(40px, 6vw, 80px)' }}>
             Ready to run your brand<br /><span style={{ color: colors.accent }}>like an operating system?</span>

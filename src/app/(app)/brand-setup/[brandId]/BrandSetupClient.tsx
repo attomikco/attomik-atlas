@@ -144,6 +144,14 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       image: p.image || null,
     })) || [{ name: '', description: '', price: '', image: null }]
   )
+  // Email settings — stored in brand.notes.email_settings
+  const [emailInstagramUrl, setEmailInstagramUrl] = useState(tryParse(brand.notes)?.email_settings?.instagramUrl || '')
+  const [emailAddress, setEmailAddress] = useState(tryParse(brand.notes)?.email_settings?.address || '')
+  const [emailUnsubscribeText, setEmailUnsubscribeText] = useState(tryParse(brand.notes)?.email_settings?.unsubscribeText || 'You\'re receiving this because you signed up for updates. Unsubscribe anytime.')
+  const [emailFooterLinks, setEmailFooterLinks] = useState<Array<{ label: string; url: string }>>(
+    tryParse(brand.notes)?.email_settings?.footerLinks || [{ label: 'Shop', url: '' }, { label: 'About', url: '' }]
+  )
+
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [rescraping, setRescraping] = useState(false)
@@ -309,6 +317,12 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       meta_ad_account_id: metaAdAccountId || null,
       meta_page_id: metaPageId || null,
       meta_token_saved_at: metaToken ? (metaTokenSavedAt || new Date().toISOString()) : null,
+      email_settings: {
+        instagramUrl: emailInstagramUrl || '',
+        address: emailAddress || '',
+        unsubscribeText: emailUnsubscribeText || '',
+        footerLinks: emailFooterLinks.filter(l => l.label.trim() || l.url.trim()),
+      },
     }
     const { error } = await supabase.from('brands').update({
       name, website: website || null, mission: mission || null,
@@ -1313,6 +1327,113 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         </div>
         <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>
           Find in Klaviyo → Account → Settings → API Keys. Used to push email templates directly to your account.
+        </div>
+      </div>
+
+      {/* ── SECTION 7: EMAIL SETTINGS ── */}
+      <SectionHeader title="Email Settings" subtitle="Footer data for email templates" />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
+        <div>
+          <label style={labelStyle}>Instagram URL</label>
+          <input
+            value={emailInstagramUrl}
+            onChange={e => { setEmailInstagramUrl(e.target.value); setIsDirty(true) }}
+            placeholder="https://instagram.com/yourbrand"
+            style={inputStyle}
+            onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Physical Address</label>
+          <input
+            value={emailAddress}
+            onChange={e => { setEmailAddress(e.target.value); setIsDirty(true) }}
+            placeholder="123 Main St, City, State ZIP"
+            style={inputStyle}
+            onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+          />
+          <div style={helperStyle}>Required for CAN-SPAM compliance. All commercial emails must include a physical mailing address.</div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Unsubscribe Text</label>
+          <input
+            value={emailUnsubscribeText}
+            onChange={e => { setEmailUnsubscribeText(e.target.value); setIsDirty(true) }}
+            placeholder="You're receiving this because you signed up for updates. Unsubscribe anytime."
+            style={inputStyle}
+            onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Footer Links</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {emailFooterLinks.map((link, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  value={link.label}
+                  onChange={e => {
+                    const next = [...emailFooterLinks]
+                    next[i] = { ...next[i], label: e.target.value }
+                    setEmailFooterLinks(next)
+                    setIsDirty(true)
+                  }}
+                  placeholder="Label"
+                  style={{ ...inputStyle, flex: 1 }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+                />
+                <input
+                  value={link.url}
+                  onChange={e => {
+                    const next = [...emailFooterLinks]
+                    next[i] = { ...next[i], url: e.target.value }
+                    setEmailFooterLinks(next)
+                    setIsDirty(true)
+                  }}
+                  placeholder="https://..."
+                  style={{ ...inputStyle, flex: 2 }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailFooterLinks(prev => prev.filter((_, j) => j !== i))
+                    setIsDirty(true)
+                  }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 18, color: '#999', padding: '0 4px', lineHeight: 1,
+                    flexShrink: 0,
+                  }}
+                  title="Remove link"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setEmailFooterLinks(prev => [...prev, { label: '', url: '' }])
+                setIsDirty(true)
+              }}
+              style={{
+                background: 'none', border: '1px dashed #e0e0e0', borderRadius: 6,
+                padding: '8px 14px', fontSize: 12, fontWeight: 600, color: '#999',
+                cursor: 'pointer', width: '100%',
+              }}
+            >
+              + Add Link
+            </button>
+          </div>
         </div>
       </div>
 
