@@ -276,6 +276,30 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
   const [previewWidth, setPreviewWidth] = useState(600)
   const [copied, setCopied] = useState(false)
 
+  // Cycling loading text for the preview overlay during AI generation
+  const generatingMessages = ['Reading brand data...', 'Writing copy...', 'Building your template...']
+  const [generatingMsgIndex, setGeneratingMsgIndex] = useState(0)
+  useEffect(() => {
+    if (!generating) { setGeneratingMsgIndex(0); return }
+    const interval = setInterval(() => {
+      setGeneratingMsgIndex(prev => (prev + 1) % generatingMessages.length)
+    }, 1500)
+    return () => clearInterval(interval)
+  }, [generating, generatingMessages.length])
+
+  // ── Email footer settings modal ──────────────────────────────────────
+  const parsedNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
+  const emailSettings = parsedNotes.email_settings || {}
+  const isEmailSettingsIncomplete = !emailSettings.instagramUrl || !emailSettings.address || !Array.isArray(emailSettings.footerLinks) || emailSettings.footerLinks.length === 0
+  const [footerModalOpen, setFooterModalOpen] = useState(false)
+  const [footerSkipped, setFooterSkipped] = useState(false)
+  const footerAutoOpenRef = useRef(false)
+  useEffect(() => {
+    if (footerAutoOpenRef.current) return
+    footerAutoOpenRef.current = true
+    if (isEmailSettingsIncomplete) setFooterModalOpen(true)
+  }, [isEmailSettingsIncomplete])
+
   // ── Multi-template state ────────────────────────────────────────────
   const [templates, setTemplates] = useState<EmailTemplateRow[]>([])
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null)
@@ -1450,6 +1474,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     {newTemplateModalOpen && (
       <NewTemplateModal
         brandId={brand.id}
+        existingTemplates={templates}
         onClose={() => setNewTemplateModalOpen(false)}
         onCreated={row => {
           setTemplates(prev => [...prev, row])
@@ -1458,6 +1483,14 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           setIsDirty(false)
           setNewTemplateModalOpen(false)
         }}
+      />
+    )}
+    {footerModalOpen && (
+      <EmailFooterSettingsModal
+        brandId={brand.id}
+        initial={emailSettings}
+        onSaved={() => { setFooterModalOpen(false); setFooterSkipped(false) }}
+        onSkip={() => { setFooterModalOpen(false); setFooterSkipped(true) }}
       />
     )}
     <div style={{ display: 'flex', gap: 24, height: 'calc(100vh - 72px)', padding: '24px 32px', alignItems: 'flex-start' }}>
@@ -1482,28 +1515,71 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           ))}
         </div>
 
+        {activeTab === 'Template' && footerSkipped && isEmailSettingsIncomplete && (
+          <div style={{
+            background: colors.warningLight, border: `1px solid ${colors.warning}`,
+            borderRadius: 6, padding: '8px 12px', marginBottom: 12,
+            fontSize: 12, color: colors.warning, display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ flex: 1 }}>Footer incomplete — emails may not send correctly</span>
+            <button
+              type="button"
+              onClick={() => setFooterModalOpen(true)}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: 12, fontWeight: 700, color: colors.warning, textDecoration: 'underline',
+                flexShrink: 0,
+              }}
+            >
+              Fix now
+            </button>
+          </div>
+        )}
+
         {activeTab === 'Template' ? templatePanel : historyPanel}
 
         {activeTab === 'Template' && (
+          <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+            <button
+              type="button"
+              onClick={() => setFooterModalOpen(true)}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: 11, fontWeight: 600, color: colors.muted, textDecoration: 'underline',
+              }}
+            >
+              Footer Settings
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'Template' && (
           <div style={{
-            position: 'sticky', bottom: 0, background: '#fff',
-            borderTop: '1px solid var(--border)',
-            padding: '12px 0 8px',
-            display: 'flex', flexDirection: 'column', gap: 8, zIndex: 5,
+            position: 'sticky', bottom: 0,
+            backgroundColor: colors.cream,
+            borderTop: `1px solid ${colors.ink}`,
+            padding: '12px 16px',
+            margin: '0 -8px 0 0',
+            display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 5,
           }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={copyHtml}
-                style={{ flex: 1, padding: '11px', background: '#fff', color: '#000', fontWeight: 700, fontSize: 12, borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer' }}>
+                style={{
+                  flex: 1, padding: '11px',
+                  background: 'transparent', color: colors.ink,
+                  fontWeight: 700, fontSize: 12, borderRadius: 6,
+                  border: `1px solid ${colors.ink}`, cursor: 'pointer',
+                }}>
                 {copied ? '✓ Copied' : 'Copy HTML'}
               </button>
               <button onClick={saveConfig} disabled={saving || !isDirty}
                 style={{
                   flex: 1, padding: '11px',
-                  background: isDirty ? '#000' : '#e0e0e0',
-                  color: isDirty ? '#00ff97' : '#999',
+                  background: 'transparent', color: colors.ink,
                   fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 12,
-                  borderRadius: 999, border: 'none',
+                  borderRadius: 6, border: `1px solid ${colors.ink}`,
                   cursor: isDirty && !saving ? 'pointer' : 'default',
+                  opacity: isDirty ? 1 : 0.4,
                 }}>
                 {saving ? 'Saving...' : isDirty ? 'Save template' : 'Saved'}
               </button>
@@ -1513,10 +1589,10 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
                 onClick={markActiveTemplateReady}
                 disabled={!activeTemplateId || isLocked}
                 style={{
-                  flex: 1, padding: '10px', background: '#fff',
-                  color: isLocked ? activeBadge.color : '#000',
-                  fontWeight: 700, fontSize: 11, borderRadius: 999,
-                  border: `1px solid ${isLocked ? activeBadge.color : 'var(--border)'}`,
+                  flex: 1, padding: '10px',
+                  background: 'transparent', color: colors.ink,
+                  fontWeight: 700, fontSize: 11, borderRadius: 6,
+                  border: `1px solid ${colors.ink}`,
                   cursor: isLocked ? 'default' : 'pointer',
                   textTransform: 'uppercase', letterSpacing: '0.04em',
                 }}
@@ -1531,9 +1607,8 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
                 title="Push the active template to Klaviyo"
                 style={{
                   flex: 1, padding: '10px',
-                  background: klaviyoMessage?.type === 'ok' ? '#00ff97' : '#f0f0f0',
-                  color: klaviyoMessage?.type === 'ok' ? '#000' : '#333',
-                  fontWeight: 700, fontSize: 11, borderRadius: 999, border: 'none',
+                  backgroundColor: colors.accent, color: colors.ink,
+                  fontWeight: 700, fontSize: 11, borderRadius: 6, border: 'none',
                   cursor: klaviyoPushing ? 'wait' : 'pointer',
                   textTransform: 'uppercase', letterSpacing: '0.04em',
                 }}
@@ -1542,24 +1617,24 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
               </button>
             </div>
             {klaviyoMessage?.type === 'err' && (
-              <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center' }}>{klaviyoMessage.text}</div>
+              <div style={{ fontSize: 11, color: colors.danger, textAlign: 'center' }}>{klaviyoMessage.text}</div>
             )}
             {klaviyoMessage?.type === 'missing_key' && klaviyoMessage.context === 'push' && (
-              <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: colors.danger, textAlign: 'center' }}>
                 <Link
                   href={`/brand-setup/${brand.id}`}
-                  style={{ color: '#ef4444', textDecoration: 'underline', fontWeight: 700 }}
+                  style={{ color: colors.danger, textDecoration: 'underline', fontWeight: 700 }}
                 >
                   Add your Klaviyo API key in Brand Hub → Integrations
                 </Link>
               </div>
             )}
             {klaviyoMessage?.type === 'missing_key' && klaviyoMessage.context === 'ready' && (
-              <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 11, color: colors.danger, textAlign: 'center', lineHeight: 1.4 }}>
                 No Klaviyo API key connected. Add it in{' '}
                 <Link
                   href={`/brand-setup/${brand.id}`}
-                  style={{ color: '#ef4444', textDecoration: 'underline', fontWeight: 700 }}
+                  style={{ color: colors.danger, textDecoration: 'underline', fontWeight: 700 }}
                 >
                   Brand Hub → Integrations
                 </Link>
@@ -1572,10 +1647,23 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
 
       <div style={{ flex: 1, background: '#e0e0e0', borderRadius: 16, overflow: 'hidden', position: 'sticky', top: 24, height: 'calc(100vh - 120px)' }}>
         {generating && (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-            <div style={{ width: 32, height: 32, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-            <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'Barlow, sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Generating email...</div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Pulling from your Brand Hub</div>
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 20,
+            backgroundColor: 'rgba(248, 247, 244, 0.85)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%',
+              border: `3px solid ${colors.ink}`,
+              borderTopColor: colors.accent,
+              animation: 'spin 0.8s linear infinite',
+            }} />
+            <div style={{
+              fontFamily: "'DM Mono', monospace", fontSize: 13,
+              color: colors.ink, marginTop: 16,
+            }}>
+              {generatingMessages[generatingMsgIndex]}
+            </div>
           </div>
         )}
         <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: 8 }}>
@@ -1583,7 +1671,15 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           <button onClick={() => setPreviewWidth(375)} style={{ padding: '4px 10px', borderRadius: 6, background: previewWidth === 375 ? '#000' : '#fff', color: previewWidth === 375 ? '#fff' : '#666', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer' }}>Mobile</button>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0', height: '100%', overflowY: 'auto' }}>
-          <iframe ref={iframeRef} style={{ width: previewWidth, height: 'calc(100vh - 140px)', border: 'none', background: '#fff', borderRadius: 0 }} title="Email preview" />
+          <div style={{
+            width: previewWidth,
+            flexShrink: 0,
+            border: `1px solid ${colors.ink}`,
+            borderRadius: 12,
+            overflow: 'hidden',
+          }}>
+            <iframe ref={iframeRef} style={{ width: '100%', height: 'calc(100vh - 140px)', border: 'none', background: '#fff', display: 'block' }} title="Email preview" />
+          </div>
         </div>
       </div>
     </div>
@@ -1592,16 +1688,57 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
 }
 
 // ── New Template modal ────────────────────────────────────────────────
-function NewTemplateModal({ brandId, onClose, onCreated }: {
+
+const TEMPLATE_DEFAULT_NAMES: Record<TemplateType, string> = {
+  master: 'Master Brand Email',
+  welcome: 'Welcome Series',
+  abandoned_cart: 'Abandoned Cart',
+  post_purchase: 'Post-Purchase',
+  newsletter: 'Newsletter',
+  promotion: 'Promotion',
+  custom: 'Custom Email',
+}
+
+const TEMPLATE_DEFAULT_BRIEFS: Record<TemplateType, string> = {
+  master: 'Full brand showcase email. Hero moment, product highlights, brand story, and a strong CTA.',
+  welcome: 'First email in a welcome series. Introduce the brand, what we stand for, and give a small first-order incentive.',
+  abandoned_cart: 'Remind the customer they left items in their cart. Create urgency and offer a small incentive to complete their purchase.',
+  post_purchase: 'Thank the customer for their order. Reinforce that they made a great choice and suggest complementary products.',
+  newsletter: 'Monthly brand newsletter. Share what\'s new, highlight a hero product, and keep the community engaged.',
+  promotion: 'Promotional email for a limited-time offer. Lead with the deal, create urgency, and drive clicks to the store.',
+  custom: '',
+}
+
+function NewTemplateModal({ brandId, existingTemplates, onClose, onCreated }: {
   brandId: string
+  existingTemplates: EmailTemplateRow[]
   onClose: () => void
   onCreated: (row: EmailTemplateRow) => void
 }) {
-  const [name, setName] = useState('')
+  function buildDefaultName(t: TemplateType): string {
+    const base = TEMPLATE_DEFAULT_NAMES[t]
+    if (t === 'master') return base
+    const count = existingTemplates.filter(row => row.type === t).length
+    return `${base} ${count + 1}`
+  }
+
   const [type, setType] = useState<TemplateType>('welcome')
-  const [brief, setBrief] = useState('')
+  const [name, setName] = useState(() => buildDefaultName('welcome'))
+  const [brief, setBrief] = useState(() => TEMPLATE_DEFAULT_BRIEFS['welcome'])
+  const [userEditedName, setUserEditedName] = useState(false)
+  const [userEditedBrief, setUserEditedBrief] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  function handleTypeChange(next: TemplateType) {
+    setType(next)
+    if (!userEditedName) {
+      setName(buildDefaultName(next))
+    }
+    if (!userEditedBrief) {
+      setBrief(TEMPLATE_DEFAULT_BRIEFS[next])
+    }
+  }
 
   async function submit() {
     if (!name.trim() || !brief.trim()) {
@@ -1661,7 +1798,13 @@ function NewTemplateModal({ brandId, onClose, onCreated }: {
 
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', marginBottom: 4 }}>Template Name</div>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Welcome Email 1" style={inputStyle} disabled={busy} />
+          <input
+            value={name}
+            onChange={e => { setName(e.target.value); setUserEditedName(true) }}
+            placeholder="e.g. Welcome Email 1"
+            style={inputStyle}
+            disabled={busy}
+          />
         </div>
 
         <div>
@@ -1670,7 +1813,7 @@ function NewTemplateModal({ brandId, onClose, onCreated }: {
             {(Object.keys(TEMPLATE_TYPE_LABELS) as TemplateType[]).map(t => (
               <button
                 key={t}
-                onClick={() => setType(t)}
+                onClick={() => handleTypeChange(t)}
                 disabled={busy}
                 style={{
                   padding: '8px 14px', borderRadius: 999,
@@ -1691,7 +1834,7 @@ function NewTemplateModal({ brandId, onClose, onCreated }: {
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', marginBottom: 4 }}>Brief</div>
           <textarea
             value={brief}
-            onChange={e => setBrief(e.target.value)}
+            onChange={e => { setBrief(e.target.value); setUserEditedBrief(true) }}
             rows={5}
             placeholder={TEMPLATE_BRIEF_PLACEHOLDERS[type]}
             disabled={busy}
@@ -1727,6 +1870,224 @@ function NewTemplateModal({ brandId, onClose, onCreated }: {
           >
             {busy && <div style={{ width: 14, height: 14, border: '2px solid rgba(0,255,151,0.3)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />}
             {busy ? 'Building your template...' : 'Generate Template'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Email Footer Settings modal ──────────────────────────────────────
+function EmailFooterSettingsModal({ brandId, initial, onSaved, onSkip }: {
+  brandId: string
+  initial: { instagramUrl?: string; address?: string; unsubscribeText?: string; footerLinks?: Array<{ label: string; url: string }> }
+  onSaved: () => void
+  onSkip: () => void
+}) {
+  const supabase = createClient()
+  const [instagramUrl, setInstagramUrl] = useState(initial.instagramUrl || '')
+  const [address, setAddress] = useState(initial.address || '')
+  const [unsubscribeText, setUnsubscribeText] = useState(
+    initial.unsubscribeText || 'You\'re receiving this because you signed up for updates. Unsubscribe anytime.'
+  )
+  const [footerLinks, setFooterLinks] = useState<Array<{ label: string; url: string }>>(
+    initial.footerLinks?.length ? initial.footerLinks : [{ label: 'Shop', url: '' }, { label: 'About', url: '' }]
+  )
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save() {
+    setBusy(true)
+    setError('')
+    try {
+      const { data: freshRow } = await supabase
+        .from('brands')
+        .select('notes')
+        .eq('id', brandId)
+        .single()
+      const currentNotes = (() => { try { return freshRow?.notes ? JSON.parse(freshRow.notes) : {} } catch { return {} } })()
+      const updatedNotes = {
+        ...currentNotes,
+        email_settings: {
+          instagramUrl: instagramUrl.trim(),
+          address: address.trim(),
+          unsubscribeText: unsubscribeText.trim(),
+          footerLinks: footerLinks.filter(l => l.label.trim() || l.url.trim()),
+        },
+      }
+      const { error: saveErr } = await supabase
+        .from('brands')
+        .update({ notes: JSON.stringify(updatedNotes) })
+        .eq('id', brandId)
+      if (saveErr) {
+        setError('Save failed — try again')
+        setBusy(false)
+        return
+      }
+      onSaved()
+    } catch {
+      setError('Something went wrong')
+      setBusy(false)
+    }
+  }
+
+  const fieldInputStyle: React.CSSProperties = {
+    width: '100%', border: `1.5px solid ${colors.border}`, borderRadius: 6,
+    padding: '9px 11px', fontSize: 13, boxSizing: 'border-box',
+    fontFamily: 'inherit', outline: 'none', background: colors.paper,
+  }
+
+  return (
+    <div
+      onClick={onSkip}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(4px)', zIndex: 100,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: colors.cream, borderRadius: 16, padding: 28,
+          width: 520, maxWidth: '90vw',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          display: 'flex', flexDirection: 'column', gap: 16,
+        }}
+      >
+        <div>
+          <div style={{
+            fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22,
+            textTransform: 'uppercase', color: colors.ink,
+          }}>
+            Email Footer Setup
+          </div>
+          <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>
+            This appears at the bottom of every email you send.
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Instagram URL</div>
+          <input
+            value={instagramUrl}
+            onChange={e => setInstagramUrl(e.target.value)}
+            placeholder="https://instagram.com/yourbrand"
+            style={fieldInputStyle}
+            disabled={busy}
+          />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Physical Address</div>
+          <input
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            placeholder="123 Main St, City, State ZIP"
+            style={fieldInputStyle}
+            disabled={busy}
+          />
+          <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Required for CAN-SPAM compliance</div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Unsubscribe Text</div>
+          <input
+            value={unsubscribeText}
+            onChange={e => setUnsubscribeText(e.target.value)}
+            placeholder="You're receiving this because you signed up for updates. Unsubscribe anytime."
+            style={fieldInputStyle}
+            disabled={busy}
+          />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Footer Links</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {footerLinks.map((link, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  value={link.label}
+                  onChange={e => {
+                    const next = [...footerLinks]
+                    next[i] = { ...next[i], label: e.target.value }
+                    setFooterLinks(next)
+                  }}
+                  placeholder="Label"
+                  style={{ ...fieldInputStyle, flex: 1 }}
+                  disabled={busy}
+                />
+                <input
+                  value={link.url}
+                  onChange={e => {
+                    const next = [...footerLinks]
+                    next[i] = { ...next[i], url: e.target.value }
+                    setFooterLinks(next)
+                  }}
+                  placeholder="https://..."
+                  style={{ ...fieldInputStyle, flex: 2 }}
+                  disabled={busy}
+                />
+                <button
+                  type="button"
+                  onClick={() => setFooterLinks(prev => prev.filter((_, j) => j !== i))}
+                  disabled={busy}
+                  style={{
+                    background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer',
+                    fontSize: 18, color: colors.muted, padding: '0 4px', lineHeight: 1,
+                    flexShrink: 0,
+                  }}
+                  title="Remove link"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setFooterLinks(prev => [...prev, { label: '', url: '' }])}
+              disabled={busy}
+              style={{
+                background: 'none', border: `1px dashed ${colors.border}`, borderRadius: 6,
+                padding: '8px 14px', fontSize: 12, fontWeight: 600, color: colors.muted,
+                cursor: busy ? 'default' : 'pointer', width: '100%',
+              }}
+            >
+              + Add Link
+            </button>
+          </div>
+        </div>
+
+        {error && <div style={{ fontSize: 12, color: colors.danger }}>{error}</div>}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button
+            onClick={onSkip}
+            disabled={busy}
+            style={{
+              flex: 1, padding: '12px', background: colors.paper, color: colors.ink,
+              fontWeight: 700, fontSize: 13, borderRadius: 6,
+              border: `1.5px solid ${colors.border}`,
+              cursor: busy ? 'default' : 'pointer',
+            }}
+          >
+            Skip for now
+          </button>
+          <button
+            onClick={save}
+            disabled={busy}
+            style={{
+              flex: 2, padding: '12px',
+              background: busy ? colors.muted : colors.ink, color: colors.accent,
+              fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 13,
+              borderRadius: 6, border: 'none',
+              cursor: busy ? 'wait' : 'pointer',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            {busy && <div style={{ width: 14, height: 14, border: `2px solid rgba(0,255,151,0.3)`, borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />}
+            {busy ? 'Saving...' : 'Save & Continue'}
           </button>
         </div>
       </div>
