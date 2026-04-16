@@ -770,7 +770,7 @@ ${(on('08') && allProducts.length > 0) ? `
   <tr>
     <td width="140" style="padding:0;width:140px;min-width:140px;background:#ffffff;border-radius:6px 0 0 6px;">
       <a href="${p.url || site}" style="display:block;width:140px;height:140px;">
-        ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}" width="140" height="140" style="display:block;width:140px;height:140px;object-fit:contain;border:0;border-radius:6px 0 0 6px;background:#ffffff;">` : ''}
+        ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}" width="140" height="140" style="display:block;width:140px;height:140px;object-fit:contain;border:1px solid rgba(0,0,0,0.08);border-radius:6px 0 0 6px;background:#ffffff;">` : ''}
       </a>
     </td>
     <td valign="middle" style="padding:16px 18px;">
