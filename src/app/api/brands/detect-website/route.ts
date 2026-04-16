@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decodeHtml } from '@/lib/decodeHtml'
+import { truncateAtSentenceBoundary } from '@/lib/truncate'
 
 function upgradeImageUrl(url: string): string {
   if (!url) return url
@@ -347,7 +348,7 @@ export async function POST(req: NextRequest) {
           if (Array.isArray(prodData?.products)) {
             products = prodData.products.slice(0, 6).map((p: any) => ({
               name: decodeHtml(p.title) || '',
-              description: p.body_html ? p.body_html.replace(/<[^>]*>/g, ' ').trim().slice(0, 200) : null,
+              description: p.body_html ? truncateAtSentenceBoundary(p.body_html.replace(/<[^>]*>/g, ' ').trim(), 400) : null,
               price: p.variants?.[0]?.price || null,
               image: p.images?.[0]?.src ? upgradeImageUrl(p.images[0].src) : null,
             }))
@@ -368,7 +369,7 @@ export async function POST(req: NextRequest) {
             if (item?.['@type'] === 'Product' && item?.name) {
               products.push({
                 name: item.name,
-                description: typeof item.description === 'string' ? item.description.replace(/<[^>]*>/g, ' ').trim().slice(0, 200) : null,
+                description: typeof item.description === 'string' ? truncateAtSentenceBoundary(item.description.replace(/<[^>]*>/g, ' ').trim(), 400) : null,
                 price: item.offers?.price?.toString() || item.offers?.lowPrice?.toString() || null,
                 image: typeof item.image === 'string' ? item.image : Array.isArray(item.image) ? item.image[0] : null,
               })
@@ -389,7 +390,7 @@ export async function POST(req: NextRequest) {
       if (ogTitle && ogTitle !== name) {
         products.push({
           name: decodeHtml(ogTitle),
-          description: ogDesc ? decodeHtml(ogDesc).slice(0, 200) : null,
+          description: ogDesc ? truncateAtSentenceBoundary(decodeHtml(ogDesc), 400) : null,
           price: ogPrice || null,
           image: ogImg || null,
         })
@@ -409,7 +410,7 @@ export async function POST(req: NextRequest) {
           if (Array.isArray(wcData)) {
             products = wcData.slice(0, 6).map((p: any) => ({
               name: decodeHtml(p.name || ''),
-              description: p.short_description ? p.short_description.replace(/<[^>]*>/g, ' ').trim().slice(0, 200) : null,
+              description: p.short_description ? truncateAtSentenceBoundary(p.short_description.replace(/<[^>]*>/g, ' ').trim(), 400) : null,
               price: p.price || null,
               image: p.images?.[0]?.src ? upgradeImageUrl(p.images[0].src) : null,
             })).filter((p: DetectedProduct) => p.name)
@@ -426,7 +427,7 @@ export async function POST(req: NextRequest) {
       if (h1 && h1.length < 80) {
         products.push({
           name: decodeHtml(h1.trim()),
-          description: metaDesc ? decodeHtml(metaDesc).slice(0, 200) : null,
+          description: metaDesc ? truncateAtSentenceBoundary(decodeHtml(metaDesc), 400) : null,
           price: pricePattern || null,
           image: null,
         })

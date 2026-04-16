@@ -768,9 +768,9 @@ ${(on('08') && allProducts.length > 0) ? `
   ${allProducts.map((p: any) => `
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid rgba(${hexToRgbStr(palette.darkBg)},0.1);border-radius:6px;margin-bottom:12px;">
   <tr>
-    <td width="140" style="padding:0;width:140px;min-width:140px;">
-      <a href="${p.url || site}" style="display:block;">
-        <div style="width:140px;height:140px;background-image:url('${p.imageUrl}');background-size:cover;background-position:center;border-radius:6px 0 0 6px;"></div>
+    <td width="140" style="padding:0;width:140px;min-width:140px;background:#ffffff;border-radius:6px 0 0 6px;">
+      <a href="${p.url || site}" style="display:block;width:140px;height:140px;">
+        ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}" width="140" height="140" style="display:block;width:140px;height:140px;object-fit:contain;border:0;border-radius:6px 0 0 6px;background:#ffffff;">` : ''}
       </a>
     </td>
     <td valign="middle" style="padding:16px 18px;">
