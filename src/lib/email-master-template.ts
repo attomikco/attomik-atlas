@@ -443,21 +443,19 @@ export function buildMasterEmail(
   const ht = (brand.font_heading?.transform || 'uppercase') as string
   const site = brand.website || '#'
   const footer = readBrandFooter(brand.notes)
-  // Logo resolution — prefer the light (white) variant for dark backgrounds.
-  // When only the color logo_url exists, apply a brightness(0) invert(1) CSS
-  // filter so it renders as white on the dark header/footer bars. When neither
-  // exists, fall back to the brand name in the heading font (see headerLogoHtml
-  // / footerLogoHtml below).
+  // Logo resolution — prefer the light (white) variant for dark header/footer
+  // bars. Fall back to the color logo as-is (no CSS filter — scraped color
+  // logos with gradients / multi-color marks get mangled by brightness(0)
+  // invert(1), so we trust what the brand hub has and leave it untouched).
+  // When neither exists, render the brand name in the heading font.
   const logoLight = (typeof brand.logo_url_light === 'string' && brand.logo_url_light) || ''
   const logoColor = (typeof brand.logo_url === 'string' && brand.logo_url) || ''
   const logo = logoLight || logoColor
-  const needsLogoFilter = !logoLight && !!logoColor
-  const logoFilterStyle = needsLogoFilter ? 'filter:brightness(0) invert(1);-webkit-filter:brightness(0) invert(1);' : ''
   const headerLogoHtml = logo
-    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;${logoFilterStyle}">`
+    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;">`
     : `<span style="font-family:${hf};font-size:22px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
   const footerLogoHtml = logo
-    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;${logoFilterStyle}">`
+    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;">`
     : `<span style="font-family:${hf};font-size:15px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
   const year = new Date().getFullYear()
 
