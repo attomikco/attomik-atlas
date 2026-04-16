@@ -15,6 +15,7 @@ import StatTemplate from '@/components/creatives/templates/StatTemplate'
 import TestimonialTemplate from '@/components/creatives/templates/TestimonialTemplate'
 import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 import GridTemplate from '@/components/creatives/templates/GridTemplate'
+import AttomikLogo from '@/components/ui/AttomikLogo'
 import AccountModal from '@/components/ui/AccountModal'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, letterSpacing } from '@/lib/design-tokens'
 
@@ -288,6 +289,12 @@ export default function PreviewClient({
   const [brandVoice, setBrandVoice] = useState(brand.brand_voice || '')
   const [brandTone, setBrandTone] = useState<string[]>(brand.tone_keywords || [])
 
+  // Intelligence data from generate-voice (stored in brand.notes)
+  const parsedNotes = (() => { try { return JSON.parse(brand.notes || '{}') } catch { return {} } })()
+  const [intelligenceScore, setIntelligenceScore] = useState<number | null>(parsedNotes.score ?? null)
+  const [scoreBreakdown, setScoreBreakdown] = useState<Record<string, number> | null>(parsedNotes.scoreBreakdown ?? null)
+  const [insights, setInsights] = useState<Array<{ label: string; text: string }>>(parsedNotes.insights ?? [])
+
   const [brandPrimary, setBrandPrimary] = useState(brand.primary_color || colors.ink)
   const [brandSecondary, setBrandSecondary] = useState(brand.secondary_color || brand.primary_color || colors.ink)
   const [brandAccent, setBrandAccent] = useState(brand.accent_color || brand.secondary_color || brand.primary_color || colors.ink)
@@ -548,13 +555,21 @@ export default function PreviewClient({
     // Refresh brand data from DB in case generate-voice wrote it after
     // the server component rendered the page.
     const t = setTimeout(() => {
-      supabase.from('brands').select('mission, target_audience, brand_voice, tone_keywords')
+      supabase.from('brands').select('mission, target_audience, brand_voice, tone_keywords, notes')
         .eq('id', brand.id).single()
         .then(({ data }) => {
           if (data?.mission) setBrandMission(data.mission)
           if (data?.target_audience) setBrandAudience(data.target_audience)
           if (data?.brand_voice) setBrandVoice(data.brand_voice)
           if (data?.tone_keywords?.length) setBrandTone(data.tone_keywords)
+          if (data?.notes) {
+            try {
+              const n = JSON.parse(data.notes)
+              if (n.score !== undefined) setIntelligenceScore(n.score)
+              if (n.scoreBreakdown) setScoreBreakdown(n.scoreBreakdown)
+              if (n.insights?.length) setInsights(n.insights)
+            } catch {}
+          }
         })
     }, 2000)
     return () => clearTimeout(t)
@@ -655,16 +670,27 @@ export default function PreviewClient({
     <div style={{ minHeight: '100vh', background: colors.ink }}>
       <style>{`
         @keyframes sectionReveal { from { opacity:0; transform: translateY(32px) } to { opacity:1; transform: translateY(0) } }
+        @keyframes gaugeIn { from { stroke-dashoffset: var(--gauge-circumference) } to { stroke-dashoffset: var(--gauge-offset) } }
+        .flows-row::-webkit-scrollbar { display: none }
         @keyframes pvSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @media (max-width: 768px) {
           .pv-hero-band { height: clamp(160px, 32vw, 240px) !important; }
           .pv-hero-name { font-size: clamp(28px, 7vw, 48px) !important; }
           .pv-sticky-bar { padding: 10px 16px !important; }
+          .pv-sticky-bar .pv-bar-brand { display: none !important; }
           .pv-section { padding-left: 16px !important; padding-right: 16px !important; }
+          .pv-section-heading { font-size: 24px !important; }
           .pv-iframe { height: 380px !important; }
+          .pv-intel-cols { flex-direction: column !important; }
+          .pv-intel-left, .pv-intel-right { width: 100% !important; flex: none !important; }
+          .pv-intel-grid { grid-template-columns: 1fr !important; }
+          .pv-creatives-wrap { margin-left: 0 !important; margin-right: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }
+          .pv-copy-headline { font-size: 24px !important; }
+          .pv-bar-btn { font-size: 13px !important; padding: 8px 16px !important; }
         }
         @media (max-width: 480px) {
           .pv-iframe { height: 280px !important; }
+          .pv-bar-btn { font-size: 12px !important; padding: 7px 12px !important; }
         }
       `}</style>
 
@@ -673,38 +699,46 @@ export default function PreviewClient({
         position: 'sticky', top: 0, zIndex: 50,
         background: colors.ink,
         borderBottom: `1px solid ${colors.whiteAlpha10}`,
-        padding: '12px 24px',
+        padding: '12px 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {brand.logo_url && (
-            <img src={brand.logo_url} alt="" style={{
-              maxHeight: 28, objectFit: 'contain',
-              filter: 'brightness(0) invert(1)',
-            }} onError={e => { e.currentTarget.style.display = 'none' }} />
-          )}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <AttomikLogo height={20} color={colors.paper} />
           <span style={{
-            fontFamily: font.heading, fontWeight: fontWeight.bold,
-            fontSize: fontSize.body, color: colors.paper,
+            fontFamily: font.heading, fontWeight: fontWeight.heading,
+            fontSize: fontSize.lg, color: colors.paper,
+            marginLeft: 12,
           }}>
-            {brand.name}
+            Atlas
           </span>
+          <div className="pv-bar-brand" style={{ display: 'contents' }}>
+            <div style={{ width: 1, height: 16, background: colors.whiteAlpha20, margin: '0 12px' }} />
+            <span style={{
+              fontFamily: font.mono, fontSize: fontSize.caption,
+              color: colors.whiteAlpha45,
+            }}>
+              {brand.name}
+            </span>
+          </div>
         </div>
-        <button
-          onClick={ctaAction}
-          disabled={activating || savingBrandToWorkspace}
-          style={{
-            background: colors.accent, color: colors.ink,
-            fontFamily: font.heading, fontWeight: fontWeight.bold,
-            fontSize: fontSize.caption, borderRadius: radius.pill,
-            padding: '10px 24px', border: 'none',
-            cursor: (activating || savingBrandToWorkspace) ? 'wait' : 'pointer',
-            opacity: (activating || savingBrandToWorkspace) ? 0.6 : 1,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {ctaLabel}
-        </button>
+        <div>
+          <button
+            className="pv-bar-btn"
+            onClick={ctaAction}
+            disabled={activating || savingBrandToWorkspace}
+            style={{
+              background: colors.accent, color: colors.ink,
+              fontFamily: font.heading, fontWeight: fontWeight.bold,
+              fontSize: fontSize.body, borderRadius: radius.pill,
+              padding: '10px 24px', border: 'none',
+              cursor: (activating || savingBrandToWorkspace) ? 'wait' : 'pointer',
+              opacity: (activating || savingBrandToWorkspace) ? 0.6 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Save your funnel free →
+          </button>
+        </div>
       </div>
 
       {/* ═══ HERO BAND ═══ */}
@@ -716,6 +750,7 @@ export default function PreviewClient({
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden',
+        marginBottom: 0,
       }}>
         <div style={{
           position: 'absolute', inset: 0,
@@ -723,7 +758,7 @@ export default function PreviewClient({
           pointerEvents: 'none',
         }} />
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%',
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '20%',
           background: `linear-gradient(to bottom, transparent 0%, ${colors.ink} 100%)`,
           pointerEvents: 'none',
         }} />
@@ -758,18 +793,154 @@ export default function PreviewClient({
 
       {/* ═══ SECTIONS ═══ */}
 
+      {/* Brand Intelligence */}
+      {(() => {
+        const GAUGE_R = 88
+        const GAUGE_C = 2 * Math.PI * GAUGE_R
+        const gaugeOffset = intelligenceScore !== null ? GAUGE_C - (intelligenceScore / 100) * GAUGE_C : GAUGE_C
+        const breakdownLabels: Array<{ key: string; label: string }> = [
+          { key: 'brandIdentity', label: 'Brand Identity' },
+          { key: 'creativeStrength', label: 'Creative Strength' },
+          { key: 'audienceClarity', label: 'Audience Clarity' },
+          { key: 'contentReadiness', label: 'Content Readiness' },
+        ]
+        const hasIntel = intelligenceScore !== null
+
+        return (
+          <div className="pv-section" style={{
+            maxWidth: 1080, margin: '0 auto', padding: '0 24px',
+            marginTop: 'clamp(32px, 4vw, 56px)',
+            marginBottom: 'clamp(80px, 10vw, 140px)',
+            opacity: 0, animation: 'sectionReveal 0.6s 0.15s ease-out forwards',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
+              <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
+              <div>
+                <div className="pv-section-heading" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+                  Brand Intelligence
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
+                  ✦ AI-analyzed
+                </div>
+              </div>
+            </div>
+
+            <div className="pv-intel-cols" style={{ display: 'flex', gap: 48, alignItems: 'flex-start' }}>
+              {/* Left — Atlas Score + breakdown */}
+              <div className="pv-intel-left" style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {/* SVG gauge */}
+                <div style={{ position: 'relative', width: 200, height: 200, marginBottom: 12 }}>
+                  <svg width={200} height={200} style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx={100} cy={100} r={GAUGE_R} fill="none" stroke={colors.whiteAlpha10} strokeWidth={12} />
+                    {hasIntel && (
+                      <circle
+                        cx={100} cy={100} r={GAUGE_R} fill="none"
+                        stroke={colors.accent} strokeWidth={12} strokeLinecap="round"
+                        strokeDasharray={GAUGE_C}
+                        strokeDashoffset={gaugeOffset}
+                        style={{
+                          '--gauge-circumference': GAUGE_C,
+                          '--gauge-offset': gaugeOffset,
+                          animation: 'gaugeIn 1.5s ease-out forwards',
+                        } as React.CSSProperties}
+                      />
+                    )}
+                  </svg>
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {hasIntel ? (
+                      <>
+                        <span style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, lineHeight: 1 }}>
+                          {intelligenceScore}
+                        </span>
+                        <span style={{ fontFamily: font.mono, fontSize: fontSize.body, color: colors.whiteAlpha45 }}>/100</span>
+                      </>
+                    ) : (
+                      <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha30 }}>—</span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 28 }}>
+                  Atlas Score
+                </div>
+
+                {/* Breakdown bars */}
+                <div style={{ width: '100%', maxWidth: 280 }}>
+                  {breakdownLabels.map(({ key, label }) => {
+                    const val = scoreBreakdown?.[key] ?? 0
+                    return (
+                      <div key={key} style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha60 }}>{label}</span>
+                          <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: hasIntel ? colors.accent : colors.whiteAlpha30 }}>{hasIntel ? val : '—'}</span>
+                        </div>
+                        <div style={{ height: 4, borderRadius: radius.pill, background: colors.whiteAlpha10, overflow: 'hidden' }}>
+                          {hasIntel ? (
+                            <div style={{ height: '100%', width: `${val}%`, background: colors.accent, borderRadius: radius.pill, transition: 'width 1s ease-out' }} />
+                          ) : (
+                            <div className="animate-pulse" style={{ height: '100%', width: '60%', background: colors.whiteAlpha8, borderRadius: radius.pill }} />
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Right — AI Insights */}
+              <div className="pv-intel-right" style={{ flex: '1 1 60%' }}>
+                <div className="pv-intel-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  {hasIntel && insights.length > 0 ? (
+                    insights.map((insight, i) => (
+                      <div key={i} style={{
+                        background: colors.whiteAlpha5,
+                        border: `1px solid ${colors.whiteAlpha10}`,
+                        borderRadius: radius.xl,
+                        padding: '20px 24px',
+                        opacity: 0,
+                        animation: `sectionReveal 0.5s ${0.3 + i * 0.1}s ease-out forwards`,
+                      }}>
+                        <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 8 }}>
+                          {insight.label}
+                        </div>
+                        <div style={{ fontSize: fontSize.body, color: colors.whiteAlpha80, lineHeight: 1.5 }}>
+                          {insight.text}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    [0, 1, 2, 3].map(i => (
+                      <div key={i} className="animate-pulse" style={{
+                        background: colors.whiteAlpha5,
+                        border: `1px solid ${colors.whiteAlpha10}`,
+                        borderRadius: radius.xl,
+                        padding: '20px 24px',
+                        minHeight: 120,
+                      }} />
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Brand Knowledge */}
       {(brandMission || brandVoice || brandAudience || brandTone.length > 0) && (
         <div className="pv-section" style={{
           maxWidth: 1080, margin: '0 auto', padding: '0 24px',
-          marginTop: 'clamp(60px, 8vw, 100px)',
+          marginTop: 'clamp(32px, 4vw, 56px)',
           marginBottom: 'clamp(80px, 10vw, 140px)',
           opacity: 0, animation: 'sectionReveal 0.6s 0.1s ease-out forwards',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
             <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
             <div>
-              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+              <div className="pv-section-heading" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
                 Brand Knowledge
               </div>
               <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
@@ -809,11 +980,12 @@ export default function PreviewClient({
       )}
 
       {/* Ad Creatives — hero moment with full-bleed bg */}
-      <div style={{
+      <div className="pv-creatives-wrap" style={{
         background: `linear-gradient(135deg, ${colors.whiteAlpha5} 0%, transparent 100%)`,
         padding: '60px 0',
         margin: '0 -60px',
         paddingLeft: 60, paddingRight: 60,
+        overflow: 'hidden',
       }}>
         <div className="pv-section" style={{
           maxWidth: 1080, margin: '0 auto', padding: '0 24px',
@@ -823,7 +995,7 @@ export default function PreviewClient({
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
             <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
             <div>
-              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+              <div className="pv-section-heading" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
                 Ad Creatives
               </div>
               <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
@@ -940,7 +1112,7 @@ export default function PreviewClient({
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
           <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
           <div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+            <div className="pv-section-heading" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
               Ad Copy
             </div>
             <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
@@ -959,7 +1131,7 @@ export default function PreviewClient({
               <div style={{ fontSize: fontSize.caption, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: i === 0 ? colors.accent : colors.whiteAlpha45, marginBottom: 12 }}>
                 Variation {i + 1}
               </div>
-              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['7xl'], lineHeight: 1.1, letterSpacing: letterSpacing.snug, color: colors.paper, marginBottom: 20, textTransform: 'uppercase' }}>
+              <div className="pv-copy-headline" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['7xl'], lineHeight: 1.1, letterSpacing: letterSpacing.snug, color: colors.paper, marginBottom: 20, textTransform: 'uppercase' }}>
                 {v.headline}
               </div>
               <div style={{ width: 32, height: 2, background: i === 0 ? colors.accent : colors.whiteAlpha20, borderRadius: 1, marginBottom: 20 }} />
@@ -1003,7 +1175,7 @@ export default function PreviewClient({
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
           <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
           <div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+            <div className="pv-section-heading" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
               Landing Page
             </div>
             <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
@@ -1048,7 +1220,7 @@ export default function PreviewClient({
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
           <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
           <div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+            <div className="pv-section-heading" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
               Email
             </div>
             <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
@@ -1084,40 +1256,102 @@ export default function PreviewClient({
             <iframe srcDoc={emailHtml || ''} style={{ width: '100%', height: 600, border: 'none', display: 'block' }} title="Email preview" />
           </div>
         )}
+
+        {/* ── Automated Flows ── */}
+        <div style={{ marginTop: 56 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+            <span style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['2xl'], color: colors.paper }}>Automated Flows</span>
+            <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px' }}>✦ Ready to activate</span>
+          </div>
+          <div className="flows-row" style={{ display: 'flex', flexDirection: 'row', gap: 16, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none', msOverflowStyle: 'none' as React.CSSProperties['msOverflowStyle'] }}>
+            {([
+              { icon: '✦', name: 'Welcome Series', status: '3 emails · Ready', desc: `Introduce ${brand.name} and convert first-time visitors into buyers.`, active: true },
+              { icon: '◎', name: 'Abandoned Cart', status: '2 emails · Ready', desc: 'Recover lost sales with urgency-driven reminders.', active: true },
+              { icon: '▲', name: 'Post-Purchase', status: '3 emails · Ready', desc: 'Thank buyers, request reviews, and drive repeat purchases.', active: true },
+              { icon: '⟳', name: 'Win-Back', status: '2 emails · Ready', desc: 'Re-engage customers who haven\'t bought in 60+ days.', active: false },
+              { icon: '★', name: 'VIP & Loyalty', status: '4 emails · Ready', desc: 'Reward your best customers and increase LTV.', active: false },
+            ] as const).map((flow, i) => (
+              <div
+                key={i}
+                onClick={flow.active ? () => requireAuth(() => {}) : undefined}
+                style={{
+                  position: 'relative', minWidth: 220,
+                  background: colors.whiteAlpha5,
+                  border: `1px solid ${colors.whiteAlpha10}`,
+                  borderRadius: radius.xl,
+                  padding: '24px 24px 16px',
+                  flexShrink: 0,
+                  cursor: flow.active ? 'pointer' : 'default',
+                }}
+              >
+                {!flow.active && (
+                  <span style={{
+                    position: 'absolute', top: 16, right: 16,
+                    fontFamily: font.mono, fontSize: fontSize.caption,
+                    color: colors.whiteAlpha45, background: colors.whiteAlpha5,
+                    border: `1px solid ${colors.whiteAlpha10}`,
+                    borderRadius: radius.pill, padding: '2px 10px',
+                  }}>
+                    Coming soon
+                  </span>
+                )}
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: flow.active ? colors.accent : colors.whiteAlpha45 }}>
+                  {flow.icon} · {flow.status}
+                </div>
+                <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xl, color: colors.paper, margin: '8px 0' }}>
+                  {flow.name}
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha60, lineHeight: 1.6 }}>
+                  {flow.desc}
+                </div>
+                <div style={{
+                  height: 2, width: '100%', marginTop: 16,
+                  borderRadius: radius.pill,
+                  background: flow.active ? colors.accent : colors.whiteAlpha10,
+                }} />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ═══ BOTTOM CTA ═══ */}
       <div style={{
-        width: '100%', background: colors.accent,
-        padding: 'clamp(48px, 6vw, 80px) 24px',
+        width: '100%', background: colors.ink,
+        borderTop: `1px solid ${colors.whiteAlpha10}`,
+        padding: 'clamp(64px, 8vw, 100px) 24px',
         textAlign: 'center',
       }}>
         <div style={{
           fontFamily: font.heading, fontWeight: fontWeight.heading,
-          fontSize: 'clamp(32px, 4vw, 56px)',
-          color: colors.ink, textTransform: 'uppercase',
+          fontSize: 'clamp(32px, 4vw, 52px)',
+          color: colors.paper, textTransform: 'uppercase',
           lineHeight: 1.1,
         }}>
-          Ready to make it yours?
+          Your funnel is ready.
         </div>
         <div style={{
           fontFamily: font.mono, fontSize: fontSize.body,
-          color: colors.ink, opacity: 0.7,
-          marginTop: 12,
+          color: colors.whiteAlpha60,
+          marginTop: 12, maxWidth: 480, margin: '12px auto 0',
         }}>
-          Customize, publish, and launch — all from one place.
+          Create a free account to save it, customize it, and launch your first campaign.
         </div>
         <button
-          onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`) })}
+          onClick={() => {
+            if (brand.status === 'draft') return requireAuth(activateBrand)
+            if (viewerCanSaveBrand) return saveBrandToWorkspace()
+            return setShowAccountModal(true)
+          }}
           style={{
-            background: colors.ink, color: colors.accent,
+            background: colors.accent, color: colors.ink,
             fontFamily: font.heading, fontWeight: fontWeight.bold,
             fontSize: fontSize.lg, padding: '18px 48px',
             borderRadius: radius.pill, border: 'none',
             cursor: 'pointer', marginTop: 32,
           }}
         >
-          Customize in creative builder →
+          {brand.status === 'draft' ? 'Save your funnel →' : viewerCanSaveBrand ? 'Save to workspace →' : 'Create your account →'}
         </button>
       </div>
 
