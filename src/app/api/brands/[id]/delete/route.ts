@@ -39,14 +39,27 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       .eq('id', id)
       .maybeSingle()
     if (!brand) return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
+
     if (brand.user_id && brand.user_id === user.id) {
+      // Legacy owner — brand_members row was never created (pre-backfill).
+      // Self-heal so future ops go through the normal membership path.
       await supabaseAdmin
         .from('brand_members')
         .insert({ brand_id: id, user_id: user.id, role: 'owner' })
         .select()
         .single()
-        .then(() => undefined, () => undefined) // ignore unique-violation races
+        .then(() => undefined, () => undefined)
       isOwner = true
+    } else if (!brand.user_id) {
+      // Orphan: brands.user_id is null. Confirm brand_members is also empty
+      // for this brand before treating it as deletable garbage.
+      const { data: anyMember } = await supabaseAdmin
+        .from('brand_members')
+        .select('user_id')
+        .eq('brand_id', id)
+        .limit(1)
+        .maybeSingle()
+      if (!anyMember) isOwner = true
     }
   }
 
