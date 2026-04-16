@@ -8,6 +8,8 @@
 // Toggleable: 01a, 01b, 01c, 02, 03, 04, 05, 06, 07, 08, 09, 11, 12
 // ─────────────────────────────────────────────────────────────
 
+import { readBrandFooter } from '@/lib/brand-footer'
+
 export interface EmailColors {
   primaryBg: string
   primaryText: string
@@ -138,12 +140,9 @@ export interface MasterEmailConfig {
   faqCta: string
   faqCtaUrl: string
 
-  // Footer
-  footerTagline: string
-  instagramUrl: string
-  privacyPolicyUrl: string
-  refundPolicyUrl: string
-  termsOfServiceUrl: string
+  // Footer fields (tagline, instagramUrl, privacy/refund/terms URLs) moved
+  // to brand.notes.footer (BrandFooter). Read via readBrandFooter inside
+  // buildMasterEmail — not per-template.
 
   emailColors?: EmailColors | null
 }
@@ -243,11 +242,6 @@ export const DEFAULT_MASTER_CONFIG: MasterEmailConfig = {
   faqCta: 'Still Have Questions?',
   faqCtaUrl: '',
 
-  footerTagline: '',
-  instagramUrl: '',
-  privacyPolicyUrl: '',
-  refundPolicyUrl: '',
-  termsOfServiceUrl: '',
   emailColors: null,
 }
 
@@ -428,6 +422,9 @@ interface BrandData {
   font_body?: { family?: string; weight?: string | number } | null
   font_primary?: string | null
   products?: any[] | null
+  // TEXT column containing JSON — parsed via readBrandFooter() to get the
+  // brand-global footer fields (tagline, instagramUrl, policy URLs, etc.)
+  notes?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -445,6 +442,7 @@ export function buildMasterEmail(
   const hw = brand.font_heading?.weight || 900
   const ht = (brand.font_heading?.transform || 'uppercase') as string
   const site = brand.website || '#'
+  const footer = readBrandFooter(brand.notes)
   // Logo resolution — prefer the light (white) variant for dark backgrounds.
   // When only the color logo_url exists, apply a brightness(0) invert(1) CSS
   // filter so it renders as white on the dark header/footer bars. When neither
@@ -842,8 +840,8 @@ ${on('09') ? `
   <a href="${site}" style="display:block;margin-bottom:18px;text-decoration:none;">
     ${footerLogoHtml}
   </a>
-  ${config.footerTagline ? `<p style="margin:0 0 22px;font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};letter-spacing:2px;text-transform:${ht};text-align:center;">${config.footerTagline}</p>` : ''}
-  ${config.instagramUrl ? `<p style="margin:0 0 20px;text-align:center;"><a href="${config.instagramUrl}" style="font-family:${hf};font-size:11px;font-weight:700;color:${palette.darkText};text-decoration:none;letter-spacing:2px;text-transform:${ht};">Instagram</a></p>` : ''}
+  ${footer.tagline ? `<p style="margin:0 0 22px;font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};letter-spacing:2px;text-transform:${ht};text-align:center;">${footer.tagline}</p>` : ''}
+  ${footer.instagramUrl ? `<p style="margin:0 0 20px;text-align:center;"><a href="${footer.instagramUrl}" style="font-family:${hf};font-size:11px;font-weight:700;color:${palette.darkText};text-decoration:none;letter-spacing:2px;text-transform:${ht};">Instagram</a></p>` : ''}
   <p style="margin:0;text-align:center;">
     <a href="${site}/collections/all" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">Shop</a>
     <a href="${site}/pages/about" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">About</a>
@@ -856,9 +854,9 @@ ${on('09') ? `
 </td></tr>
 <tr><td align="center" style="padding:20px 24px;background-color:${palette.darkBg};">
   <p style="margin:0;text-align:center;">
-    <a href="${config.privacyPolicyUrl || `${site}/policies/privacy-policy`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Privacy Policy</a>
-    <a href="${config.refundPolicyUrl || `${site}/policies/refund-policy`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Refund Policy</a>
-    <a href="${config.termsOfServiceUrl || `${site}/policies/terms-of-service`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Terms of Service</a>
+    <a href="${footer.privacyPolicyUrl || `${site}/policies/privacy-policy`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Privacy Policy</a>
+    <a href="${footer.refundPolicyUrl || `${site}/policies/refund-policy`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Refund Policy</a>
+    <a href="${footer.termsOfServiceUrl || `${site}/policies/terms-of-service`}" style="font-family:${hf};font-size:11px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 6px;">Terms of Service</a>
   </p>
 </td></tr>
 <tr><td align="center" style="padding:0 24px 16px;background-color:${palette.darkBg};">

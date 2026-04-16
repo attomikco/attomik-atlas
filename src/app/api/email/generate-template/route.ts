@@ -183,9 +183,7 @@ Return a COMPLETE JSON object with ALL of these fields. Every field must be fill
   "igHeadline": "IG section headline, 3-5 words",
   "igHandle": "@${brand.name.toLowerCase().replace(/\\s+/g, '')}",
   "igUrl": "",
-  "igCta": "Follow CTA text, 3-5 words",
-  "footerTagline": "Brand tagline, under 50 chars",
-  "instagramUrl": ""
+  "igCta": "Follow CTA text, 3-5 words"
 }
 
 Respond with ONLY the JSON object. No markdown, no explanation.`

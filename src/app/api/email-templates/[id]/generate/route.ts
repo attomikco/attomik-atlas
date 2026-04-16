@@ -179,9 +179,7 @@ Return a COMPLETE JSON object with ALL fields below filled with real, specific, 
   "igHeadline": "3-5 word headline",
   "igHandle": "@${brand.name.toLowerCase().replace(/\s+/g, '')}",
   "igUrl": "",
-  "igCta": "3-5 word CTA",
-  "footerTagline": "Brand tagline, under 50 chars",
-  "instagramUrl": ""
+  "igCta": "3-5 word CTA"
 }
 
 Respond with ONLY the JSON object. No markdown, no explanation.`

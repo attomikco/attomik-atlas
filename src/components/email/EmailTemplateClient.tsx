@@ -4,6 +4,7 @@ import { colors } from '@/lib/design-tokens'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { buildMasterEmail, DEFAULT_MASTER_CONFIG, deriveEmailColorsFromBrand, type MasterEmailConfig, type EmailColors } from '@/lib/email-master-template'
+import { readBrandFooter } from '@/lib/brand-footer'
 import EmailActions from './EmailActions'
 import ColorPickerPopover from '@/components/ui/ColorPickerPopover'
 
@@ -287,18 +288,10 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     return () => clearInterval(interval)
   }, [generating, generatingMessages.length])
 
-  // ── Email footer settings modal ──────────────────────────────────────
-  const parsedNotes = (() => { try { return brand.notes ? JSON.parse(brand.notes) : {} } catch { return {} } })()
-  const emailSettings = parsedNotes.email_settings || {}
-  const isEmailSettingsIncomplete = !emailSettings.instagramUrl || !emailSettings.address || !Array.isArray(emailSettings.footerLinks) || emailSettings.footerLinks.length === 0
-  const [footerModalOpen, setFooterModalOpen] = useState(false)
-  const [footerSkipped, setFooterSkipped] = useState(false)
-  const footerAutoOpenRef = useRef(false)
-  useEffect(() => {
-    if (footerAutoOpenRef.current) return
-    footerAutoOpenRef.current = true
-    if (isEmailSettingsIncomplete) setFooterModalOpen(true)
-  }, [isEmailSettingsIncomplete])
+  // Footer is brand-global — read via readBrandFooter below for the
+  // read-only preview in the Style Panel. Editing happens in the brand hub
+  // (/brand-setup/[brandId]#footer), not here.
+  const brandFooter = readBrandFooter(brand.notes)
 
   // ── Multi-template state ────────────────────────────────────────────
   const [templates, setTemplates] = useState<EmailTemplateRow[]>([])
@@ -343,7 +336,6 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
     base.heroHeadline = `Welcome to ${brand.name}`
     base.heroCta = 'Shop Now'
     base.heroCtaUrl = brand.website || ''
-    base.footerTagline = `Crafted with care — ${brand.name}`
     const p0 = brand.products?.[0]
     if (p0) {
       base.productName = p0.name || p0.title || ''
@@ -1242,11 +1234,52 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
       </BlockRow>
 
       <BlockRow id="footer" label="Footer" alwaysOn>
-        <Field label="Tagline"><input value={config.footerTagline} onChange={e => update({ footerTagline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
-        <Field label="Instagram URL"><input value={config.instagramUrl} onChange={e => update({ instagramUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
-        <Field label="Privacy Policy URL"><input value={config.privacyPolicyUrl} onChange={e => update({ privacyPolicyUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/privacy-policy`} style={inputStyle} /></Field>
-        <Field label="Refund Policy URL"><input value={config.refundPolicyUrl} onChange={e => update({ refundPolicyUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/refund-policy`} style={inputStyle} /></Field>
-        <Field label="Terms of Service URL"><input value={config.termsOfServiceUrl} onChange={e => update({ termsOfServiceUrl: e.target.value })} onBlur={saveConfig} placeholder={`${brand.website || ''}/policies/terms-of-service`} style={inputStyle} /></Field>
+        {(() => {
+          const previewRowStyle: React.CSSProperties = {
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            gap: 12, padding: '6px 0', borderBottom: `1px dashed ${colors.border}`,
+            fontSize: 12,
+          }
+          const valueStyle: React.CSSProperties = {
+            color: colors.ink, fontWeight: 500,
+            maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }
+          const labelStyle: React.CSSProperties = { color: colors.muted, flexShrink: 0 }
+          const empty = <span style={{ color: colors.muted, fontStyle: 'italic' }}>not set</span>
+          const rows: Array<[string, string]> = [
+            ['Tagline',             brandFooter.tagline],
+            ['Instagram URL',       brandFooter.instagramUrl],
+            ['Privacy Policy',      brandFooter.privacyPolicyUrl],
+            ['Refund Policy',       brandFooter.refundPolicyUrl],
+            ['Terms of Service',    brandFooter.termsOfServiceUrl],
+          ]
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 11, color: colors.muted, lineHeight: 1.5 }}>
+                Footer is shared across every email template for this brand.
+              </div>
+              <div style={{ marginTop: 4 }}>
+                {rows.map(([label, value]) => (
+                  <div key={label} style={previewRowStyle}>
+                    <span style={labelStyle}>{label}</span>
+                    <span style={valueStyle}>{value ? value : empty}</span>
+                  </div>
+                ))}
+              </div>
+              <Link
+                href={`/brand-setup/${brand.id}#footer`}
+                style={{
+                  marginTop: 10, fontSize: 12, fontWeight: 700,
+                  color: colors.ink, textDecoration: 'none',
+                  borderBottom: `1px solid ${colors.ink}`,
+                  alignSelf: 'flex-start',
+                }}
+              >
+                Edit in brand hub →
+              </Link>
+            </div>
+          )
+        })()}
       </BlockRow>
       </BlockAccordionContext.Provider>
       </fieldset>
@@ -1485,14 +1518,6 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         }}
       />
     )}
-    {footerModalOpen && (
-      <EmailFooterSettingsModal
-        brandId={brand.id}
-        initial={emailSettings}
-        onSaved={() => { setFooterModalOpen(false); setFooterSkipped(false) }}
-        onSkip={() => { setFooterModalOpen(false); setFooterSkipped(true) }}
-      />
-    )}
     <div style={{ display: 'flex', gap: 24, height: 'calc(100vh - 72px)', padding: '24px 32px', alignItems: 'flex-start' }}>
       <div style={{ width: 360, flexShrink: 0, overflowY: 'auto', paddingRight: 8, position: 'relative', height: 'calc(100vh - 120px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -1515,43 +1540,7 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
           ))}
         </div>
 
-        {activeTab === 'Template' && footerSkipped && isEmailSettingsIncomplete && (
-          <div style={{
-            background: colors.warningLight, border: `1px solid ${colors.warning}`,
-            borderRadius: 6, padding: '8px 12px', marginBottom: 12,
-            fontSize: 12, color: colors.warning, display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <span style={{ flex: 1 }}>Footer incomplete — emails may not send correctly</span>
-            <button
-              type="button"
-              onClick={() => setFooterModalOpen(true)}
-              style={{
-                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                fontSize: 12, fontWeight: 700, color: colors.warning, textDecoration: 'underline',
-                flexShrink: 0,
-              }}
-            >
-              Fix now
-            </button>
-          </div>
-        )}
-
         {activeTab === 'Template' ? templatePanel : historyPanel}
-
-        {activeTab === 'Template' && (
-          <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-            <button
-              type="button"
-              onClick={() => setFooterModalOpen(true)}
-              style={{
-                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                fontSize: 11, fontWeight: 600, color: colors.muted, textDecoration: 'underline',
-              }}
-            >
-              Footer Settings
-            </button>
-          </div>
-        )}
 
         {activeTab === 'Template' && (
           <div style={{
@@ -1878,220 +1867,3 @@ function NewTemplateModal({ brandId, existingTemplates, onClose, onCreated }: {
   )
 }
 
-// ── Email Footer Settings modal ──────────────────────────────────────
-function EmailFooterSettingsModal({ brandId, initial, onSaved, onSkip }: {
-  brandId: string
-  initial: { instagramUrl?: string; address?: string; unsubscribeText?: string; footerLinks?: Array<{ label: string; url: string }> }
-  onSaved: () => void
-  onSkip: () => void
-}) {
-  const supabase = createClient()
-  const [instagramUrl, setInstagramUrl] = useState(initial.instagramUrl || '')
-  const [address, setAddress] = useState(initial.address || '')
-  const [unsubscribeText, setUnsubscribeText] = useState(
-    initial.unsubscribeText || 'You\'re receiving this because you signed up for updates. Unsubscribe anytime.'
-  )
-  const [footerLinks, setFooterLinks] = useState<Array<{ label: string; url: string }>>(
-    initial.footerLinks?.length ? initial.footerLinks : [{ label: 'Shop', url: '' }, { label: 'About', url: '' }]
-  )
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  async function save() {
-    setBusy(true)
-    setError('')
-    try {
-      const { data: freshRow } = await supabase
-        .from('brands')
-        .select('notes')
-        .eq('id', brandId)
-        .single()
-      const currentNotes = (() => { try { return freshRow?.notes ? JSON.parse(freshRow.notes) : {} } catch { return {} } })()
-      const updatedNotes = {
-        ...currentNotes,
-        email_settings: {
-          instagramUrl: instagramUrl.trim(),
-          address: address.trim(),
-          unsubscribeText: unsubscribeText.trim(),
-          footerLinks: footerLinks.filter(l => l.label.trim() || l.url.trim()),
-        },
-      }
-      const { error: saveErr } = await supabase
-        .from('brands')
-        .update({ notes: JSON.stringify(updatedNotes) })
-        .eq('id', brandId)
-      if (saveErr) {
-        setError('Save failed — try again')
-        setBusy(false)
-        return
-      }
-      onSaved()
-    } catch {
-      setError('Something went wrong')
-      setBusy(false)
-    }
-  }
-
-  const fieldInputStyle: React.CSSProperties = {
-    width: '100%', border: `1.5px solid ${colors.border}`, borderRadius: 6,
-    padding: '9px 11px', fontSize: 13, boxSizing: 'border-box',
-    fontFamily: 'inherit', outline: 'none', background: colors.paper,
-  }
-
-  return (
-    <div
-      onClick={onSkip}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(4px)', zIndex: 100,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: colors.cream, borderRadius: 16, padding: 28,
-          width: 520, maxWidth: '90vw',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-          display: 'flex', flexDirection: 'column', gap: 16,
-        }}
-      >
-        <div>
-          <div style={{
-            fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 22,
-            textTransform: 'uppercase', color: colors.ink,
-          }}>
-            Email Footer Setup
-          </div>
-          <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>
-            This appears at the bottom of every email you send.
-          </div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Instagram URL</div>
-          <input
-            value={instagramUrl}
-            onChange={e => setInstagramUrl(e.target.value)}
-            placeholder="https://instagram.com/yourbrand"
-            style={fieldInputStyle}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Physical Address</div>
-          <input
-            value={address}
-            onChange={e => setAddress(e.target.value)}
-            placeholder="123 Main St, City, State ZIP"
-            style={fieldInputStyle}
-            disabled={busy}
-          />
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Required for CAN-SPAM compliance</div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Unsubscribe Text</div>
-          <input
-            value={unsubscribeText}
-            onChange={e => setUnsubscribeText(e.target.value)}
-            placeholder="You're receiving this because you signed up for updates. Unsubscribe anytime."
-            style={fieldInputStyle}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.muted, marginBottom: 4 }}>Footer Links</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {footerLinks.map((link, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  value={link.label}
-                  onChange={e => {
-                    const next = [...footerLinks]
-                    next[i] = { ...next[i], label: e.target.value }
-                    setFooterLinks(next)
-                  }}
-                  placeholder="Label"
-                  style={{ ...fieldInputStyle, flex: 1 }}
-                  disabled={busy}
-                />
-                <input
-                  value={link.url}
-                  onChange={e => {
-                    const next = [...footerLinks]
-                    next[i] = { ...next[i], url: e.target.value }
-                    setFooterLinks(next)
-                  }}
-                  placeholder="https://..."
-                  style={{ ...fieldInputStyle, flex: 2 }}
-                  disabled={busy}
-                />
-                <button
-                  type="button"
-                  onClick={() => setFooterLinks(prev => prev.filter((_, j) => j !== i))}
-                  disabled={busy}
-                  style={{
-                    background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer',
-                    fontSize: 18, color: colors.muted, padding: '0 4px', lineHeight: 1,
-                    flexShrink: 0,
-                  }}
-                  title="Remove link"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => setFooterLinks(prev => [...prev, { label: '', url: '' }])}
-              disabled={busy}
-              style={{
-                background: 'none', border: `1px dashed ${colors.border}`, borderRadius: 6,
-                padding: '8px 14px', fontSize: 12, fontWeight: 600, color: colors.muted,
-                cursor: busy ? 'default' : 'pointer', width: '100%',
-              }}
-            >
-              + Add Link
-            </button>
-          </div>
-        </div>
-
-        {error && <div style={{ fontSize: 12, color: colors.danger }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button
-            onClick={onSkip}
-            disabled={busy}
-            style={{
-              flex: 1, padding: '12px', background: colors.paper, color: colors.ink,
-              fontWeight: 700, fontSize: 13, borderRadius: 6,
-              border: `1.5px solid ${colors.border}`,
-              cursor: busy ? 'default' : 'pointer',
-            }}
-          >
-            Skip for now
-          </button>
-          <button
-            onClick={save}
-            disabled={busy}
-            style={{
-              flex: 2, padding: '12px',
-              background: busy ? colors.muted : colors.ink, color: colors.accent,
-              fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 13,
-              borderRadius: 6, border: 'none',
-              cursor: busy ? 'wait' : 'pointer',
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-          >
-            {busy && <div style={{ width: 14, height: 14, border: `2px solid rgba(0,255,151,0.3)`, borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />}
-            {busy ? 'Saving...' : 'Save & Continue'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
