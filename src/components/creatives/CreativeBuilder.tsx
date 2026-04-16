@@ -18,7 +18,7 @@ import PreviewCanvas from './preview/PreviewCanvas'
 import VariationStrip from './preview/VariationStrip'
 import DraftStrip from './preview/DraftStrip'
 import MetaLaunchModal from './MetaLaunchModal'
-import { colors, font } from '@/lib/design-tokens'
+import { colors, font, fontSize, fontWeight, spacing, radius, shadow, letterSpacing } from '@/lib/design-tokens'
 
 export default function CreativeBuilder({
   brands,
@@ -763,7 +763,7 @@ FB_DESCRIPTION: <under 12 words>`,
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: colors.gray200 }}>
 
       {/* ── TOPBAR ── */}
-      <div className="creative-topbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', height: 48, minHeight: 48, background: colors.white, borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+      <div className="creative-topbar" style={{ display: 'flex', alignItems: 'center', gap: spacing[2], padding: `0 ${spacing[4]}px`, height: 48, minHeight: 48, background: colors.paper, borderBottom: `1px solid ${colors.blackAlpha8}`, flexShrink: 0 }}>
         <style>{`@media(max-width:767px){.creative-topbar{overflow-x:auto;white-space:nowrap;scrollbar-width:none;-ms-overflow-style:none}.creative-topbar::-webkit-scrollbar{display:none}}`}</style>
         {/* Size pills */}
         {SIZES.map(s => (
@@ -771,7 +771,7 @@ FB_DESCRIPTION: <under 12 words>`,
         ))}
 
         {/* Divider */}
-        <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
+        <div style={{ width: 1, height: 20, background: colors.blackAlpha10, flexShrink: 0 }} />
 
         {/* Template pills */}
         {TEMPLATES.map(t => (
@@ -808,7 +808,7 @@ FB_DESCRIPTION: <under 12 words>`,
         {campaignId && (
           <>
             <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-              <a href={`/preview/${campaignId}`} style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              <a href={`/preview/${campaignId}`} style={{ fontSize: fontSize.caption, color: colors.subtle, textDecoration: 'none', fontWeight: fontWeight.semibold, whiteSpace: 'nowrap' }}>
                 ← Back to funnel
               </a>
             </div>
@@ -821,7 +821,7 @@ FB_DESCRIPTION: <under 12 words>`,
 
         {/* ── PREVIEW PANEL ── */}
         <div ref={leftPanelRef} className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16 }}>
+          <div style={{ background: colors.paper, borderRadius: radius.xl, margin: spacing[3], padding: spacing[4], boxShadow: shadow.card }}>
             <PreviewCanvas
               templateLabel={template.label}
               size={size}
@@ -855,7 +855,7 @@ FB_DESCRIPTION: <under 12 words>`,
               exportingAll={exportingAll}
               afterBatchSlot={
                 variations.length > 0 ? (
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: spacing[3] }}>
                     <VariationStrip
                       variations={variations}
                       activeVariation={activeVariation}
@@ -876,7 +876,7 @@ FB_DESCRIPTION: <under 12 words>`,
             />
 
             {/* Draft strip */}
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: spacing[3] }}>
               <DraftStrip
                 savedDrafts={savedDrafts}
                 activeDraft={activeDraft}
@@ -898,16 +898,16 @@ FB_DESCRIPTION: <under 12 words>`,
 
         {/* ── IMAGES PANEL ── */}
         <div className="w-full md:w-auto" style={{ flex: 0.5, minWidth: 0 }}>
-          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
+          <div style={{ background: colors.paper, borderRadius: radius.xl, margin: spacing[3], padding: spacing[4], boxShadow: shadow.card, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
             {/* Lifestyle first — sets the emotional tone for a creative and is the
                 default pick downstream. Product shots come after as fallback. */}
             {lifestyleImages.length > 0 && (
               <>
-                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>LIFESTYLE</div>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: spacing[2] }}>LIFESTYLE</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {lifestyleImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
                       <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                     </div>
                   ))}
@@ -916,11 +916,11 @@ FB_DESCRIPTION: <under 12 words>`,
             )}
             {productImages.length > 0 && (
               <>
-                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: lifestyleImages.length > 0 ? 16 : 0, marginBottom: 8 }}>PRODUCT</div>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginTop: lifestyleImages.length > 0 ? spacing[4] : 0, marginBottom: spacing[2] }}>PRODUCT</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {productImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
                       <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                     </div>
                   ))}
@@ -929,11 +929,11 @@ FB_DESCRIPTION: <under 12 words>`,
             )}
             {otherImages.length > 0 && (
               <>
-                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>OTHER</div>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginTop: spacing[4], marginBottom: spacing[2] }}>OTHER</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {otherImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
                       <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                     </div>
                   ))}
@@ -941,24 +941,24 @@ FB_DESCRIPTION: <under 12 words>`,
               </>
             )}
             {images.length === 0 && (
-              <div style={{ fontSize: 12, color: colors.gray700, textAlign: 'center', padding: '24px 0' }}>No images</div>
+              <div style={{ fontSize: fontSize.caption, color: colors.gray700, textAlign: 'center', padding: `${spacing[6]}px 0` }}>No images</div>
             )}
 
             {/* ── AI GENERATED SECTION ── */}
-            <div style={{ marginTop: images.length > 0 ? 20 : 0, paddingTop: images.length > 0 ? 16 : 0, borderTop: images.length > 0 ? '1px solid rgba(0,0,0,0.08)' : 'none' }}>
-              <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>AI GENERATED</div>
-              <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.gray700, lineHeight: 1.4, marginBottom: 10 }}>AI-generated lifestyle scenes — place your product on top</div>
+            <div style={{ marginTop: images.length > 0 ? spacing[5] : 0, paddingTop: images.length > 0 ? spacing[4] : 0, borderTop: images.length > 0 ? `1px solid ${colors.blackAlpha8}` : 'none' }}>
+              <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: spacing[1] }}>AI GENERATED</div>
+              <div style={{ fontFamily: font.mono, fontSize: fontSize.xs, color: colors.gray700, lineHeight: 1.4, marginBottom: spacing[3] }}>AI-generated lifestyle scenes — place your product on top</div>
               <button
                 onClick={generateImage}
                 disabled={generatingImage || !brandId}
                 style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  width: '100%', padding: '10px 12px', borderRadius: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing[2],
+                  width: '100%', padding: `${spacing[3]}px ${spacing[3]}px`, borderRadius: radius.md,
                   background: generatingImage ? colors.darkCard : colors.ink, color: colors.white,
-                  fontFamily: font.mono, fontSize: 11, fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  fontFamily: font.mono, fontSize: fontSize.sm, fontWeight: fontWeight.bold,
+                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
                   border: 'none', cursor: generatingImage ? 'default' : 'pointer',
-                  opacity: generatingImage ? 0.7 : 1, marginBottom: 8,
+                  opacity: generatingImage ? 0.7 : 1, marginBottom: spacing[2],
                 }}
               >
                 {generatingImage ? (
@@ -972,13 +972,13 @@ FB_DESCRIPTION: <under 12 words>`,
                 )}
               </button>
               {generateError && (
-                <div style={{ fontSize: 11, color: colors.dangerAlt, fontFamily: font.mono, marginBottom: 8 }}>{generateError}</div>
+                <div style={{ fontSize: fontSize.sm, color: colors.dangerAlt, fontFamily: font.mono, marginBottom: spacing[2] }}>{generateError}</div>
               )}
               {generatedImages.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {generatedImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
                       <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                     </div>
                   ))}
@@ -990,7 +990,7 @@ FB_DESCRIPTION: <under 12 words>`,
 
         {/* ── STYLE & COPY PANEL ── */}
         <div className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16 }}>
+          <div style={{ background: colors.paper, borderRadius: radius.xl, margin: spacing[3], padding: spacing[4], boxShadow: shadow.card }}>
           <StylePanel
             templateId={templateId}
             brand={brand}
@@ -1042,7 +1042,7 @@ FB_DESCRIPTION: <under 12 words>`,
             setCtaSizeMul={setCtaSizeMul}
           />
 
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: spacing[4] }}>
           <CopyEditor
             headline={headline}
             setHeadline={setHeadline}
@@ -1072,12 +1072,12 @@ FB_DESCRIPTION: <under 12 words>`,
           </div>
 
           {templateId === 'grid' && images.length > 1 && (
-            <div style={{ padding: 16 }}>
-              <label style={{ fontSize: 10, color: colors.gray700, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'block', marginBottom: 4 }}>Second image</label>
+            <div style={{ padding: spacing[4] }}>
+              <label style={{ fontSize: fontSize.xs, color: colors.gray700, textTransform: 'uppercase', letterSpacing: letterSpacing.wider, fontWeight: fontWeight.semibold, display: 'block', marginBottom: spacing[1] }}>Second image</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
                 {images.map(img => (
                   <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
-                    style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : colors.border}`, padding: 0, background: 'none', cursor: 'pointer' }}>
+                    style={{ aspectRatio: '1', borderRadius: radius.xs, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : colors.border}`, padding: 0, background: 'none', cursor: 'pointer' }}>
                     <img src={getPublicUrl(img.storage_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                   </button>
                 ))}
@@ -1095,13 +1095,13 @@ FB_DESCRIPTION: <under 12 words>`,
 
       {/* Toast */}
       {(exporting || exportingAll) && !exportToast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12, background: colors.ink, color: colors.white, padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+        <div style={{ position: 'fixed', bottom: spacing[6], left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: spacing[3], background: colors.ink, color: colors.white, padding: `14px ${spacing[6]}px`, borderRadius: radius.pill, boxShadow: shadow.dark, fontSize: fontSize.body, fontWeight: fontWeight.bold, whiteSpace: 'nowrap' }}>
+          <div style={{ width: 16, height: 16, border: `2px solid ${colors.whiteAlpha20}`, borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
           {exportingAll ? 'Generating all sizes...' : 'Generating PNG...'}
         </div>
       )}
       {exportToast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, background: colors.ink, color: colors.accent, padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'fixed', bottom: spacing[6], left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: spacing[2], background: colors.ink, color: colors.accent, padding: `14px ${spacing[6]}px`, borderRadius: radius.pill, boxShadow: shadow.dark, fontSize: fontSize.body, fontWeight: fontWeight.bold, whiteSpace: 'nowrap' }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,10.5 12,3.5" stroke={colors.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           {exportToast}
         </div>
