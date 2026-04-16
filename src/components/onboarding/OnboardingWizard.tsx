@@ -249,7 +249,11 @@ export default function OnboardingWizard() {
         if (offerings.length > 0) return offerings.map(o => ({ name: o.name, description: o.description || null, price_range: o.price || null, image: o.image || null }))
         return null
       })(),
-      status: 'active',
+      // Insert as 'draft' so the brand is invisible in every dashboard
+      // surface (all brand lists filter .eq('status','active')). PreviewClient's
+      // "Activate & save →" button flips status to 'active' on explicit save —
+      // until then, URL testing doesn't pollute the user's account.
+      status: 'draft',
       ...(user ? { user_id: user.id, client_email: user.email || null } : {}),
     }).select('id').single()
 
@@ -273,6 +277,11 @@ export default function OnboardingWizard() {
 
     sessionStorage.setItem('attomik_demo_brand_id', brand.id)
     sessionStorage.setItem('attomik_demo_campaign_id', campaign.id)
+    // Draft keys read/cleared by PreviewClient.activateBrand() and
+    // navigateWithActivation() when the user hits "Activate & save →".
+    // Demo keys above are consumed by /auth/confirm's claim flow for anon users.
+    sessionStorage.setItem('attomik_draft_brand_id', brand.id)
+    sessionStorage.setItem('attomik_draft_campaign_id', campaign.id)
     pendingRedirect.current = `/preview/${campaign.id}`
 
     // Fire-and-forget: image upload (same as before — don't await)
