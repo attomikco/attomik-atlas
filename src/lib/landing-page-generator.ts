@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { createHash } from 'crypto'
 import { Brand, BrandVoiceExample } from '@/types'
 import {
   colors,
@@ -292,30 +293,45 @@ Requirements:
 Write copy that ONLY ${brandName} could have written — draw on the brand voice, tone, and mission above. Output the full HTML document now.`
 }
 
-export async function generateLandingPageHtml({
+export interface LandingPrompts {
+  system: string
+  user: string
+}
+
+export function buildLandingPrompts({
   brandData,
   briefData,
   designTokens = defaultDesignTokens,
   voiceExamples,
-  maxTokens = 4000,
-}: GenerateLandingPageOptions): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new LandingPageGenerationError('ANTHROPIC_API_KEY is not set')
-  }
+}: Omit<GenerateLandingPageOptions, 'maxTokens'>): LandingPrompts {
   if (!brandData?.name) {
     throw new LandingPageGenerationError('brandData.name is required')
   }
+  return {
+    system: buildSystemPrompt(brandData, designTokens, voiceExamples),
+    user: buildUserPrompt(briefData, brandData.name),
+  }
+}
 
-  const systemPrompt = buildSystemPrompt(brandData, designTokens, voiceExamples)
-  const userPrompt = buildUserPrompt(briefData, brandData.name)
+export function hashLandingPrompts(prompts: LandingPrompts): string {
+  return createHash('sha256').update(prompts.system).update('\0').update(prompts.user).digest('hex')
+}
+
+export async function generateLandingPageFromPrompts(
+  prompts: LandingPrompts,
+  maxTokens = 4000,
+): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new LandingPageGenerationError('ANTHROPIC_API_KEY is not set')
+  }
 
   let response: Anthropic.Message
   try {
     response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+      system: prompts.system,
+      messages: [{ role: 'user', content: prompts.user }],
     })
   } catch (err) {
     throw new LandingPageGenerationError(
@@ -341,4 +357,9 @@ export async function generateLandingPageHtml({
   }
 
   return cleaned
+}
+
+export async function generateLandingPageHtml(options: GenerateLandingPageOptions): Promise<string> {
+  const prompts = buildLandingPrompts(options)
+  return generateLandingPageFromPrompts(prompts, options.maxTokens ?? 4000)
 }
