@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { colors, font, fontWeight } from '@/lib/design-tokens'
 import AttomikLogo from '@/components/ui/AttomikLogo'
+import MarketingFooter from '@/components/ui/MarketingFooter'
 import ReturningUserDashboard from '@/components/dashboard/ReturningUserDashboard'
 import type { BrandCardData } from '@/components/dashboard/BrandCard'
 
@@ -262,6 +263,8 @@ export default function HomePage() {
         }
 
         @media (max-width: 900px) {
+          .hero-input { font-variant: small-caps !important; text-transform: lowercase !important; }
+          .hero-input::placeholder { font-variant: small-caps !important; text-transform: lowercase !important; }
           .grid-6 { grid-template-columns: repeat(2, 1fr) !important; }
           .grid-3 { grid-template-columns: 1fr !important; }
           .feat-row { grid-template-columns: 1fr !important; gap: 32px !important; }
@@ -274,7 +277,7 @@ export default function HomePage() {
           .hero-content { padding-top: 12px !important; padding-bottom: 24px !important; }
           .nav-top { padding-top: 16px !important; padding-bottom: 16px !important; }
           .hero-logo svg { height: 44px !important; }
-          .hero-sub { font-size: 14px !important; margin-top: 12px !important; margin-bottom: 0 !important; }
+          .hero-sub { font-size: 14px !important; margin-top: 12px !important; margin-bottom: 20px !important; }
           .cap-card { min-height: 150px !important; padding: 24px 20px !important; }
           .brand-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .brand-grid > a:nth-child(2n) { border-right: none !important; }
@@ -520,14 +523,7 @@ export default function HomePage() {
       </section>
 
       {/* ── FOOTER ──────────────────────────────────────── */}
-      <footer className="page-pad footer-row" style={{ padding: '32px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <AttomikLogo height={20} color="rgba(255,255,255,0.35)" />
-        <div style={{ ...label }}>© {new Date().getFullYear()} Attomik · All rights reserved</div>
-        <div style={{ display: 'flex', gap: 24 }}>
-          <a href="/privacy" style={{ ...label, textDecoration: 'none' }} className="ghost">Privacy</a>
-          <a href="/terms" style={{ ...label, textDecoration: 'none' }} className="ghost">Terms</a>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

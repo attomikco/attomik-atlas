@@ -18,6 +18,7 @@ import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 import GridTemplate from '@/components/creatives/templates/GridTemplate'
 import AttomikLogo from '@/components/ui/AttomikLogo'
 import AccountModal from '@/components/ui/AccountModal'
+import MarketingFooter from '@/components/ui/MarketingFooter'
 import LogoImage from '@/components/ui/LogoImage'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, letterSpacing } from '@/lib/design-tokens'
 
@@ -802,8 +803,6 @@ export default function PreviewClient({
           .pv-finale-col { width: clamp(100px, 22vw, 140px) !important; }
           .pv-finale-stats { gap: 24px !important; flex-wrap: wrap !important; }
           .pv-finale-num { font-size: clamp(36px, 8vw, 56px) !important; }
-          .pv-footer-grid { grid-template-columns: 1fr 1fr !important; }
-          .pv-footer-brand { grid-column: 1 / -1 !important; }
           .pv-landing-laptop { display: none !important; }
           .pv-landing-phone { display: block !important; }
           .pv-email-laptop { display: none !important; }
@@ -2028,77 +2027,7 @@ export default function PreviewClient({
       </div>
 
       {/* ═══ FOOTER ═══ */}
-      <footer style={{
-        width: '100%', background: colors.ink,
-        borderTop: `1px solid ${colors.whiteAlpha10}`,
-        padding: 'clamp(48px, 6vw, 80px) clamp(24px, 6vw, 80px) 32px',
-      }}>
-        <div className="pv-footer-grid" style={{
-          display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-          gap: 48, maxWidth: 1200, margin: '0 auto',
-        }}>
-          {/* Brand */}
-          <div className="pv-footer-brand">
-            <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-              <AttomikLogo height={24} color={colors.paper} />
-              <span style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['2xl'], color: colors.paper, marginLeft: 10 }}>Atlas</span>
-            </Link>
-            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha60, marginTop: 12, maxWidth: 200, lineHeight: 1.5 }}>
-              AI-powered marketing for CPG & DTC brands.
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              {['𝕏', 'in', 'ig'].map(icon => (
-                <div key={icon} style={{
-                  width: 32, height: 32, borderRadius: '50%', background: colors.whiteAlpha10,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha80,
-                  cursor: 'pointer',
-                }}>
-                  {icon}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Product */}
-          <div>
-            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 16 }}>Product</div>
-            {['Features', 'Pricing', 'Changelog', 'Roadmap'].map(link => (
-              <div key={link} onClick={() => requireAuth(() => {})} style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha60, marginBottom: 10, cursor: 'pointer' }}>{link}</div>
-            ))}
-          </div>
-
-          {/* Company */}
-          <div>
-            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 16 }}>Company</div>
-            {['About us', 'Blog', 'Careers', 'Contact'].map(link => (
-              <div key={link} onClick={() => requireAuth(() => {})} style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha60, marginBottom: 10, cursor: 'pointer' }}>{link}</div>
-            ))}
-          </div>
-
-          {/* Legal */}
-          <div>
-            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 16 }}>Legal</div>
-            {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map(link => (
-              <div key={link} onClick={() => requireAuth(() => {})} style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha60, marginBottom: 10, cursor: 'pointer' }}>{link}</div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div style={{
-          borderTop: `1px solid ${colors.whiteAlpha5}`, marginTop: 48, paddingTop: 24,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          maxWidth: 1200, margin: '48px auto 0', paddingLeft: 0, paddingRight: 0,
-        }}>
-          <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha30 }}>
-            © 2026 Attomik. All rights reserved.
-          </span>
-          <a href="https://attomik.co" target="_blank" rel="noopener noreferrer" style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha30, textDecoration: 'none' }}>
-            Built by Attomik Atlas
-          </a>
-        </div>
-      </footer>
+      <MarketingFooter />
 
       <AccountModal
         isOpen={showAccountModal}
