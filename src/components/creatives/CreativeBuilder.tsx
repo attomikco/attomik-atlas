@@ -124,7 +124,7 @@ export default function CreativeBuilder({
     }
     // Fallback: auto-detect
     setHeadlineColor(light ? colors.ink : colors.white)
-    setBodyColor(light ? '#1a1a1a' : colors.white)
+    setBodyColor(light ? colors.darkCard : colors.white)
   }
 
   // ── Derived ────────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ FB_DESCRIPTION: <under 12 words>`,
     const brandBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || colors.ink
     const lightBg = isLightColor(brandBg)
     const bgText = lightBg ? (nb?.text_on_base || colors.ink) : (nb?.text_on_dark || colors.white)
-    const bgBody = lightBg ? (nb?.text_on_base || '#1a1a1a') : (nb?.text_on_dark || colors.white)
+    const bgBody = lightBg ? (nb?.text_on_base || colors.darkCard) : (nb?.text_on_dark || colors.white)
 
     const shared = {
       headlineFont: hFont, headlineWeight: hWeight, headlineTransform: hTransform,
@@ -291,7 +291,7 @@ FB_DESCRIPTION: <under 12 words>`,
     const primaryIsLight = isLightColor(primary)
     const secondaryIsLight = isLightColor(secondary)
     const textOnPrimary = nb?.text_on_dark || (primaryIsLight ? colors.ink : colors.white)
-    const bodyOnPrimary = nb?.text_on_dark || (primaryIsLight ? '#1a1a1a' : colors.white)
+    const bodyOnPrimary = nb?.text_on_dark || (primaryIsLight ? colors.darkCard : colors.white)
     const textOnSecondary = nb?.text_on_base || (secondaryIsLight ? colors.ink : colors.white)
 
     switch (tid) {
@@ -1000,7 +1000,7 @@ FB_DESCRIPTION: <under 12 words>`,
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   width: '100%', padding: '10px 12px', borderRadius: 8,
-                  background: generatingImage ? '#1a1a1a' : colors.ink, color: colors.white,
+                  background: generatingImage ? colors.darkCard : colors.ink, color: colors.white,
                   fontFamily: font.mono, fontSize: 11, fontWeight: 700,
                   textTransform: 'uppercase', letterSpacing: '0.06em',
                   border: 'none', cursor: generatingImage ? 'default' : 'pointer',
@@ -1123,7 +1123,7 @@ FB_DESCRIPTION: <under 12 words>`,
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
                 {images.map(img => (
                   <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
-                    style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : '#e0e0e0'}`, padding: 0, background: 'none', cursor: 'pointer' }}>
+                    style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : colors.border}`, padding: 0, background: 'none', cursor: 'pointer' }}>
                     <img src={getPublicUrl(img.storage_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                   </button>
                 ))}
