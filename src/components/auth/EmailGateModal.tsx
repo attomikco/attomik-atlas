@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { colors, font, fontWeight, fontSize, radius, zIndex, transition, letterSpacing } from '@/lib/design-tokens'
 
@@ -22,24 +22,50 @@ function isValidEmail(value: string): boolean {
 
 export default function EmailGateModal({ isOpen, onAuthSuccess }: EmailGateModalProps) {
   const [visible, setVisible] = useState(false)
+  const [readyToShow, setReadyToShow] = useState(false)
   const [step, setStep] = useState<Step>('choice')
   const [email, setEmail] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
   const [emailLoading, setEmailLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Track the latest onAuthSuccess in a ref so the open-effect can stay
+  // anchored on `isOpen` only — MagicModal passes an inline arrow that
+  // changes identity every render, and depending on it would re-fire the
+  // effect on each parent render (multiple getUser calls and, for authed
+  // users, repeated onAuthSuccess invocations until gateOpen flips false).
+  const onAuthSuccessRef = useRef(onAuthSuccess)
+  useEffect(() => { onAuthSuccessRef.current = onAuthSuccess }, [onAuthSuccess])
+
   useEffect(() => {
-    if (!isOpen) { setVisible(false); return }
+    if (!isOpen) { setVisible(false); setReadyToShow(false); return }
     setStep('choice')
     setEmail('')
     setError('')
     setGoogleLoading(false)
     setEmailLoading(false)
-    const t = setTimeout(() => setVisible(true), 50)
-    return () => clearTimeout(t)
+
+    // Defensive self-check: if a logged-in user reaches this modal, skip
+    // immediately without flashing the UI. MagicModal also gates on auth
+    // before opening this, but we duplicate the check here so the gate is
+    // safe to mount from anywhere.
+    let cancelled = false
+    let showTimer: ReturnType<typeof setTimeout> | null = null
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (cancelled) return
+      if (user) {
+        onAuthSuccessRef.current()
+        return
+      }
+      setReadyToShow(true)
+      showTimer = setTimeout(() => { if (!cancelled) setVisible(true) }, 50)
+    })
+
+    return () => { cancelled = true; if (showTimer) clearTimeout(showTimer) }
   }, [isOpen])
 
-  if (!isOpen) return null
+  if (!isOpen || !readyToShow) return null
 
   async function handleGoogle() {
     setGoogleLoading(true)
