@@ -171,6 +171,8 @@ export interface GeneratedContent {
   is_approved: boolean
   approved_at: string | null
   notes: string | null
+  generated_html: string | null
+  generated_html_hash: string | null
 }
 
 export interface EmailSend {
