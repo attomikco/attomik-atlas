@@ -1,9 +1,12 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { colors, font, fontWeight } from '@/lib/design-tokens'
 import AttomikLogo from '@/components/ui/AttomikLogo'
+import ReturningUserDashboard from '@/components/dashboard/ReturningUserDashboard'
+import type { BrandCardData } from '@/components/dashboard/BrandCard'
 
 const BG = '#0a0a0a'
 const BG_ALT = '#111111'
@@ -147,11 +150,61 @@ export default function HomePage() {
   const [heroUrl, setHeroUrl] = useState('')
   const [ctaUrl, setCtaUrl] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [userBrands, setUserBrands] = useState<BrandCardData[]>([])
+  const [campaignsByBrand, setCampaignsByBrand] = useState<Record<string, string>>({})
+  const [brandsLoaded, setBrandsLoaded] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => { if (user) setIsLoggedIn(true) })
+    supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
+      setAuthChecked(true)
+      if (!authUser) { setBrandsLoaded(true); return }
+      setUser(authUser)
+      setIsLoggedIn(true)
+
+      // RLS filters brands through brand_members — see brand-context.tsx.
+      const { data: brandsData } = await supabase
+        .from('brands')
+        .select('id, name, logo_url, primary_color, updated_at, created_at')
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false, nullsFirst: false })
+
+      const list: BrandCardData[] = (brandsData as BrandCardData[]) || []
+      setUserBrands(list)
+
+      if (list.length > 0) {
+        const ids = list.map(b => b.id)
+        const { data: campaignsData } = await supabase
+          .from('campaigns')
+          .select('id, brand_id, created_at')
+          .in('brand_id', ids)
+          .order('created_at', { ascending: false })
+
+        const map: Record<string, string> = {}
+        for (const c of (campaignsData || []) as Array<{ id: string; brand_id: string }>) {
+          if (!map[c.brand_id]) map[c.brand_id] = c.id
+        }
+        setCampaignsByBrand(map)
+      }
+      setBrandsLoaded(true)
+    })
   }, [])
+
+  // Returning users with brands get the dashboard; everyone else falls
+  // through to the cold marketing homepage. Logged-in users with no brands
+  // see the cold homepage so they land on the URL-input flow directly
+  // (no email gate is needed since they're already authed).
+  if (authChecked && brandsLoaded && user && userBrands.length > 0) {
+    return (
+      <ReturningUserDashboard
+        user={user}
+        brands={userBrands}
+        campaignsByBrand={campaignsByBrand}
+      />
+    )
+  }
 
   function go(url: string) {
     const v = url.trim()
