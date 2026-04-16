@@ -430,6 +430,14 @@ interface BrandData {
 // ─────────────────────────────────────────────────────────────
 // buildMasterEmail — main export
 // ─────────────────────────────────────────────────────────────
+// TODO(refactor): Blocks 02 (promo card), 07 (review cards) and 08
+// (product cards) all render a "translucent contrast tint" — a fill +
+// border tinted with the color that contrasts the parent section's bg.
+// Light-parent blocks tint with palette.lightText at ~0.06 fill /
+// 0.15–0.25 border; dark-parent blocks tint with palette.darkText at
+// ~0.15 fill / 0.25 border. Centralize via something like
+// contrastTintStyle(palette, context: 'dark' | 'light', intensity:
+// 'subtle' | 'medium') so the values can't drift across blocks.
 
 export function buildMasterEmail(
   brand: BrandData,
@@ -579,7 +587,7 @@ ${on('02') ? `
 <!-- BLOCK 02: PROMO CODE -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
 <tr><td align="center" style="padding:48px 48px;">
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:460px;border:1.5px dashed rgba(${hexToRgbStr(palette.darkBg)},0.35);border-radius:6px;background:#ffffff;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:460px;border:1.5px dashed rgba(${hexToRgbStr(palette.lightText)},0.25);border-radius:6px;background:rgba(${hexToRgbStr(palette.lightText)},0.06);">
   <tr><td align="center" style="padding:36px 28px;">
     <p style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.promoEyebrow}</p>
     <h2 style="margin:0 0 4px;font-family:${hf};font-size:63px;font-weight:${hw};color:${palette.lightText};line-height:1;text-align:center;text-transform:${ht};">${config.promoDiscount}</h2>
@@ -766,7 +774,7 @@ ${(on('08') && allProducts.length > 0) ? `
   <h2 style="margin:0 0 12px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.youllAlsoLoveHeadline}</h2>
   ${config.youllAlsoLoveSubheadline ? `<p style="margin:0 0 32px;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.7;text-align:center;">${config.youllAlsoLoveSubheadline}</p>` : '<p style="margin:0 0 32px;"></p>'}
   ${allProducts.map((p: any) => `
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid rgba(${hexToRgbStr(palette.darkBg)},0.1);border-radius:6px;margin-bottom:12px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(${hexToRgbStr(palette.lightText)},0.06);border:1px solid rgba(${hexToRgbStr(palette.lightText)},0.15);border-radius:6px;margin-bottom:12px;">
   <tr>
     <td width="140" style="padding:0;width:140px;min-width:140px;background:#ffffff;border-radius:6px 0 0 6px;">
       <a href="${p.url || site}" style="display:block;width:140px;height:140px;">
