@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
 import { imageSize } from 'image-size'
+import { resizeBufferForUpload, swapExtension } from '@/lib/resize-image-server'
 
 // Tags we're willing to auto-override via background detection. If the scrape
 // already classified an image as shopify/logo/press/product, we trust that.
@@ -118,7 +119,15 @@ export async function POST(
     url: string,
     path: string,
     bucket: string = 'brand-images'
-  ) {
+  ): Promise<{
+    publicUrl: string
+    contentType: string
+    buffer: Buffer
+    storagePath: string
+    width: number | null
+    height: number | null
+    hasProductBackground: boolean
+  } | null> {
     try {
       const res = await fetch(url, {
         headers: {
@@ -142,8 +151,46 @@ export async function POST(
         console.error(`[upload-scraped] image too small (${arrayBuffer.byteLength}B)  ${url.slice(0, 120)}`)
         return null
       }
-      const buffer = Buffer.from(arrayBuffer)
-      const contentType = res.headers.get('content-type') || 'image/jpeg'
+      const rawBuffer = Buffer.from(arrayBuffer)
+      const srcContentType = res.headers.get('content-type') || 'image/jpeg'
+
+      // Wider `Buffer<ArrayBufferLike>` annotation so sharp's return type
+      // (ArrayBufferLike) can be reassigned to this slot — Buffer.from on an
+      // ArrayBuffer narrows to `Buffer<ArrayBuffer>` otherwise.
+      let finalBuffer: Buffer<ArrayBufferLike> = rawBuffer
+      let finalContentType = srcContentType
+      let finalPath = path
+      let width: number | null = null
+      let height: number | null = null
+      let hasProductBackground = false
+
+      // Only the brand-images bucket gets the analyze + resize treatment.
+      // brand-assets (logos, guidelines PDFs, etc.) is small and heterogeneous
+      // — we don't want sharp to choke on an SVG logo or recompress a PDF.
+      if (bucket === 'brand-images') {
+        const analysis = await analyzeBuffer(rawBuffer, url.slice(-40))
+        width = analysis.width
+        height = analysis.height
+        hasProductBackground = analysis.hasProductBackground
+
+        // Preserve PNG alpha only for images that look like cutouts (white /
+        // transparent corners + center). Everything else flattens to JPEG q85.
+        const sourceIsPng = /image\/png/i.test(srcContentType) || /\.png(\?|$)/i.test(url)
+        const keepAlpha = sourceIsPng && hasProductBackground
+
+        try {
+          const resized = await resizeBufferForUpload(rawBuffer, keepAlpha)
+          finalBuffer = resized.buffer
+          finalContentType = resized.mimeType
+          width = resized.width
+          height = resized.height
+          finalPath = swapExtension(path, resized.ext)
+        } catch (e) {
+          // Fall back to the original bytes — upload must not break on an
+          // unusual format (AVIF, weird SVG, truncated stream, etc).
+          console.warn(`[upload-scraped] resize failed, uploading original  ${url.slice(0, 120)}:`, e instanceof Error ? e.message : e)
+        }
+      }
 
       // brand-assets bucket has stricter RLS that rejects user-scoped uploads;
       // use the service-role client for it. brand-images bucket works fine with
@@ -152,15 +199,23 @@ export async function POST(
 
       const { error } = await storageClient.storage
         .from(bucket)
-        .upload(path, buffer, { contentType, upsert: true })
+        .upload(finalPath, finalBuffer, { contentType: finalContentType, upsert: true })
 
       if (error) {
-        console.error(`[upload-scraped] storage upload failed: ${error.message}  ${path}`)
+        console.error(`[upload-scraped] storage upload failed: ${error.message}  ${finalPath}`)
         return null
       }
 
-      const { data } = storageClient.storage.from(bucket).getPublicUrl(path)
-      return { publicUrl: data.publicUrl, contentType, buffer }
+      const { data } = storageClient.storage.from(bucket).getPublicUrl(finalPath)
+      return {
+        publicUrl: data.publicUrl,
+        contentType: finalContentType,
+        buffer: finalBuffer,
+        storagePath: finalPath,
+        width,
+        height,
+        hasProductBackground,
+      }
     } catch (err) {
       console.error(`[upload-scraped] exception for ${url.slice(0, 120)}:`, err instanceof Error ? err.message : err)
       return null
@@ -223,17 +278,19 @@ export async function POST(
         console.log(`[upload-scraped] PRODUCT_URL failed  ${url.slice(0, 100)}`)
         return
       }
-      const { width, height } = await analyzeBuffer(result.buffer, url.slice(-40))
       const finalTag = isShopify ? 'shopify' : 'product'
-      console.log(`[upload-scraped] PRODUCT_URL  ${url.slice(0, 100)}  → ${finalTag}  (${width}×${height})`)
+      // Derive file_name from the (possibly rewritten) storage_path so the
+      // DB row stays in sync if resize swapped PNG → JPEG.
+      const fileName = result.storagePath.split('/').pop() || `${prefix}_${idx}.${ext}`
+      console.log(`[upload-scraped] PRODUCT_URL  ${url.slice(0, 100)}  → ${finalTag}  (${result.width}×${result.height})`)
       imageRows.push({
         brand_id: brandId,
-        file_name: `${prefix}_${idx}.${ext}`,
-        storage_path: path,
+        file_name: fileName,
+        storage_path: result.storagePath,
         tag: finalTag,
         mime_type: result.contentType,
-        width,
-        height,
+        width: result.width,
+        height: result.height,
         source_url: url,
       })
     })())
@@ -267,7 +324,6 @@ export async function POST(
           console.log(`[upload-scraped] SCRAPED(${earlyTag}) failed  ${img.url.slice(0, 100)}`)
           return
         }
-        const { width, height, hasProductBackground } = await analyzeBuffer(result.buffer, img.url.slice(-40))
         // Override only ambiguous tags when we see a white/transparent background.
         // Trust shopify/product/logo/press as-is.
         let finalTag = earlyTag
@@ -275,23 +331,24 @@ export async function POST(
         if (rescuedToLogo) {
           overrideReason = ' (logo-url rescue)'
         }
-        if (OVERRIDABLE_TAGS.has(finalTag) && hasProductBackground) {
+        if (OVERRIDABLE_TAGS.has(finalTag) && result.hasProductBackground) {
           finalTag = 'product'
           overrideReason = overrideReason ? `${overrideReason} + white-bg` : ' (white-bg override)'
         }
-        console.log(`[upload-scraped] SCRAPED  ${img.url.slice(0, 100)}  → ${img.tag} → ${finalTag}${overrideReason}  (${width}×${height})`)
+        console.log(`[upload-scraped] SCRAPED  ${img.url.slice(0, 100)}  → ${img.tag} → ${finalTag}${overrideReason}  (${result.width}×${result.height})`)
         // Logo-tagged scraped images are stored in brand-assets (not brand_images)
         // since brand_images is reserved for creative content. Skip the DB insert.
         if (isLogo) return
+        const fileName = result.storagePath.split('/').pop() || `${prefix}_${idx}.${ext}`
         imageRows.push({
           brand_id: brandId,
-          file_name: `${prefix}_${idx}.${ext}`,
-          storage_path: path,
+          file_name: fileName,
+          storage_path: result.storagePath,
           tag: finalTag,
           mime_type: result.contentType,
           alt_text: img.alt || null,
-          width,
-          height,
+          width: result.width,
+          height: result.height,
           source_url: img.url,
         })
       })())

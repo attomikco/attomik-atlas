@@ -7,6 +7,13 @@ import { useRouter } from 'next/navigation'
 
 const TAGS: ImageTag[] = ['product', 'shopify', 'lifestyle', 'background', 'ugc', 'seasonal', 'logo', 'press', 'other']
 
+// Uploaded originals are capped at this longest-edge in pixels. A 4000×5000
+// source becomes 1600×2000, which is still plenty for every downstream
+// consumer (email grids, creative templates, brand hub thumbs) and shrinks
+// a 24 MB PNG to a few hundred KB.
+const MAX_UPLOAD_EDGE = 1600
+const JPEG_QUALITY = 0.82
+
 function getOrientation(w: number | null, h: number | null): string | null {
   if (!w || !h) return null
   const ratio = w / h
@@ -47,6 +54,80 @@ async function classifyByBackground(file: File): Promise<'product' | 'lifestyle'
     return 'product'
   } catch {
     return 'lifestyle'
+  }
+}
+
+interface ResizedUpload {
+  blob: Blob
+  width: number | null
+  height: number | null
+  mimeType: string
+  ext: string
+}
+
+/**
+ * Decode, downscale, and re-encode an uploaded image before it hits Supabase.
+ *
+ * - Longest edge capped at MAX_UPLOAD_EDGE.
+ * - Photographic content (keepAlpha=false) is flattened onto white and encoded
+ *   as JPEG q82 — universally rendered by every email client and ~10× smaller
+ *   than an equivalent PNG.
+ * - Transparent product cutouts (keepAlpha=true) stay as PNG so the alpha
+ *   channel survives. Still gets the dimension cap.
+ * - Images already under 1600px AND under 500KB skip the re-encode and upload
+ *   as-is, so we don't pointlessly recompress small files.
+ * - Any decode/encode failure (unsupported format, OOM, etc.) falls back to
+ *   the original file — upload never breaks.
+ */
+async function resizeForUpload(file: File, keepAlpha: boolean): Promise<ResizedUpload> {
+  const fallback: ResizedUpload = {
+    blob: file,
+    width: null,
+    height: null,
+    mimeType: file.type,
+    ext: (file.name.split('.').pop() || 'jpg').toLowerCase(),
+  }
+  try {
+    const bitmap = await createImageBitmap(file)
+    const srcW = bitmap.width
+    const srcH = bitmap.height
+
+    if (srcW <= MAX_UPLOAD_EDGE && srcH <= MAX_UPLOAD_EDGE && file.size < 500_000) {
+      bitmap.close()
+      return { ...fallback, width: srcW, height: srcH }
+    }
+
+    const scale = Math.min(1, MAX_UPLOAD_EDGE / Math.max(srcW, srcH))
+    const dstW = Math.max(1, Math.round(srcW * scale))
+    const dstH = Math.max(1, Math.round(srcH * scale))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = dstW
+    canvas.height = dstH
+    const ctx = canvas.getContext('2d')
+    if (!ctx) { bitmap.close(); return fallback }
+
+    if (!keepAlpha) {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, dstW, dstH)
+    }
+    ctx.drawImage(bitmap, 0, 0, dstW, dstH)
+    bitmap.close()
+
+    const outMime = keepAlpha ? 'image/png' : 'image/jpeg'
+    const outExt = keepAlpha ? 'png' : 'jpg'
+
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        b => b ? resolve(b) : reject(new Error('toBlob returned null')),
+        outMime,
+        keepAlpha ? undefined : JPEG_QUALITY,
+      )
+    })
+
+    return { blob, width: dstW, height: dstH, mimeType: outMime, ext: outExt }
+  } catch {
+    return fallback
   }
 }
 
@@ -91,28 +172,36 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
     const uploaded: BrandImage[] = [...images]
 
     for (const file of Array.from(files)) {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+      // Auto-classify first (uses original file): white/transparent bg →
+      // 'product', otherwise 'lifestyle'. We need the tag before resizing so
+      // we know whether to preserve the alpha channel.
+      const autoTag: ImageTag = await classifyByBackground(file)
 
-      // Detect dimensions first so we can derive orientation for the name
-      let width: number | null = null
-      let height: number | null = null
-      try {
-        const dims = await getImageDimensions(file)
-        width = dims.width
-        height = dims.height
-      } catch { /* dimensions are optional */ }
+      // Only product cutouts on PNG sources need to keep alpha. Lifestyle
+      // photos and non-PNG sources always flatten to JPEG.
+      const keepAlpha = file.type === 'image/png' && autoTag === 'product'
+      const resized = await resizeForUpload(file, keepAlpha)
+
+      // Prefer the resized dimensions; fall back to a second decode if resize
+      // bailed out (e.g. unsupported source format like SVG/AVIF).
+      let width: number | null = resized.width
+      let height: number | null = resized.height
+      if (width == null || height == null) {
+        try {
+          const dims = await getImageDimensions(file)
+          width = dims.width
+          height = dims.height
+        } catch { /* dimensions are optional */ }
+      }
 
       const orientation = getOrientation(width, height)
       const seq = nextSeqForOrientation(uploaded, orientation)
-      const fileName = buildFileName(brandSlug, orientation, seq, ext)
+      const fileName = buildFileName(brandSlug, orientation, seq, resized.ext)
       const storagePath = `${brandId}/${fileName}`
-
-      // Auto-classify: white/transparent bg → 'product', otherwise 'lifestyle'
-      const autoTag: ImageTag = await classifyByBackground(file)
 
       const { error: uploadError } = await supabase.storage
         .from('brand-images')
-        .upload(storagePath, file)
+        .upload(storagePath, resized.blob, { contentType: resized.mimeType })
 
       if (uploadError) {
         setError(uploadError.message)
@@ -122,7 +211,7 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
       const newImage: BrandImage = {
         id: '', created_at: '', brand_id: brandId,
         file_name: fileName, storage_path: storagePath,
-        mime_type: file.type, size_bytes: file.size,
+        mime_type: resized.mimeType, size_bytes: resized.blob.size,
         tag: autoTag, alt_text: null, width, height,
         source_url: null, source: null,
       }
@@ -132,8 +221,8 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
         brand_id: brandId,
         file_name: fileName,
         storage_path: storagePath,
-        mime_type: file.type,
-        size_bytes: file.size,
+        mime_type: resized.mimeType,
+        size_bytes: resized.blob.size,
         tag: autoTag,
         width,
         height,

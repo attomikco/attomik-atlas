@@ -67,12 +67,17 @@ export default function TopNav() {
   }
 
   function switchBrand(brand: any) {
-    setActiveBrandId(brand.id)
-    setDropdownOpen(false)
-    // Server pages need URL navigation to re-render with new brand data
+    // router.push MUST fire before setActiveBrandId. setActiveBrandId calls
+    // history.replaceState to sync the URL's ?brand= param; if that runs
+    // first Next.js sees the new param already on the URL when router.push
+    // is called, skips the navigation diff, and never re-renders the server
+    // component — so the dashboard queries never re-run for the new brand.
     if (pathname.startsWith('/brand-setup')) router.push(`/brand-setup/${brand.id}`)
     else if (pathname === '/dashboard' || pathname === '/') router.push(`/dashboard?brand=${brand.id}`)
     // Client pages (creatives, copy, campaigns, newsletter) re-fetch via context automatically
+
+    setActiveBrandId(brand.id)
+    setDropdownOpen(false)
   }
 
   function getBrandNavHref(href: string) {

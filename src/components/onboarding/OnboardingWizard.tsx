@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import MagicModal from '@/components/ui/MagicModal'
@@ -189,6 +189,78 @@ export default function OnboardingWizard() {
   const carouselImages = displayImages.length > 0 ? [...displayImages, ...displayImages] : []
   const carouselDuration = Math.max(20, displayImages.length * 4)
 
+  const particleCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const particleFrameRef = useRef(0)
+
+  const startParticles = useCallback(() => {
+    const canvas = particleCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    let width = canvas.offsetWidth
+    let height = canvas.offsetHeight
+    canvas.width = Math.floor(width * dpr)
+    canvas.height = Math.floor(height * dpr)
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.scale(dpr, dpr)
+
+    type P = { x: number; y: number; vx: number; vy: number; r: number; o: number }
+    const pts: P[] = Array.from({ length: 200 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: 1 + Math.random() * 1.5,
+      o: 0.08 + Math.random() * 0.22,
+    }))
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height)
+      for (const p of pts) {
+        p.x += p.vx; p.y += p.vy
+        if (p.x > width) p.x = 0; else if (p.x < 0) p.x = width
+        if (p.y > height) p.y = 0; else if (p.y < 0) p.y = height
+      }
+      ctx.lineWidth = 1
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 120) {
+            ctx.strokeStyle = `rgba(0,255,151,${(1 - dist / 120) * 0.08})`
+            ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke()
+          }
+        }
+      }
+      for (const p of pts) {
+        ctx.fillStyle = `rgba(0,255,151,${p.o})`
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+      }
+      particleFrameRef.current = requestAnimationFrame(draw)
+    }
+
+    const handleResize = () => {
+      width = canvas.offsetWidth; height = canvas.offsetHeight
+      canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr)
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr)
+    }
+    window.addEventListener('resize', handleResize)
+    particleFrameRef.current = requestAnimationFrame(draw)
+
+    return () => {
+      cancelAnimationFrame(particleFrameRef.current)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showCanvas) return
+    const cleanup = startParticles()
+    return cleanup
+  }, [showCanvas, startParticles])
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 50,
@@ -215,6 +287,8 @@ export default function OnboardingWizard() {
           .disc-top { padding: 32px 16px 24px !important; }
           .disc-brand-name { font-size: clamp(28px, 6vw, 48px) !important; }
           .disc-carousel-img { height: 220px !important; aspect-ratio: 2/3 !important; }
+          .disc-cta-wrap { margin-bottom: 24px !important; }
+          .disc-canvas { gap: clamp(16px, 3vh, 28px) !important; }
         }
       `}</style>
 
@@ -293,22 +367,35 @@ export default function OnboardingWizard() {
       </div>
 
       {/* ── DISCOVERY CANVAS ── */}
-      <div style={{
+      <div className="disc-canvas" style={{
         position: 'absolute', inset: 0,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         minHeight: '100vh',
-        gap: 'clamp(32px, 5vh, 56px)',
+        gap: 'clamp(16px, 3vh, 32px)',
         paddingTop: 'clamp(32px, 5vh, 56px)',
         paddingBottom: 'clamp(32px, 5vh, 56px)',
         opacity: showCanvas ? 1 : 0,
         transition: `opacity ${transition.overlay}`,
         pointerEvents: showCanvas ? 'auto' : 'none',
+        overflow: 'hidden',
       }}>
+        {/* Particle canvas — behind all content */}
+        <canvas
+          ref={particleCanvasRef}
+          aria-hidden="true"
+          style={{
+            position: 'absolute', top: 0, left: 0,
+            width: '100%', height: '100%',
+            zIndex: 0, pointerEvents: 'none',
+          }}
+        />
+
         {/* Scanning indicator */}
         {loading && !ready && !hasContent && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
+            position: 'relative', zIndex: 1,
           }}>
             <span style={{
               width: 14, height: 14,
@@ -337,6 +424,7 @@ export default function OnboardingWizard() {
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', textAlign: 'center',
               maxWidth: 600, padding: '0 24px',
+              position: 'relative', zIndex: 1,
             }}>
               {/* Logo */}
               {logo && (
@@ -412,8 +500,8 @@ export default function OnboardingWizard() {
 
               {/* CTA */}
               {ready && (
-                <div style={{
-                  marginBottom: 48,
+                <div className="disc-cta-wrap" style={{
+                  marginBottom: 16,
                   opacity: 0, animation: 'discFadeIn 0.5s ease 0.3s forwards',
                 }}>
                   <button
@@ -446,7 +534,7 @@ export default function OnboardingWizard() {
                 style={{
                   width: '100vw',
                   overflow: 'hidden',
-                  position: 'relative',
+                  position: 'relative', zIndex: 1,
                   opacity: 0,
                   animation: 'discFadeIn 0.6s ease 1.0s forwards',
                 }}
