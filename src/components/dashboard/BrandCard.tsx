@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colors, font, fontWeight, fontSize, radius, transition, letterSpacing } from '@/lib/design-tokens'
+import LogoImage from '@/components/ui/LogoImage'
 
 export interface BrandCardData {
   id: string
@@ -96,14 +97,14 @@ export default function BrandCard({ brand, latestCampaignId }: BrandCardProps) {
         overflow: 'hidden',
       }}>
         {brand.logo_url ? (
-          <img
+          <LogoImage
             src={brand.logo_url}
             alt=""
+            onDark={!swatchLight}
             style={{
               maxHeight: 56,
               maxWidth: '70%',
               objectFit: 'contain',
-              filter: swatchLight ? 'none' : 'brightness(0) invert(1)',
             }}
             onError={e => { e.currentTarget.style.display = 'none' }}
           />
