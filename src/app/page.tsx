@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { colors, font, fontWeight } from '@/lib/design-tokens'
@@ -22,6 +22,80 @@ const BRANDS = [
   { name: 'Gameplan',         category: 'Sport Skincare',   image: 'https://static.wixstatic.com/media/87635f_cf238dbe2b9d4b548482199140d8db29~mv2.jpg' },
   { name: 'Jolene Coffee',    category: 'RTD Coffee',       image: 'https://attomik.co/assets/images/jolene-hero.jpg' },
   { name: 'Khloud',           category: 'Wellness',         image: 'https://attomik.co/assets/images/khloud-hero.jpg' },
+]
+
+// hero-specific green — explicitly spec'd as #00ff9d; slightly brighter than
+// design-tokens `colors.accent` (#00ff97). Used only inside hero visual effects
+// (particle canvas + scan panel) so the rest of the page's accent stays coherent.
+const HERO_GREEN = '#00ff9d'
+
+type ScanSegment = { text: string; color: string }
+type ScanBrand = { url: string; lines: ScanSegment[][] }
+
+const SCAN_CHK_WHITE = 'rgba(255,255,255,0.9)'
+const SCAN_KEY_GRAY = '#888'
+const SCAN_VAL_WHITE = '#fff'
+const SCAN_BAR_EMPTY = '#333'
+
+const scanCmd = (text: string): ScanSegment[] => [
+  { text: '> ' + text, color: HERO_GREEN },
+]
+const scanKv = (key: string, value: string): ScanSegment[] => [
+  { text: '✓ ', color: SCAN_CHK_WHITE },
+  { text: key.padEnd(22), color: SCAN_KEY_GRAY },
+  { text: value, color: SCAN_VAL_WHITE },
+]
+const scanProgress = (text: string, pct: number): ScanSegment[] => {
+  const filled = Math.round(pct / (100 / 16))
+  const empty = 16 - filled
+  return [
+    { text: '> ' + text + '    ', color: HERO_GREEN },
+    { text: '█'.repeat(filled), color: HERO_GREEN },
+    { text: '░'.repeat(empty), color: SCAN_BAR_EMPTY },
+    { text: `  ${pct}%`, color: SCAN_VAL_WHITE },
+  ]
+}
+const scanCheck = (text: string): ScanSegment[] => [
+  { text: '✓ ' + text, color: SCAN_CHK_WHITE },
+]
+
+const SCAN_BRANDS: ScanBrand[] = [
+  {
+    url: 'afterdream.co',
+    lines: [
+      scanCmd('Scanning afterdream.co...'),
+      scanKv('Colors extracted', '#1A1A2E · #E94560 · #F5F5F5'),
+      scanKv('Font detected', 'Neue Haas Grotesk · Bold'),
+      scanKv('Products found', '14 SKUs · lifestyle imagery detected'),
+      scanKv('Brand voice', '"Bold, rebellious, youth-driven"'),
+      scanProgress('Generating campaign...', 75),
+      scanCheck('3 Meta creatives ready · 1 email draft · landing page live'),
+    ],
+  },
+  {
+    url: 'jolene.coffee',
+    lines: [
+      scanCmd('Scanning jolene.coffee...'),
+      scanKv('Colors extracted', '#2C1810 · #D4956A · #FFF8F0'),
+      scanKv('Font detected', 'Playfair Display · Serif'),
+      scanKv('Products found', '6 SKUs · warm lifestyle imagery'),
+      scanKv('Brand voice', '"Warm, artisanal, community-first"'),
+      scanProgress('Generating campaign...', 100),
+      scanCheck('4 Meta creatives ready · 1 email draft · landing page live'),
+    ],
+  },
+  {
+    url: 'wesake.com',
+    lines: [
+      scanCmd('Scanning wesake.com...'),
+      scanKv('Colors extracted', '#F2EDE4 · #1C1C1C · #C4A882'),
+      scanKv('Font detected', 'GT Alpina · Light'),
+      scanKv('Products found', '8 SKUs · clean product photography'),
+      scanKv('Brand voice', '"Minimal, refined, Japanese-inspired"'),
+      scanProgress('Generating campaign...', 60),
+      scanCheck('3 Meta creatives ready · 2 email drafts · landing page live'),
+    ],
+  },
 ]
 
 const wordmark: React.CSSProperties = {
@@ -103,9 +177,36 @@ export default function HomePage() {
         .fade4 { animation: fade 0.7s 0.3s ease forwards; opacity: 0; }
         .hero-input::placeholder { color: rgba(0,0,0,0.35); }
         .hero-input:focus { outline: none; }
-        .cta-btn:hover { background: #00e085 !important; }
+        .cta-btn:hover { opacity: 0.85; }
         .ghost:hover { color: #fff !important; }
         .cap:hover { background: rgba(255,255,255,0.02) !important; }
+
+        /* streaming headline caret — opacity toggles every 530ms */
+        @keyframes caret-blink { 0%, 49.99% { opacity: 1 } 50%, 100% { opacity: 0 } }
+        .caret {
+          display: inline-block;
+          color: ${colors.accent};
+          font-weight: ${fontWeight.heading};
+          margin-left: 0.06em;
+          animation: caret-blink 1060ms steps(1) infinite;
+        }
+
+        /* hero animated gradient mesh — 3 layered cool dark radials (no warm tint).
+           note: hex darks below are NOT in design-tokens (tokens only go to #111);
+           strictly cool navies + near-blacks per spec. */
+        @keyframes hero-mesh {
+          0%   { background-position:   0% 20%,  100% 80%,  50% 50%; }
+          100% { background-position: 100% 80%,    0% 20%,  50%  0%; }
+        }
+        .hero-mesh {
+          background-color: ${BG};
+          background-image:
+            radial-gradient(circle at 20% 30%, #0a0f1e, transparent 55%),
+            radial-gradient(circle at 80% 70%, #0d1117, transparent 55%),
+            radial-gradient(circle at 50% 50%, #080c14, transparent 62%);
+          background-size: 180% 180%;
+          animation: hero-mesh 12s ease-in-out infinite alternate;
+        }
 
         @media (max-width: 900px) {
           .grid-6 { grid-template-columns: repeat(2, 1fr) !important; }
@@ -114,13 +215,13 @@ export default function HomePage() {
           .feat-text-right { order: 1 !important; }
           .feat-mock-right { order: 2 !important; }
           .page-pad { padding-left: 24px !important; padding-right: 24px !important; }
-          .hero-headline { font-size: 46px !important; }
+          .hero-headline { font-size: 40px !important; }
           .h2-resp { font-size: 36px !important; }
           .section-heavy { padding-top: 72px !important; padding-bottom: 72px !important; }
-          .hero-content { padding-top: 24px !important; padding-bottom: 56px !important; }
-          .nav-top { padding-top: 20px !important; padding-bottom: 20px !important; }
-          .hero-logo svg { height: 48px !important; }
-          .hero-sub { font-size: 16px !important; margin-top: 20px !important; margin-bottom: 32px !important; }
+          .hero-content { padding-top: 12px !important; padding-bottom: 24px !important; }
+          .nav-top { padding-top: 16px !important; padding-bottom: 16px !important; }
+          .hero-logo svg { height: 44px !important; }
+          .hero-sub { font-size: 14px !important; margin-top: 12px !important; margin-bottom: 0 !important; }
           .cap-card { min-height: 150px !important; padding: 24px 20px !important; }
           .brand-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .brand-grid > a:nth-child(2n) { border-right: none !important; }
@@ -140,12 +241,12 @@ export default function HomePage() {
         @media (max-width: 600px) {
           .url-row { flex-direction: column !important; border: none !important; background: transparent !important; gap: 10px !important; }
           .url-row input { border: 1px solid ${BORDER_STRONG} !important; background: #fff !important; padding: 16px 18px !important; width: 100% !important; }
-          .url-row button { padding: 16px !important; width: 100% !important; border: 1px solid #000 !important; }
-          .hero-headline { font-size: 38px !important; }
+          .url-row button { padding: 16px !important; width: 100% !important; border: none !important; }
+          .hero-headline { font-size: 34px !important; }
           .h2-resp { font-size: 28px !important; }
           .cta-headline { font-size: 32px !important; }
-          .hero-logo svg { height: 42px !important; }
-          .hero-content { padding-top: 16px !important; padding-bottom: 48px !important; }
+          .hero-logo svg { height: 40px !important; }
+          .hero-content { padding-top: 8px !important; padding-bottom: 20px !important; }
           .section-heavy { padding-top: 56px !important; padding-bottom: 56px !important; }
           .cap-strip-head { padding: 28px 24px 14px !important; }
           .cap-card { min-height: 136px !important; padding: 20px 18px !important; }
@@ -158,30 +259,45 @@ export default function HomePage() {
           .brand-hub-grid { grid-template-columns: 1fr !important; }
           .insights-meta { display: none !important; }
           .hero-proof { font-size: 10px !important; letter-spacing: 0.12em !important; }
+          .scan-panel { height: 178px !important; padding: 10px 14px !important; font-size: 11px !important; }
         }
       `}</style>
 
       {/* ── 1. HERO ─────────────────────────────────────── */}
-      <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', borderBottom: `1px solid ${BORDER}` }}>
+      <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', borderBottom: `1px solid ${BORDER}`, overflow: 'hidden', background: BG }}>
+        {/* animated particle field — sits beneath all hero content */}
+        <ParticleCanvas />
+
         {/* top bar */}
-        <div className="page-pad nav-top" style={{ padding: '28px 48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <div className="page-pad nav-top" style={{ padding: '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', position: 'relative', zIndex: 1 }}>
           <a href="/login" className="ghost" style={{ ...label, color: MUTED, textDecoration: 'none', transition: 'color 0.15s' }}>Sign in →</a>
         </div>
 
         {/* center content */}
-        <div className="page-pad hero-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 48px 80px', textAlign: 'center' }}>
-          <div className="fade hero-logo" style={{ marginBottom: 32 }}>
-            <AttomikLogo height={64} color="#ffffff" />
+        <div className="page-pad hero-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 48px 32px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <div className="fade hero-logo" style={{ marginBottom: 18 }}>
+            <AttomikLogo height={52} color="#ffffff" />
           </div>
-          <div className="fade" style={{ ...label, color: colors.accent, marginBottom: 28 }}>Marketing OS · v1.0 · Live</div>
+          <div className="fade" style={{ ...label, color: colors.accent, marginBottom: 14 }}>Atlas · v1.0 · Live</div>
 
-          <h1 className="fade2 hero-headline" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 'clamp(44px, 7.5vw, 96px)', lineHeight: 0.92, letterSpacing: '-0.035em', textTransform: 'uppercase', margin: 0, maxWidth: 1100, color: '#fff' }}>
-            Your brand.<br />
-            Full funnel.<br />
-            <span style={{ color: colors.accent }}>One platform.</span>
+          <h1
+            className="fade2 hero-headline"
+            style={{
+              fontFamily: font.heading,
+              fontWeight: fontWeight.heading,
+              fontSize: 'clamp(38px, 6vw, 76px)',
+              lineHeight: 0.96,
+              letterSpacing: '-0.035em',
+              textTransform: 'uppercase',
+              margin: 0,
+              maxWidth: 1100,
+              color: '#fff',
+            }}
+          >
+            Enter a URL.<br />Get a full marketing funnel.
           </h1>
 
-          <p className="fade3 hero-sub" style={{ ...body, fontSize: 18, maxWidth: 620, marginTop: 24, marginBottom: 40 }}>
+          <p className="fade3 hero-sub" style={{ ...body, fontSize: 16, maxWidth: 620, marginTop: 14, marginBottom: 20 }}>
             AI-powered marketing for CPG brands. Testing and learning has never been faster — or more efficient.
           </p>
 
@@ -198,13 +314,15 @@ export default function HomePage() {
             <button
               onClick={() => go(heroUrl)}
               className="cta-btn"
-              style={{ padding: '0 28px', background: '#000', color: '#fff', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
+              style={{ padding: '0 28px', background: colors.accent, color: '#000', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'opacity 0.15s' }}
             >
               Analyze my brand →
             </button>
           </div>
 
-          <div className="fade4 hero-proof" style={{ ...label, marginTop: 24, color: FAINT }}>
+          <ScanPanel />
+
+          <div className="fade4 hero-proof" style={{ ...label, marginTop: 14, color: FAINT }}>
             Used by Afterdream · Jolene Coffee · WESAKE · Stuzzi · La Monjita
           </div>
 
@@ -214,7 +332,7 @@ export default function HomePage() {
         </div>
 
         {/* corner stamps */}
-        <div className="page-pad corner-stamps" style={{ padding: '0 48px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div className="page-pad corner-stamps" style={{ padding: '0 48px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 1 }}>
           <div style={{ ...label }}>Scroll ↓</div>
           <div className="stamp-hide" style={{ ...label, textAlign: 'right' }}>EST. 2026 · SF · NYC</div>
         </div>
@@ -242,17 +360,16 @@ export default function HomePage() {
               borderTop: `1px solid ${BORDER}`,
               borderBottom: `1px solid ${BORDER}`,
               transition: 'background 0.15s',
-              minHeight: 180,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
+              minHeight: 200,
+              display: 'grid',
+              gridTemplateRows: '32px 1fr 14px 20px 36px',
+              rowGap: 8,
             }}>
               <div className="cap-card-icon" style={{ fontSize: 28, lineHeight: 1 }}>{c.icon}</div>
-              <div>
-                <div style={{ ...label, color: colors.accent, fontSize: 10, marginBottom: 8 }}>{String(i + 1).padStart(2, '0')}</div>
-                <div className="cap-card-name" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.01em', color: '#fff', marginBottom: 6 }}>{c.name}</div>
-                <div style={{ fontFamily: MONO, fontSize: 11, color: MUTED, lineHeight: 1.5 }}>{c.tag}</div>
-              </div>
+              <div />
+              <div style={{ ...label, color: colors.accent, fontSize: 10 }}>{String(i + 1).padStart(2, '0')}</div>
+              <div className="cap-card-name" style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.01em', color: '#fff', lineHeight: 1.2 }}>{c.name}</div>
+              <div style={{ fontFamily: MONO, fontSize: 11, color: MUTED, lineHeight: 1.5 }}>{c.tag}</div>
             </div>
           ))}
         </div>
@@ -286,7 +403,7 @@ export default function HomePage() {
           total="05"
           kicker="One-Click Publishing"
           title={<>From generated<br /><span style={{ color: colors.accent }}>to live in one click.</span></>}
-          body="Connect Meta Ads and Klaviyo once. Then publish any creative, email, or campaign directly from the platform."
+          body="Connect Meta Ads and Klaviyo once. Then publish any creative, email, or campaign directly from Attomik Atlas."
           mockup={<PublishMockup />}
           reversed={false}
         />
@@ -340,7 +457,7 @@ export default function HomePage() {
             <button
               onClick={() => go(ctaUrl)}
               className="cta-btn"
-              style={{ padding: '0 28px', background: '#000', color: '#fff', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
+              style={{ padding: '0 28px', background: colors.accent, color: '#000', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'opacity 0.15s' }}
             >
               Analyze my brand →
             </button>
@@ -357,6 +474,224 @@ export default function HomePage() {
           <a href="/terms" style={{ ...label, textDecoration: 'none' }} className="ghost">Terms</a>
         </div>
       </footer>
+    </div>
+  )
+}
+
+// ── PARTICLE CANVAS (hero background) ──────────────────
+function ParticleCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    let width = 0
+    let height = 0
+
+    const resize = () => {
+      width = canvas.offsetWidth
+      height = canvas.offsetHeight
+      canvas.width = Math.floor(width * dpr)
+      canvas.height = Math.floor(height * dpr)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.scale(dpr, dpr)
+    }
+    resize()
+
+    type Particle = { x: number; y: number; vx: number; vy: number; r: number; o: number }
+    const particles: Particle[] = Array.from({ length: 200 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.3, // max ~0.15px / frame — slow drift
+      vy: (Math.random() - 0.5) * 0.3,
+      r: 1 + Math.random() * 1.5,      // 1 – 2.5px
+      o: 0.08 + Math.random() * 0.22,  // 0.08 – 0.3 — dimmer field
+    }))
+
+    let frameId = 0
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height)
+
+      // update
+      for (const p of particles) {
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x > width) p.x = 0
+        else if (p.x < 0) p.x = width
+        if (p.y > height) p.y = 0
+        else if (p.y < 0) p.y = height
+      }
+
+      // links between nearby particles
+      ctx.lineWidth = 1
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i]
+          const b = particles[j]
+          const dx = a.x - b.x
+          const dy = a.y - b.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 100) {
+            const op = (1 - dist / 100) * 0.06
+            ctx.strokeStyle = `rgba(0, 255, 157, ${op})`
+            ctx.beginPath()
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+            ctx.stroke()
+          }
+        }
+      }
+
+      // particles
+      for (const p of particles) {
+        ctx.fillStyle = `rgba(0, 255, 157, ${p.o})`
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      frameId = requestAnimationFrame(draw)
+    }
+
+    const handleResize = () => resize()
+    window.addEventListener('resize', handleResize)
+    frameId = requestAnimationFrame(draw)
+
+    return () => {
+      cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+        pointerEvents: 'none',
+      }}
+    />
+  )
+}
+
+// ── SCAN PANEL (hero — terminal-style brand scan) ──────
+function renderScanSegments(segments: ScanSegment[], maxChars: number): React.ReactNode[] {
+  let remaining = maxChars
+  const out: React.ReactNode[] = []
+  for (let i = 0; i < segments.length; i++) {
+    if (remaining <= 0) break
+    const seg = segments[i]
+    const visible = seg.text.slice(0, remaining)
+    out.push(
+      <span key={i} style={{ color: seg.color }}>
+        {visible}
+      </span>
+    )
+    remaining -= seg.text.length
+  }
+  return out
+}
+
+function ScanPanel() {
+  const [brandIndex, setBrandIndex] = useState(0)
+  const [lineIndex, setLineIndex] = useState(0)
+  const [charIndex, setCharIndex] = useState(0)
+  const [phase, setPhase] = useState<'typing' | 'pausing'>('typing')
+
+  const currentBrand = SCAN_BRANDS[brandIndex]
+  const totalLines = currentBrand.lines.length
+  const currentLine = currentBrand.lines[lineIndex]
+  const currentLineLength = currentLine.reduce((sum, s) => sum + s.text.length, 0)
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    if (phase === 'typing') {
+      if (charIndex < currentLineLength) {
+        timer = setTimeout(() => setCharIndex(c => c + 1), 22)
+      } else {
+        // line finished — wait 400ms, then advance or enter pause
+        timer = setTimeout(() => {
+          if (lineIndex + 1 >= totalLines) {
+            setPhase('pausing')
+          } else {
+            setLineIndex(i => i + 1)
+            setCharIndex(0)
+          }
+        }, 400)
+      }
+    } else {
+      // pausing — full scan visible for 2.5s, then reset to next brand
+      timer = setTimeout(() => {
+        setBrandIndex(i => (i + 1) % SCAN_BRANDS.length)
+        setLineIndex(0)
+        setCharIndex(0)
+        setPhase('typing')
+      }, 2500)
+    }
+
+    return () => { if (timer) clearTimeout(timer) }
+  }, [phase, lineIndex, charIndex, brandIndex, currentLineLength, totalLines])
+
+  return (
+    <div
+      className="scan-panel fade4"
+      style={{
+        width: '100%',
+        maxWidth: 560,
+        margin: '16px auto',
+        background: '#000',
+        border: `1px solid ${HERO_GREEN}33`, // #00ff9d @ ~20% alpha
+        borderRadius: 6,
+        padding: '12px 18px',
+        // locked height — fits header + 7 fully-typed lines at 12px/1.5
+        // so the URL button below never shifts as the scan types in
+        height: 200,
+        fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace",
+        fontSize: 12,
+        textAlign: 'left',
+        overflowX: 'auto',
+      }}
+    >
+      {/* header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f57' }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#febc2e' }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#28c840' }} />
+        </div>
+        <div style={{ fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", fontSize: 11, color: HERO_GREEN }}>
+          {currentBrand.url}
+        </div>
+      </div>
+
+      {/* lines */}
+      <div style={{ lineHeight: 1.5 }}>
+        {currentBrand.lines.map((line, i) => {
+          if (i > lineIndex) return null
+          const lineLength = line.reduce((sum, s) => sum + s.text.length, 0)
+          const visibleChars = i < lineIndex ? lineLength : charIndex
+          const showCaret = i === lineIndex && phase === 'typing'
+          return (
+            <div key={`${brandIndex}-${i}`} style={{ whiteSpace: 'pre' }}>
+              {renderScanSegments(line, visibleChars)}
+              {showCaret && (
+                <span className="caret" style={{ color: HERO_GREEN }} aria-hidden="true">|</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
