@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import BrandSync from './BrandSync'
+import LogoImage from '@/components/ui/LogoImage'
 
 export default async function DashboardPage({
   searchParams,
@@ -271,8 +272,7 @@ export default async function DashboardPage({
           <div style={{ width: 4, height: 44, borderRadius: 2, background: primaryColor, flexShrink: 0 }} />
           <div style={{ width: 44, height: 44, borderRadius: 10, background: primaryColor, border: `1px solid ${textOnPrimary}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
             {brand.logo_url ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={brand.logo_url} style={{ width: 28, height: 28, objectFit: 'contain', filter: isLight(primaryColor) ? 'none' : 'brightness(0) invert(1)' }} alt={brand.name} />
+              <LogoImage src={brand.logo_url} onDark={!isLight(primaryColor)} style={{ width: 28, height: 28, objectFit: 'contain' }} alt={brand.name} />
             ) : (
               <span style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: textOnPrimary }}>{brand.name[0].toUpperCase()}</span>
             )}
