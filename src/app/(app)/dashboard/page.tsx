@@ -49,9 +49,9 @@ export default async function DashboardPage({
     return (
       <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>✦</div>
-        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, textTransform: 'uppercase', textAlign: 'center' }}>No funnels yet</div>
-        <p style={{ color: '#555', fontSize: 16, textAlign: 'center', maxWidth: 400, lineHeight: 1.6 }}>Create your first AI-powered funnel — creatives, copy, and landing page in 30 seconds.</p>
-        <a href="/new" style={{ background: '#00ff97', color: '#000', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 15, padding: '14px 32px', borderRadius: 999, textDecoration: 'none', marginTop: 8 }}>+ New funnel</a>
+        <div style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 28, textTransform: 'uppercase', textAlign: 'center' }}>No brands yet</div>
+        <p style={{ color: '#555', fontSize: 16, textAlign: 'center', maxWidth: 400, lineHeight: 1.6 }}>Add your first brand — paste your URL and we&rsquo;ll extract your identity in 30 seconds.</p>
+        <a href="/new" style={{ background: '#00ff97', color: '#000', fontFamily: 'Barlow, sans-serif', fontWeight: 800, fontSize: 15, padding: '14px 32px', borderRadius: 999, textDecoration: 'none', marginTop: 8 }}>+ Add brand</a>
       </div>
     )
   }
