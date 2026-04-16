@@ -151,21 +151,11 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('attomik_active_brand_id', id)
       return id
     })
-    // Keep the URL's ?brand= param in sync with the new active brand so a
-    // page reload (which prioritizes the URL param over localStorage) always
-    // resolves to the brand the user is actually working on. Without this,
-    // navigating around the app left stale ?brand= params behind, and a
-    // hard refresh would teleport the user back to whichever brand was last
-    // pinned to the URL — see `BrandSync` in `app/(app)/dashboard/`.
-    if (typeof window !== 'undefined') {
-      try {
-        const url = new URL(window.location.href)
-        if (url.searchParams.get('brand') !== id) {
-          url.searchParams.set('brand', id)
-          window.history.replaceState(null, '', url.toString())
-        }
-      } catch {}
-    }
+    // URL is owned by Next's router (see TopNav.switchBrand). We used to
+    // call history.replaceState here to keep ?brand= synced, but it raced
+    // router.push and silently killed navigation diffs — the dashboard
+    // server component would skip re-rendering because Next saw the new
+    // URL already applied.
     // Clear active campaign if it belongs to a different brand
     setActiveCampaign(prevCampaign => {
       if (prevCampaign && prevCampaign.brand_id !== id) {

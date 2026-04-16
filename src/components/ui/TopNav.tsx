@@ -68,17 +68,21 @@ export default function TopNav() {
   }
 
   function switchBrand(brand: any) {
-    // router.push MUST fire before setActiveBrandId. setActiveBrandId calls
-    // history.replaceState to sync the URL's ?brand= param; if that runs
-    // first Next.js sees the new param already on the URL when router.push
-    // is called, skips the navigation diff, and never re-renders the server
-    // component — so the dashboard queries never re-run for the new brand.
-    if (pathname.startsWith('/brand-setup')) router.push(`/brand-setup/${brand.id}`)
-    else if (pathname === '/dashboard' || pathname === '/') router.push(`/dashboard?brand=${brand.id}`)
-    // Client pages (creatives, copy, campaigns, newsletter) re-fetch via context automatically
-
-    setActiveBrandId(brand.id)
     setDropdownOpen(false)
+    if (brand.id === activeBrandId) return
+
+    // Let Next's router own the URL for every page, not just dashboard /
+    // brand-setup. The old code also called history.replaceState inside
+    // setActiveBrandId which raced router.push and silently killed the
+    // navigation diff on dashboard. URL → context is the one direction now.
+    if (pathname.startsWith('/brand-setup')) {
+      router.push(`/brand-setup/${brand.id}`)
+    } else {
+      const params = new URLSearchParams(window.location.search)
+      params.set('brand', brand.id)
+      router.push(`${pathname}?${params.toString()}`)
+    }
+    setActiveBrandId(brand.id)
   }
 
   function getBrandNavHref(href: string) {
