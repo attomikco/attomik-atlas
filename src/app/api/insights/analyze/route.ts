@@ -91,40 +91,52 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = buildBrandSystemPrompt(brand)
 
-  const userPrompt = `You are a performance marketing strategist analyzing Meta Ads data for ${brand.name}.
+  const overallRoas = totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(2) : '0'
 
-TIME RANGE: ${timeRange === '7d' ? 'Last 7 days' : timeRange === '30d' ? 'Last 30 days' : 'All time'}
-TOTAL: $${totalSpend.toFixed(2)} spend, ${totalPurchases} purchases, $${totalRevenue.toFixed(2)} revenue, overall ROAS ${totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(2) : '0'}x
+  const userPrompt = `You are a creative strategist analyzing Meta Ads performance for a DTC brand (${brand.name}).
+Meta Advantage+ automatically allocates budget across ads, so do not recommend pausing or killing specific ads — budget decisions are handled by the platform.
+
+Your job is to find creative and marketing insights: what messaging is resonating, what creative formats are working, what angles to double down on, what to test next, and what the data suggests about the audience.
+
+Use the performance data to draw conclusions about WHY certain creatives are working — not just THAT they are working. Think about hooks, format, creator type, offer framing, and emotional angle.
+
+TIME RANGE: ${timeRange === '7d' ? 'Last 7 days' : timeRange === '14d' ? 'Last 14 days' : timeRange === '30d' ? 'Last 30 days' : timeRange === '90d' ? 'Last 90 days' : 'Custom range'}
+
+ACCOUNT TOTALS:
+- Spend: $${totalSpend.toFixed(2)}
+- Revenue: $${totalRevenue.toFixed(2)}
+- ROAS: ${overallRoas}x
+- Purchases: ${totalPurchases}
+- Ads tracked: ${aggregated.length}
 
 BY CREATIVE TYPE:
 ${typeBreakdown}
 
-TOP ADS BY SPEND (up to 20):
+PER-CREATIVE METRICS (up to 20, sorted by spend):
 ${adBreakdown}
 
-Based on this data, return ONLY valid JSON (no markdown, no explanation) in this exact shape:
+Return exactly 4 insights as ONLY valid JSON. No markdown, no preamble, no explanation. Each must:
+- Reference a specific ad by name with its actual numbers
+- Explain what the data suggests about the creative or audience
+- Give a concrete creative or marketing action (not a budget action)
+- Use type: "scale" (replicate this creative angle), "test" (try this variation), "watch" (monitor this trend), or "learn" (key audience or messaging insight)
+- Never recommend pausing, killing, or reducing spend on any ad
+
+JSON shape:
 {
-  "summary": "2-3 sentence overview of overall performance — include specific numbers",
-  "working": [
+  "headline": "One sentence. The most important creative insight from this period. Specific.",
+  "insights": [
     {
-      "title": "short title of what's working",
-      "insight": "explanation with specific numbers from the data",
-      "attomikPrompt": "a ready-to-paste prompt for Attomik's Creative Studio or Copy Creator — be specific about creative type, audience, theme, and angle based on what's actually performing"
-    }
-  ],
-  "opportunities": [
-    {
-      "title": "short title of the opportunity",
-      "insight": "what the data shows — cite specific ads and numbers",
-      "action": "pause | scale | test | optimize",
-      "recommendation": "specific actionable step — name the exact ad or ad set"
+      "title": "Short title 3-5 words",
+      "detail": "2-3 sentences. What the data shows and what it means creatively.",
+      "action": "One concrete creative or marketing next step. Start with a verb.",
+      "priority": "high | medium | low",
+      "type": "scale | test | watch | learn"
     }
   ]
 }
 
-Return exactly 3 items in "working" and exactly 3 items in "opportunities".
-Base EVERYTHING on the actual data above. No generic advice.
-The attomikPrompt should reference specific creative types, themes, and audiences that are actually performing well in the data.`
+Order by priority (high first). No generic observations. No budget recommendations.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',

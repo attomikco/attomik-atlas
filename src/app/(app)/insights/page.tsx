@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
 import { colors, font, fontWeight, fontSize, radius, shadow, letterSpacing } from '@/lib/design-tokens'
+import { ComposedChart, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 // ── CSV Parser (handles quoted fields, no deps) ─────────────────
 function parseCSV(text: string): Record<string, string>[] {
@@ -94,22 +95,39 @@ function parseCreativeType(adName: string): { label: string; color: string } | n
 }
 
 // ── Time range helpers ──────────────────────────────────────────
-type TimeRange = '7d' | '30d' | 'all'
+type TimeRange = '7d' | '14d' | '30d' | '90d' | 'custom'
 
-function getDateCutoff(range: TimeRange): string | null {
-  if (range === 'all') return null
+const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
+  { value: '7d', label: 'Last 7 days' },
+  { value: '14d', label: 'Last 14 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: '90d', label: 'Last 90 days' },
+  { value: 'custom', label: 'Custom' },
+]
+
+const DAYS_MAP: Record<string, number> = { '7d': 7, '14d': 14, '30d': 30, '90d': 90 }
+
+function getDateCutoff(range: TimeRange, customStart?: string): string | null {
+  if (range === 'custom') return customStart || null
+  const days = DAYS_MAP[range]
+  if (!days) return null
   const d = new Date()
-  d.setDate(d.getDate() - (range === '7d' ? 7 : 30))
+  d.setDate(d.getDate() - days)
   return d.toISOString().split('T')[0]
+}
+
+function getDateEnd(range: TimeRange, customEnd?: string): string | null {
+  if (range === 'custom') return customEnd || null
+  return null
 }
 
 // ── Action badge helpers ────────────────────────────────────────
 function actionBadgeStyle(action: string): { bg: string; color: string } {
   switch (action) {
-    case 'pause': return { bg: colors.dangerLight, color: colors.danger }
     case 'scale': return { bg: colors.successLight, color: colors.success }
     case 'test': return { bg: colors.infoLight, color: colors.info }
-    case 'optimize': return { bg: colors.warningLight, color: colors.warning }
+    case 'watch': return { bg: colors.warningLight, color: colors.warning }
+    case 'learn': return { bg: colors.cream, color: colors.muted }
     default: return { bg: colors.cream, color: colors.muted }
   }
 }
@@ -125,9 +143,14 @@ interface InsightUpload {
 }
 
 interface Analysis {
-  summary: string
-  working: { title: string; insight: string; attomikPrompt: string }[]
-  opportunities: { title: string; insight: string; action: string; recommendation: string }[]
+  headline: string
+  insights: {
+    title: string
+    detail: string
+    action: string
+    priority: 'high' | 'medium' | 'low'
+    type: 'scale' | 'test' | 'watch' | 'learn'
+  }[]
 }
 
 interface AggRow {
@@ -158,7 +181,12 @@ export default function InsightsPage() {
   const [dragOver, setDragOver] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
+  const [analysisTimeRange, setAnalysisTimeRange] = useState<string>('')
+  const [analysisTimestamp, setAnalysisTimestamp] = useState<string>('')
+  const autoAnalysisTriggered = useRef(false)
   const [timeRange, setTimeRange] = useState<TimeRange>('7d')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
   const [aggRows, setAggRows] = useState<AggRow[]>([])
   const [copied, setCopied] = useState<string | null>(null)
   const [hasData, setHasData] = useState(false)
@@ -168,6 +196,14 @@ export default function InsightsPage() {
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<string | null>(null)
   const [hasMetaCredentials, setHasMetaCredentials] = useState(false)
+  const [metaChecked, setMetaChecked] = useState(false)
+  const [metaTokenInput, setMetaTokenInput] = useState('')
+  const [metaAccountInput, setMetaAccountInput] = useState('')
+  const [metaSaving, setMetaSaving] = useState(false)
+  const [sortColumn, setSortColumn] = useState<string>('roas')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [chartData, setChartData] = useState<{ date: string; spend: number; revenue: number; roas: number; clicks: number }[]>([])
+  const [sparklineData, setSparklineData] = useState<Record<string, { date: string; roas: number; spend: number; revenue: number }[]>>({})
 
   // Load upload history
   useEffect(() => {
@@ -182,8 +218,9 @@ export default function InsightsPage() {
         setHasData((data || []).length > 0)
       })
 
-    // Check if brand has Meta credentials
-    const checkMeta = async () => {
+    // Check brand notes: Meta credentials + saved analysis
+    setMetaChecked(false)
+    const checkBrandNotes = async () => {
       const { data: brandData } = await supabase
         .from('brands')
         .select('notes')
@@ -192,16 +229,23 @@ export default function InsightsPage() {
       try {
         const notes = brandData?.notes ? JSON.parse(brandData.notes) : {}
         setHasMetaCredentials(!!(notes.meta_access_token && notes.meta_ad_account_id))
+        if (notes.insights_analysis?.headline) {
+          setAnalysis(notes.insights_analysis)
+          setAnalysisTimeRange(notes.insights_analysis_time_range || '')
+          setAnalysisTimestamp(notes.insights_analysis_timestamp || '')
+        }
       } catch {}
+      setMetaChecked(true)
     }
-    checkMeta()
+    checkBrandNotes()
+    autoAnalysisTriggered.current = false
   }, [activeBrandId])
 
   // Load aggregated table data when time range changes
   useEffect(() => {
     if (!activeBrandId || !hasData) return
     loadAggregatedData()
-  }, [activeBrandId, timeRange, hasData])
+  }, [activeBrandId, timeRange, customStart, customEnd, hasData])
 
   async function loadAggregatedData() {
     if (!activeBrandId) return
@@ -209,8 +253,10 @@ export default function InsightsPage() {
       .from('brand_insight_rows')
       .select('ad_name, ad_id, impressions, clicks, ctr, spend, purchases, purchase_value, roas, creative_title, creative_body, creative_image_url, creative_cta')
       .eq('brand_id', activeBrandId)
-    const cutoff = getDateCutoff(timeRange)
+    const cutoff = getDateCutoff(timeRange, customStart)
     if (cutoff) query = query.gte('date', cutoff)
+    const endDate = getDateEnd(timeRange, customEnd)
+    if (endDate) query = query.lte('date', endDate)
     const { data: rows } = await query
     if (!rows || rows.length === 0) { setAggRows([]); return }
 
@@ -251,6 +297,110 @@ export default function InsightsPage() {
     agg.sort((a, b) => b.roas - a.roas)
     setAggRows(agg)
   }
+
+  // ── Load daily account-level chart data ─────────────────────
+  useEffect(() => {
+    if (!activeBrandId || !hasData) { setChartData([]); return }
+
+    async function loadDailyTotals() {
+      let query = supabase
+        .from('brand_insight_rows')
+        .select('date, spend, clicks, purchases, purchase_value, roas')
+        .eq('brand_id', activeBrandId!)
+        .order('date', { ascending: true })
+      const cutoff = getDateCutoff(timeRange, customStart)
+      if (cutoff) query = query.gte('date', cutoff)
+      const endDate = getDateEnd(timeRange, customEnd)
+      if (endDate) query = query.lte('date', endDate)
+      const { data: rows } = await query
+      if (!rows || rows.length === 0) { setChartData([]); return }
+
+      const dateMap: Record<string, { spend: number; revenue: number; clicks: number; roas_num: number; roas_den: number }> = {}
+      for (const r of rows) {
+        if (!r.date) continue
+        if (!dateMap[r.date]) dateMap[r.date] = { spend: 0, revenue: 0, clicks: 0, roas_num: 0, roas_den: 0 }
+        const d = dateMap[r.date]
+        d.spend += r.spend || 0
+        d.clicks += r.clicks || 0
+        const rev = (r.purchases || 0) > 0 ? (r.roas || 0) * (r.spend || 0) : 0
+        d.revenue += rev
+        d.roas_num += rev
+        d.roas_den += r.spend || 0
+      }
+      setChartData(
+        Object.entries(dateMap)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, d]) => ({
+            date,
+            spend: Math.round(d.spend * 100) / 100,
+            revenue: Math.round(d.revenue * 100) / 100,
+            roas: d.roas_den > 0 ? Math.round((d.roas_num / d.roas_den) * 100) / 100 : 0,
+            clicks: d.clicks,
+          }))
+      )
+    }
+    loadDailyTotals()
+  }, [activeBrandId, hasData, timeRange, customStart, customEnd])
+
+  // ── Load per-ad daily data for creative charts ───────────────
+  useEffect(() => {
+    if (!activeBrandId || aggRows.length === 0) { setSparklineData({}); return }
+    const topAdNames = aggRows
+      .filter(r => r.purchases > 0 && r.creative_image_url)
+      .sort((a, b) => b.purchases - a.purchases)
+      .slice(0, 6)
+      .map(r => r.ad_name)
+    if (topAdNames.length === 0) { setSparklineData({}); return }
+
+    async function loadSparklines() {
+      let query = supabase
+        .from('brand_insight_rows')
+        .select('ad_name, date, roas, spend, purchases')
+        .eq('brand_id', activeBrandId!)
+        .in('ad_name', topAdNames)
+        .order('date', { ascending: true })
+      const cutoff = getDateCutoff(timeRange, customStart)
+      if (cutoff) query = query.gte('date', cutoff)
+      const endDate = getDateEnd(timeRange, customEnd)
+      if (endDate) query = query.lte('date', endDate)
+      const { data: rows } = await query
+      if (!rows || rows.length === 0) { setSparklineData({}); return }
+
+      const adDateMap: Record<string, Record<string, { revenue: number; spend: number }>> = {}
+      for (const r of rows) {
+        if (!r.date || !r.ad_name) continue
+        if (!adDateMap[r.ad_name]) adDateMap[r.ad_name] = {}
+        if (!adDateMap[r.ad_name][r.date]) adDateMap[r.ad_name][r.date] = { revenue: 0, spend: 0 }
+        const d = adDateMap[r.ad_name][r.date]
+        d.spend += r.spend || 0
+        d.revenue += (r.purchases || 0) > 0 ? (r.roas || 0) * (r.spend || 0) : 0
+      }
+
+      const result: Record<string, { date: string; roas: number; spend: number; revenue: number }[]> = {}
+      for (const [adName, dates] of Object.entries(adDateMap)) {
+        const points = Object.entries(dates)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, d]) => ({
+            date,
+            spend: Math.round(d.spend * 100) / 100,
+            revenue: Math.round(d.revenue * 100) / 100,
+            roas: d.spend > 0 ? Math.round((d.revenue / d.spend) * 100) / 100 : 0,
+          }))
+        if (points.length >= 2) result[adName] = points
+      }
+      setSparklineData(result)
+    }
+    loadSparklines()
+  }, [activeBrandId, aggRows, timeRange, customStart, customEnd])
+
+  // ── Auto-run analysis once if no saved result exists ────────
+  useEffect(() => {
+    if (!activeBrandId || !hasData || aggRows.length === 0) return
+    if (!hasMetaCredentials) return
+    if (analysis || analyzing || autoAnalysisTriggered.current) return
+    autoAnalysisTriggered.current = true
+    analyzeData()
+  }, [activeBrandId, hasData, aggRows, analysis, analyzing, hasMetaCredentials])
 
   // ── KPI computations ──────────────────────────────────────────
   const kpis = useMemo(() => {
@@ -375,8 +525,10 @@ export default function InsightsPage() {
       .from('brand_insight_rows')
       .select('*')
       .eq('brand_id', activeBrandId)
-    const cutoff = getDateCutoff(timeRange)
+    const cutoff = getDateCutoff(timeRange, customStart)
     if (cutoff) query = query.gte('date', cutoff)
+    const endDate = getDateEnd(timeRange, customEnd)
+    if (endDate) query = query.lte('date', endDate)
     const { data: rows } = await query
 
     if (!rows || rows.length === 0) {
@@ -391,7 +543,24 @@ export default function InsightsPage() {
         body: JSON.stringify({ brandId: activeBrandId, rows, timeRange }),
       })
       const data = await res.json()
-      if (data.summary) setAnalysis(data)
+      if (data.headline) {
+        setAnalysis(data)
+        const rangeLabel = TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || 'Custom range'
+        const timestamp = new Date().toISOString()
+        setAnalysisTimeRange(rangeLabel)
+        setAnalysisTimestamp(timestamp)
+        // Save to brand.notes
+        const { data: brandData } = await supabase.from('brands').select('notes').eq('id', activeBrandId).single()
+        const currentNotes = brandData?.notes ? JSON.parse(brandData.notes) : {}
+        await supabase.from('brands').update({
+          notes: JSON.stringify({
+            ...currentNotes,
+            insights_analysis: data,
+            insights_analysis_time_range: rangeLabel,
+            insights_analysis_timestamp: timestamp,
+          })
+        }).eq('id', activeBrandId)
+      }
     } catch (e) {
       console.error('Analysis failed:', e)
     }
@@ -413,8 +582,7 @@ export default function InsightsPage() {
       if (data.error) {
         setSyncResult(`Error: ${data.error}`)
       } else {
-        setSyncResult(`✓ Synced ${data.synced} rows (${data.datePreset}) — ${data.creativesFetched} creatives fetched`)
-        // Refresh uploads list and table data
+        setSyncResult(`Synced ${data.synced} rows (${data.datePreset}) — ${data.creativesFetched} creatives fetched`)
         const { data: refreshed } = await supabase
           .from('brand_insights')
           .select('id, csv_filename, uploaded_at, date_range_start, date_range_end, row_count')
@@ -454,7 +622,157 @@ export default function InsightsPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
+  // Sorted rows for the table (must be above early return to keep hook order stable)
+  const sortedAggRows = useMemo(() => {
+    const sorted = [...aggRows]
+    sorted.sort((a, b) => {
+      const aVal = (a as any)[sortColumn] ?? 0
+      const bVal = (b as any)[sortColumn] ?? 0
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
+    })
+    return sorted
+  }, [aggRows, sortColumn, sortDirection])
+
   if (!activeBrandId) return null
+
+  // ── Gate: Meta not connected ──────────────────────────────────
+  if (metaChecked && !hasMetaCredentials) {
+    const handleMetaSave = async () => {
+      if (!activeBrandId || !metaTokenInput.trim() || !metaAccountInput.trim()) return
+      setMetaSaving(true)
+      const { data: brandData } = await supabase.from('brands').select('notes').eq('id', activeBrandId).single()
+      const currentNotes = brandData?.notes ? JSON.parse(brandData.notes) : {}
+      const accountId = metaAccountInput.trim().replace(/^act_/, '')
+      await supabase.from('brands').update({
+        notes: JSON.stringify({
+          ...currentNotes,
+          meta_access_token: metaTokenInput.trim(),
+          meta_ad_account_id: accountId,
+          meta_token_saved_at: new Date().toISOString(),
+        })
+      }).eq('id', activeBrandId)
+      setHasMetaCredentials(true)
+      setMetaSaving(false)
+    }
+
+    return (
+      <div style={{ padding: '32px 40px', maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ maxWidth: 720, width: '100%' }}>
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <svg width="48" height="48" viewBox="0 0 48 48" style={{ marginBottom: 16 }}>
+              <circle cx="24" cy="24" r="24" fill={colors.ink} />
+              <text x="24" y="33" textAnchor="middle" fill={colors.accent} style={{ fontSize: 28, fontWeight: 700, fontFamily: font.heading }}>f</text>
+            </svg>
+            <div style={{
+              fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['5xl'],
+              textTransform: 'uppercase', letterSpacing: letterSpacing.tight, color: colors.ink,
+              marginBottom: 10, borderLeft: `4px solid ${colors.accent}`, paddingLeft: 16, display: 'inline-block',
+            }}>Meta Ads Not Connected</div>
+            <div style={{
+              fontSize: fontSize.body, color: colors.muted, lineHeight: 1.7, maxWidth: 520, margin: '0 auto',
+            }}>
+              This page requires your Meta access token and Ad Account ID to pull in your ad performance data.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 24, marginBottom: 32 }}>
+            <div style={{
+              flex: 1, background: colors.paper, border: `1px solid ${colors.border}`,
+              borderRadius: radius['3xl'], padding: '32px 28px', textAlign: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{
+                fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
+                textTransform: 'uppercase', letterSpacing: letterSpacing.wide, color: colors.ink, marginBottom: 8,
+              }}>Set up in Brand Hub</div>
+              <div style={{ fontSize: fontSize.body, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>
+                Connect Meta in your brand settings
+              </div>
+              <a href={`/brand-setup/${activeBrandId}`} style={{
+                display: 'inline-block', background: colors.ink, color: colors.accent,
+                fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xs,
+                padding: '12px 28px', borderRadius: radius.pill, textDecoration: 'none',
+                textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+              }}>{'\u2192'} Go to Brand Hub</a>
+            </div>
+
+            <div style={{
+              flex: 1, background: colors.paper, border: `1px solid ${colors.border}`,
+              borderRadius: radius['3xl'], padding: '32px 28px',
+            }}>
+              <div style={{
+                fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
+                textTransform: 'uppercase', letterSpacing: letterSpacing.wide, color: colors.ink, marginBottom: 16,
+              }}>Quick connect here</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <div style={{
+                    fontFamily: font.mono, fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
+                    textTransform: 'uppercase', letterSpacing: letterSpacing.wider, color: colors.muted, marginBottom: 4,
+                  }}>Meta Access Token</div>
+                  <input
+                    type="text"
+                    value={metaTokenInput}
+                    onChange={e => setMetaTokenInput(e.target.value)}
+                    placeholder="EAAx..."
+                    style={{
+                      width: '100%', fontFamily: font.mono, fontSize: fontSize.body,
+                      padding: '10px 14px', borderRadius: radius.lg,
+                      border: `1px solid ${colors.border}`, background: colors.cream,
+                      color: colors.ink, outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <div>
+                  <div style={{
+                    fontFamily: font.mono, fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
+                    textTransform: 'uppercase', letterSpacing: letterSpacing.wider, color: colors.muted, marginBottom: 4,
+                  }}>Ad Account ID</div>
+                  <input
+                    type="text"
+                    value={metaAccountInput}
+                    onChange={e => setMetaAccountInput(e.target.value)}
+                    placeholder="act_123456789"
+                    style={{
+                      width: '100%', fontFamily: font.mono, fontSize: fontSize.body,
+                      padding: '10px 14px', borderRadius: radius.lg,
+                      border: `1px solid ${colors.border}`, background: colors.cream,
+                      color: colors.ink, outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleMetaSave}
+                  disabled={metaSaving || !metaTokenInput.trim() || !metaAccountInput.trim()}
+                  style={{
+                    width: '100%', background: (!metaTokenInput.trim() || !metaAccountInput.trim()) ? colors.gray400 : colors.accent,
+                    color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.heading,
+                    fontSize: fontSize.xs, padding: '12px', borderRadius: radius.pill,
+                    border: 'none', cursor: (!metaTokenInput.trim() || !metaAccountInput.trim()) ? 'not-allowed' : 'pointer',
+                    textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                    opacity: metaSaving ? 0.6 : 1, marginTop: 4,
+                  }}
+                >{metaSaving ? 'Saving...' : 'Connect & Load Insights'}</button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            <a
+              href="https://developers.facebook.com/tools/explorer/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: font.mono, fontSize: fontSize.xs, color: colors.muted,
+                textDecoration: 'none', borderBottom: `1px solid ${colors.border}`,
+                paddingBottom: 1,
+              }}
+            >How to find your Meta Access Token {'\u2192'}</a>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── Shared styles ─────────────────────────────────────────────
   const cardStyle: React.CSSProperties = {
@@ -487,14 +805,31 @@ export default function InsightsPage() {
 
   // ── Computed values ───────────────────────────────────────────
   const totalSpend = aggRows.reduce((s, r) => s + r.spend, 0)
+  const totalClicks = aggRows.reduce((s, r) => s + r.clicks, 0)
+  const totalImpressions = aggRows.reduce((s, r) => s + r.impressions, 0)
   const totalPurchases = aggRows.reduce((s, r) => s + r.purchases, 0)
-  const purchasingAds = aggRows.filter(r => r.purchases > 0)
-  const avgRoas = purchasingAds.length > 0 ? purchasingAds.reduce((s, r) => s + r.roas, 0) / purchasingAds.length : 0
+  const totalRevenue = aggRows.reduce((s, r) => s + (r.purchases > 0 ? r.roas * r.spend : 0), 0)
+  const blendedRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0
+  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
 
   const topCreatives = aggRows
     .filter(r => r.purchases > 0 && r.creative_image_url)
     .sort((a, b) => b.purchases - a.purchases)
     .slice(0, 6)
+
+  function toggleSort(col: string) {
+    if (sortColumn === col) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(col)
+      setSortDirection('desc')
+    }
+  }
+
+  function sortArrow(col: string): string {
+    if (sortColumn !== col) return ''
+    return sortDirection === 'asc' ? ' \u25B2' : ' \u25BC'
+  }
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 1400, margin: '0 auto' }}>
@@ -520,25 +855,6 @@ export default function InsightsPage() {
         }}>{syncResult}</div>
       )}
 
-      {/* Not connected banner */}
-      {!hasMetaCredentials && !hasData && (
-        <div style={{
-          background: colors.cream, borderRadius: radius['3xl'], padding: '20px 24px',
-          marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          border: `1px solid ${colors.border}`,
-        }}>
-          <div style={{ fontSize: fontSize.body, color: colors.muted }}>
-            Connect Meta Ads in Brand Hub → Integrations to enable automatic sync with creative data.
-          </div>
-          <a href={`/brand-setup/${activeBrandId}`} style={{
-            background: colors.ink, color: colors.accent, fontFamily: font.heading,
-            fontWeight: fontWeight.heading, fontSize: fontSize.xs, padding: '10px 20px',
-            borderRadius: radius.pill, textDecoration: 'none', textTransform: 'uppercase',
-            letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap', marginLeft: 16,
-          }}>Connect →</a>
-        </div>
-      )}
-
       {/* ═══ SECTION 1 — HEADER BAR ═══ */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -547,21 +863,32 @@ export default function InsightsPage() {
         <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['10xl'], textTransform: 'uppercase', letterSpacing: letterSpacing.tight }}>
           Insights
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Time range toggle */}
-          <div style={{ display: 'flex', background: colors.cream, borderRadius: radius.pill, padding: 3, gap: 2 }}>
-            {(['7d', '30d', 'all'] as TimeRange[]).map(r => (
-              <button key={r} onClick={() => setTimeRange(r)} style={{
-                background: timeRange === r ? colors.ink : 'transparent',
-                color: timeRange === r ? colors.accent : colors.muted,
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', background: colors.cream, borderRadius: radius.pill, padding: 3, gap: 2, flexWrap: 'wrap' }}>
+            {TIME_RANGE_OPTIONS.map(r => (
+              <button key={r.value} onClick={() => setTimeRange(r.value)} style={{
+                background: timeRange === r.value ? colors.ink : 'transparent',
+                color: timeRange === r.value ? colors.accent : colors.muted,
                 fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
-                padding: '7px 16px', borderRadius: radius.pill, border: 'none',
+                padding: '7px 14px', borderRadius: radius.pill, border: 'none',
                 cursor: 'pointer', textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
                 transition: 'all 0.15s',
-              }}>{r === '7d' ? 'Last 7 days' : r === '30d' ? 'Last 30 days' : 'All time'}</button>
+              }}>{r.label}</button>
             ))}
           </div>
-          {/* Sync button */}
+          {timeRange === 'custom' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{
+                fontFamily: font.mono, fontSize: fontSize.caption, padding: '6px 10px', borderRadius: radius.lg,
+                border: `1px solid ${colors.border}`, background: colors.paper, color: colors.ink, outline: 'none',
+              }} />
+              <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.muted }}>to</span>
+              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{
+                fontFamily: font.mono, fontSize: fontSize.caption, padding: '6px 10px', borderRadius: radius.lg,
+                border: `1px solid ${colors.border}`, background: colors.paper, color: colors.ink, outline: 'none',
+              }} />
+            </div>
+          )}
           {hasMetaCredentials && (
             <button onClick={syncFromMeta} disabled={syncing} style={{
               background: syncing ? colors.gray400 : colors.accent,
@@ -574,14 +901,15 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      {/* ═══ SECTION 2 — KPI STRIP ═══ */}
+      {/* ═══ SECTION 2 — PERFORMANCE SUMMARY ═══ */}
       {hasData && aggRows.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 48 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 48 }}>
           {[
             { label: 'Total Spend', value: `$${totalSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, dark: true },
-            { label: 'Purchases', value: totalPurchases.toLocaleString(), dark: false },
-            { label: 'Avg ROAS', value: `${avgRoas.toFixed(2)}x`, dark: false },
-            { label: 'Active Ads', value: aggRows.length.toString(), dark: false },
+            { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, dark: false },
+            { label: 'Blended ROAS', value: `${blendedRoas.toFixed(2)}x`, dark: false },
+            { label: 'Total Clicks', value: totalClicks.toLocaleString(), dark: false },
+            { label: 'Avg CTR', value: `${avgCtr.toFixed(2)}%`, dark: false },
           ].map(({ label, value, dark }) => (
             <div key={label} style={{
               background: dark ? colors.ink : colors.paper,
@@ -594,7 +922,7 @@ export default function InsightsPage() {
                 color: dark ? colors.whiteAlpha40 : colors.muted, marginBottom: 8,
               }}>{label}</div>
               <div style={{
-                fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['9xl'],
+                fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['8xl'],
                 letterSpacing: letterSpacing.tight, color: dark ? colors.accent : colors.ink,
               }}>{value}</div>
             </div>
@@ -602,75 +930,255 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ═══ SECTION 3 — BEST PERFORMING CREATIVES ═══ */}
+      {/* ═══ AI INSIGHTS ═══ */}
+      {hasData && (
+        <div style={{ marginBottom: 48 }}>
+          {!analysis ? (
+            <div style={{
+              background: colors.ink, borderRadius: radius['3xl'], padding: '32px 40px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div>
+                <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], textTransform: 'uppercase', color: colors.paper, marginBottom: 6 }}>
+                  AI Analysis
+                </div>
+                <div style={{ fontSize: fontSize.body, color: colors.whiteAlpha50 }}>
+                  Get AI-powered insights on what&apos;s working and what to test next.
+                </div>
+              </div>
+              <button onClick={analyzeData} disabled={analyzing} style={{
+                background: analyzing ? colors.gray800 : colors.accent,
+                color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.heading,
+                fontSize: fontSize.md, padding: '16px 40px', borderRadius: radius.pill,
+                border: 'none', cursor: analyzing ? 'not-allowed' : 'pointer',
+                textTransform: 'uppercase', letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap',
+              }}>{analyzing ? 'Analyzing...' : '\u2726 Analyze'}</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{
+                fontFamily: font.mono, fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+                letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted,
+                marginBottom: 8,
+              }}>
+                Analyzed {analysisTimeRange || TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || 'Custom range'}{analysisTimestamp ? ` \u00b7 ${new Date(analysisTimestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}
+              </div>
+
+              <div style={{
+                fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['5xl'],
+                lineHeight: 1.3, color: colors.ink, marginBottom: 32,
+              }}>{analysis.headline}</div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {analysis.insights.map((insight, i) => {
+                  const dotColor = insight.priority === 'high' ? colors.danger : insight.priority === 'medium' ? colors.warning : colors.gray500
+                  const typeBadge = actionBadgeStyle(insight.type)
+                  return (
+                    <div key={i} style={{
+                      display: 'flex', gap: 20, padding: '20px 0',
+                      borderBottom: i < analysis.insights.length - 1 ? `1px solid ${colors.border}` : 'none',
+                    }}>
+                      <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 72, paddingTop: 3 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor }} />
+                        <span style={{
+                          fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize['2xs'],
+                          textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                          background: typeBadge.bg, color: typeBadge.color,
+                          padding: '2px 8px', borderRadius: radius.pill, whiteSpace: 'nowrap',
+                        }}>{insight.type}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
+                          textTransform: 'uppercase', color: colors.ink, marginBottom: 4,
+                        }}>{insight.title}</div>
+                        <div style={{ fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6 }}>{insight.detail}</div>
+                      </div>
+                      <div style={{ flexShrink: 0, width: 320 }}>
+                        <div style={{
+                          fontFamily: font.mono, fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
+                          letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted, marginBottom: 6,
+                        }}>{'\u2192'} Action</div>
+                        <div style={{
+                          fontSize: fontSize.body, color: colors.ink, fontWeight: fontWeight.semibold,
+                          background: colors.cream, padding: '10px 14px', borderRadius: radius.lg,
+                          border: `1px solid ${colors.border}`, lineHeight: 1.5,
+                        }}>{insight.action}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <button onClick={analyzeData} disabled={analyzing} style={{
+                  background: colors.ink, color: colors.accent, fontFamily: font.heading,
+                  fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '10px 28px',
+                  borderRadius: radius.pill, border: 'none', cursor: analyzing ? 'not-allowed' : 'pointer',
+                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                  opacity: analyzing ? 0.5 : 1,
+                }}>
+                  {analyzing ? 'Analyzing...' : `Re-analyze \u00b7 ${TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || 'Custom range'}`}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ GRAPHS ROW (combo + bar side by side) ═══ */}
+      {hasData && aggRows.length > 0 && (
+        <div style={{ display: 'flex', gap: 20, marginBottom: 48 }}>
+          <div style={{ flex: '0 0 65%', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 3, height: 20, borderRadius: 2, background: colors.accent }} />
+              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['3xl'], textTransform: 'uppercase' as const }}>Performance Over Time</div>
+            </div>
+            <div style={{
+              background: colors.paper, border: `1px solid ${colors.border}`, borderRadius: radius['3xl'],
+              padding: '24px 20px 16px', boxShadow: shadow.card, height: 380,
+            }}>
+              {chartData.length > 1 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} barCategoryGap="20%" barGap={2}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
+                        tickFormatter={v => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}` }}
+                        stroke={colors.border}
+                        interval={Math.ceil(chartData.length / 10) - 1}
+                        angle={-35}
+                        textAnchor="end"
+                        height={40}
+                      />
+                      <YAxis yAxisId="left" tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
+                        tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
+                        stroke={colors.border} width={56} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.gray700 }}
+                        tickFormatter={v => `${Number(v).toFixed(1)}x`} stroke={colors.border} width={44} />
+                      <Tooltip
+                        contentStyle={{ background: colors.ink, border: 'none', borderRadius: radius.lg, fontFamily: font.mono, fontSize: 11, color: colors.paper }}
+                        labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
+                        formatter={(value: number, name: string) => {
+                          if (name === 'roas') return [`${value.toFixed(2)}x`, 'ROAS']
+                          return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name === 'spend' ? 'Spend' : 'Revenue']
+                        }}
+                        labelFormatter={v => { const d = new Date(v + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
+                      />
+                      <Bar yAxisId="left" dataKey="spend" fill={colors.accent} opacity={0.85} radius={[3, 3, 0, 0]} />
+                      <Bar yAxisId="left" dataKey="revenue" fill={colors.border} opacity={0.7} radius={[3, 3, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="roas" stroke={colors.gray700} strokeWidth={1.5} strokeDasharray="4 3" dot={false} activeDot={{ r: 3, strokeWidth: 0, fill: colors.gray700 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 12 }}>
+                    {[
+                      { label: 'Spend', type: 'bar' as const, color: colors.accent },
+                      { label: 'Revenue', type: 'bar' as const, color: colors.border },
+                      { label: 'ROAS', type: 'line' as const, color: colors.gray700 },
+                    ].map(item => (
+                      <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {item.type === 'bar' ? (
+                          <div style={{ width: 14, height: 10, borderRadius: 2, background: item.color, opacity: item.label === 'Revenue' ? 0.7 : 0.85 }} />
+                        ) : (
+                          <div style={{ width: 20, height: 0, borderTop: `2px dashed ${item.color}` }} />
+                        )}
+                        <span style={{ fontFamily: font.mono, fontSize: fontSize.xs, color: colors.muted }}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.muted, fontFamily: font.mono, fontSize: fontSize.caption }}>
+                  Not enough daily data to chart
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ flex: '0 0 calc(35% - 20px)', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 3, height: 20, borderRadius: 2, background: colors.accent }} />
+              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['3xl'], textTransform: 'uppercase' as const }}>Top 5 Ads by Spend</div>
+            </div>
+            <div style={{
+              background: colors.paper, border: `1px solid ${colors.border}`, borderRadius: radius['3xl'],
+              padding: '24px 20px 16px', boxShadow: shadow.card, height: 380,
+            }}>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={[...aggRows].sort((a, b) => b.spend - a.spend).slice(0, 5).map(r => ({
+                    name: shortAdName(r.ad_name),
+                    spend: Math.round(r.spend * 100) / 100,
+                  }))}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={colors.border} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }} stroke={colors.border}
+                    interval={0} tickFormatter={v => v.length > 14 ? v.slice(0, 12) + '...' : v} angle={-20} textAnchor="end" height={50} />
+                  <YAxis tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
+                    tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
+                    stroke={colors.border} width={52} />
+                  <Tooltip
+                    contentStyle={{ background: colors.ink, border: 'none', borderRadius: radius.lg, fontFamily: font.mono, fontSize: 11, color: colors.paper }}
+                    labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
+                    formatter={(value: number) => [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Spend']}
+                    labelFormatter={(label: string) => label}
+                  />
+                  <Bar dataKey="spend" fill={colors.accent} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ BEST PERFORMING CREATIVES ═══ */}
       {topCreatives.length > 0 && (
         <div style={{ marginBottom: 48 }}>
           <SectionHeader title="Best Performing Creatives" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {topCreatives.map((r, i) => {
               const creativeType = parseCreativeType(r.ad_name)
+              const sparkPoints = sparklineData[r.ad_name]
+              const hasChart = sparkPoints && sparkPoints.length >= 2
+              let declining = false
+              if (hasChart) declining = sparkPoints[sparkPoints.length - 1].roas < sparkPoints[0].roas
+
               return (
                 <div key={i} style={{
-                  background: colors.paper, borderRadius: radius['3xl'],
-                  border: `1px solid ${colors.border}`, overflow: 'hidden',
-                  boxShadow: shadow.card, transition: 'transform 0.15s, box-shadow 0.15s',
+                  display: 'flex', gap: 20, background: colors.paper, borderRadius: radius['3xl'],
+                  border: `1px solid ${colors.border}`, overflow: 'hidden', boxShadow: shadow.card, padding: 20,
                 }}>
-                  <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                    {/* Thumbnail — small and crisp */}
-                    {r.creative_image_url && (
-                      <div style={{ flexShrink: 0, position: 'relative' }}>
-                        <img
-                          src={r.creative_image_url}
-                          alt={shortAdName(r.ad_name)}
-                          style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: radius.md, border: `1px solid ${colors.border}` }}
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
-                        {/* Creative type badge below image */}
-                        {creativeType && (
-                          <div style={{
-                            marginTop: 4, textAlign: 'center',
-                            fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
-                            background: creativeType.color, color: colors.ink,
-                            padding: '2px 6px', borderRadius: radius.pill,
-                            textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                          }}>{creativeType.label}</div>
-                        )}
-                      </div>
-                    )}
-                    {/* Right: name + ROAS badge */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                  <div style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
+                      {r.creative_image_url && (
+                        <img src={r.creative_image_url} alt={shortAdName(r.ad_name)}
+                          style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: radius.md, border: `1px solid ${colors.border}`, flexShrink: 0 }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
                           textTransform: 'uppercase', letterSpacing: letterSpacing.slight, color: colors.ink,
+                          lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>{shortAdName(r.ad_name)}</div>
-                        {/* Purchases + ROAS badge */}
                         <div style={{
-                          background: colors.accent, color: colors.ink,
-                          fontFamily: font.heading, fontWeight: fontWeight.heading,
-                          fontSize: fontSize.xs, padding: '4px 10px', borderRadius: radius.pill,
-                          whiteSpace: 'nowrap', flexShrink: 0, textAlign: 'center', lineHeight: 1.3,
-                        }}>
-                          <div>{r.purchases} sales</div>
-                          <div style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.semibold }}>{r.roas.toFixed(2)}x</div>
-                        </div>
+                          background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.heading,
+                          fontSize: fontSize['2xs'], padding: '2px 8px', borderRadius: radius.pill,
+                          display: 'inline-block', marginTop: 4, lineHeight: 1.3,
+                        }}>{r.purchases} sales / {r.roas.toFixed(2)}x</div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Copy body below the header */}
-                  <div style={{ padding: '10px 20px 0' }}>
-                    {r.creative_body && (
-                      <div style={{
-                        fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6,
-                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-                      }}>{r.creative_body}</div>
+                    {creativeType && (
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.bold, background: creativeType.color, color: colors.ink, padding: '2px 8px', borderRadius: radius.pill, textTransform: 'uppercase', letterSpacing: letterSpacing.wide }}>{creativeType.label}</span>
+                      </div>
                     )}
-                  </div>
-
-                  {/* Card content */}
-                  <div style={{ padding: '14px 20px 20px' }}>
-                    {/* Metrics row */}
+                    {r.creative_body && (
+                      <div style={{ fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{r.creative_body}</div>
+                    )}
                     <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
                       {[
                         { label: 'Spend', value: `$${r.spend.toFixed(0)}` },
@@ -684,8 +1192,6 @@ export default function InsightsPage() {
                         </div>
                       ))}
                     </div>
-
-                    {/* Inspire Creative button */}
                     <button
                       onClick={() => copyPrompt(`Generate a creative inspired by "${shortAdName(r.ad_name)}" — ${r.roas.toFixed(2)}x ROAS, ${r.purchases} purchases, $${r.cpa.toFixed(0)} CPA. Copy angle: "${r.creative_body?.slice(0, 100)}". Match this style and hook.`, `inspire-card-${i}`)}
                       style={{
@@ -693,9 +1199,62 @@ export default function InsightsPage() {
                         color: copied === `inspire-card-${i}` ? colors.paper : colors.accent,
                         fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xs,
                         padding: '10px', borderRadius: radius.lg, border: 'none', cursor: 'pointer',
-                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide, transition: 'all 0.15s',
+                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide, transition: 'all 0.15s', marginTop: 'auto',
                       }}
                     >{copied === `inspire-card-${i}` ? '\u2713 Copied!' : '\u2192 Inspire Creative'}</button>
+                  </div>
+
+                  <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.caption, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, color: colors.muted, marginBottom: 8 }}>{shortAdName(r.ad_name)}</div>
+                    {hasChart ? (
+                      <>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <ComposedChart data={sparkPoints} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} barCategoryGap="20%" barGap={2}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+                            <XAxis dataKey="date" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
+                              tickFormatter={v => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}` }}
+                              stroke={colors.border} interval={Math.ceil(sparkPoints.length / 10) - 1} angle={-35} textAnchor="end" height={40} />
+                            <YAxis yAxisId="left" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
+                              tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
+                              stroke={colors.border} width={46} />
+                            <YAxis yAxisId="right" orientation="right" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.gray700 }}
+                              tickFormatter={v => `${Number(v).toFixed(1)}x`} stroke={colors.border} width={36} />
+                            <Tooltip
+                              contentStyle={{ background: colors.ink, border: 'none', borderRadius: radius.lg, fontFamily: font.mono, fontSize: 11, color: colors.paper }}
+                              labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
+                              formatter={(value: number, name: string) => {
+                                if (name === 'roas') return [`${value.toFixed(2)}x`, 'ROAS']
+                                return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name === 'spend' ? 'Spend' : 'Revenue']
+                              }}
+                              labelFormatter={v => { const d = new Date(v + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
+                            />
+                            <Bar yAxisId="left" dataKey="spend" fill={colors.accent} opacity={0.85} radius={[3, 3, 0, 0]} />
+                            <Bar yAxisId="left" dataKey="revenue" fill={colors.border} opacity={0.7} radius={[3, 3, 0, 0]} />
+                            <Line yAxisId="right" type="monotone" dataKey="roas" stroke={declining ? colors.dangerSoft : colors.accent}
+                              strokeWidth={1.5} strokeDasharray="4 3" dot={false}
+                              activeDot={{ r: 3, strokeWidth: 0, fill: declining ? colors.dangerSoft : colors.accent }} isAnimationActive={false} />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <div style={{ width: 12, height: 8, borderRadius: 2, background: colors.accent, opacity: 0.85 }} />
+                            <span style={{ fontFamily: font.mono, fontSize: 9, color: colors.muted }}>Spend</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <div style={{ width: 12, height: 8, borderRadius: 2, background: colors.border, opacity: 0.7 }} />
+                            <span style={{ fontFamily: font.mono, fontSize: 9, color: colors.muted }}>Revenue</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <div style={{ width: 16, height: 0, borderTop: `2px dashed ${declining ? colors.dangerSoft : colors.accent}` }} />
+                            <span style={{ fontFamily: font.mono, fontSize: 9, color: colors.muted }}>ROAS</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.muted, fontFamily: font.mono, fontSize: fontSize.caption, border: `1px dashed ${colors.border}`, borderRadius: radius.lg }}>
+                        Not enough daily data
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -704,230 +1263,53 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ═══ SECTION 4 — AI INSIGHTS ═══ */}
-      {hasData && (
-        <div style={{ marginBottom: 48 }}>
-          {!analysis ? (
-            <div style={{
-              background: colors.ink, borderRadius: radius['3xl'], padding: '32px 40px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32,
-            }}>
-              <div>
-                <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], textTransform: 'uppercase', color: colors.paper, marginBottom: 6 }}>
-                  AI Analysis
-                </div>
-                <div style={{ fontSize: fontSize.body, color: colors.whiteAlpha50 }}>
-                  Get AI-powered insights on what&apos;s working, what to pause, and what to test next.
-                </div>
-              </div>
-              <button onClick={analyzeData} disabled={analyzing} style={{
-                background: analyzing ? colors.gray800 : colors.accent,
-                color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.heading,
-                fontSize: fontSize.md, padding: '16px 40px', borderRadius: radius.pill,
-                border: 'none', cursor: analyzing ? 'not-allowed' : 'pointer',
-                textTransform: 'uppercase', letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap',
-              }}>{analyzing ? 'Analyzing...' : '\u2726 Analyze'}</button>
-            </div>
-          ) : (
-            <>
-              <SectionHeader title="AI Insights" action={
-                <button onClick={analyzeData} disabled={analyzing} style={{
-                  background: colors.ink, color: colors.accent, fontFamily: font.heading,
-                  fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '8px 20px',
-                  borderRadius: radius.pill, border: 'none', cursor: analyzing ? 'not-allowed' : 'pointer',
-                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                  opacity: analyzing ? 0.5 : 1,
-                }}>
-                  {analyzing ? 'Analyzing...' : 'Re-analyze'}
-                </button>
-              } />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-                {/* Summary */}
-                <div style={{
-                  background: colors.ink, borderRadius: radius['3xl'], padding: 32,
-                  borderLeft: `4px solid ${colors.accent}`, boxShadow: shadow.card,
-                }}>
-                  <div style={{
-                    fontFamily: font.mono, fontSize: fontSize.xs, fontWeight: fontWeight.bold,
-                    letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.accent, marginBottom: 12,
-                  }}>Summary</div>
-                  <div style={{ fontSize: fontSize.xl, color: colors.paper, lineHeight: 1.7 }}>{analysis.summary}</div>
-                </div>
-
-                {/* 3 Things Working Well */}
-                <div>
-                  <div style={{
-                    fontFamily: font.mono, fontSize: fontSize.xs, fontWeight: fontWeight.bold,
-                    letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.success, marginBottom: 14,
-                  }}>3 Things Working Well</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                    {analysis.working.map((w, i) => (
-                      <div key={i} style={{
-                        background: colors.ink, borderRadius: radius['3xl'], padding: '24px 24px 20px',
-                        borderLeft: `4px solid ${colors.accent}`, boxShadow: shadow.card,
-                        display: 'flex', flexDirection: 'column',
-                      }}>
-                        <div style={{
-                          fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md,
-                          textTransform: 'uppercase', color: colors.paper, marginBottom: 8,
-                        }}>{w.title}</div>
-                        <div style={{
-                          fontSize: fontSize.body, color: colors.whiteAlpha70, lineHeight: 1.6, marginBottom: 16, flex: 1,
-                        }}>{w.insight}</div>
-                        <button
-                          onClick={() => copyPrompt(w.attomikPrompt, `w-${i}`)}
-                          style={{
-                            background: copied === `w-${i}` ? colors.success : colors.accent,
-                            color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.bold,
-                            fontSize: fontSize.xs, padding: '8px 16px', borderRadius: radius.pill,
-                            border: 'none', cursor: 'pointer', textTransform: 'uppercase',
-                            letterSpacing: letterSpacing.wide, alignSelf: 'flex-start',
-                          }}
-                        >
-                          {copied === `w-${i}` ? 'Copied!' : '\u2192 Use in Attomik'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3 Opportunities */}
-                <div>
-                  <div style={{
-                    fontFamily: font.mono, fontSize: fontSize.xs, fontWeight: fontWeight.bold,
-                    letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.warning, marginBottom: 14,
-                  }}>3 Opportunities</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                    {analysis.opportunities.map((o, i) => {
-                      const badge = actionBadgeStyle(o.action)
-                      return (
-                        <div key={i} style={{
-                          background: colors.cream, borderRadius: radius['3xl'], padding: '24px 24px 20px',
-                          borderLeft: `4px solid ${colors.warning}`, position: 'relative',
-                          display: 'flex', flexDirection: 'column',
-                        }}>
-                          <div style={{
-                            position: 'absolute', top: 16, right: 16,
-                            background: badge.bg, color: badge.color,
-                            fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize['2xs'],
-                            padding: '3px 10px', borderRadius: radius.pill, textTransform: 'uppercase',
-                            letterSpacing: letterSpacing.wide,
-                          }}>{o.action}</div>
-                          <div style={{
-                            fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md,
-                            textTransform: 'uppercase', color: colors.ink, marginBottom: 8, paddingRight: 80,
-                          }}>{o.title}</div>
-                          <div style={{
-                            fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6, marginBottom: 12, flex: 1,
-                          }}>{o.insight}</div>
-                          <div style={{
-                            fontSize: fontSize.body, color: colors.ink, fontWeight: fontWeight.semibold,
-                            background: colors.paper, padding: '10px 14px', borderRadius: radius.lg,
-                            border: `1px solid ${colors.border}`,
-                          }}>
-                            {o.recommendation}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ═══ SECTION 5 — CREATIVE PERFORMANCE TABLE ═══ */}
+      {/* ═══ CREATIVE PERFORMANCE TABLE ═══ */}
       {hasData && aggRows.length > 0 && (
         <div style={{ marginBottom: 48 }}>
           <SectionHeader title="Creative Performance" />
-
-          <div style={{
-            borderRadius: radius['3xl'], border: `1px solid ${colors.border}`,
-            overflow: 'hidden', boxShadow: shadow.card,
-          }}>
+          <div style={{ borderRadius: radius['3xl'], border: `1px solid ${colors.border}`, overflow: 'hidden', boxShadow: shadow.card }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: colors.cream }}>
-                    <th style={{
-                      textAlign: 'left', padding: '13px 16px', minWidth: 300,
-                      fontFamily: font.heading, fontWeight: fontWeight.heading,
-                      textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                      fontSize: fontSize.xs, color: colors.muted,
-                      borderBottom: `2px solid ${colors.border}`,
-                      position: 'sticky', top: 0, background: colors.cream, zIndex: 1,
-                    }}>Ad Name</th>
-                    {['Impr', 'Clicks', 'CTR', 'Spend', 'Purch', 'ROAS', 'CPA'].map(h => (
-                      <th key={h} style={{
-                        textAlign: 'right', padding: '13px 16px',
-                        fontFamily: font.heading, fontWeight: fontWeight.heading,
-                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                        fontSize: fontSize.xs, color: colors.muted,
-                        borderBottom: `2px solid ${colors.border}`,
+                    <th style={{ textAlign: 'left', padding: '13px 16px', minWidth: 300, fontFamily: font.heading, fontWeight: fontWeight.heading, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, fontSize: fontSize.xs, color: colors.muted, borderBottom: `2px solid ${colors.border}`, position: 'sticky', top: 0, background: colors.cream, zIndex: 1 }}>Ad Name</th>
+                    {([
+                      { label: 'Impr', key: 'impressions' },
+                      { label: 'Clicks', key: 'clicks' },
+                      { label: 'CTR', key: 'ctr' },
+                      { label: 'Spend', key: 'spend' },
+                      { label: 'Purch', key: 'purchases' },
+                      { label: 'ROAS', key: 'roas' },
+                      { label: 'CPA', key: 'cpa' },
+                    ]).map(h => (
+                      <th key={h.key} onClick={() => toggleSort(h.key)} style={{
+                        textAlign: 'right', padding: '13px 16px', fontFamily: font.heading, fontWeight: fontWeight.heading,
+                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide, fontSize: fontSize.xs,
+                        color: sortColumn === h.key ? colors.ink : colors.muted, borderBottom: `2px solid ${colors.border}`,
                         position: 'sticky', top: 0, background: colors.cream, zIndex: 1,
-                        whiteSpace: 'nowrap',
-                      }}>{h}</th>
+                        whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', transition: 'color 0.15s',
+                      }}>{h.label}{sortArrow(h.key)}</th>
                     ))}
-                    <th style={{
-                      textAlign: 'right', padding: '13px 16px',
-                      fontFamily: font.heading, fontWeight: fontWeight.heading,
-                      fontSize: fontSize.xs, color: colors.muted,
-                      borderBottom: `2px solid ${colors.border}`,
-                      position: 'sticky', top: 0, background: colors.cream, zIndex: 1,
-                    }}></th>
+                    <th style={{ textAlign: 'right', padding: '13px 16px', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xs, color: colors.muted, borderBottom: `2px solid ${colors.border}`, position: 'sticky', top: 0, background: colors.cream, zIndex: 1 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {aggRows.map((r, i) => {
+                  {sortedAggRows.map((r, i) => {
                     const creative = parseCreativeType(r.ad_name)
                     return (
-                      <tr key={i} style={{
-                        borderBottom: `1px solid ${colors.border}`,
-                        background: i % 2 === 0 ? colors.paper : colors.gray100,
-                      }}>
+                      <tr key={i} style={{ borderBottom: `1px solid ${colors.border}`, background: i % 2 === 0 ? colors.paper : colors.gray100 }}>
                         <td style={{ padding: '13px 16px', minWidth: 300 }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             {r.creative_image_url && (
-                              <img
-                                src={r.creative_image_url}
-                                alt=""
-                                style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: radius.lg, flexShrink: 0, border: `1px solid ${colors.border}` }}
-                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                              />
+                              <img src={r.creative_image_url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: radius.lg, flexShrink: 0, border: `1px solid ${colors.border}` }}
+                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
                             )}
                             <div>
                               <div style={{ fontSize: fontSize.body, color: colors.ink, lineHeight: 1.4 }}>{r.ad_name}</div>
-                              {r.creative_title && (
-                                <div style={{ fontSize: fontSize.sm, color: colors.muted, marginTop: 2, fontStyle: 'italic' }}>"{r.creative_title}"</div>
-                              )}
-                              {r.creative_body && (
-                                <div style={{
-                                  fontSize: fontSize.xs, color: colors.muted, marginTop: 4, lineHeight: 1.5,
-                                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
-                                  overflow: 'hidden', maxWidth: 320,
-                                }}>{r.creative_body}</div>
-                              )}
-                              {creative && (
-                                <span style={{
-                                  fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
-                                  background: creative.color, color: colors.ink,
-                                  padding: '2px 8px', borderRadius: radius.pill,
-                                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                                  whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4,
-                                }}>{creative.label}</span>
-                              )}
-                              {r.creative_cta && (
-                                <span style={{
-                                  fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
-                                  background: colors.cream, color: colors.muted,
-                                  padding: '2px 8px', borderRadius: radius.pill,
-                                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                                  whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4,
-                                }}>{r.creative_cta.replace(/_/g, ' ')}</span>
-                              )}
+                              {r.creative_title && <div style={{ fontSize: fontSize.sm, color: colors.muted, marginTop: 2, fontStyle: 'italic' }}>"{r.creative_title}"</div>}
+                              {r.creative_body && <div style={{ fontSize: fontSize.xs, color: colors.muted, marginTop: 4, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', maxWidth: 320 }}>{r.creative_body}</div>}
+                              {creative && <span style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.bold, background: creative.color, color: colors.ink, padding: '2px 8px', borderRadius: radius.pill, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4 }}>{creative.label}</span>}
+                              {r.creative_cta && <span style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.bold, background: colors.cream, color: colors.muted, padding: '2px 8px', borderRadius: radius.pill, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4 }}>{r.creative_cta.replace(/_/g, ' ')}</span>}
                             </div>
                           </div>
                         </td>
@@ -936,25 +1318,10 @@ export default function InsightsPage() {
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>{r.ctr.toFixed(2)}%</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>${r.spend.toFixed(2)}</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>{r.purchases}</td>
-                        <td style={{
-                          padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption,
-                          fontWeight: fontWeight.bold, color: roasColor(r.roas, r.purchases),
-                        }}>{r.roas.toFixed(2)}x</td>
+                        <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold, color: roasColor(r.roas, r.purchases) }}>{r.roas.toFixed(2)}x</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>{r.cpa > 0 ? `$${r.cpa.toFixed(2)}` : '-'}</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            {r.roas >= 2 && (
-                              <button
-                                onClick={() => copyPrompt(`Scale budget on "${r.ad_name}" — ROAS ${r.roas.toFixed(2)}x with ${r.purchases} purchases`, `scale-${i}`)}
-                                style={{ ...btnSmall, fontSize: fontSize['2xs'], padding: '4px 10px', background: copied === `scale-${i}` ? colors.success : colors.ink, color: copied === `scale-${i}` ? colors.paper : colors.accent }}
-                              >{copied === `scale-${i}` ? '\u2713' : 'Scale \u2191'}</button>
-                            )}
-                            {r.roas < 1 && r.spend > 0 && (
-                              <button
-                                onClick={() => copyPrompt(`Pause "${r.ad_name}" — spent $${r.spend.toFixed(2)} with ROAS ${r.roas.toFixed(2)}x`, `pause-${i}`)}
-                                style={{ ...btnSmall, fontSize: fontSize['2xs'], padding: '4px 10px', background: copied === `pause-${i}` ? colors.danger : colors.ink, color: copied === `pause-${i}` ? colors.paper : colors.accent }}
-                              >{copied === `pause-${i}` ? '\u2713' : 'Pause'}</button>
-                            )}
                             <button
                               onClick={() => copyPrompt(`Generate a creative inspired by "${r.ad_name}" which has ${r.impressions.toLocaleString()} impressions, ${r.clicks} clicks, and ${r.roas.toFixed(2)}x ROAS. Match the style and angle that made this ad perform.`, `inspire-${i}`)}
                               style={{ ...btnSmall, fontSize: fontSize['2xs'], padding: '4px 10px', background: copied === `inspire-${i}` ? colors.success : colors.ink, color: copied === `inspire-${i}` ? colors.paper : colors.accent }}
@@ -971,65 +1338,36 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ═══ SECTION 6 — DATA MANAGEMENT (collapsed) ═══ */}
+      {/* ═══ DATA MANAGEMENT (collapsed) ═══ */}
       <details style={{ marginTop: 48 }}>
         <summary style={{
           fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold,
           letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted,
           cursor: 'pointer', userSelect: 'none' as const, padding: '16px 0',
           borderTop: `1px solid ${colors.border}`,
-        }}>Data management ▾</summary>
+        }}>Data management &#x25BE;</summary>
         <div style={{ paddingTop: 24 }}>
-
-          {/* Upload history */}
           {uploads.length > 0 && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{
-                  fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold,
-                  letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted,
-                }}>Sync History</div>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted }}>Sync History</div>
                 {!purgeConfirm ? (
-                  <button onClick={() => setPurgeConfirm(true)} style={{
-                    background: 'transparent', color: colors.danger,
-                    fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
-                    padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer',
-                    border: `1px solid ${colors.dangerLight}`, textTransform: 'uppercase',
-                    letterSpacing: letterSpacing.wide,
-                  }}>Purge all data</button>
+                  <button onClick={() => setPurgeConfirm(true)} style={{ background: 'transparent', color: colors.danger, fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer', border: `1px solid ${colors.dangerLight}`, textTransform: 'uppercase', letterSpacing: letterSpacing.wide }}>Purge all data</button>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: fontSize.caption, color: colors.muted }}>
-                      Are you sure? This deletes all imported data for this brand.
-                    </span>
-                    <button onClick={purgeData} disabled={purging} style={{
-                      background: colors.danger, color: colors.paper,
-                      fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
-                      padding: '5px 14px', borderRadius: radius.pill, border: 'none', cursor: 'pointer',
-                      textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                      opacity: purging ? 0.5 : 1,
-                    }}>{purging ? 'Deleting...' : 'Yes, delete all'}</button>
-                    <button onClick={() => setPurgeConfirm(false)} style={{
-                      background: 'transparent', color: colors.muted,
-                      fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
-                      padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer',
-                      border: `1px solid ${colors.border}`, textTransform: 'uppercase',
-                      letterSpacing: letterSpacing.wide,
-                    }}>Cancel</button>
+                    <span style={{ fontSize: fontSize.caption, color: colors.muted }}>Are you sure? This deletes all imported data for this brand.</span>
+                    <button onClick={purgeData} disabled={purging} style={{ background: colors.danger, color: colors.paper, fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '5px 14px', borderRadius: radius.pill, border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: letterSpacing.wide, opacity: purging ? 0.5 : 1 }}>{purging ? 'Deleting...' : 'Yes, delete all'}</button>
+                    <button onClick={() => setPurgeConfirm(false)} style={{ background: 'transparent', color: colors.muted, fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer', border: `1px solid ${colors.border}`, textTransform: 'uppercase', letterSpacing: letterSpacing.wide }}>Cancel</button>
                   </div>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {uploads.map(u => (
-                  <div key={u.id} style={{
-                    ...cardStyle, padding: '12px 18px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}>
+                  <div key={u.id} style={{ ...cardStyle, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: colors.ink }}>{u.csv_filename}</div>
                       <div style={{ fontSize: fontSize.sm, color: colors.muted, marginTop: 2 }}>
-                        {u.date_range_start && u.date_range_end ? `${u.date_range_start} → ${u.date_range_end}` : 'No date range'}
-                        {' · '}{u.row_count} rows
+                        {u.date_range_start && u.date_range_end ? `${u.date_range_start} \u2192 ${u.date_range_end}` : 'No date range'}{' \u00b7 '}{u.row_count} rows
                       </div>
                     </div>
                     <div style={{ fontSize: fontSize.xs, color: colors.disabled, fontFamily: font.mono }}>
@@ -1041,7 +1379,6 @@ export default function InsightsPage() {
             </div>
           )}
 
-          {/* CSV upload */}
           <div
             onDragOver={e => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
@@ -1051,16 +1388,12 @@ export default function InsightsPage() {
               ...cardStyle,
               border: dragOver ? `2px dashed ${colors.accent}` : `2px dashed ${colors.border}`,
               background: dragOver ? colors.accentAlpha6 : colors.paper,
-              textAlign: 'center', padding: '40px 24px', cursor: 'pointer',
-              transition: 'all 0.15s',
+              textAlign: 'center', padding: '40px 24px', cursor: 'pointer', transition: 'all 0.15s',
             }}
           >
             <input ref={fileRef} type="file" accept=".csv" onChange={onFileSelect} style={{ display: 'none' }} />
             <div style={{ fontSize: 32, marginBottom: 10 }}>&#8682;</div>
-            <div style={{
-              fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md,
-              textTransform: 'uppercase', letterSpacing: letterSpacing.wider, color: colors.ink, marginBottom: 6,
-            }}>
+            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md, textTransform: 'uppercase', letterSpacing: letterSpacing.wider, color: colors.ink, marginBottom: 6 }}>
               {uploading ? 'Processing...' : 'Drop your Meta Ads export here'}
             </div>
             <div style={{ fontSize: fontSize.body, color: colors.muted }}>
@@ -1069,10 +1402,7 @@ export default function InsightsPage() {
           </div>
 
           {uploadResult && (
-            <div style={{
-              marginTop: 12, padding: '12px 16px', background: colors.accentAlpha8,
-              borderRadius: radius.lg, fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: colors.brandGreen,
-            }}>
+            <div style={{ marginTop: 12, padding: '12px 16px', background: colors.accentAlpha8, borderRadius: radius.lg, fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: colors.brandGreen }}>
               {uploadResult}
             </div>
           )}
