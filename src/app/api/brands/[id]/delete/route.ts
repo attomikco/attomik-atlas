@@ -70,31 +70,77 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
   }
 
-  // Storage cleanup (admin client — the bucket is public but write access
-  // is gated; service-role always works).
-  const { data: images } = await supabaseAdmin.from('brand_images').select('storage_path').eq('brand_id', id)
-  if (images?.length) {
-    const paths = images
-      .map(i => (i as { storage_path?: string }).storage_path)
-      .filter((p): p is string => typeof p === 'string')
-      .map(p => p.replace(/^brand-images\//, ''))
-    if (paths.length) await supabaseAdmin.storage.from('brand-images').remove(paths)
+  // Collect storage paths from every brand-scoped bucket in parallel before
+  // we delete any rows. Three buckets carry files tied to a brand:
+  //   brand-images     — every row in brand_images
+  //   brand-assets     — every row in brand_assets (logos, PDFs) + saved-
+  //                      creative thumbnails under thumbnails/<brand_id>/
+  //   campaign-assets  — every row in campaign_assets (saved creative PNGs)
+  const [
+    brandImagesRes,
+    brandAssetsRes,
+    campaignAssetsRes,
+    thumbFolderRes,
+  ] = await Promise.all([
+    supabaseAdmin.from('brand_images').select('storage_path').eq('brand_id', id),
+    supabaseAdmin.from('brand_assets').select('storage_path').eq('brand_id', id),
+    supabaseAdmin.from('campaign_assets').select('storage_path').eq('brand_id', id),
+    supabaseAdmin.storage.from('brand-assets').list(`thumbnails/${id}`),
+  ])
+
+  const errs: string[] = []
+  const pathsFrom = (rows: unknown, stripPrefix?: string): string[] => {
+    if (!Array.isArray(rows)) return []
+    return (rows as Array<{ storage_path?: string | null }>)
+      .map(r => r.storage_path)
+      .filter((p): p is string => typeof p === 'string' && p.length > 0)
+      .map(p => (stripPrefix ? p.replace(new RegExp(`^${stripPrefix}`), '') : p))
   }
 
-  // Cascade row deletes under admin so RLS can't silently swallow them.
-  const errs: string[] = []
-  const gc = await supabaseAdmin.from('generated_content').delete().eq('brand_id', id)
-  if (gc.error) errs.push(`generated_content: ${gc.error.message}`)
-  const fs = await supabaseAdmin.from('funnel_starts').delete().eq('brand_id', id)
-  if (fs.error && !/relation .* does not exist/i.test(fs.error.message)) errs.push(`funnel_starts: ${fs.error.message}`)
-  const bi = await supabaseAdmin.from('brand_images').delete().eq('brand_id', id)
-  if (bi.error) errs.push(`brand_images: ${bi.error.message}`)
-  const cp = await supabaseAdmin.from('campaigns').delete().eq('brand_id', id)
-  if (cp.error) errs.push(`campaigns: ${cp.error.message}`)
-  // brand_members rows for this brand get dropped via the FK on delete cascade
-  // declared in 20260413_brand_teams.sql — no explicit delete needed.
-  const br = await supabaseAdmin.from('brands').delete().eq('id', id)
-  if (br.error) errs.push(`brands: ${br.error.message}`)
+  const brandImagePaths = pathsFrom(brandImagesRes.data, 'brand-images/')
+  if (brandImagePaths.length) {
+    const r = await supabaseAdmin.storage.from('brand-images').remove(brandImagePaths)
+    if (r.error) errs.push(`brand-images storage: ${r.error.message}`)
+  }
+
+  const brandAssetPaths = pathsFrom(brandAssetsRes.data)
+  if (brandAssetPaths.length) {
+    const r = await supabaseAdmin.storage.from('brand-assets').remove(brandAssetPaths)
+    if (r.error) errs.push(`brand-assets storage: ${r.error.message}`)
+  }
+
+  // Thumbnails live under thumbnails/<brand_id>/<creative_id>.png regardless
+  // of whether saved_creatives.thumbnail_url has been populated yet.
+  const thumbFiles = thumbFolderRes.data
+  if (Array.isArray(thumbFiles) && thumbFiles.length) {
+    const thumbPaths = thumbFiles.map(f => `thumbnails/${id}/${f.name}`)
+    const r = await supabaseAdmin.storage.from('brand-assets').remove(thumbPaths)
+    if (r.error) errs.push(`thumbnails storage: ${r.error.message}`)
+  }
+
+  const campaignAssetPaths = pathsFrom(campaignAssetsRes.data)
+  if (campaignAssetPaths.length) {
+    const r = await supabaseAdmin.storage.from('campaign-assets').remove(campaignAssetPaths)
+    if (r.error) errs.push(`campaign-assets storage: ${r.error.message}`)
+  }
+
+  // Row cleanup. The following tables have ON DELETE CASCADE on brand_id
+  // and get swept by the brands delete at the end — no explicit delete:
+  //   brand_assets, brand_images, brand_voice_examples, campaigns,
+  //   campaign_assets, generated_content, email_templates, store_themes,
+  //   brand_members, brand_invites, brand_insights, brand_insight_rows.
+  //
+  // These need explicit deletes because their FK is not ON DELETE CASCADE
+  // (or the table isn't in repo migrations and its cascade can't be verified):
+  const pushError = (label: string, r: { error: { message?: string } | null }) => {
+    if (!r.error) return
+    if (/relation .* does not exist/i.test(r.error.message ?? '')) return
+    errs.push(`${label}: ${r.error.message}`)
+  }
+  pushError('email_sends',     await supabaseAdmin.from('email_sends').delete().eq('brand_id', id))
+  pushError('funnel_starts',   await supabaseAdmin.from('funnel_starts').delete().eq('brand_id', id))
+  pushError('saved_creatives', await supabaseAdmin.from('saved_creatives').delete().eq('brand_id', id))
+  pushError('brands',          await supabaseAdmin.from('brands').delete().eq('id', id))
 
   if (errs.length) return NextResponse.json({ error: errs.join('; ') }, { status: 500 })
   return NextResponse.json({ success: true })
