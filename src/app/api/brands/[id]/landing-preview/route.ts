@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Brand, FontStyle } from '@/types'
 import {
-  generateLandingPageHtml,
+  buildLandingPrompts,
+  generateLandingPageFromPrompts,
+  hashLandingPrompts,
   LandingBriefData,
   LandingStructuredContent,
   LandingPageGenerationError,
@@ -63,18 +65,21 @@ export async function GET(
   if (!brandRow) return new NextResponse('Not found', { status: 404 })
 
   const searchParams = req.nextUrl.searchParams
+  const urlBrief = decodeBriefParam(searchParams.get('brief'))
 
-  let structured = decodeBriefParam(searchParams.get('brief'))
-  if (!structured) {
-    const { data: contentRow } = await supabase
-      .from('generated_content').select('content')
-      .eq('brand_id', id).eq('type', 'landing_brief')
-      .order('created_at', { ascending: false }).limit(1).maybeSingle()
-    if (contentRow?.content) {
-      try { structured = JSON.parse(contentRow.content) as LandingStructuredContent }
-      catch { return new NextResponse('Invalid stored brief', { status: 500 }) }
-    }
+  const { data: briefRow } = await supabase
+    .from('generated_content')
+    .select('id, content, generated_html, generated_html_hash')
+    .eq('brand_id', id).eq('type', 'landing_brief')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle()
+
+  let dbBrief: LandingStructuredContent | null = null
+  if (briefRow?.content) {
+    try { dbBrief = JSON.parse(briefRow.content) as LandingStructuredContent }
+    catch { return new NextResponse('Invalid stored brief', { status: 500 }) }
   }
+
+  const structured = urlBrief ?? dbBrief
   if (!structured) return new NextResponse('No brief', { status: 404 })
 
   const brand = applyColorFontOverrides(brandRow as Brand, searchParams)
@@ -84,12 +89,32 @@ export async function GET(
     structured_content: structured,
   }
 
+  const prompts = buildLandingPrompts({ brandData: brand, briefData })
+  const hash = hashLandingPrompts(prompts)
+
+  if (briefRow?.generated_html && briefRow.generated_html_hash === hash) {
+    return new NextResponse(briefRow.generated_html, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Landing-Cache': 'hit',
+      },
+    })
+  }
+
   try {
-    const html = await generateLandingPageHtml({ brandData: brand, briefData })
+    const html = await generateLandingPageFromPrompts(prompts)
+    if (briefRow?.id) {
+      await supabase
+        .from('generated_content')
+        .update({ generated_html: html, generated_html_hash: hash })
+        .eq('id', briefRow.id)
+    }
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
+        'X-Landing-Cache': 'miss',
       },
     })
   } catch (err) {
