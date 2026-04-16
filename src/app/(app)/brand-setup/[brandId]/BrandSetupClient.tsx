@@ -1305,13 +1305,13 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: 'var(--muted)' }}>optional</span>
         </label>
         <input
-          type="password"
+          type="text"
           value={metaToken}
           onChange={e => { setMetaToken(e.target.value); setIsDirty(true) }}
           placeholder="EAAxxxxxxxxxxxxx..."
-          style={{ ...inputStyle, marginBottom: 12 }}
+          style={{ ...inputStyle, marginBottom: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
           onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-          onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+          autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
         />
 
         <label style={labelStyle}>Ad Account ID</label>
@@ -1322,7 +1322,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           placeholder="663039913130424"
           style={{ ...inputStyle, marginBottom: 12 }}
           onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-          onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+          autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
         />
 
         <label style={labelStyle}>Facebook Page ID</label>
@@ -1333,7 +1333,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
           placeholder="e.g. 123456789"
           style={{ ...inputStyle, marginBottom: 6 }}
           onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-          onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+          autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
         />
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 0 }}>
           Required to launch ads. Find it on your Facebook Page → About → Page transparency → Page ID. Ad account ID has no "act_" prefix.
@@ -1355,13 +1355,13 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         </label>
         <div style={{ position: 'relative' }}>
           <input
-            type="password"
+            type="text"
             value={klaviyoKey}
             onChange={e => { setKlaviyoKey(e.target.value); setIsDirty(true) }}
             placeholder="pk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-            style={{ ...inputStyle, paddingRight: 100 }}
+            style={{ ...inputStyle, paddingRight: 100, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
             onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+            autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
           />
           {klaviyoKey && (
             <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 700, color: '#00a86b' }}>
@@ -1387,7 +1387,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               placeholder={`Crafted with care — ${brand.name}`}
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+              autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
             />
             <div style={helperStyle}>Short brand line rendered above the footer links. Under 50 characters.</div>
           </div>
@@ -1400,7 +1400,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               placeholder="https://instagram.com/yourbrand"
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+              autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
             />
           </div>
 
@@ -1412,7 +1412,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               placeholder={`${brand.website || 'https://yourbrand.com'}/policies/privacy-policy`}
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+              autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
             />
           </div>
 
@@ -1424,7 +1424,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               placeholder={`${brand.website || 'https://yourbrand.com'}/policies/refund-policy`}
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+              autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
             />
           </div>
 
@@ -1436,7 +1436,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               placeholder={`${brand.website || 'https://yourbrand.com'}/policies/terms-of-service`}
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+              autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
             />
           </div>
 
@@ -1448,7 +1448,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               placeholder="123 Main St, City, State ZIP"
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+              autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
             />
             <div style={helperStyle}>Required for CAN-SPAM compliance. All commercial emails must include a physical mailing address.</div>
           </div>
@@ -1461,7 +1461,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
               placeholder="You're receiving this because you signed up for updates. Unsubscribe anytime."
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+              autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
             />
           </div>
 
@@ -1481,7 +1481,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                     placeholder="Label"
                     style={{ ...inputStyle, flex: 1 }}
                     onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-                    onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+                    autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
                   />
                   <input
                     value={link.url}
@@ -1494,7 +1494,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
                     placeholder="https://..."
                     style={{ ...inputStyle, flex: 2 }}
                     onFocus={e => { e.currentTarget.style.borderColor = '#000' }}
-                    onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
+                    autoComplete="off" data-lpignore="true" data-1p-ignore onBlur={e => { e.currentTarget.style.borderColor = '#e0e0e0' }}
                   />
                   <button
                     type="button"
