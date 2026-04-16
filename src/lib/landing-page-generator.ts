@@ -43,6 +43,16 @@ export interface LandingBriefData {
   structured_content?: LandingStructuredContent | null
 }
 
+export type LandingImageRole = 'product' | 'lifestyle' | 'logo' | 'logo_light'
+
+export interface LandingImage {
+  url: string
+  role: LandingImageRole
+  width?: number | null
+  height?: number | null
+  alt?: string | null
+}
+
 export type LandingDesignTokens = {
   colors: typeof colors
   font: typeof font
@@ -70,6 +80,7 @@ export interface GenerateLandingPageOptions {
   briefData: LandingBriefData
   designTokens?: LandingDesignTokens
   voiceExamples?: BrandVoiceExample[]
+  images?: LandingImage[]
   maxTokens?: number
 }
 
@@ -189,7 +200,78 @@ RULES:
 - Use generous section padding: at least ${tokens.spacing[16]}px vertical on desktop.`
 }
 
-function buildSystemPrompt(brand: Brand, tokens: LandingDesignTokens, voiceExamples?: BrandVoiceExample[]): string {
+function orientationLabel(width?: number | null, height?: number | null): string {
+  if (!width || !height) return ''
+  if (width > height * 1.2) return 'landscape'
+  if (height > width * 1.2) return 'portrait'
+  return 'square'
+}
+
+function describeImage(img: LandingImage, index: number): string {
+  const dims = img.width && img.height ? `${img.width}×${img.height}` : 'unknown size'
+  const orient = orientationLabel(img.width, img.height)
+  const orientTag = orient ? `, ${orient}` : ''
+  const alt = img.alt ? ` — ${img.alt}` : ''
+  return `  ${index}. ${img.url} (${dims}${orientTag})${alt}`
+}
+
+function buildImageryBlock(images?: LandingImage[]): string {
+  if (!images?.length) {
+    return `IMAGERY:
+This brand has no images available yet. Do NOT add any <img> tags.
+Do NOT reference external image URLs. Do NOT use placeholder strings
+like "your-image.jpg", "/hero.jpg", "https://placeholder...", Unsplash, or Pexels.
+Design a strong image-free page using typography, color blocks, CSS shapes, and generous whitespace.`
+  }
+
+  const logo = images.find(i => i.role === 'logo')
+  const logoLight = images.find(i => i.role === 'logo_light')
+  const products = images.filter(i => i.role === 'product')
+  const lifestyle = images.filter(i => i.role === 'lifestyle')
+
+  const lines: string[] = ['IMAGERY — use these real brand image URLs, do not invent any others:']
+
+  if (logo) {
+    const dims = logo.width && logo.height ? ` (${logo.width}×${logo.height})` : ''
+    lines.push(`\nLOGO (color, use on light backgrounds):\n  ${logo.url}${dims}`)
+  }
+  if (logoLight) {
+    const dims = logoLight.width && logoLight.height ? ` (${logoLight.width}×${logoLight.height})` : ''
+    lines.push(`\nLOGO (white, use on dark backgrounds):\n  ${logoLight.url}${dims}`)
+  } else if (logo) {
+    lines.push(`\nNo white-variant logo available. On dark backgrounds, apply CSS filter: brightness(0) invert(1) to the color logo.`)
+  }
+
+  if (products.length) {
+    lines.push('\nPRODUCT IMAGES (use in hero, product showcase, or benefit sections — these are hero-worthy product shots):')
+    products.forEach((img, i) => lines.push(describeImage(img, i + 1)))
+  }
+  if (lifestyle.length) {
+    lines.push('\nLIFESTYLE IMAGES (use in hero, social proof, editorial breaks, or backgrounds):')
+    lifestyle.forEach((img, i) => lines.push(describeImage(img, i + 1)))
+  }
+
+  lines.push(`
+IMAGERY RULES (hard constraints):
+- Embed images via <img src="..."> using the EXACT URLs above. Copy them verbatim.
+- NEVER invent, guess, or modify an image URL. NEVER use placeholders like "your-image.jpg",
+  "/hero.jpg", "https://placeholder...", Unsplash, Pexels, or any stock source.
+- If you need an image for a section and none of the above fits, leave that section image-less
+  rather than fabricating a URL.
+- Prefer landscape images for full-bleed hero/banner slots, square for product cards,
+  portrait for sidebar or inset treatments. Match orientation to slot when you can.
+- Always include descriptive alt text on every <img>.
+- Use the color logo on light backgrounds; use the white logo (or the invert filter) on dark backgrounds.`)
+
+  return lines.join('\n')
+}
+
+function buildSystemPrompt(
+  brand: Brand,
+  tokens: LandingDesignTokens,
+  voiceExamples?: BrandVoiceExample[],
+  images?: LandingImage[],
+): string {
   const voiceBlock = voiceExamples?.length
     ? `\nVOICE REFERENCE:\n${voiceExamples
         .map(e => `  [${e.category}] "${e.content}"${e.notes ? ` — ${e.notes}` : ''}`)
@@ -202,6 +284,8 @@ You pair a sharp copywriting instinct with a clean, modern, editorial design aes
 
 ${buildBrandIdentityBlock(brand)}
 ${voiceBlock}
+
+${buildImageryBlock(images)}
 
 ${buildDesignSystemBlock(tokens)}
 
@@ -303,12 +387,13 @@ export function buildLandingPrompts({
   briefData,
   designTokens = defaultDesignTokens,
   voiceExamples,
+  images,
 }: Omit<GenerateLandingPageOptions, 'maxTokens'>): LandingPrompts {
   if (!brandData?.name) {
     throw new LandingPageGenerationError('brandData.name is required')
   }
   return {
-    system: buildSystemPrompt(brandData, designTokens, voiceExamples),
+    system: buildSystemPrompt(brandData, designTokens, voiceExamples, images),
     user: buildUserPrompt(briefData, brandData.name),
   }
 }
