@@ -842,12 +842,14 @@ ${on('09') ? `
   </a>
   ${footer.tagline ? `<p style="margin:0 0 22px;font-family:${hf};font-size:12px;font-weight:700;color:${palette.darkText};letter-spacing:2px;text-transform:${ht};text-align:center;">${footer.tagline}</p>` : ''}
   ${footer.instagramUrl ? `<p style="margin:0 0 20px;text-align:center;"><a href="${footer.instagramUrl}" style="font-family:${hf};font-size:11px;font-weight:700;color:${palette.darkText};text-decoration:none;letter-spacing:2px;text-transform:${ht};">Instagram</a></p>` : ''}
-  <p style="margin:0;text-align:center;">
-    <a href="${site}/collections/all" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">Shop</a>
-    <a href="${site}/pages/about" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">About</a>
-    <a href="${site}/pages/faq" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">FAQs</a>
-    <a href="${site}/pages/contact" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">Contact</a>
-  </p>
+  ${(() => {
+    const navLinks = footer.footerLinks.filter(l => l.label.trim() && l.url.trim())
+    if (navLinks.length === 0) return ''
+    const anchors = navLinks
+      .map(l => `<a href="${l.url}" style="font-family:${hf};font-size:12px;font-weight:600;color:${palette.darkText};text-decoration:none;padding:0 8px;">${l.label}</a>`)
+      .join('')
+    return `<p style="margin:0;text-align:center;">${anchors}</p>`
+  })()}
 </td></tr>
 <tr><td style="padding:20px 24px 0;background-color:${palette.darkBg};">
   <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="height:1px;background:rgba(${hexToRgbStr(palette.darkText)},0.15);font-size:1px;line-height:1px;">&nbsp;</td></tr></table>
