@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { BrandImage } from '@/types'
 import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
 import { buildOrderedImagePool, filterByOrientation, pickImageForTemplate, pickSecondImage } from '@/lib/image-helpers'
-import { Download, Sparkles, Loader2, Check, Wand2, ChevronDown } from 'lucide-react'
+import { Download, Sparkles, Loader2, Check, Wand2 } from 'lucide-react'
 import { TextPosition } from './templates/types'
 import { Callout } from './templates/types'
 import { TEMPLATES, SIZES } from './templates/registry'
@@ -18,63 +18,7 @@ import PreviewCanvas from './preview/PreviewCanvas'
 import VariationStrip from './preview/VariationStrip'
 import DraftStrip from './preview/DraftStrip'
 import MetaLaunchModal from './MetaLaunchModal'
-import { colors, font, fontSize, fontWeight, spacing, radius, shadow, transition, letterSpacing } from '@/lib/design-tokens'
-
-function CollapsibleSection({
-  title,
-  defaultOpen = true,
-  children,
-}: {
-  title: string
-  defaultOpen?: boolean
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <section style={{
-      background: colors.paper,
-      borderRadius: radius.xl,
-      boxShadow: shadow.card,
-      overflow: 'hidden',
-    }}>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: `${spacing[3]}px ${spacing[4]}px`,
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          fontFamily: font.mono,
-          fontSize: fontSize.sm,
-          fontWeight: fontWeight.bold,
-          textTransform: 'uppercase',
-          letterSpacing: letterSpacing.wide,
-          color: colors.ink,
-          userSelect: 'none',
-        }}
-      >
-        <span>{title}</span>
-        <ChevronDown
-          size={16}
-          style={{
-            transform: open ? 'rotate(180deg)' : 'rotate(0)',
-            transition: transition.base,
-          }}
-        />
-      </button>
-      {open && (
-        <div style={{ padding: spacing[4], borderTop: `1px solid ${colors.border}` }}>
-          {children}
-        </div>
-      )}
-    </section>
-  )
-}
+import { colors, font } from '@/lib/design-tokens'
 
 export default function CreativeBuilder({
   brands,
@@ -872,24 +816,12 @@ FB_DESCRIPTION: <under 12 words>`,
         )}
       </div>
 
-      {/* ── MAIN AREA ──
-          Mobile: single column — preview → images → style → copy (stacked, scrollable).
-          Desktop (≥768px): two columns — sticky preview on the left, collapsible
-          sidebar on the right. cs-* classes carry the responsive + sticky rules
-          because inline styles can't express media queries. */}
-      <style>{`
-        @media (min-width: 768px) {
-          .cs-main { flex-direction: row; }
-          .cs-preview-col { flex: 1 1 60%; max-width: 60%; }
-          .cs-sidebar-col { flex: 0 0 40%; max-width: 520px; }
-          .cs-preview-sticky { position: sticky; top: ${spacing[3]}px; }
-        }
-      `}</style>
-      <div className="cs-main" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      {/* ── MAIN AREA ── */}
+      <div className="flex flex-col md:flex-row" style={{ alignItems: 'flex-start' }}>
 
-        {/* ── PREVIEW COLUMN ── */}
-        <div ref={leftPanelRef} className="cs-preview-col" style={{ width: '100%', minWidth: 0 }}>
-          <div className="cs-preview-sticky" style={{ background: colors.paper, borderRadius: radius.xl, margin: spacing[3], padding: spacing[4], boxShadow: shadow.card }}>
+        {/* ── PREVIEW PANEL ── */}
+        <div ref={leftPanelRef} className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16 }}>
             <PreviewCanvas
               templateLabel={template.label}
               size={size}
@@ -964,194 +896,194 @@ FB_DESCRIPTION: <under 12 words>`,
           </div>
         </div>
 
-        {/* ── SIDEBAR COLUMN ──
-            Mobile: stacks under the preview. Desktop: 40% fixed width alongside
-            the sticky preview. Each section is a collapsible card so users can
-            hide panels they aren't actively editing. */}
-        <div className="cs-sidebar-col" style={{ width: '100%', minWidth: 0 }}>
-          <div style={{ margin: spacing[3], display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+        {/* ── IMAGES PANEL ── */}
+        <div className="w-full md:w-auto" style={{ flex: 0.5, minWidth: 0 }}>
+          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
+            {/* Lifestyle first — sets the emotional tone for a creative and is the
+                default pick downstream. Product shots come after as fallback. */}
+            {lifestyleImages.length > 0 && (
+              <>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>LIFESTYLE</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {lifestyleImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {productImages.length > 0 && (
+              <>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: lifestyleImages.length > 0 ? 16 : 0, marginBottom: 8 }}>PRODUCT</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {productImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {otherImages.length > 0 && (
+              <>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>OTHER</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {otherImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {images.length === 0 && (
+              <div style={{ fontSize: 12, color: colors.gray700, textAlign: 'center', padding: '24px 0' }}>No images</div>
+            )}
 
-            <CollapsibleSection title="Images" defaultOpen>
-              {lifestyleImages.length > 0 && (
-                <>
-                  <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: spacing[2] }}>LIFESTYLE</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {lifestyleImages.map(img => (
-                      <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                        style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                        <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              {productImages.length > 0 && (
-                <>
-                  <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginTop: lifestyleImages.length > 0 ? spacing[4] : 0, marginBottom: spacing[2] }}>PRODUCT</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {productImages.map(img => (
-                      <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                        style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                        <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              {otherImages.length > 0 && (
-                <>
-                  <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginTop: spacing[4], marginBottom: spacing[2] }}>OTHER</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {otherImages.map(img => (
-                      <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                        style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                        <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              {images.length === 0 && (
-                <div style={{ fontSize: fontSize.caption, color: colors.gray700, textAlign: 'center', padding: `${spacing[6]}px 0` }}>No images</div>
-              )}
-
-              <div style={{ marginTop: images.length > 0 ? spacing[5] : 0, paddingTop: images.length > 0 ? spacing[4] : 0, borderTop: images.length > 0 ? `1px solid ${colors.blackAlpha8}` : 'none' }}>
-                <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: spacing[1] }}>AI GENERATED</div>
-                <div style={{ fontFamily: font.mono, fontSize: fontSize.xs, color: colors.gray700, lineHeight: 1.4, marginBottom: spacing[3] }}>AI-generated lifestyle scenes — place your product on top</div>
-                <button
-                  onClick={generateImage}
-                  disabled={generatingImage || !brandId}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing[2],
-                    width: '100%', padding: `${spacing[3]}px ${spacing[3]}px`, borderRadius: radius.md,
-                    background: generatingImage ? colors.darkCard : colors.ink, color: colors.white,
-                    fontFamily: font.mono, fontSize: fontSize.sm, fontWeight: fontWeight.bold,
-                    textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                    border: 'none', cursor: generatingImage ? 'default' : 'pointer',
-                    opacity: generatingImage ? 0.7 : 1, marginBottom: spacing[2],
-                  }}
-                >
-                  {generatingImage ? (
-                    <>
-                      <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 size={14} /> Generate Background
-                    </>
-                  )}
-                </button>
-                {generateError && (
-                  <div style={{ fontSize: fontSize.sm, color: colors.dangerAlt, fontFamily: font.mono, marginBottom: spacing[2] }}>{generateError}</div>
+            {/* ── AI GENERATED SECTION ── */}
+            <div style={{ marginTop: images.length > 0 ? 20 : 0, paddingTop: images.length > 0 ? 16 : 0, borderTop: images.length > 0 ? '1px solid rgba(0,0,0,0.08)' : 'none' }}>
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>AI GENERATED</div>
+              <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.gray700, lineHeight: 1.4, marginBottom: 10 }}>AI-generated lifestyle scenes — place your product on top</div>
+              <button
+                onClick={generateImage}
+                disabled={generatingImage || !brandId}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  width: '100%', padding: '10px 12px', borderRadius: 8,
+                  background: generatingImage ? colors.darkCard : colors.ink, color: colors.white,
+                  fontFamily: font.mono, fontSize: 11, fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  border: 'none', cursor: generatingImage ? 'default' : 'pointer',
+                  opacity: generatingImage ? 0.7 : 1, marginBottom: 8,
+                }}
+              >
+                {generatingImage ? (
+                  <>
+                    <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Generating...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 size={14} /> Generate Background
+                  </>
                 )}
-                {generatedImages.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {generatedImages.map(img => (
-                      <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                        style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                        <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Style" defaultOpen>
-              <StylePanel
-                templateId={templateId}
-                brand={brand}
-                textPosition={textPosition}
-                setTextPosition={setTextPosition}
-                imagePosition={imagePosition}
-                setImagePosition={setImagePosition}
-                bgColor={bgColor}
-                updateBgColor={updateBgColor}
-                showOverlay={showOverlay}
-                setShowOverlay={setShowOverlay}
-                overlayOpacity={overlayOpacity}
-                setOverlayOpacity={setOverlayOpacity}
-                textBanner={textBanner}
-                setTextBanner={setTextBanner}
-                textBannerColor={textBannerColor}
-                setTextBannerColor={setTextBannerColor}
-                headlineFont={headlineFont}
-                setHeadlineFont={setHeadlineFont}
-                headlineColor={headlineColor}
-                setHeadlineColor={setHeadlineColor}
-                headlineSizeMul={headlineSizeMul}
-                setHeadlineSizeMul={setHeadlineSizeMul}
-                bodyFont={bodyFont}
-                setBodyFont={setBodyFont}
-                bodyColor={bodyColor}
-                setBodyColor={setBodyColor}
-                bodySizeMul={bodySizeMul}
-                setBodySizeMul={setBodySizeMul}
-                brandColors={brandColors}
-                pill={pill}
-                onReset={handleStyleReset}
-                setHeadlineWeight={setHeadlineWeight}
-                setHeadlineTransform={setHeadlineTransform}
-                setBodyFont2={setBodyFont}
-                setBodyWeight={setBodyWeight}
-                setBodyTransform={setBodyTransform}
-                setBgColor={setBgColor}
-                setHeadlineSizeMul2={setHeadlineSizeMul}
-                setBodySizeMul2={setBodySizeMul}
-                setShowOverlay2={setShowOverlay}
-                setOverlayOpacity2={setOverlayOpacity}
-                setTextBanner2={setTextBanner}
-                ctaColor={ctaColor}
-                setCtaColor={setCtaColor}
-                ctaFontColor={ctaFontColor}
-                setCtaFontColor={setCtaFontColor}
-                ctaSizeMul={ctaSizeMul}
-                setCtaSizeMul={setCtaSizeMul}
-              />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Copy" defaultOpen>
-              <CopyEditor
-                headline={headline}
-                setHeadline={setHeadline}
-                bodyText={bodyText}
-                setBodyText={setBodyText}
-                ctaText={ctaText}
-                setCtaText={setCtaText}
-                showCta={showCta}
-                setShowCta={setShowCta}
-                brandId={brandId}
-                setExportToast={setExportToast}
-                inputCls={inputCls}
-                generateCopy={generateCopy}
-                generating={generating}
-                destinationUrl={destinationUrl}
-                setDestinationUrl={setDestinationUrl}
-                ctaType={ctaType}
-                setCtaType={setCtaType}
-                fbPrimaryText={fbPrimaryText}
-                setFbPrimaryText={setFbPrimaryText}
-                fbHeadline={fbHeadline}
-                setFbHeadline={setFbHeadline}
-                fbDescription={fbDescription}
-                setFbDescription={setFbDescription}
-                brandWebsite={(brand as { website?: string | null } | null)?.website ?? null}
-              />
-
-              {templateId === 'grid' && images.length > 1 && (
-                <div style={{ marginTop: spacing[4] }}>
-                  <label style={{ fontSize: fontSize.xs, color: colors.gray700, textTransform: 'uppercase', letterSpacing: letterSpacing.wider, fontWeight: fontWeight.semibold, display: 'block', marginBottom: spacing[1] }}>Second image</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-                    {images.map(img => (
-                      <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
-                        style={{ aspectRatio: '1', borderRadius: radius.xs, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : colors.border}`, padding: 0, background: 'none', cursor: 'pointer' }}>
-                        <img src={getPublicUrl(img.storage_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                      </button>
-                    ))}
-                  </div>
+              </button>
+              {generateError && (
+                <div style={{ fontSize: 11, color: colors.dangerAlt, fontFamily: font.mono, marginBottom: 8 }}>{generateError}</div>
+              )}
+              {generatedImages.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {generatedImages.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
+                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? '2px solid #00ff97' : 'none', outlineOffset: 2 }}>
+                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  ))}
                 </div>
               )}
-            </CollapsibleSection>
+            </div>
+          </div>
+        </div>
+
+        {/* ── STYLE & COPY PANEL ── */}
+        <div className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16 }}>
+          <StylePanel
+            templateId={templateId}
+            brand={brand}
+            textPosition={textPosition}
+            setTextPosition={setTextPosition}
+            imagePosition={imagePosition}
+            setImagePosition={setImagePosition}
+            bgColor={bgColor}
+            updateBgColor={updateBgColor}
+            showOverlay={showOverlay}
+            setShowOverlay={setShowOverlay}
+            overlayOpacity={overlayOpacity}
+            setOverlayOpacity={setOverlayOpacity}
+            textBanner={textBanner}
+            setTextBanner={setTextBanner}
+            textBannerColor={textBannerColor}
+            setTextBannerColor={setTextBannerColor}
+            headlineFont={headlineFont}
+            setHeadlineFont={setHeadlineFont}
+            headlineColor={headlineColor}
+            setHeadlineColor={setHeadlineColor}
+            headlineSizeMul={headlineSizeMul}
+            setHeadlineSizeMul={setHeadlineSizeMul}
+            bodyFont={bodyFont}
+            setBodyFont={setBodyFont}
+            bodyColor={bodyColor}
+            setBodyColor={setBodyColor}
+            bodySizeMul={bodySizeMul}
+            setBodySizeMul={setBodySizeMul}
+            brandColors={brandColors}
+            pill={pill}
+            onReset={handleStyleReset}
+            setHeadlineWeight={setHeadlineWeight}
+            setHeadlineTransform={setHeadlineTransform}
+            setBodyFont2={setBodyFont}
+            setBodyWeight={setBodyWeight}
+            setBodyTransform={setBodyTransform}
+            setBgColor={setBgColor}
+            setHeadlineSizeMul2={setHeadlineSizeMul}
+            setBodySizeMul2={setBodySizeMul}
+            setShowOverlay2={setShowOverlay}
+            setOverlayOpacity2={setOverlayOpacity}
+            setTextBanner2={setTextBanner}
+            ctaColor={ctaColor}
+            setCtaColor={setCtaColor}
+            ctaFontColor={ctaFontColor}
+            setCtaFontColor={setCtaFontColor}
+            ctaSizeMul={ctaSizeMul}
+            setCtaSizeMul={setCtaSizeMul}
+          />
+
+          <div style={{ marginTop: 16 }}>
+          <CopyEditor
+            headline={headline}
+            setHeadline={setHeadline}
+            bodyText={bodyText}
+            setBodyText={setBodyText}
+            ctaText={ctaText}
+            setCtaText={setCtaText}
+            showCta={showCta}
+            setShowCta={setShowCta}
+            brandId={brandId}
+            setExportToast={setExportToast}
+            inputCls={inputCls}
+            generateCopy={generateCopy}
+            generating={generating}
+            destinationUrl={destinationUrl}
+            setDestinationUrl={setDestinationUrl}
+            ctaType={ctaType}
+            setCtaType={setCtaType}
+            fbPrimaryText={fbPrimaryText}
+            setFbPrimaryText={setFbPrimaryText}
+            fbHeadline={fbHeadline}
+            setFbHeadline={setFbHeadline}
+            fbDescription={fbDescription}
+            setFbDescription={setFbDescription}
+            brandWebsite={(brand as { website?: string | null } | null)?.website ?? null}
+          />
+          </div>
+
+          {templateId === 'grid' && images.length > 1 && (
+            <div style={{ padding: 16 }}>
+              <label style={{ fontSize: 10, color: colors.gray700, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'block', marginBottom: 4 }}>Second image</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                {images.map(img => (
+                  <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
+                    style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : colors.border}`, padding: 0, background: 'none', cursor: 'pointer' }}>
+                    <img src={getPublicUrl(img.storage_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           </div>
         </div>
