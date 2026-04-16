@@ -49,7 +49,10 @@ export default function ReturningUserDashboard({ user, brands, campaignsByBrand,
     setSigningOut(true)
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.refresh()
+    // Full reload — router.refresh() only re-runs server components, leaving
+    // HomePage's client-side auth state (set once in useEffect on mount)
+    // stale so the dashboard stays on screen after sign-out.
+    window.location.href = '/'
   }
 
   const greeting = displayNameFor(user)
