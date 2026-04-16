@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import MagicModal from '@/components/ui/MagicModal'
+import EmailGateModal from '@/components/auth/EmailGateModal'
 import { colors, font, fontWeight, fontSize, radius, transition, letterSpacing } from '@/lib/design-tokens'
 
 type BusinessType = 'shopify' | 'ecommerce' | 'saas' | 'restaurant' | 'service' | 'brand'
@@ -22,6 +23,7 @@ export default function OnboardingWizard() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showEmailGate, setShowEmailGate] = useState(false)
   const [generationReady, setGenerationReady] = useState(false)
   const pendingRedirect = useRef<string | null>(null)
   const [carouselPaused, setCarouselPaused] = useState(false)
@@ -128,6 +130,23 @@ export default function OnboardingWizard() {
     }
   }
 
+  // Entry point for the "Build my Atlas" button. Gates AI generation behind
+  // auth for anonymous users so we don't burn API credits on visitors who
+  // abandon before signing up. Logged-in users skip the gate entirely.
+  async function handleStart() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      buildAtlas()
+      return
+    }
+    setShowEmailGate(true)
+  }
+
+  function handleAuthSuccess() {
+    setShowEmailGate(false)
+    buildAtlas()
+  }
+
   async function buildAtlas() {
     setSaving(true)
     setShowModal(true)
@@ -137,6 +156,14 @@ export default function OnboardingWizard() {
     const name = brandName.trim() || url.trim().replace(/https?:\/\//, '').split('/')[0]
     const campaignName = `${name} — Launch Campaign`
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).slice(2, 6)
+
+    // If the wizard is being run by an already-logged-in user (e.g. from the
+    // returning-user dashboard's "Start a new brand" flow), claim the brand
+    // at insert time. The DB trigger `on_brand_user_assigned` will create the
+    // matching `brand_members` row so the brand shows up in their dashboard
+    // immediately. Anonymous wizards still insert without user_id and get
+    // claimed later in /auth/confirm after the email-gate auth roundtrip.
+    const { data: { user } } = await supabase.auth.getUser()
 
     const { data: brand, error: brandErr } = await supabase.from('brands').insert({
       name,
@@ -155,6 +182,7 @@ export default function OnboardingWizard() {
         return null
       })(),
       status: 'active',
+      ...(user ? { user_id: user.id, client_email: user.email || null } : {}),
     }).select('id').single()
 
     if (brandErr || !brand) {
@@ -305,6 +333,11 @@ export default function OnboardingWizard() {
         brandImages={displayImages.slice(0, 6).map(i => i.url)}
         generationReady={generationReady}
         onComplete={handleModalComplete}
+      />
+
+      <EmailGateModal
+        isOpen={showEmailGate}
+        onAuthSuccess={handleAuthSuccess}
       />
 
       <style>{`
@@ -544,7 +577,7 @@ export default function OnboardingWizard() {
                   opacity: 0, animation: 'discFadeIn 0.5s ease 0.3s forwards',
                 }}>
                   <button
-                    onClick={buildAtlas}
+                    onClick={handleStart}
                     disabled={saving}
                     style={{
                       background: colors.accent, color: colors.ink,

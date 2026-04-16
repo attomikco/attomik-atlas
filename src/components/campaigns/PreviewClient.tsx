@@ -18,6 +18,7 @@ import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 import GridTemplate from '@/components/creatives/templates/GridTemplate'
 import AttomikLogo from '@/components/ui/AttomikLogo'
 import AccountModal from '@/components/ui/AccountModal'
+import LogoImage from '@/components/ui/LogoImage'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, letterSpacing } from '@/lib/design-tokens'
 
 interface AdVariation {
@@ -305,7 +306,11 @@ export default function PreviewClient({
     return (r*299+g*587+b*114)/1000 > 128
   }
   const textOnPrimary = isLightColor(brandPrimary) ? colors.ink : colors.paper
-  const textOnAccent = isLightColor(brandAccent) ? colors.ink : colors.paper
+  // After the scraper swap, brand.accent_color holds the lightest color and
+  // brand.secondary_color holds the vibrant hue-diverse one. In the preview
+  // visual treatment, CTAs / statement bgs read off the vibrant color, so
+  // textOnAccent (which pairs with the CTA bg below) keys off brandSecondary.
+  const textOnAccent = isLightColor(brandSecondary) ? colors.ink : colors.paper
 
   // Brand font (editable state)
   const fh = brand.font_heading
@@ -393,7 +398,7 @@ export default function PreviewClient({
       const res = await fetch(`/api/campaigns/${campaign.id}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ primaryColor: brandPrimary, accentColor: brandAccent, headingFont: fontFamily, headingTransform: brand.font_heading?.transform || 'none' }),
+        body: JSON.stringify({ primaryColor: brandPrimary, accentColor: brandSecondary, headingFont: fontFamily, headingTransform: brand.font_heading?.transform || 'none' }),
       })
       const data = await res.json()
       if (data.html) { setEmailHtml(data.html); setEmailSubject(data.subject || ''); setEmailGenerated(true) }
@@ -645,23 +650,23 @@ export default function PreviewClient({
 
   const gridCards: GridCard[] = adVariation ? [
     { label: 'Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
-    { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandSecondary },
+    { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandAccent },
     { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandAccent },
+    { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandSecondary },
     { label: 'Card', Comp: UGCTemplate, img: img4, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Grid', Comp: GridTemplate, img: img5, secondImg: img6, variation: v0, tp: 'center', bgColor: brandSecondary },
-    { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center', bgColor: brandAccent },
+    { label: 'Grid', Comp: GridTemplate, img: img5, secondImg: img6, variation: v0, tp: 'center', bgColor: brandAccent },
+    { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center', bgColor: brandSecondary },
     { label: 'Split Alt', Comp: SplitTemplate, img: img7, variation: v0, tp: 'center', bgColor: brandPrimary },
-    { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center', bgColor: brandSecondary },
+    { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center', bgColor: brandAccent },
   ] : []
 
   const storyCards: GridCard[] = adVariation ? [
     { label: 'Story — Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
-    { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandSecondary },
-    { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center', bgColor: brandAccent },
-    { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandSecondary },
+    { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandAccent },
+    { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center', bgColor: brandSecondary },
+    { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandAccent },
     { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: img4, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Story — Grid', Comp: GridTemplate, img: img5, secondImg: img7, variation: v0, tp: 'center', bgColor: brandSecondary },
+    { label: 'Story — Grid', Comp: GridTemplate, img: img5, secondImg: img7, variation: v0, tp: 'center', bgColor: brandAccent },
   ] : []
 
   function makeCreativeProps(card: GridCard) {
@@ -688,7 +693,7 @@ export default function PreviewClient({
       textBanner: 'none' as const,
       textBannerColor: effectiveBgColor,
       showCta: true,
-      ctaColor: brandAccent,
+      ctaColor: brandSecondary,
       ctaFontColor: textOnAccent,
       imagePosition: 'center',
       bgColor: effectiveBgColor,
@@ -733,7 +738,7 @@ export default function PreviewClient({
     textBannerColor: colors.ink,
     textPosition: 'center' as const,
     showCta: true,
-    ctaColor: brandAccent,
+    ctaColor: brandSecondary,
     ctaFontColor: colors.paper,
     imagePosition: 'center',
   } : null
@@ -886,9 +891,8 @@ export default function PreviewClient({
         }} />
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {brand.logo_url && (
-            <img src={brand.logo_url} alt="" style={{
+            <LogoImage src={brand.logo_url} alt="" onDark style={{
               maxHeight: 48, maxWidth: 200, objectFit: 'contain',
-              filter: 'brightness(0) invert(1)',
               marginBottom: 16,
             }} onError={e => { e.currentTarget.style.display = 'none' }} />
           )}
@@ -1070,7 +1074,7 @@ export default function PreviewClient({
                       overflow: 'hidden',
                     }}>
                       {brand.logo_url ? (
-                        <img src={brand.logo_url} alt="" style={{
+                        <LogoImage src={brand.logo_url} alt="" onDark={!isLightColor(brandPrimary)} style={{
                           width: 28, height: 28, objectFit: 'contain',
                         }} onError={e => { e.currentTarget.style.display = 'none' }} />
                       ) : (
@@ -1127,7 +1131,7 @@ export default function PreviewClient({
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {brand.logo_url ? (
-                              <img src={brand.logo_url} alt="" style={{
+                              <LogoImage src={brand.logo_url} alt="" onDark={!isLightColor(brandPrimary)} style={{
                                 width: 20, height: 20, objectFit: 'contain',
                               }} onError={e => { e.currentTarget.style.display = 'none' }} />
                             ) : (
@@ -1590,7 +1594,7 @@ export default function PreviewClient({
                   </div>
                   <div className="pv-iframe" style={{ width: '100%', height: 600, overflow: 'auto', borderRadius: '8px 8px 0 0', background: colors.paper }}>
                     <iframe
-                      src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                      src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
                       style={{ width: '100%', height: 600, border: 'none', display: 'block' }}
                       title="Landing page preview" loading="lazy"
                     />
@@ -1599,7 +1603,7 @@ export default function PreviewClient({
                 <div style={{ background: '#2a2a2a', height: 20, borderRadius: '0 0 12px 12px', width: '110%', marginLeft: '-5%' }} />
                 <div style={{ textAlign: 'center', marginTop: 16 }}>
                   <a
-                    href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                    href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
                     target="_blank" rel="noopener noreferrer"
                     style={{ background: colors.ink, color: colors.accent, fontSize: fontSize.body, fontWeight: fontWeight.bold, padding: '10px 20px', borderRadius: radius.pill, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: shadow.dark, border: `1px solid ${colors.whiteAlpha10}` }}
                   >↗ View full page</a>
@@ -1611,14 +1615,14 @@ export default function PreviewClient({
                   <div style={{ width: 80, height: 20, background: '#1a1a1a', borderRadius: '0 0 12px 12px', margin: '0 auto 8px' }} />
                   <div style={{ borderRadius: 28, overflow: 'hidden', width: '100%', background: colors.paper, position: 'relative', height: 500 }}>
                     <iframe
-                      src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                      src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
                       style={{ position: 'absolute', top: 0, left: 0, width: '250%', height: '250%', border: 'none', transform: 'scale(0.4)', transformOrigin: 'top left', pointerEvents: 'none' }}
                       title="Landing page preview" loading="lazy"
                     />
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: `linear-gradient(to bottom, transparent, ${colors.paper})`, pointerEvents: 'none' }} />
                     <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}>
                       <a
-                        href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                        href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
                         target="_blank" rel="noopener noreferrer"
                         style={{ background: colors.ink, color: colors.accent, fontSize: fontSize.caption, fontWeight: fontWeight.bold, padding: '8px 16px', borderRadius: radius.pill, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: shadow.dark }}
                       >↗ View full page</a>
