@@ -10,6 +10,15 @@ interface AccountModalProps {
   onClose: () => void
 }
 
+function isValidEmail(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed.includes('@') || !trimmed.includes('.')) return false
+  const [local, domain] = trimmed.split('@')
+  if (!local || !domain) return false
+  if (!domain.includes('.') || domain.endsWith('.')) return false
+  return true
+}
+
 export default function AccountModal({ isOpen, campaignId, onClose }: AccountModalProps) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
@@ -21,6 +30,10 @@ export default function AccountModal({ isOpen, campaignId, onClose }: AccountMod
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return
+    if (!isValidEmail(email)) {
+      setError('Enter a valid email address.')
+      return
+    }
     setLoading(true)
     setError('')
 
@@ -43,7 +56,9 @@ export default function AccountModal({ isOpen, campaignId, onClose }: AccountMod
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: zIndex.modal,
-      background: 'rgba(0,0,0,0.9)',
+      background: colors.blackAlpha50,
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 24,
     }}>
@@ -97,6 +112,7 @@ export default function AccountModal({ isOpen, campaignId, onClose }: AccountMod
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 required
+                autoFocus
                 style={{
                   width: '100%', padding: '14px 16px',
                   border: `2px solid ${colors.border}`, borderRadius: radius.xl,

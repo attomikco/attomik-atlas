@@ -5,9 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, Upload, ArrowLeft } from 'lucide-react'
 import AttomikLogo from '@/components/ui/AttomikLogo'
 import MagicModal from '@/components/ui/MagicModal'
-import { colors, font, fontWeight, fontSize, radius, transition, letterSpacing } from '@/lib/design-tokens'
+import { colors, font, fontWeight, fontSize, radius, transition, letterSpacing, shadow } from '@/lib/design-tokens'
 
-const inputCls = `w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans placeholder:text-[${colors.gray500}]`
+const inputCls = 'wiz-input w-full text-sm border border-border rounded-btn px-3 py-2.5 bg-cream focus:outline-none focus:border-accent transition-colors font-sans'
 
 function isLight(hex: string) {
   const c = (hex || '').replace('#', '')
@@ -136,6 +136,9 @@ export default function OnboardingWizard() {
     } catch {
       setBrandName('')
       setDetected(true)
+      setDetecting(false)
+      setErrors({ detect: "We couldn't read that site automatically. Fill in the details below." })
+      return
     }
     setDetecting(false)
   }
@@ -274,6 +277,25 @@ export default function OnboardingWizard() {
       }}>
         <ArrowLeft size={14} /> Back to website detection
       </button>
+
+      {errors.detect && (
+        <div style={{
+          background: colors.warningLight,
+          border: `1px solid ${colors.warning}`,
+          borderRadius: radius.lg,
+          padding: '10px 14px',
+          fontSize: fontSize.body,
+          color: colors.warning,
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          textAlign: 'left',
+        }}>
+          <span>⚠</span>
+          <span>{errors.detect}</span>
+        </div>
+      )}
 
       {/* Brand identity card */}
       <div className="wiz-brand-row" style={{ borderRadius: radius['2xl'], overflow: 'hidden', marginBottom: 16, display: 'flex', background: colors.darkCardAlt }}>
@@ -465,8 +487,8 @@ export default function OnboardingWizard() {
               <div style={{
                 width: 28, height: 28, borderRadius: radius.sm,
                 background: value || colors.ink,
-                border: activeColorField === id ? '2px solid #000' : '1px solid var(--border)',
-                flexShrink: 0, cursor: 'pointer', transition: 'border-color 0.15s',
+                border: activeColorField === id ? `2px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                flexShrink: 0, cursor: 'pointer', transition: `border-color ${transition.base}`,
               }} onClick={() => setActiveColorField(activeColorField === id ? null : id)} />
               <input className={inputCls + ' font-mono'} style={{ fontSize: fontSize.caption, padding: '6px 8px' }}
                 value={value} placeholder="#000000"
@@ -478,21 +500,21 @@ export default function OnboardingWizard() {
             {activeColorField === id && (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, zIndex: 50,
-                marginTop: 6, background: '#fff', border: '1px solid #e0e0e0',
-                borderRadius: 12, padding: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                marginTop: 6, background: colors.paper, border: `1px solid ${colors.border}`,
+                borderRadius: radius.xl, padding: 12, boxShadow: shadow.picker,
                 width: 200,
               }}>
                 {scrapedPalette.length > 0 && (<>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
+                  <div style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.gray700, marginBottom: 8 }}>
                     From your website
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                     {scrapedPalette.map(color => (
                       <div key={color} onClick={() => { set(color); setActiveColorField(null) }}
                         style={{
-                          width: 28, height: 28, borderRadius: 6, background: color, cursor: 'pointer',
-                          border: color === value ? '2.5px solid #000' : '1.5px solid #e0e0e0',
-                          transition: 'transform 0.1s',
+                          width: 28, height: 28, borderRadius: radius.sm, background: color, cursor: 'pointer',
+                          border: color === value ? `2.5px solid ${colors.ink}` : `1.5px solid ${colors.border}`,
+                          transition: `transform ${transition.fast}`,
                         }}
                         onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)' }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
@@ -500,14 +522,14 @@ export default function OnboardingWizard() {
                       />
                     ))}
                   </div>
-                  <div style={{ borderTop: '1px solid #eee', paddingTop: 8, marginBottom: 2 }} />
+                  <div style={{ borderTop: `1px solid ${colors.gray300}`, paddingTop: 8, marginBottom: 2 }} />
                 </>)}
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999', marginBottom: 6 }}>
+                <div style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.gray700, marginBottom: 6 }}>
                   Pick custom color
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input type="color" value={value || '#000000'} onChange={e => { set(e.target.value); setActiveColorField(null) }}
-                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #e0e0e0', cursor: 'pointer', padding: 1, background: 'none', flexShrink: 0 }} />
+                    style={{ width: 32, height: 32, borderRadius: radius.sm, border: `1px solid ${colors.border}`, cursor: 'pointer', padding: 1, background: 'none', flexShrink: 0 }} />
                   <input className={inputCls + ' font-mono'} style={{ fontSize: fontSize.caption, padding: '6px 8px', flex: 1 }}
                     value={value} placeholder="#000000"
                     onChange={e => { const v = e.target.value; if (/^#[0-9a-fA-F]{0,6}$/.test(v)) set(v) }}
@@ -558,13 +580,13 @@ export default function OnboardingWizard() {
               {detectedProducts.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxHeight: 360, overflowY: 'auto' }}>
                   {detectedProducts.slice(0, 8).map((p, i) => (
-                    <div key={i} style={{ background: '#f8f8f8' /* TODO: tokenize */, borderRadius: radius['2xl'], overflow: 'hidden', border: `1px solid ${colors.gray300}`, display: 'flex', flexDirection: 'column' }}>
+                    <div key={i} style={{ background: colors.gray150, borderRadius: radius['2xl'], overflow: 'hidden', border: `1px solid ${colors.gray300}`, display: 'flex', flexDirection: 'column' }}>
                       {p.image ? (
                         <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', flexShrink: 0 }}>
                           <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.currentTarget.parentElement!.style.display = 'none' }} />
                         </div>
                       ) : (
-                        <div style={{ width: '100%', aspectRatio: '1/1', background: `linear-gradient(135deg, ${colors.gray250}, #e0e0e0)` /* TODO: tokenize #e0e0e0 */, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: colors.gray450 }}>◻</div>
+                        <div style={{ width: '100%', aspectRatio: '1/1', background: `linear-gradient(135deg, ${colors.gray250}, ${colors.border})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: fontSize['8xl'], color: colors.gray450 }}>◻</div>
                       )}
                       <div style={{ padding: '10px 12px' }}>
                         <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, marginBottom: 2, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
@@ -579,7 +601,7 @@ export default function OnboardingWizard() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {offerings.slice(0, 6).map((o, i) => (
-                    <div key={i} style={{ background: '#f8f8f8' /* TODO: tokenize */, borderRadius: radius.xl, padding: '12px 16px', border: `1px solid ${colors.gray300}`, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+                    <div key={i} style={{ background: colors.gray150, borderRadius: radius.xl, padding: '12px 16px', border: `1px solid ${colors.gray300}`, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
                       <span style={{ fontSize: fontSize['2xl'], color: colors.gray700 }}>{step2Config.icon}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.name}</div>
@@ -596,7 +618,7 @@ export default function OnboardingWizard() {
             </>
           ) : (
             <>
-              <div style={{ background: '#fff8ed' /* TODO: tokenize */, border: '1px solid #fde8bb' /* TODO: tokenize */, borderRadius: radius.lg, padding: '10px 14px', fontSize: fontSize.body, color: '#92660a' /* TODO: tokenize */, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
+              <div style={{ background: colors.warningLight, border: `1px solid ${colors.warning}`, borderRadius: radius.lg, padding: '10px 14px', fontSize: fontSize.body, color: colors.warning, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
                 <span>💡</span>
                 <span>Tip: if you&apos;re on Shopify, make sure your store is public and not password protected.</span>
               </div>
@@ -667,7 +689,13 @@ export default function OnboardingWizard() {
   const isHeroState = step === 0 && !detected && !hasUrlParam
 
   return (
-    <div ref={scrollRef} className="fixed inset-0 bg-ink z-50 flex flex-col items-center wizard-scroll" style={{ padding: 'clamp(16px, 4vw, 80px) 16px', overflowY: 'auto' }}>
+    <div ref={scrollRef} className="wizard-scroll" style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      background: colors.ink,
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: 'clamp(16px, 4vw, 80px) 16px',
+      overflowY: 'auto',
+    }}>
       <MagicModal
         isOpen={showModal}
         mode="scan"
@@ -678,6 +706,7 @@ export default function OnboardingWizard() {
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .wizard-scroll::-webkit-scrollbar { display: none; }
         .wizard-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .wiz-input::placeholder { color: ${colors.gray500}; }
         @media (max-width: 600px) {
           .wiz-card { padding: 20px !important; }
           .wiz-brand-row { flex-direction: column !important; }
@@ -696,10 +725,10 @@ export default function OnboardingWizard() {
       {/* ANALYZING STATE: URL param provided, waiting for detection */}
       {step === 0 && !detected && hasUrlParam && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 20, minHeight: '60vh' }}>
-          <AttomikLogo height={32} color="#ffffff" />
+          <AttomikLogo height={32} color={colors.paper} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ width: 18, height: 18, border: `2.5px solid ${colors.accentAlpha30}`, borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
-            <span style={{ fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: 'rgba(255,255,255,0.6)' /* TODO: tokenize */ }}>Analyzing {website}...</span>
+            <span style={{ fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.whiteAlpha60 }}>Analyzing {website}...</span>
           </div>
         </div>
       )}
@@ -709,7 +738,7 @@ export default function OnboardingWizard() {
         <>
           {/* Logo */}
           <div style={{ position: 'absolute', top: 40, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10 }}>
-            <AttomikLogo height={28} color="#ffffff" />
+            <AttomikLogo height={28} color={colors.paper} />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: '100%', margin: '0 auto', padding: '0 16px', paddingTop: 120, textAlign: 'center' }}>
@@ -719,13 +748,13 @@ export default function OnboardingWizard() {
             </div>
 
             {/* Big headline */}
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 'clamp(32px, 8vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.03em', color: colors.paper, marginBottom: 20, textTransform: 'uppercase' as const }}>
+            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 'clamp(32px, 8vw, 52px)', lineHeight: 1.05, letterSpacing: letterSpacing.tight, color: colors.paper, marginBottom: 20, textTransform: 'uppercase' as const }}>
               How much revenue are{' '}
               <span style={{ color: colors.accent }}>you leaving on the table?</span>
             </div>
 
             {/* Subtext */}
-            <div style={{ fontSize: fontSize.xl, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 36, maxWidth: 420 }}>
+            <div style={{ fontSize: fontSize.xl, color: colors.whiteAlpha45, lineHeight: 1.6, marginBottom: 36, maxWidth: 420 }}>
               Enter your website. We&apos;ll build a complete ad funnel in 30 seconds — creatives, copy, and landing page.
             </div>
 
@@ -738,10 +767,10 @@ export default function OnboardingWizard() {
                 placeholder="https://yourbrand.com"
                 autoFocus
                 style={{ width: '100%', padding: '16px 20px', fontSize: fontSize.lg, fontWeight: fontWeight.medium, background: colors.whiteAlpha8, border: `1.5px solid ${colors.whiteAlpha15}`, borderRadius: radius['2xl'], color: colors.paper, outline: 'none', textAlign: 'center' }}
-                onFocus={e => { e.target.style.borderColor = colors.accent; e.target.style.background = 'rgba(255,255,255,0.1)' }}
+                onFocus={e => { e.target.style.borderColor = colors.accent; e.target.style.background = colors.whiteAlpha10 }}
                 onBlur={e => { e.target.style.borderColor = colors.whiteAlpha15; e.target.style.background = colors.whiteAlpha8 }}
               />
-              {errors.website && <p style={{ color: '#ff4444', fontSize: fontSize.body, margin: 0 }}>{errors.website}</p>}
+              {errors.website && <p style={{ color: colors.dangerSoft, fontSize: fontSize.body, margin: 0 }}>{errors.website}</p>}
               <button
                 onClick={analyzeWebsite}
                 disabled={detecting || !website.trim()}
@@ -752,12 +781,12 @@ export default function OnboardingWizard() {
                   border: 'none', borderRadius: radius['2xl'],
                   cursor: detecting || !website.trim() ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  letterSpacing: '-0.01em', transition: `background ${transition.normal}`,
+                  letterSpacing: letterSpacing.slight, transition: `background ${transition.normal}`,
                 }}
               >
                 {detecting ? (
                   <>
-                    <span style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.3)', borderTopColor: colors.ink, borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                    <span style={{ width: 16, height: 16, border: `2px solid ${colors.blackAlpha25}`, borderTopColor: colors.ink, borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
                     Analyzing your site...
                   </>
                 ) : 'Build my funnel →'}
@@ -765,7 +794,7 @@ export default function OnboardingWizard() {
             </div>
 
             {/* Skip */}
-            <button onClick={skipToManual} style={{ background: 'none', border: 'none', fontSize: fontSize.body, color: 'rgba(255,255,255,0.55)', cursor: 'pointer', marginTop: 16, padding: 0 }}>
+            <button onClick={skipToManual} style={{ background: 'none', border: 'none', fontSize: fontSize.body, color: colors.whiteAlpha55, cursor: 'pointer', marginTop: 16, padding: 0 }}>
               or set up manually →
             </button>
           </div>
@@ -777,51 +806,72 @@ export default function OnboardingWizard() {
       {!isHeroState && (step > 0 || detected) && (
         <>
           {/* Logo above card */}
-          <div className="flex justify-center mb-8">
-            <AttomikLogo height={38} color="#ffffff" />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
+            <AttomikLogo height={38} color={colors.paper} />
           </div>
 
-          <div className="mx-4 wiz-card" style={{
+          <div className="wiz-card" style={{
             maxWidth: '100%', width: 'min(540px, calc(100vw - 32px))', background: colors.paper,
-            borderRadius: 16 /* TODO: tokenize */, padding: '32px',
-            border: '1px solid var(--border)',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-            marginBottom: 40, flexShrink: 0,
+            borderRadius: radius['3xl'], padding: '32px',
+            border: `1px solid ${colors.border}`,
+            boxShadow: shadow.card,
+            margin: '0 16px 40px', flexShrink: 0,
           }}>
         {/* Step dots */}
-        <div className="flex items-center justify-center gap-2 mb-6">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
           {steps.map((_, i) => (
             <div key={i} style={{
               width: 10, height: 10, borderRadius: '50%',
               background: i === step ? colors.accent : 'transparent',
-              border: i === step ? `2px solid ${colors.accent}` : '2px solid #ddd' /* TODO: tokenize #ddd */,
+              border: i === step ? `2px solid ${colors.accent}` : `2px solid ${colors.gray400}`,
               transition: `all ${transition.normal}`,
             }} />
           ))}
         </div>
 
-        <h2 className="text-center uppercase tracking-tight" style={{ fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize['5xl'], marginBottom: 4 }}>{current.title}</h2>
-        <p className="text-muted text-sm mb-6 text-center">{current.subtitle}</p>
+        <h2 style={{
+          fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize['5xl'],
+          textAlign: 'center', textTransform: 'uppercase',
+          letterSpacing: letterSpacing.snug, marginBottom: 4,
+        }}>{current.title}</h2>
+        <p style={{
+          fontSize: fontSize.md, color: colors.muted,
+          textAlign: 'center', marginBottom: 24,
+        }}>{current.subtitle}</p>
 
         {current.content}
 
         {/* Navigation */}
         {showNext && (
-          <div className="flex items-center justify-between mt-8">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 32 }}>
             {step > 0 ? (
-              <button onClick={back} className="text-sm text-muted hover:text-ink transition-colors font-semibold">Back</button>
+              <button onClick={back} style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.muted,
+                transition: `color ${transition.base}`,
+              }}>Back</button>
             ) : <div />}
 
             {step < 2 ? (
-              <button onClick={next}
-                className="text-sm font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90"
-                style={{ background: colors.accent, color: colors.ink }}>
+              <button onClick={next} style={{
+                background: colors.accent, color: colors.ink,
+                fontSize: fontSize.md, fontWeight: fontWeight.bold,
+                padding: '10px 24px', borderRadius: radius.md, border: 'none',
+                cursor: 'pointer', transition: `opacity ${transition.normal}`,
+              }}>
                 Next
               </button>
             ) : (
-              <button onClick={submit} disabled={saving}
-                className="flex items-center gap-2 text-sm font-bold px-6 py-2.5 rounded-btn transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: colors.accent, color: colors.ink, position: 'relative', overflow: 'hidden' }}>
+              <button onClick={submit} disabled={saving} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: colors.accent, color: colors.ink,
+                fontSize: fontSize.md, fontWeight: fontWeight.bold,
+                padding: '10px 24px', borderRadius: radius.md, border: 'none',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.5 : 1,
+                transition: `opacity ${transition.normal}`,
+                position: 'relative', overflow: 'hidden',
+              }}>
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 {saving ? 'Building your funnel...' : 'Build my funnel →'}
               </button>
