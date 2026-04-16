@@ -120,6 +120,13 @@ export const colors = {
   // ── Semantic (dark UI) ──
   dangerSoft: 'rgba(255,100,100,0.9)',
   accentLink: '#00cc7a',
+
+  // ── Aliases / additions for Creative Studio compliance ──
+  white: '#ffffff',
+  gray333: '#333',
+  gray900: '#111',
+  tailGreen400: '#4ade80',
+  dangerAlt: '#d4183d',
 } as const
 
 // ── FONTS ─────────────────────────────────────────────────────

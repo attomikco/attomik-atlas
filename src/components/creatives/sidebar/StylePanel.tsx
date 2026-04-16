@@ -1,8 +1,9 @@
 'use client'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ChevronDown, RotateCcw } from 'lucide-react'
 import { POSITIONS } from '../templates/registry'
 import type { TextPosition } from '../templates/types'
 import type { Brand } from '../types'
+import { colors, font, fontSize, fontWeight, spacing, radius, letterSpacing, transition } from '@/lib/design-tokens'
 
 const FEATURES: Record<string, { position?: boolean; imagePos?: boolean; overlay?: boolean; textBanner?: boolean; cta?: boolean; bg?: boolean; fonts?: boolean }> = {
   overlay:      { position: true, overlay: true, cta: true, fonts: true },
@@ -67,11 +68,139 @@ interface StylePanelProps {
   setCtaSizeMul: (v: number) => void
 }
 
-const sectionCls = "rounded-lg p-3 space-y-2.5"
-const sectionStyle: React.CSSProperties = { border: '1px solid #e5e5e5', background: '#fafafa', paddingBottom: 12 }
-const labelCls = "uppercase tracking-wide"
-const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#999', letterSpacing: '0.06em', fontFamily: 'DM Mono, monospace', textTransform: 'uppercase', minWidth: 90, flexShrink: 0 }
-const swatchSize = { width: 28, height: 28, borderRadius: 5 }
+const labelStyle: React.CSSProperties = {
+  fontSize: fontSize.sm,
+  fontWeight: fontWeight.semibold,
+  color: colors.gray700,
+  letterSpacing: letterSpacing.wide,
+  fontFamily: font.mono,
+  textTransform: 'uppercase',
+  minWidth: 90,
+  flexShrink: 0,
+}
+
+const sectionStyle: React.CSSProperties = {
+  border: `1px solid ${colors.border}`,
+  background: colors.gray100,
+  borderRadius: radius.md,
+  padding: spacing[3],
+  display: 'flex',
+  flexDirection: 'column',
+  gap: spacing[2],
+}
+
+// Ring-style selection: `outline` doesn't affect the box model, so toggling
+// doesn't nudge neighbouring swatches. A constant 1px border keeps light
+// swatches (white/cream) readable on a white card.
+function Swatch({ color, selected, onClick, size = 24, ringColor }: {
+  color: string
+  selected: boolean
+  onClick: () => void
+  size?: number
+  ringColor?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={color}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius.sm,
+        background: color,
+        border: `1px solid ${colors.blackAlpha10}`,
+        outline: selected ? `2px solid ${ringColor ?? colors.ink}` : 'none',
+        outlineOffset: 2,
+        cursor: 'pointer',
+        padding: 0,
+        transition: transition.fast,
+      }}
+    />
+  )
+}
+
+// Native range input styled via .cs-slider — track + thumb tuned to match the
+// rest of the tool's ink/paper palette instead of the browser default.
+function Slider({ min, max, step, value, onChange, ariaLabel }: {
+  min: number
+  max: number
+  step: number
+  value: number
+  onChange: (v: number) => void
+  ariaLabel?: string
+}) {
+  return (
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={e => onChange(step < 1 ? parseFloat(e.target.value) : parseInt(e.target.value))}
+      aria-label={ariaLabel}
+      className="cs-slider"
+      style={{ flex: 1, minWidth: 0 }}
+    />
+  )
+}
+
+const SLIDER_CSS = `
+  .cs-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: ${colors.gray400};
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+  }
+  .cs-slider:hover { background: ${colors.gray450}; }
+  .cs-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: ${colors.ink};
+    border: 2px solid ${colors.paper};
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.1s ease;
+  }
+  .cs-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  .cs-slider::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.2); }
+  .cs-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: ${colors.ink};
+    border: 2px solid ${colors.paper};
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .cs-slider::-moz-range-track {
+    height: 4px;
+    background: ${colors.gray400};
+    border-radius: 999px;
+  }
+  .cs-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: ${colors.cream};
+    padding: 6px 28px 6px 10px;
+    border: 1px solid ${colors.border};
+    border-radius: ${radius.md}px;
+    font-size: ${fontSize.body}px;
+    color: ${colors.ink};
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+    width: 100%;
+    min-width: 0;
+  }
+  .cs-select:hover { border-color: ${colors.borderStrong}; }
+  .cs-select:focus { outline: none; border-color: ${colors.accent}; }
+`
 
 export default function StylePanel({
   templateId, brand, textPosition, setTextPosition, imagePosition, setImagePosition,
@@ -95,13 +224,36 @@ export default function StylePanel({
   )
 
   return (
-    <div className="bg-paper rounded-card p-4 space-y-3" style={{ border: '1px solid #e0e0e0' }}>
+    <div style={{
+      background: colors.paper,
+      borderRadius: radius.xl,
+      border: `1px solid ${colors.border}`,
+      padding: spacing[4],
+      display: 'flex',
+      flexDirection: 'column',
+      gap: spacing[3],
+    }}>
+      <style>{SLIDER_CSS}</style>
+
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 mb-1" style={{ borderBottom: '1px solid #e5e5e5' }}>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Style</span>
-        <button onClick={onReset}
-          className="text-[10px] text-muted hover:text-ink transition-colors font-semibold uppercase tracking-wide">
-          Reset to brand
+      <div className="flex items-center justify-between" style={{ paddingBottom: spacing[2], borderBottom: `1px solid ${colors.border}` }}>
+        <span style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink }}>Style</span>
+        <button
+          type="button"
+          onClick={onReset}
+          style={{
+            display: 'flex', alignItems: 'center', gap: spacing[1],
+            fontFamily: font.mono, fontSize: fontSize.xs, fontWeight: fontWeight.semibold,
+            color: colors.gray700, textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: `${spacing[1]}px ${spacing[2]}px`, borderRadius: radius.xs,
+            transition: transition.fast,
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = colors.ink }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = colors.gray700 }}
+        >
+          <RotateCcw size={11} />
+          Reset
         </button>
       </div>
 
@@ -110,18 +262,28 @@ export default function StylePanel({
         <div className="flex gap-3 flex-wrap">
           {f.position && (
             <div>
-              <span className={labelCls} style={{ ...labelStyle, display: 'block', marginBottom: 6 }}>Position</span>
+              <span style={{ ...labelStyle, display: 'block', marginBottom: spacing[2] }}>Position</span>
               <div className="grid grid-cols-3 gap-1" style={{ width: 78 }}>
                 {Array.from({ length: 9 }).map((_, i) => {
                   const match = POSITIONS.find(p => p.i === i)
-                  if (!match) return <div key={i} className="w-6 h-6" />
+                  if (!match) return <div key={i} style={{ width: 24, height: 24 }} />
+                  const active = textPosition === match.pos
                   return (
-                    <button key={i} onClick={() => setTextPosition(match.pos)}
-                      className="w-6 h-6 rounded-[4px] border transition-all"
-                      style={textPosition === match.pos
-                        ? { background: '#111', borderColor: '#111' }
-                        : { background: '#f5f5f5', borderColor: '#ddd' }}
-                      title={match.pos} />
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setTextPosition(match.pos)}
+                      title={match.pos}
+                      style={{
+                        width: 24, height: 24,
+                        borderRadius: radius.xs,
+                        border: `1px solid ${active ? colors.ink : colors.gray400}`,
+                        background: active ? colors.ink : colors.gray200,
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: transition.fast,
+                      }}
+                    />
                   )
                 })}
               </div>
@@ -129,29 +291,42 @@ export default function StylePanel({
           )}
           {f.imagePos && (
             <div>
-              <span className={labelCls} style={{ ...labelStyle, display: 'block', marginBottom: 6 }}>Image</span>
+              <span style={{ ...labelStyle, display: 'block', marginBottom: spacing[2] }}>Image</span>
               <div className="flex flex-col gap-1">
-                {['top', 'center', 'bottom'].map(pos => (
-                  <button key={pos} onClick={() => setImagePosition(pos)}
-                    className="w-16 h-6 rounded-[4px] border transition-all text-[9px] font-semibold"
-                    style={imagePosition === pos
-                      ? { background: '#111', borderColor: '#111', color: '#4ade80' }
-                      : { background: '#f5f5f5', borderColor: '#ddd', color: '#888' }}>
-                    {pos}
-                  </button>
-                ))}
+                {['top', 'center', 'bottom'].map(pos => {
+                  const active = imagePosition === pos
+                  return (
+                    <button
+                      key={pos}
+                      type="button"
+                      onClick={() => setImagePosition(pos)}
+                      style={{
+                        width: 64, height: 24,
+                        borderRadius: radius.xs,
+                        border: `1px solid ${active ? colors.ink : colors.gray400}`,
+                        background: active ? colors.ink : colors.gray200,
+                        color: active ? colors.tailGreen400 : colors.gray750,
+                        fontSize: 9, fontWeight: fontWeight.semibold,
+                        fontFamily: font.mono, textTransform: 'uppercase',
+                        letterSpacing: letterSpacing.wide,
+                        cursor: 'pointer',
+                        transition: transition.fast,
+                      }}
+                    >
+                      {pos}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
-          <div className="flex-1 min-w-[120px] space-y-2">
+          <div className="flex-1 min-w-[120px]" style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
             {f.bg && (
               <div>
-                <span className={labelCls} style={{ ...labelStyle, display: 'block', marginBottom: 6 }}>Background</span>
-                <div className="flex gap-1.5 flex-wrap">
+                <span style={{ ...labelStyle, display: 'block', marginBottom: spacing[2] }}>Background</span>
+                <div className="flex flex-wrap" style={{ gap: spacing[2] }}>
                   {brandColors.map(c => (
-                    <button key={'bg-' + c.value} onClick={() => updateBgColor(c.value)}
-                      style={{ ...swatchSize, background: c.value, border: `2px solid ${bgColor === c.value ? '#111' : '#ddd'}`, cursor: 'pointer' }}
-                      title={c.label} />
+                    <Swatch key={'bg-' + c.value} color={c.value} selected={bgColor === c.value} onClick={() => updateBgColor(c.value)} />
                   ))}
                 </div>
               </div>
@@ -159,19 +334,27 @@ export default function StylePanel({
             {f.overlay && (
               <div>
                 <div className="flex items-center justify-between">
-                  <span className={labelCls} style={labelStyle}>Overlay</span>
-                  <button onClick={() => setShowOverlay(!showOverlay)}
-                    className="flex items-center gap-1 text-xs text-muted hover:text-ink transition-colors">
+                  <span style={labelStyle}>Overlay</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowOverlay(!showOverlay)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: spacing[1],
+                      fontSize: fontSize.caption, color: colors.gray700,
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      padding: 0, transition: transition.fast,
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = colors.ink }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = colors.gray700 }}
+                  >
                     {showOverlay ? <Eye size={12} /> : <EyeOff size={12} />}
                     {showOverlay ? 'On' : 'Off'}
                   </button>
                 </div>
                 {showOverlay && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input type="range" min={0} max={100} step={5} value={overlayOpacity}
-                      onChange={e => setOverlayOpacity(parseInt(e.target.value))}
-                      className="flex-1 min-w-0" style={{ accentColor: '#888' }} />
-                    <span className="text-[10px] font-mono text-muted flex-shrink-0 w-8 text-right">{overlayOpacity}%</span>
+                  <div className="flex items-center" style={{ gap: spacing[2], marginTop: spacing[1] }}>
+                    <Slider min={0} max={100} step={5} value={overlayOpacity} onChange={setOverlayOpacity} ariaLabel="Overlay opacity" />
+                    <span style={{ fontSize: fontSize.xs, fontFamily: font.mono, color: colors.gray700, width: 32, textAlign: 'right', flexShrink: 0 }}>{overlayOpacity}%</span>
                   </div>
                 )}
               </div>
@@ -182,11 +365,11 @@ export default function StylePanel({
 
       {/* Text banner */}
       {f.textBanner && (
-        <div className="flex items-center gap-3">
-          <span className={labelCls} style={{ ...labelStyle, flexShrink: 0 }}>Text bar</span>
-          <div className="flex gap-1">
+        <div className="flex items-center" style={{ gap: spacing[3] }}>
+          <span style={{ ...labelStyle, flexShrink: 0 }}>Text bar</span>
+          <div className="flex" style={{ gap: spacing[1] }}>
             {(['none', 'top', 'bottom'] as const).map(v => (
-              <button key={v} onClick={() => {
+              <button key={v} type="button" onClick={() => {
                 setTextBanner(v)
                 if (v === 'top') setTextPosition(textPosition.replace(/^(top|bottom|center)/, 'top') as TextPosition)
                 if (v === 'bottom') setTextPosition(textPosition.replace(/^(top|bottom|center)/, 'bottom') as TextPosition)
@@ -195,10 +378,9 @@ export default function StylePanel({
             ))}
           </div>
           {textBanner !== 'none' && (
-            <div className="flex gap-1.5 ml-auto">
+            <div className="flex flex-wrap ml-auto" style={{ gap: spacing[2] }}>
               {brandColors.map(c => (
-                <button key={'tb-' + c.value} onClick={() => setTextBannerColor(c.value)}
-                  style={{ width: 20, height: 20, borderRadius: 4, background: c.value, border: `2px solid ${textBannerColor === c.value ? '#4ade80' : '#ddd'}`, cursor: 'pointer' }} />
+                <Swatch key={'tb-' + c.value} color={c.value} selected={textBannerColor === c.value} onClick={() => setTextBannerColor(c.value)} size={20} ringColor={colors.tailGreen400} />
               ))}
             </div>
           )}
@@ -207,66 +389,64 @@ export default function StylePanel({
 
       {/* Font sections */}
       {f.fonts && (
-        <div className="space-y-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
           {[
             { label: 'Headline', short: 'H', font: headlineFont, setFont: setHeadlineFont, color: headlineColor, setColor: setHeadlineColor, sizeMul: headlineSizeMul, setSizeMul: setHeadlineSizeMul },
             { label: 'Body', short: 'B', font: bodyFont, setFont: setBodyFont, color: bodyColor, setColor: setBodyColor, sizeMul: bodySizeMul, setSizeMul: setBodySizeMul },
           ].map(row => (
-            <div key={row.short} className={sectionCls} style={sectionStyle}>
-              <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle }}>{row.label}</span>
-                <select value={row.font} onChange={e => row.setFont(e.target.value)}
-                  className="text-sm border border-border rounded-btn px-2 py-1.5 bg-cream focus:outline-none focus:border-accent flex-1 min-w-0 appearance-none">
-                  {fontOptions}
-                </select>
+            <div key={row.short} style={sectionStyle}>
+              <div className="flex items-center" style={{ gap: spacing[2] }}>
+                <span style={labelStyle}>{row.label}</span>
+                <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                  <select value={row.font} onChange={e => row.setFont(e.target.value)} className="cs-select">
+                    {fontOptions}
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    style={{ position: 'absolute', right: spacing[2], top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: colors.gray700 }}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle }}>Color</span>
-                <div className="flex gap-1.5 flex-wrap">
+              <div className="flex items-center" style={{ gap: spacing[2] }}>
+                <span style={labelStyle}>Color</span>
+                <div className="flex flex-wrap" style={{ gap: spacing[2] }}>
                   {brandColors.map(c => (
-                    <button key={row.short + c.value} onClick={() => row.setColor(c.value)}
-                      style={{ ...swatchSize, background: c.value, border: `2px solid ${row.color === c.value ? '#111' : '#ddd'}`, cursor: 'pointer' }} />
+                    <Swatch key={row.short + c.value} color={c.value} selected={row.color === c.value} onClick={() => row.setColor(c.value)} />
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle }}>Size</span>
-                <input type="range" min={0.5} max={2} step={0.1} value={row.sizeMul}
-                  onChange={e => row.setSizeMul(parseFloat(e.target.value))}
-                  className="flex-1 min-w-0" style={{ accentColor: '#888' }} />
-                <span className="text-[11px] font-mono text-muted w-10 text-right flex-shrink-0">{Math.round(row.sizeMul * 100)}%</span>
+              <div className="flex items-center" style={{ gap: spacing[2] }}>
+                <span style={labelStyle}>Size</span>
+                <Slider min={0.5} max={2} step={0.1} value={row.sizeMul} onChange={row.setSizeMul} ariaLabel={`${row.label} size`} />
+                <span style={{ fontSize: fontSize.sm, fontFamily: font.mono, color: colors.gray700, width: 40, textAlign: 'right', flexShrink: 0 }}>{Math.round(row.sizeMul * 100)}%</span>
               </div>
             </div>
           ))}
 
           {/* CTA */}
           {f.cta && (
-            <div className={sectionCls} style={sectionStyle}>
-              <span className={labelCls} style={{ ...labelStyle, display: 'block' }}>{templateId === 'testimonial' ? 'Stars' : 'CTA'}</span>
-              <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle }}>{templateId === 'testimonial' ? 'Color' : 'Background'}</span>
-                <div className="flex gap-1.5 flex-wrap">
+            <div style={sectionStyle}>
+              <span style={{ ...labelStyle, display: 'block' }}>{templateId === 'testimonial' ? 'Stars' : 'CTA'}</span>
+              <div className="flex items-center" style={{ gap: spacing[2] }}>
+                <span style={labelStyle}>{templateId === 'testimonial' ? 'Color' : 'Background'}</span>
+                <div className="flex flex-wrap" style={{ gap: spacing[2] }}>
                   {brandColors.map(c => (
-                    <button key={'cta-' + c.value} onClick={() => setCtaColor(c.value)}
-                      style={{ ...swatchSize, background: c.value, border: `2px solid ${ctaColor === c.value ? '#111' : '#ddd'}`, cursor: 'pointer' }} />
+                    <Swatch key={'cta-' + c.value} color={c.value} selected={ctaColor === c.value} onClick={() => setCtaColor(c.value)} />
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle }}>Text</span>
-                <div className="flex gap-1.5 flex-wrap">
+              <div className="flex items-center" style={{ gap: spacing[2] }}>
+                <span style={labelStyle}>Text</span>
+                <div className="flex flex-wrap" style={{ gap: spacing[2] }}>
                   {brandColors.map(c => (
-                    <button key={'ctaf-' + c.value} onClick={() => setCtaFontColor(c.value)}
-                      style={{ ...swatchSize, background: c.value, border: `2px solid ${ctaFontColor === c.value ? '#111' : '#ddd'}`, cursor: 'pointer' }} />
+                    <Swatch key={'ctaf-' + c.value} color={c.value} selected={ctaFontColor === c.value} onClick={() => setCtaFontColor(c.value)} />
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={labelCls} style={{ ...labelStyle }}>Size</span>
-                <input type="range" min={0.6} max={2} step={0.05} value={ctaSizeMul}
-                  onChange={e => setCtaSizeMul(parseFloat(e.target.value))}
-                  className="flex-1 min-w-0" style={{ accentColor: '#888' }} />
-                <span className="text-[11px] font-mono text-muted w-10 text-right flex-shrink-0">{Math.round(ctaSizeMul * 100)}%</span>
+              <div className="flex items-center" style={{ gap: spacing[2] }}>
+                <span style={labelStyle}>Size</span>
+                <Slider min={0.6} max={2} step={0.05} value={ctaSizeMul} onChange={setCtaSizeMul} ariaLabel="CTA size" />
+                <span style={{ fontSize: fontSize.sm, fontFamily: font.mono, color: colors.gray700, width: 40, textAlign: 'right', flexShrink: 0 }}>{Math.round(ctaSizeMul * 100)}%</span>
               </div>
             </div>
           )}
