@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { Fragment, useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Brand, Campaign, GeneratedContent, BrandImage } from '@/types'
@@ -38,6 +38,77 @@ interface LandingBrief {
 }
 
 const APP_ACCENT = colors.accent
+
+type PvFlowNodeData = { day: string; icon: string; label: string }
+type PvFlowData = {
+  name: string
+  meta: string
+  active: boolean
+  nodes: PvFlowNodeData[]
+  branches?: { paths: { condition: string; node: PvFlowNodeData }[] }
+}
+
+function PvFlowNode({ node, desaturated, delay }: { node: PvFlowNodeData; desaturated: boolean; delay: number }) {
+  return (
+    <div
+      className="pv-flow-node"
+      style={{
+        flex: '0 0 auto',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        animationDelay: `${delay}s`,
+      }}
+    >
+      <div style={{
+        fontFamily: font.mono, fontSize: 10, color: colors.whiteAlpha45,
+        textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+      }}>{node.day}</div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 16px',
+        background: colors.whiteAlpha5,
+        border: `1px solid ${colors.whiteAlpha10}`,
+        borderRadius: radius.xl,
+        minWidth: 132,
+        opacity: desaturated ? 0.55 : 1,
+        filter: desaturated ? 'grayscale(0.7)' : 'none',
+      }}>
+        <div style={{ fontSize: 18, lineHeight: 1 }}>{node.icon}</div>
+        <div style={{ fontFamily: font.mono, fontSize: 13, color: colors.paper, whiteSpace: 'nowrap' }}>{node.label}</div>
+      </div>
+    </div>
+  )
+}
+
+function PvFlowArrow({ condition, desaturated, delay }: { condition?: string; desaturated: boolean; delay: number }) {
+  const stroke = desaturated ? colors.whiteAlpha30 : colors.accent
+  return (
+    <div className="pv-flow-arrow" style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+      {condition && (
+        <div style={{
+          fontFamily: font.mono, fontSize: 10, color: colors.whiteAlpha45,
+          textTransform: 'uppercase', letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap',
+        }}>{condition}</div>
+      )}
+      <div className="pv-flow-arrow-wrap" style={{ width: 44, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg className="pv-flow-arrow-svg" width="44" height="14" viewBox="0 0 44 14" aria-hidden="true">
+          <line
+            className="pv-flow-arrow-line"
+            x1="0" y1="7" x2="34" y2="7"
+            stroke={stroke} strokeWidth="1.5"
+            style={{ animationDelay: `${delay}s` }}
+          />
+          <path
+            className="pv-flow-arrow-head"
+            d="M 30 3 L 36 7 L 30 11"
+            fill="none" stroke={stroke} strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round"
+            style={{ animationDelay: `${delay + 0.4}s` }}
+          />
+        </svg>
+      </div>
+    </div>
+  )
+}
 
 function ScaledCreative({
   Comp, props, srcW, srcH, aspectRatio, borderRadius = 14
@@ -325,6 +396,31 @@ export default function PreviewClient({
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [activeCreative, setActiveCreative] = useState(0)
   const finaleRef = useRef<HTMLDivElement>(null)
+  const showcaseScrollRef = useRef<HTMLDivElement>(null)
+
+  // Scroll-reveal for the Automated Flows lanes — each lane gets a .revealed
+  // class when it enters the viewport, which triggers the CSS arrow-draw +
+  // node-rise animations once. IntersectionObserver fires on observe() for
+  // any lanes already in view, so lanes above the fold animate immediately.
+  const [revealedFlowLanes, setRevealedFlowLanes] = useState<Set<number>>(new Set())
+  const flowLaneRefs = useRef<(HTMLDivElement | null)[]>([])
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return
+        const idx = Number((entry.target as HTMLElement).dataset.laneIdx)
+        if (Number.isNaN(idx)) return
+        setRevealedFlowLanes(prev => {
+          if (prev.has(idx)) return prev
+          const next = new Set(prev)
+          next.add(idx)
+          return next
+        })
+      })
+    }, { threshold: 0.3 })
+    flowLaneRefs.current.forEach(el => el && observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
 
   function copyVariation(i: number, v: AdVariation) {
     const text = `HEADLINE:\n${v.headline}\n\nPRIMARY TEXT:\n${v.primary_text}\n\nDESCRIPTION:\n${v.description}`
@@ -706,12 +802,68 @@ export default function PreviewClient({
 
   // Feed + Showcase — derived from gridCards
   const showcaseCount = gridCards.length
+  // Auto-advance: cycle the active card every 3s. Paused briefly after a user
+  // gesture (swipe/wheel/dot click) so manual control doesn't fight the timer.
+  const showcaseInteractionRef = useRef<number>(0)
   useEffect(() => {
     if (showcaseCount <= 1) return
     const interval = setInterval(() => {
+      if (Date.now() - showcaseInteractionRef.current < 6000) return
       setActiveCreative(prev => (prev + 1) % showcaseCount)
     }, 3000)
     return () => clearInterval(interval)
+  }, [showcaseCount])
+
+  // Manual navigation: touch swipe (mobile) + horizontal wheel/trackpad
+  // (desktop). Both translate a gesture into a single index step and record
+  // an interaction timestamp to pause the auto-advance.
+  useEffect(() => {
+    if (showcaseCount <= 1) return
+    const el = showcaseScrollRef.current
+    if (!el) return
+
+    const step = (dir: 1 | -1) => {
+      showcaseInteractionRef.current = Date.now()
+      setActiveCreative(prev => (prev + dir + showcaseCount) % showcaseCount)
+    }
+
+    let touchX = 0
+    let touchY = 0
+    const onTouchStart = (e: TouchEvent) => {
+      touchX = e.touches[0].clientX
+      touchY = e.touches[0].clientY
+    }
+    const onTouchEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - touchX
+      const dy = e.changedTouches[0].clientY - touchY
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1)
+    }
+
+    let wheelAccum = 0
+    let wheelTimer: ReturnType<typeof setTimeout> | null = null
+    const onWheel = (e: WheelEvent) => {
+      // Only intercept gestures that are predominantly horizontal — vertical
+      // page scroll still works naturally over the band.
+      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
+      e.preventDefault()
+      wheelAccum += e.deltaX
+      if (wheelTimer) clearTimeout(wheelTimer)
+      wheelTimer = setTimeout(() => { wheelAccum = 0 }, 200)
+      if (Math.abs(wheelAccum) >= 60) {
+        step(wheelAccum > 0 ? 1 : -1)
+        wheelAccum = 0
+      }
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('wheel', onWheel)
+      if (wheelTimer) clearTimeout(wheelTimer)
+    }
   }, [showcaseCount])
 
   // Template props for ad creative
@@ -766,6 +918,30 @@ export default function PreviewClient({
         @keyframes gaugeIn { from { stroke-dashoffset: var(--gauge-circumference) } to { stroke-dashoffset: var(--gauge-offset) } }
         .flows-row::-webkit-scrollbar { display: none }
         .pv-flows-scroll::-webkit-scrollbar { display: none }
+        .pv-flow-track::-webkit-scrollbar { display: none }
+
+        @keyframes pvFlowNodeRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes pvFlowArrowDraw { from { stroke-dashoffset: 100 } to { stroke-dashoffset: 0 } }
+        @keyframes pvFlowArrowHead { from { opacity: 0 } to { opacity: 1 } }
+
+        .pv-flow-node, .pv-flow-branch { opacity: 0; transform: translateY(8px); }
+        .pv-flow-arrow-line { stroke-dasharray: 100; stroke-dashoffset: 100; }
+        .pv-flow-arrow-head { opacity: 0; }
+
+        .pv-flow-lane.revealed .pv-flow-node,
+        .pv-flow-lane.revealed .pv-flow-branch { animation: pvFlowNodeRise 0.4s ease-out forwards; }
+        .pv-flow-lane.revealed .pv-flow-arrow-line { animation: pvFlowArrowDraw 0.5s ease-out forwards; }
+        .pv-flow-lane.revealed .pv-flow-arrow-head { animation: pvFlowArrowHead 0.25s ease-out forwards; }
+
+        @media (max-width: 768px) {
+          .pv-flow-lane { flex-direction: column !important; align-items: stretch !important; }
+          .pv-flow-header { width: 100% !important; border-left: 0 !important; border-top: 3px solid var(--flow-accent) !important; padding: 12px 0 0 !important; }
+          .pv-flow-track { flex-direction: column !important; align-items: flex-start !important; overflow-x: visible !important; }
+          .pv-flow-branches { width: 100%; }
+          .pv-flow-branch { align-self: stretch; }
+          .pv-flow-arrow-wrap { width: 14px !important; height: 36px !important; }
+          .pv-flow-arrow-svg { transform: rotate(90deg); transform-origin: center; }
+        }
         .iphone-screen::-webkit-scrollbar { display: none }
         .iphone-stories::-webkit-scrollbar { display: none }
         @keyframes pvPulseGlow { 0%{box-shadow:0 0 0 0 rgba(0,255,151,0.3)} 70%{box-shadow:0 0 0 12px transparent} 100%{box-shadow:0 0 0 0 transparent} }
@@ -1322,11 +1498,19 @@ export default function PreviewClient({
           </div>
 
           {/* Full-width showcase band */}
-          <div className="pv-showcase-band" style={{
-            width: '100vw', marginLeft: 'calc(-50vw + 50%)',
-            position: 'relative', height: 'clamp(500px, 70vh, 800px)',
-            overflow: 'hidden',
-          }}>
+          <div
+            ref={showcaseScrollRef}
+            className="pv-showcase-band"
+            style={{
+              width: '100vw', marginLeft: 'calc(-50vw + 50%)',
+              position: 'relative', height: 'clamp(500px, 70vh, 800px)',
+              overflow: 'hidden',
+              touchAction: 'pan-y',
+              // Lets desktop horizontal-wheel gestures land on this element
+              // before the browser consumes them as page scroll.
+              overscrollBehaviorX: 'contain',
+            }}
+          >
             {/* Background — pure black */}
             <div style={{ position: 'absolute', inset: 0, background: colors.ink, zIndex: 0 }} />
 
@@ -1368,20 +1552,30 @@ export default function PreviewClient({
               })}
             </div>
 
-            {/* Navigation dots */}
+            {/* Navigation dots — click to jump to that card. */}
             <div style={{
               position: 'absolute', bottom: 24, left: '50%',
               transform: 'translateX(-50%)', zIndex: 3,
               display: 'flex', gap: 8, alignItems: 'center',
             }}>
               {gridCards.map((_, dotIdx) => (
-                <div key={dotIdx} style={{
-                  height: 8,
-                  width: dotIdx === activeCreative ? 24 : 8,
-                  borderRadius: radius.pill,
-                  background: dotIdx === activeCreative ? colors.accent : colors.whiteAlpha30,
-                  transition: 'width 0.3s ease, background 0.3s ease',
-                }} />
+                <button
+                  key={dotIdx}
+                  type="button"
+                  aria-label={`Show creative ${dotIdx + 1}`}
+                  onClick={() => {
+                    showcaseInteractionRef.current = Date.now()
+                    setActiveCreative(dotIdx)
+                  }}
+                  style={{
+                    height: 8,
+                    width: dotIdx === activeCreative ? 24 : 8,
+                    borderRadius: radius.pill,
+                    background: dotIdx === activeCreative ? colors.accent : colors.whiteAlpha30,
+                    transition: 'width 0.3s ease, background 0.3s ease',
+                    border: 'none', padding: 0, cursor: 'pointer',
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -1724,47 +1918,144 @@ export default function PreviewClient({
           )}
 
           {/* ── Automated Flows ── */}
-          <div style={{ marginTop: 56 }}>
-            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 16, textAlign: 'center' }}>
-              Automated Flows
-            </div>
-            <div className="pv-flows-scroll" style={{ display: 'flex', flexDirection: 'row', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 8 }}>
-              {([
-                { icon: '✦', name: 'Welcome Series', status: '3 emails · Ready', desc: `Introduce ${brand.name} and convert first-time visitors into buyers.`, active: true },
-                { icon: '◎', name: 'Abandoned Cart', status: '2 emails · Ready', desc: 'Recover lost sales with urgency-driven reminders.', active: true },
-                { icon: '▲', name: 'Post-Purchase', status: '3 emails · Ready', desc: 'Thank buyers, request reviews, and drive repeat purchases.', active: true },
-                { icon: '⟳', name: 'Win-Back', status: '2 emails · Ready', desc: 'Re-engage customers who haven\'t bought in 60+ days.', active: false },
-                { icon: '★', name: 'VIP & Loyalty', status: '4 emails · Ready', desc: 'Reward your best customers and increase LTV.', active: false },
-              ] as const).map((flow, i) => (
-                <div
-                  key={i}
-                  onClick={flow.active ? () => requireAuth(() => {}) : undefined}
-                  style={{
-                    position: 'relative', minWidth: 220, flexShrink: 0,
-                    background: colors.whiteAlpha5,
-                    border: `1px solid ${colors.whiteAlpha10}`,
-                    borderLeft: flow.active ? `3px solid ${colors.accent}` : `3px solid ${colors.whiteAlpha10}`,
-                    borderRadius: radius.xl, padding: '24px 24px 16px',
-                    cursor: flow.active ? 'pointer' : 'default',
-                  }}
-                >
-                  {!flow.active && (
-                    <span style={{
-                      position: 'absolute', top: 16, right: 16,
-                      fontFamily: font.mono, fontSize: fontSize.caption,
-                      color: colors.whiteAlpha45, background: colors.whiteAlpha5,
-                      border: `1px solid ${colors.whiteAlpha10}`,
-                      borderRadius: radius.pill, padding: '2px 10px',
-                    }}>Coming soon</span>
-                  )}
-                  <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: flow.active ? colors.accent : colors.whiteAlpha45 }}>{flow.icon} · {flow.status}</div>
-                  <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xl, color: colors.paper, margin: '8px 0' }}>{flow.name}</div>
-                  <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha60, lineHeight: 1.6 }}>{flow.desc}</div>
-                  <div style={{ height: 2, width: '100%', marginTop: 16, borderRadius: radius.pill, background: colors.accent }} />
+          {(() => {
+            const FLOWS: PvFlowData[] = [
+              {
+                name: 'Welcome Series', meta: '3 emails · Ready', active: true,
+                nodes: [
+                  { day: 'Day 0', icon: '👋', label: 'Hello' },
+                  { day: 'Day 2', icon: '✦', label: 'Story' },
+                  { day: 'Day 5', icon: '🎁', label: 'Offer' },
+                ],
+              },
+              {
+                name: 'Abandoned Cart', meta: '2 emails · Ready', active: true,
+                nodes: [{ day: '1hr', icon: '🛒', label: 'Reminder' }],
+                branches: { paths: [
+                  { condition: 'if opened',  node: { day: 'Day 1', icon: '💸', label: 'Discount' } },
+                  { condition: 'if ignored', node: { day: 'Day 2', icon: '⭐', label: 'Social proof' } },
+                ]},
+              },
+              {
+                name: 'Post-Purchase', meta: '3 emails · Ready', active: true,
+                nodes: [
+                  { day: 'Day 1', icon: '🙏', label: 'Thanks' },
+                  { day: 'Day 7', icon: '⭐', label: 'Review' },
+                  { day: 'Day 21', icon: '🔄', label: 'Cross-sell' },
+                ],
+              },
+              {
+                name: 'Win-Back', meta: '2 emails · Flow', active: false,
+                nodes: [{ day: 'Day 60', icon: '😢', label: 'Miss you' }],
+                branches: { paths: [
+                  { condition: 'if clicks',  node: { day: 'Day 62', icon: '🎯', label: 'Comeback' } },
+                  { condition: 'if silent',  node: { day: 'Day 65', icon: '👋', label: 'Sunset' } },
+                ]},
+              },
+              {
+                name: 'VIP & Loyalty', meta: '4 steps · Flow', active: false,
+                nodes: [
+                  { day: 'Trigger',  icon: '🔔', label: '$200 spent' },
+                  { day: 'Day 0',    icon: '👑', label: 'VIP welcome' },
+                  { day: 'Week 1',   icon: '⚡', label: 'Early access' },
+                  { day: 'Birthday', icon: '🎂', label: 'Reward' },
+                ],
+              },
+            ]
+
+            return (
+              <div style={{ marginTop: 56 }}>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 24, textAlign: 'center' }}>
+                  Automated Flows
                 </div>
-              ))}
-            </div>
-          </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {FLOWS.map((flow, laneIdx) => {
+                    const desaturated = !flow.active
+                    const accent = flow.active ? colors.accent : colors.whiteAlpha20
+                    const revealed = revealedFlowLanes.has(laneIdx)
+                    const mainCount = flow.nodes.length
+                    return (
+                      <div
+                        key={flow.name}
+                        ref={(el) => { flowLaneRefs.current[laneIdx] = el }}
+                        data-lane-idx={laneIdx}
+                        className={`pv-flow-lane${revealed ? ' revealed' : ''}`}
+                        style={{
+                          ...({ '--flow-accent': accent } as React.CSSProperties),
+                          display: 'flex', alignItems: 'center', gap: 24,
+                          background: colors.whiteAlpha5,
+                          border: `1px solid ${colors.whiteAlpha10}`,
+                          borderRadius: radius.xl,
+                          padding: 20,
+                        }}
+                      >
+                        {/* Header */}
+                        <div
+                          className="pv-flow-header"
+                          style={{
+                            flex: '0 0 auto', width: 200,
+                            borderLeft: `3px solid ${accent}`,
+                            paddingLeft: 16,
+                            display: 'flex', flexDirection: 'column', gap: 6,
+                            opacity: desaturated ? 0.7 : 1,
+                          }}
+                        >
+                          <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xl, color: colors.paper, textTransform: 'uppercase', letterSpacing: letterSpacing.tight, lineHeight: 1.1 }}>
+                            {flow.name}
+                          </div>
+                          <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: desaturated ? colors.whiteAlpha45 : colors.whiteAlpha60 }}>
+                            {flow.meta}
+                          </div>
+                          {!flow.active && (
+                            <span style={{
+                              alignSelf: 'flex-start', marginTop: 4,
+                              fontFamily: font.mono, fontSize: 10,
+                              color: colors.whiteAlpha60, background: colors.whiteAlpha8,
+                              border: `1px solid ${colors.whiteAlpha15}`,
+                              borderRadius: radius.pill, padding: '3px 10px',
+                              letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                            }}>COMING SOON</span>
+                          )}
+                        </div>
+
+                        {/* Track */}
+                        <div
+                          className="pv-flow-track"
+                          style={{
+                            flex: 1,
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            overflowX: 'auto', scrollbarWidth: 'none',
+                          }}
+                        >
+                          {flow.nodes.map((n, i) => (
+                            <Fragment key={`main-${i}`}>
+                              <PvFlowNode node={n} desaturated={desaturated} delay={i * 2 * 0.12} />
+                              {i < mainCount - 1 && (
+                                <PvFlowArrow desaturated={desaturated} delay={(i * 2 + 1) * 0.12} />
+                              )}
+                            </Fragment>
+                          ))}
+                          {flow.branches && (
+                            <div className="pv-flow-branches" style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: '0 0 auto' }}>
+                              {flow.branches.paths.map((p, bi) => {
+                                const baseStep = (mainCount * 2 - 1) + bi * 2
+                                return (
+                                  <div key={bi} className="pv-flow-branch" style={{ display: 'flex', alignItems: 'center', gap: 12, animationDelay: `${baseStep * 0.12}s` }}>
+                                    <PvFlowArrow condition={p.condition} desaturated={desaturated} delay={baseStep * 0.12} />
+                                    <PvFlowNode node={p.node} desaturated={desaturated} delay={(baseStep + 1) * 0.12} />
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -2018,7 +2309,7 @@ export default function PreviewClient({
               animation: 'pvPulseGlow 2s infinite',
             }}
           >
-            {brand.status === 'draft' ? 'Activate & save →' : viewerCanSaveBrand ? 'Save to workspace →' : 'Create your account — it\'s free →'}
+            {brand.status === 'draft' ? 'Activate & save →' : viewerCanSaveBrand ? 'Save to workspace →' : 'Save to my account →'}
           </button>
           <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha30, marginTop: 12 }}>
             No credit card required.
