@@ -509,7 +509,7 @@ function ParticleCanvas() {
       vx: (Math.random() - 0.5) * 0.3, // max ~0.15px / frame — slow drift
       vy: (Math.random() - 0.5) * 0.3,
       r: 1 + Math.random() * 1.5,      // 1 – 2.5px
-      o: 0.08 + Math.random() * 0.22,  // 0.08 – 0.3 — dimmer field
+      o: 0.04 + Math.random() * 0.10,  // 0.04 – 0.14 — subtle field
     }))
 
     let frameId = 0
@@ -536,7 +536,7 @@ function ParticleCanvas() {
           const dy = a.y - b.y
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist < 100) {
-            const op = (1 - dist / 100) * 0.06
+            const op = (1 - dist / 100) * 0.03
             ctx.strokeStyle = `rgba(0, 255, 157, ${op})`
             ctx.beginPath()
             ctx.moveTo(a.x, a.y)

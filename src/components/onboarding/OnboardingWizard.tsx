@@ -22,6 +22,8 @@ export default function OnboardingWizard() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [generationReady, setGenerationReady] = useState(false)
+  const pendingRedirect = useRef<string | null>(null)
   const [carouselPaused, setCarouselPaused] = useState(false)
 
   const [brandName, setBrandName] = useState('')
@@ -213,7 +215,7 @@ export default function OnboardingWizard() {
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.3,
       r: 1 + Math.random() * 1.5,
-      o: 0.08 + Math.random() * 0.22,
+      o: 0.04 + Math.random() * 0.10,
     }))
 
     const draw = () => {
@@ -229,7 +231,7 @@ export default function OnboardingWizard() {
           const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist < 120) {
-            ctx.strokeStyle = `rgba(0,255,151,${(1 - dist / 120) * 0.08})`
+            ctx.strokeStyle = `rgba(0,255,151,${(1 - dist / 120) * 0.03})`
             ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke()
           }
         }

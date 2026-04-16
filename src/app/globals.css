@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent pinch-zoom on mobile — viewport meta alone is not enough for
+   Safari/WebKit which ignores user-scalable=no. */
+html, body {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
 /* ============================================================
    ATTOMIK DESIGN SYSTEM — attomik-theme.css  v1.0
    Copy :root + all classes into globals.css of each tool
