@@ -118,7 +118,7 @@ function getDateCutoff(range: TimeRange, customStart?: string): string | null {
 
 function getDateEnd(range: TimeRange, customEnd?: string): string | null {
   if (range === 'custom') return customEnd || null
-  return null
+  return null // non-custom ranges always go to today
 }
 
 // ── Action badge helpers ────────────────────────────────────────
@@ -229,6 +229,7 @@ export default function InsightsPage() {
       try {
         const notes = brandData?.notes ? JSON.parse(brandData.notes) : {}
         setHasMetaCredentials(!!(notes.meta_access_token && notes.meta_ad_account_id))
+        // Load saved analysis if it exists
         if (notes.insights_analysis?.headline) {
           setAnalysis(notes.insights_analysis)
           setAnalysisTimeRange(notes.insights_analysis_time_range || '')
@@ -342,9 +343,10 @@ export default function InsightsPage() {
     loadDailyTotals()
   }, [activeBrandId, hasData, timeRange, customStart, customEnd])
 
-  // ── Load per-ad daily data for creative charts ───────────────
+  // ── Load per-ad daily ROAS for sparklines ───────────────────
   useEffect(() => {
     if (!activeBrandId || aggRows.length === 0) { setSparklineData({}); return }
+    // Same filter as topCreatives: purchases > 0, has image, top 6 by purchases
     const topAdNames = aggRows
       .filter(r => r.purchases > 0 && r.creative_image_url)
       .sort((a, b) => b.purchases - a.purchases)
@@ -366,6 +368,7 @@ export default function InsightsPage() {
       const { data: rows } = await query
       if (!rows || rows.length === 0) { setSparklineData({}); return }
 
+      // Group by ad_name → date, compute weighted ROAS per date
       const adDateMap: Record<string, Record<string, { revenue: number; spend: number }>> = {}
       for (const r of rows) {
         if (!r.date || !r.ad_name) continue
@@ -549,7 +552,7 @@ export default function InsightsPage() {
         const timestamp = new Date().toISOString()
         setAnalysisTimeRange(rangeLabel)
         setAnalysisTimestamp(timestamp)
-        // Save to brand.notes
+        // Save to brand.notes so it persists across page loads
         const { data: brandData } = await supabase.from('brands').select('notes').eq('id', activeBrandId).single()
         const currentNotes = brandData?.notes ? JSON.parse(brandData.notes) : {}
         await supabase.from('brands').update({
@@ -582,7 +585,8 @@ export default function InsightsPage() {
       if (data.error) {
         setSyncResult(`Error: ${data.error}`)
       } else {
-        setSyncResult(`Synced ${data.synced} rows (${data.datePreset}) — ${data.creativesFetched} creatives fetched`)
+        setSyncResult(`✓ Synced ${data.synced} rows (${data.datePreset}) — ${data.creativesFetched} creatives fetched`)
+        // Refresh uploads list and table data
         const { data: refreshed } = await supabase
           .from('brand_insights')
           .select('id, csv_filename, uploaded_at, date_range_start, date_range_end, row_count')
@@ -658,6 +662,7 @@ export default function InsightsPage() {
     return (
       <div style={{ padding: '32px 40px', maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ maxWidth: 720, width: '100%' }}>
+          {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
             <svg width="48" height="48" viewBox="0 0 48 48" style={{ marginBottom: 16 }}>
               <circle cx="24" cy="24" r="24" fill={colors.ink} />
@@ -675,7 +680,9 @@ export default function InsightsPage() {
             </div>
           </div>
 
+          {/* Two options side by side */}
           <div style={{ display: 'flex', gap: 24, marginBottom: 32 }}>
+            {/* LEFT — Brand Hub */}
             <div style={{
               flex: 1, background: colors.paper, border: `1px solid ${colors.border}`,
               borderRadius: radius['3xl'], padding: '32px 28px', textAlign: 'center',
@@ -696,6 +703,7 @@ export default function InsightsPage() {
               }}>{'\u2192'} Go to Brand Hub</a>
             </div>
 
+            {/* RIGHT — Quick connect */}
             <div style={{
               flex: 1, background: colors.paper, border: `1px solid ${colors.border}`,
               borderRadius: radius['3xl'], padding: '32px 28px',
@@ -757,6 +765,7 @@ export default function InsightsPage() {
             </div>
           </div>
 
+          {/* Help link */}
           <div style={{ textAlign: 'center' }}>
             <a
               href="https://developers.facebook.com/tools/explorer/"
@@ -855,6 +864,25 @@ export default function InsightsPage() {
         }}>{syncResult}</div>
       )}
 
+      {/* Not connected banner */}
+      {!hasMetaCredentials && !hasData && (
+        <div style={{
+          background: colors.cream, borderRadius: radius['3xl'], padding: '20px 24px',
+          marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          border: `1px solid ${colors.border}`,
+        }}>
+          <div style={{ fontSize: fontSize.body, color: colors.muted }}>
+            Connect Meta Ads in Brand Hub → Integrations to enable automatic sync with creative data.
+          </div>
+          <a href={`/brand-setup/${activeBrandId}`} style={{
+            background: colors.ink, color: colors.accent, fontFamily: font.heading,
+            fontWeight: fontWeight.heading, fontSize: fontSize.xs, padding: '10px 20px',
+            borderRadius: radius.pill, textDecoration: 'none', textTransform: 'uppercase',
+            letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap', marginLeft: 16,
+          }}>Connect →</a>
+        </div>
+      )}
+
       {/* ═══ SECTION 1 — HEADER BAR ═══ */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -864,6 +892,7 @@ export default function InsightsPage() {
           Insights
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Time range toggle */}
           <div style={{ display: 'flex', background: colors.cream, borderRadius: radius.pill, padding: 3, gap: 2, flexWrap: 'wrap' }}>
             {TIME_RANGE_OPTIONS.map(r => (
               <button key={r.value} onClick={() => setTimeRange(r.value)} style={{
@@ -876,19 +905,35 @@ export default function InsightsPage() {
               }}>{r.label}</button>
             ))}
           </div>
+          {/* Custom date inputs */}
           {timeRange === 'custom' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{
-                fontFamily: font.mono, fontSize: fontSize.caption, padding: '6px 10px', borderRadius: radius.lg,
-                border: `1px solid ${colors.border}`, background: colors.paper, color: colors.ink, outline: 'none',
-              }} />
+              <input
+                type="date"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
+                style={{
+                  fontFamily: font.mono, fontSize: fontSize.caption,
+                  padding: '6px 10px', borderRadius: radius.lg,
+                  border: `1px solid ${colors.border}`, background: colors.paper,
+                  color: colors.ink, outline: 'none',
+                }}
+              />
               <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.muted }}>to</span>
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{
-                fontFamily: font.mono, fontSize: fontSize.caption, padding: '6px 10px', borderRadius: radius.lg,
-                border: `1px solid ${colors.border}`, background: colors.paper, color: colors.ink, outline: 'none',
-              }} />
+              <input
+                type="date"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
+                style={{
+                  fontFamily: font.mono, fontSize: fontSize.caption,
+                  padding: '6px 10px', borderRadius: radius.lg,
+                  border: `1px solid ${colors.border}`, background: colors.paper,
+                  color: colors.ink, outline: 'none',
+                }}
+              />
             </div>
           )}
+          {/* Sync button */}
           {hasMetaCredentials && (
             <button onClick={syncFromMeta} disabled={syncing} style={{
               background: syncing ? colors.gray400 : colors.accent,
@@ -943,7 +988,7 @@ export default function InsightsPage() {
                   AI Analysis
                 </div>
                 <div style={{ fontSize: fontSize.body, color: colors.whiteAlpha50 }}>
-                  Get AI-powered insights on what&apos;s working and what to test next.
+                  Get AI-powered insights on what&apos;s working, what to pause, and what to test next.
                 </div>
               </div>
               <button onClick={analyzeData} disabled={analyzing} style={{
@@ -956,6 +1001,7 @@ export default function InsightsPage() {
             </div>
           ) : (
             <div>
+              {/* Date range label */}
               <div style={{
                 fontFamily: font.mono, fontSize: fontSize.xs, fontWeight: fontWeight.bold,
                 letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted,
@@ -964,11 +1010,13 @@ export default function InsightsPage() {
                 Analyzed {analysisTimeRange || TIME_RANGE_OPTIONS.find(o => o.value === timeRange)?.label || 'Custom range'}{analysisTimestamp ? ` \u00b7 ${new Date(analysisTimestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}
               </div>
 
+              {/* Headline */}
               <div style={{
                 fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['5xl'],
                 lineHeight: 1.3, color: colors.ink, marginBottom: 32,
               }}>{analysis.headline}</div>
 
+              {/* Insights list */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {analysis.insights.map((insight, i) => {
                   const dotColor = insight.priority === 'high' ? colors.danger : insight.priority === 'medium' ? colors.warning : colors.gray500
@@ -978,6 +1026,7 @@ export default function InsightsPage() {
                       display: 'flex', gap: 20, padding: '20px 0',
                       borderBottom: i < analysis.insights.length - 1 ? `1px solid ${colors.border}` : 'none',
                     }}>
+                      {/* Left: priority dot + type badge */}
                       <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 72, paddingTop: 3 }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor }} />
                         <span style={{
@@ -987,17 +1036,24 @@ export default function InsightsPage() {
                           padding: '2px 8px', borderRadius: radius.pill, whiteSpace: 'nowrap',
                         }}>{insight.type}</span>
                       </div>
+
+                      {/* Center: title + detail */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
                           textTransform: 'uppercase', color: colors.ink, marginBottom: 4,
                         }}>{insight.title}</div>
-                        <div style={{ fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6 }}>{insight.detail}</div>
+                        <div style={{
+                          fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6,
+                        }}>{insight.detail}</div>
                       </div>
+
+                      {/* Right: action callout */}
                       <div style={{ flexShrink: 0, width: 320 }}>
                         <div style={{
                           fontFamily: font.mono, fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
-                          letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted, marginBottom: 6,
+                          letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted,
+                          marginBottom: 6,
                         }}>{'\u2192'} Action</div>
                         <div style={{
                           fontSize: fontSize.body, color: colors.ink, fontWeight: fontWeight.semibold,
@@ -1010,6 +1066,7 @@ export default function InsightsPage() {
                 })}
               </div>
 
+              {/* Re-analyze button */}
               <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <button onClick={analyzeData} disabled={analyzing} style={{
                   background: colors.ink, color: colors.accent, fontFamily: font.heading,
@@ -1026,9 +1083,11 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ═══ GRAPHS ROW (combo + bar side by side) ═══ */}
+      {/* ═══ SECTION 2B — GRAPHS ROW (line + bar side by side) ═══ */}
       {hasData && aggRows.length > 0 && (
         <div style={{ display: 'flex', gap: 20, marginBottom: 48 }}>
+
+          {/* LEFT — account-level metrics over time (~65%) */}
           <div style={{ flex: '0 0 65%', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <div style={{ width: 3, height: 20, borderRadius: 2, background: colors.accent }} />
@@ -1053,25 +1112,51 @@ export default function InsightsPage() {
                         textAnchor="end"
                         height={40}
                       />
-                      <YAxis yAxisId="left" tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
+                      {/* Left Y-axis — dollars (Spend + Revenue bars) */}
+                      <YAxis
+                        yAxisId="left"
+                        tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
                         tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
-                        stroke={colors.border} width={56} />
-                      <YAxis yAxisId="right" orientation="right" tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.gray700 }}
-                        tickFormatter={v => `${Number(v).toFixed(1)}x`} stroke={colors.border} width={44} />
+                        stroke={colors.border}
+                        width={56}
+                      />
+                      {/* Right Y-axis — ROAS ratio */}
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.gray700 }}
+                        tickFormatter={v => `${Number(v).toFixed(1)}x`}
+                        stroke={colors.border}
+                        width={44}
+                      />
                       <Tooltip
-                        contentStyle={{ background: colors.ink, border: 'none', borderRadius: radius.lg, fontFamily: font.mono, fontSize: 11, color: colors.paper }}
+                        contentStyle={{
+                          background: colors.ink, border: 'none', borderRadius: radius.lg,
+                          fontFamily: font.mono, fontSize: 11, color: colors.paper,
+                        }}
                         labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
                         formatter={(value: number, name: string) => {
                           if (name === 'roas') return [`${value.toFixed(2)}x`, 'ROAS']
-                          return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name === 'spend' ? 'Spend' : 'Revenue']
+                          const label = name === 'spend' ? 'Spend' : 'Revenue'
+                          return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label]
                         }}
                         labelFormatter={v => { const d = new Date(v + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
                       />
                       <Bar yAxisId="left" dataKey="spend" fill={colors.accent} opacity={0.85} radius={[3, 3, 0, 0]} />
                       <Bar yAxisId="left" dataKey="revenue" fill={colors.border} opacity={0.7} radius={[3, 3, 0, 0]} />
-                      <Line yAxisId="right" type="monotone" dataKey="roas" stroke={colors.gray700} strokeWidth={1.5} strokeDasharray="4 3" dot={false} activeDot={{ r: 3, strokeWidth: 0, fill: colors.gray700 }} />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="roas"
+                        stroke={colors.gray700}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 3"
+                        dot={false}
+                        activeDot={{ r: 3, strokeWidth: 0, fill: colors.gray700 }}
+                      />
                     </ComposedChart>
                   </ResponsiveContainer>
+                  {/* Legend */}
                   <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 12 }}>
                     {[
                       { label: 'Spend', type: 'bar' as const, color: colors.accent },
@@ -1097,6 +1182,7 @@ export default function InsightsPage() {
             </div>
           </div>
 
+          {/* RIGHT — top 5 ads by spend bar chart (~35%) */}
           <div style={{ flex: '0 0 calc(35% - 20px)', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <div style={{ width: 3, height: 20, borderRadius: 2, background: colors.accent }} />
@@ -1111,17 +1197,32 @@ export default function InsightsPage() {
                   data={[...aggRows].sort((a, b) => b.spend - a.spend).slice(0, 5).map(r => ({
                     name: shortAdName(r.ad_name),
                     spend: Math.round(r.spend * 100) / 100,
+                    fullName: r.ad_name,
                   }))}
                   margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke={colors.border} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }} stroke={colors.border}
-                    interval={0} tickFormatter={v => v.length > 14 ? v.slice(0, 12) + '...' : v} angle={-20} textAnchor="end" height={50} />
-                  <YAxis tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
+                    stroke={colors.border}
+                    interval={0}
+                    tickFormatter={v => v.length > 14 ? v.slice(0, 12) + '...' : v}
+                    angle={-20}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis
+                    tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
                     tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
-                    stroke={colors.border} width={52} />
+                    stroke={colors.border}
+                    width={52}
+                  />
                   <Tooltip
-                    contentStyle={{ background: colors.ink, border: 'none', borderRadius: radius.lg, fontFamily: font.mono, fontSize: 11, color: colors.paper }}
+                    contentStyle={{
+                      background: colors.ink, border: 'none', borderRadius: radius.lg,
+                      fontFamily: font.mono, fontSize: 11, color: colors.paper,
+                    }}
                     labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
                     formatter={(value: number) => [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Spend']}
                     labelFormatter={(label: string) => label}
@@ -1131,10 +1232,11 @@ export default function InsightsPage() {
               </ResponsiveContainer>
             </div>
           </div>
+
         </div>
       )}
 
-      {/* ═══ BEST PERFORMING CREATIVES ═══ */}
+      {/* ═══ SECTION 3 — BEST PERFORMING CREATIVES ═══ */}
       {topCreatives.length > 0 && (
         <div style={{ marginBottom: 48 }}>
           <SectionHeader title="Best Performing Creatives" />
@@ -1148,15 +1250,22 @@ export default function InsightsPage() {
 
               return (
                 <div key={i} style={{
-                  display: 'flex', gap: 20, background: colors.paper, borderRadius: radius['3xl'],
-                  border: `1px solid ${colors.border}`, overflow: 'hidden', boxShadow: shadow.card, padding: 20,
+                  display: 'flex', gap: 20,
+                  background: colors.paper, borderRadius: radius['3xl'],
+                  border: `1px solid ${colors.border}`, overflow: 'hidden',
+                  boxShadow: shadow.card, padding: 20,
                 }}>
+                  {/* LEFT — creative card (~40%) */}
                   <div style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    {/* Thumbnail + name + sales badge */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
                       {r.creative_image_url && (
-                        <img src={r.creative_image_url} alt={shortAdName(r.ad_name)}
+                        <img
+                          src={r.creative_image_url}
+                          alt={shortAdName(r.ad_name)}
                           style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: radius.md, border: `1px solid ${colors.border}`, flexShrink: 0 }}
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
@@ -1165,20 +1274,35 @@ export default function InsightsPage() {
                           lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>{shortAdName(r.ad_name)}</div>
                         <div style={{
-                          background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.heading,
+                          background: colors.accent, color: colors.ink,
+                          fontFamily: font.heading, fontWeight: fontWeight.heading,
                           fontSize: fontSize['2xs'], padding: '2px 8px', borderRadius: radius.pill,
                           display: 'inline-block', marginTop: 4, lineHeight: 1.3,
                         }}>{r.purchases} sales / {r.roas.toFixed(2)}x</div>
                       </div>
                     </div>
+
+                    {/* Category tag */}
                     {creativeType && (
                       <div style={{ marginBottom: 8 }}>
-                        <span style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.bold, background: creativeType.color, color: colors.ink, padding: '2px 8px', borderRadius: radius.pill, textTransform: 'uppercase', letterSpacing: letterSpacing.wide }}>{creativeType.label}</span>
+                        <span style={{
+                          fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
+                          background: creativeType.color, color: colors.ink,
+                          padding: '2px 8px', borderRadius: radius.pill,
+                          textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                        }}>{creativeType.label}</span>
                       </div>
                     )}
+
+                    {/* Body text */}
                     {r.creative_body && (
-                      <div style={{ fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{r.creative_body}</div>
+                      <div style={{
+                        fontSize: fontSize.body, color: colors.muted, lineHeight: 1.6, marginBottom: 12,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+                      }}>{r.creative_body}</div>
                     )}
+
+                    {/* Metrics row */}
                     <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
                       {[
                         { label: 'Spend', value: `$${r.spend.toFixed(0)}` },
@@ -1192,6 +1316,8 @@ export default function InsightsPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Inspire button */}
                     <button
                       onClick={() => copyPrompt(`Generate a creative inspired by "${shortAdName(r.ad_name)}" — ${r.roas.toFixed(2)}x ROAS, ${r.purchases} purchases, $${r.cpa.toFixed(0)} CPA. Copy angle: "${r.creative_body?.slice(0, 100)}". Match this style and hook.`, `inspire-card-${i}`)}
                       style={{
@@ -1199,42 +1325,78 @@ export default function InsightsPage() {
                         color: copied === `inspire-card-${i}` ? colors.paper : colors.accent,
                         fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xs,
                         padding: '10px', borderRadius: radius.lg, border: 'none', cursor: 'pointer',
-                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide, transition: 'all 0.15s', marginTop: 'auto',
+                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide, transition: 'all 0.15s',
+                        marginTop: 'auto',
                       }}
                     >{copied === `inspire-card-${i}` ? '\u2713 Copied!' : '\u2192 Inspire Creative'}</button>
                   </div>
 
+                  {/* RIGHT — Spend / Revenue / ROAS chart (~60%) */}
                   <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.caption, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, color: colors.muted, marginBottom: 8 }}>{shortAdName(r.ad_name)}</div>
+                    <div style={{
+                      fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.caption,
+                      textTransform: 'uppercase', letterSpacing: letterSpacing.wide, color: colors.muted,
+                      marginBottom: 8,
+                    }}>{shortAdName(r.ad_name)}</div>
                     {hasChart ? (
                       <>
                         <ResponsiveContainer width="100%" height={200}>
                           <ComposedChart data={sparkPoints} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} barCategoryGap="20%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
-                            <XAxis dataKey="date" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
                               tickFormatter={v => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}` }}
-                              stroke={colors.border} interval={Math.ceil(sparkPoints.length / 10) - 1} angle={-35} textAnchor="end" height={40} />
-                            <YAxis yAxisId="left" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
+                              stroke={colors.border}
+                              interval={Math.ceil(sparkPoints.length / 10) - 1}
+                              angle={-35}
+                              textAnchor="end"
+                              height={40}
+                            />
+                            <YAxis
+                              yAxisId="left"
+                              tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
                               tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
-                              stroke={colors.border} width={46} />
-                            <YAxis yAxisId="right" orientation="right" tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.gray700 }}
-                              tickFormatter={v => `${Number(v).toFixed(1)}x`} stroke={colors.border} width={36} />
+                              stroke={colors.border}
+                              width={46}
+                            />
+                            <YAxis
+                              yAxisId="right"
+                              orientation="right"
+                              tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.gray700 }}
+                              tickFormatter={v => `${Number(v).toFixed(1)}x`}
+                              stroke={colors.border}
+                              width={36}
+                            />
                             <Tooltip
-                              contentStyle={{ background: colors.ink, border: 'none', borderRadius: radius.lg, fontFamily: font.mono, fontSize: 11, color: colors.paper }}
+                              contentStyle={{
+                                background: colors.ink, border: 'none', borderRadius: radius.lg,
+                                fontFamily: font.mono, fontSize: 11, color: colors.paper,
+                              }}
                               labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
                               formatter={(value: number, name: string) => {
                                 if (name === 'roas') return [`${value.toFixed(2)}x`, 'ROAS']
-                                return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name === 'spend' ? 'Spend' : 'Revenue']
+                                const label = name === 'spend' ? 'Spend' : 'Revenue'
+                                return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label]
                               }}
                               labelFormatter={v => { const d = new Date(v + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
                             />
                             <Bar yAxisId="left" dataKey="spend" fill={colors.accent} opacity={0.85} radius={[3, 3, 0, 0]} />
                             <Bar yAxisId="left" dataKey="revenue" fill={colors.border} opacity={0.7} radius={[3, 3, 0, 0]} />
-                            <Line yAxisId="right" type="monotone" dataKey="roas" stroke={declining ? colors.dangerSoft : colors.accent}
-                              strokeWidth={1.5} strokeDasharray="4 3" dot={false}
-                              activeDot={{ r: 3, strokeWidth: 0, fill: declining ? colors.dangerSoft : colors.accent }} isAnimationActive={false} />
+                            <Line
+                              yAxisId="right"
+                              type="monotone"
+                              dataKey="roas"
+                              stroke={declining ? colors.dangerSoft : colors.accent}
+                              strokeWidth={1.5}
+                              strokeDasharray="4 3"
+                              dot={false}
+                              activeDot={{ r: 3, strokeWidth: 0, fill: declining ? colors.dangerSoft : colors.accent }}
+                              isAnimationActive={false}
+                            />
                           </ComposedChart>
                         </ResponsiveContainer>
+                        {/* Legend */}
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 6 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             <div style={{ width: 12, height: 8, borderRadius: 2, background: colors.accent, opacity: 0.85 }} />
@@ -1251,7 +1413,11 @@ export default function InsightsPage() {
                         </div>
                       </>
                     ) : (
-                      <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.muted, fontFamily: font.mono, fontSize: fontSize.caption, border: `1px dashed ${colors.border}`, borderRadius: radius.lg }}>
+                      <div style={{
+                        height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: colors.muted, fontFamily: font.mono, fontSize: fontSize.caption,
+                        border: `1px dashed ${colors.border}`, borderRadius: radius.lg,
+                      }}>
                         Not enough daily data
                       </div>
                     )}
@@ -1263,16 +1429,27 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ═══ CREATIVE PERFORMANCE TABLE ═══ */}
+      {/* ═══ SECTION 5 — CREATIVE PERFORMANCE TABLE ═══ */}
       {hasData && aggRows.length > 0 && (
         <div style={{ marginBottom: 48 }}>
           <SectionHeader title="Creative Performance" />
-          <div style={{ borderRadius: radius['3xl'], border: `1px solid ${colors.border}`, overflow: 'hidden', boxShadow: shadow.card }}>
+
+          <div style={{
+            borderRadius: radius['3xl'], border: `1px solid ${colors.border}`,
+            overflow: 'hidden', boxShadow: shadow.card,
+          }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: colors.cream }}>
-                    <th style={{ textAlign: 'left', padding: '13px 16px', minWidth: 300, fontFamily: font.heading, fontWeight: fontWeight.heading, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, fontSize: fontSize.xs, color: colors.muted, borderBottom: `2px solid ${colors.border}`, position: 'sticky', top: 0, background: colors.cream, zIndex: 1 }}>Ad Name</th>
+                    <th style={{
+                      textAlign: 'left', padding: '13px 16px', minWidth: 300,
+                      fontFamily: font.heading, fontWeight: fontWeight.heading,
+                      textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                      fontSize: fontSize.xs, color: colors.muted,
+                      borderBottom: `2px solid ${colors.border}`,
+                      position: 'sticky', top: 0, background: colors.cream, zIndex: 1,
+                    }}>Ad Name</th>
                     {([
                       { label: 'Impr', key: 'impressions' },
                       { label: 'Clicks', key: 'clicks' },
@@ -1283,33 +1460,73 @@ export default function InsightsPage() {
                       { label: 'CPA', key: 'cpa' },
                     ]).map(h => (
                       <th key={h.key} onClick={() => toggleSort(h.key)} style={{
-                        textAlign: 'right', padding: '13px 16px', fontFamily: font.heading, fontWeight: fontWeight.heading,
-                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide, fontSize: fontSize.xs,
-                        color: sortColumn === h.key ? colors.ink : colors.muted, borderBottom: `2px solid ${colors.border}`,
+                        textAlign: 'right', padding: '13px 16px',
+                        fontFamily: font.heading, fontWeight: fontWeight.heading,
+                        textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                        fontSize: fontSize.xs, color: sortColumn === h.key ? colors.ink : colors.muted,
+                        borderBottom: `2px solid ${colors.border}`,
                         position: 'sticky', top: 0, background: colors.cream, zIndex: 1,
-                        whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', transition: 'color 0.15s',
+                        whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none',
+                        transition: 'color 0.15s',
                       }}>{h.label}{sortArrow(h.key)}</th>
                     ))}
-                    <th style={{ textAlign: 'right', padding: '13px 16px', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.xs, color: colors.muted, borderBottom: `2px solid ${colors.border}`, position: 'sticky', top: 0, background: colors.cream, zIndex: 1 }}></th>
+                    <th style={{
+                      textAlign: 'right', padding: '13px 16px',
+                      fontFamily: font.heading, fontWeight: fontWeight.heading,
+                      fontSize: fontSize.xs, color: colors.muted,
+                      borderBottom: `2px solid ${colors.border}`,
+                      position: 'sticky', top: 0, background: colors.cream, zIndex: 1,
+                    }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedAggRows.map((r, i) => {
                     const creative = parseCreativeType(r.ad_name)
                     return (
-                      <tr key={i} style={{ borderBottom: `1px solid ${colors.border}`, background: i % 2 === 0 ? colors.paper : colors.gray100 }}>
+                      <tr key={i} style={{
+                        borderBottom: `1px solid ${colors.border}`,
+                        background: i % 2 === 0 ? colors.paper : colors.gray100,
+                      }}>
                         <td style={{ padding: '13px 16px', minWidth: 300 }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             {r.creative_image_url && (
-                              <img src={r.creative_image_url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: radius.lg, flexShrink: 0, border: `1px solid ${colors.border}` }}
-                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                              <img
+                                src={r.creative_image_url}
+                                alt=""
+                                style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: radius.lg, flexShrink: 0, border: `1px solid ${colors.border}` }}
+                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                              />
                             )}
                             <div>
                               <div style={{ fontSize: fontSize.body, color: colors.ink, lineHeight: 1.4 }}>{r.ad_name}</div>
-                              {r.creative_title && <div style={{ fontSize: fontSize.sm, color: colors.muted, marginTop: 2, fontStyle: 'italic' }}>"{r.creative_title}"</div>}
-                              {r.creative_body && <div style={{ fontSize: fontSize.xs, color: colors.muted, marginTop: 4, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', maxWidth: 320 }}>{r.creative_body}</div>}
-                              {creative && <span style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.bold, background: creative.color, color: colors.ink, padding: '2px 8px', borderRadius: radius.pill, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4 }}>{creative.label}</span>}
-                              {r.creative_cta && <span style={{ fontSize: fontSize['2xs'], fontWeight: fontWeight.bold, background: colors.cream, color: colors.muted, padding: '2px 8px', borderRadius: radius.pill, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4 }}>{r.creative_cta.replace(/_/g, ' ')}</span>}
+                              {r.creative_title && (
+                                <div style={{ fontSize: fontSize.sm, color: colors.muted, marginTop: 2, fontStyle: 'italic' }}>"{r.creative_title}"</div>
+                              )}
+                              {r.creative_body && (
+                                <div style={{
+                                  fontSize: fontSize.xs, color: colors.muted, marginTop: 4, lineHeight: 1.5,
+                                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                                  overflow: 'hidden', maxWidth: 320,
+                                }}>{r.creative_body}</div>
+                              )}
+                              {creative && (
+                                <span style={{
+                                  fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
+                                  background: creative.color, color: colors.ink,
+                                  padding: '2px 8px', borderRadius: radius.pill,
+                                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                                  whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4,
+                                }}>{creative.label}</span>
+                              )}
+                              {r.creative_cta && (
+                                <span style={{
+                                  fontSize: fontSize['2xs'], fontWeight: fontWeight.bold,
+                                  background: colors.cream, color: colors.muted,
+                                  padding: '2px 8px', borderRadius: radius.pill,
+                                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                                  whiteSpace: 'nowrap', display: 'inline-block', marginTop: 4,
+                                }}>{r.creative_cta.replace(/_/g, ' ')}</span>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -1318,10 +1535,25 @@ export default function InsightsPage() {
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>{r.ctr.toFixed(2)}%</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>${r.spend.toFixed(2)}</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>{r.purchases}</td>
-                        <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold, color: roasColor(r.roas, r.purchases) }}>{r.roas.toFixed(2)}x</td>
+                        <td style={{
+                          padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption,
+                          fontWeight: fontWeight.bold, color: roasColor(r.roas, r.purchases),
+                        }}>{r.roas.toFixed(2)}x</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right', fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink }}>{r.cpa > 0 ? `$${r.cpa.toFixed(2)}` : '-'}</td>
                         <td style={{ padding: '13px 16px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                            {r.roas >= 2 && (
+                              <button
+                                onClick={() => copyPrompt(`Scale budget on "${r.ad_name}" — ROAS ${r.roas.toFixed(2)}x with ${r.purchases} purchases`, `scale-${i}`)}
+                                style={{ ...btnSmall, fontSize: fontSize['2xs'], padding: '4px 10px', background: copied === `scale-${i}` ? colors.success : colors.ink, color: copied === `scale-${i}` ? colors.paper : colors.accent }}
+                              >{copied === `scale-${i}` ? '\u2713' : 'Scale \u2191'}</button>
+                            )}
+                            {r.roas < 1 && r.spend > 0 && (
+                              <button
+                                onClick={() => copyPrompt(`Pause "${r.ad_name}" — spent $${r.spend.toFixed(2)} with ROAS ${r.roas.toFixed(2)}x`, `pause-${i}`)}
+                                style={{ ...btnSmall, fontSize: fontSize['2xs'], padding: '4px 10px', background: copied === `pause-${i}` ? colors.danger : colors.ink, color: copied === `pause-${i}` ? colors.paper : colors.accent }}
+                              >{copied === `pause-${i}` ? '\u2713' : 'Pause'}</button>
+                            )}
                             <button
                               onClick={() => copyPrompt(`Generate a creative inspired by "${r.ad_name}" which has ${r.impressions.toLocaleString()} impressions, ${r.clicks} clicks, and ${r.roas.toFixed(2)}x ROAS. Match the style and angle that made this ad perform.`, `inspire-${i}`)}
                               style={{ ...btnSmall, fontSize: fontSize['2xs'], padding: '4px 10px', background: copied === `inspire-${i}` ? colors.success : colors.ink, color: copied === `inspire-${i}` ? colors.paper : colors.accent }}
@@ -1338,36 +1570,65 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ═══ DATA MANAGEMENT (collapsed) ═══ */}
+      {/* ═══ SECTION 6 — DATA MANAGEMENT (collapsed) ═══ */}
       <details style={{ marginTop: 48 }}>
         <summary style={{
           fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold,
           letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted,
           cursor: 'pointer', userSelect: 'none' as const, padding: '16px 0',
           borderTop: `1px solid ${colors.border}`,
-        }}>Data management &#x25BE;</summary>
+        }}>Data management ▾</summary>
         <div style={{ paddingTop: 24 }}>
+
+          {/* Upload history */}
           {uploads.length > 0 && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted }}>Sync History</div>
+                <div style={{
+                  fontFamily: font.mono, fontSize: fontSize.caption, fontWeight: fontWeight.bold,
+                  letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.muted,
+                }}>Sync History</div>
                 {!purgeConfirm ? (
-                  <button onClick={() => setPurgeConfirm(true)} style={{ background: 'transparent', color: colors.danger, fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer', border: `1px solid ${colors.dangerLight}`, textTransform: 'uppercase', letterSpacing: letterSpacing.wide }}>Purge all data</button>
+                  <button onClick={() => setPurgeConfirm(true)} style={{
+                    background: 'transparent', color: colors.danger,
+                    fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
+                    padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer',
+                    border: `1px solid ${colors.dangerLight}`, textTransform: 'uppercase',
+                    letterSpacing: letterSpacing.wide,
+                  }}>Purge all data</button>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: fontSize.caption, color: colors.muted }}>Are you sure? This deletes all imported data for this brand.</span>
-                    <button onClick={purgeData} disabled={purging} style={{ background: colors.danger, color: colors.paper, fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '5px 14px', borderRadius: radius.pill, border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: letterSpacing.wide, opacity: purging ? 0.5 : 1 }}>{purging ? 'Deleting...' : 'Yes, delete all'}</button>
-                    <button onClick={() => setPurgeConfirm(false)} style={{ background: 'transparent', color: colors.muted, fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs, padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer', border: `1px solid ${colors.border}`, textTransform: 'uppercase', letterSpacing: letterSpacing.wide }}>Cancel</button>
+                    <span style={{ fontSize: fontSize.caption, color: colors.muted }}>
+                      Are you sure? This deletes all imported data for this brand.
+                    </span>
+                    <button onClick={purgeData} disabled={purging} style={{
+                      background: colors.danger, color: colors.paper,
+                      fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
+                      padding: '5px 14px', borderRadius: radius.pill, border: 'none', cursor: 'pointer',
+                      textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+                      opacity: purging ? 0.5 : 1,
+                    }}>{purging ? 'Deleting...' : 'Yes, delete all'}</button>
+                    <button onClick={() => setPurgeConfirm(false)} style={{
+                      background: 'transparent', color: colors.muted,
+                      fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
+                      padding: '5px 14px', borderRadius: radius.pill, cursor: 'pointer',
+                      border: `1px solid ${colors.border}`, textTransform: 'uppercase',
+                      letterSpacing: letterSpacing.wide,
+                    }}>Cancel</button>
                   </div>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {uploads.map(u => (
-                  <div key={u.id} style={{ ...cardStyle, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div key={u.id} style={{
+                    ...cardStyle, padding: '12px 18px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
                     <div>
                       <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: colors.ink }}>{u.csv_filename}</div>
                       <div style={{ fontSize: fontSize.sm, color: colors.muted, marginTop: 2 }}>
-                        {u.date_range_start && u.date_range_end ? `${u.date_range_start} \u2192 ${u.date_range_end}` : 'No date range'}{' \u00b7 '}{u.row_count} rows
+                        {u.date_range_start && u.date_range_end ? `${u.date_range_start} → ${u.date_range_end}` : 'No date range'}
+                        {' · '}{u.row_count} rows
                       </div>
                     </div>
                     <div style={{ fontSize: fontSize.xs, color: colors.disabled, fontFamily: font.mono }}>
@@ -1379,6 +1640,7 @@ export default function InsightsPage() {
             </div>
           )}
 
+          {/* CSV upload */}
           <div
             onDragOver={e => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
@@ -1388,12 +1650,16 @@ export default function InsightsPage() {
               ...cardStyle,
               border: dragOver ? `2px dashed ${colors.accent}` : `2px dashed ${colors.border}`,
               background: dragOver ? colors.accentAlpha6 : colors.paper,
-              textAlign: 'center', padding: '40px 24px', cursor: 'pointer', transition: 'all 0.15s',
+              textAlign: 'center', padding: '40px 24px', cursor: 'pointer',
+              transition: 'all 0.15s',
             }}
           >
             <input ref={fileRef} type="file" accept=".csv" onChange={onFileSelect} style={{ display: 'none' }} />
             <div style={{ fontSize: 32, marginBottom: 10 }}>&#8682;</div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md, textTransform: 'uppercase', letterSpacing: letterSpacing.wider, color: colors.ink, marginBottom: 6 }}>
+            <div style={{
+              fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md,
+              textTransform: 'uppercase', letterSpacing: letterSpacing.wider, color: colors.ink, marginBottom: 6,
+            }}>
               {uploading ? 'Processing...' : 'Drop your Meta Ads export here'}
             </div>
             <div style={{ fontSize: fontSize.body, color: colors.muted }}>
@@ -1402,7 +1668,10 @@ export default function InsightsPage() {
           </div>
 
           {uploadResult && (
-            <div style={{ marginTop: 12, padding: '12px 16px', background: colors.accentAlpha8, borderRadius: radius.lg, fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: colors.brandGreen }}>
+            <div style={{
+              marginTop: 12, padding: '12px 16px', background: colors.accentAlpha8,
+              borderRadius: radius.lg, fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: colors.brandGreen,
+            }}>
               {uploadResult}
             </div>
           )}

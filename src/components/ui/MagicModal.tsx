@@ -130,7 +130,7 @@ export default function MagicModal({
   // Hard fallback — reveal after 20s no matter what
   useEffect(() => {
     if (!isOpen) return
-    const t = setTimeout(() => setRevealed(true), 20000)
+    const t = setTimeout(() => setRevealed(true), 28000)
     return () => clearTimeout(t)
   }, [isOpen])
 
@@ -178,7 +178,6 @@ export default function MagicModal({
         }
         @media (max-width: 768px) {
           .mm-orb { opacity: 0.08 !important; filter: blur(80px) !important; }
-          .mm-side-img:nth-child(n+5) { display: none !important; }
           .mm-side-img { width: clamp(90px, 18vw, 130px) !important; }
         }
       `}</style>
@@ -408,7 +407,7 @@ export default function MagicModal({
                   color: colors.whiteAlpha60,
                   lineHeight: 1.6,
                 }}>
-                  Your brand walked in as a URL. It leaves as a full marketing engine.
+                  Your brand walked in as a URL.<br />It leaves as a full marketing engine.
                 </div>
                 <div style={{
                   fontFamily: font.mono,

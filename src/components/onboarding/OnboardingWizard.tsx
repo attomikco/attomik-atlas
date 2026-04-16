@@ -196,7 +196,7 @@ export default function OnboardingWizard() {
     // Run all AI generation in parallel — MagicModal animation covers this.
     // Standalone 12s safety fires setGenerationReady(true) no matter what.
     // Animation is ~8s so there's a 4s buffer for fast generation.
-    const safetyTimer = setTimeout(() => setGenerationReady(true), 18000)
+    const safetyTimer = setTimeout(() => setGenerationReady(true), 25000)
 
     await Promise.race([
       Promise.allSettled([
@@ -205,7 +205,7 @@ export default function OnboardingWizard() {
         fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' }),
         fetch(`/api/campaigns/${campaign.id}/email`, { method: 'POST' }),
       ]),
-      new Promise<void>(resolve => setTimeout(resolve, 18000)),
+      new Promise<void>(resolve => setTimeout(resolve, 25000)),
     ])
     clearTimeout(safetyTimer)
 

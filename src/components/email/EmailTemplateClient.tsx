@@ -1715,6 +1715,7 @@ function NewTemplateModal({ brandId, existingTemplates, onClose, onCreated }: {
   onClose: () => void
   onCreated: (row: EmailTemplateRow) => void
 }) {
+  // Compute default name for the initial type ('welcome')
   function buildDefaultName(t: TemplateType): string {
     const base = TEMPLATE_DEFAULT_NAMES[t]
     if (t === 'master') return base
