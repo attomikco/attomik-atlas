@@ -17,6 +17,16 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
 
+export interface LandingStructuredContent {
+  hero?: { headline?: string; subheadline?: string; cta_text?: string }
+  problem?: { headline?: string; body?: string }
+  solution?: { headline?: string; body?: string }
+  benefits?: Array<{ headline?: string; body?: string }>
+  social_proof?: { headline?: string; testimonial?: string; attribution?: string; stat?: string }
+  faq?: Array<{ question?: string; answer?: string }>
+  final_cta?: { headline?: string; body?: string; cta_text?: string }
+}
+
 export interface LandingBriefData {
   goal?: string | null
   offer?: string | null
@@ -24,6 +34,12 @@ export interface LandingBriefData {
   angle?: string | null
   campaign_name?: string | null
   audience?: string | null
+  /**
+   * Pre-drafted section-by-section copy (from the landing-brief generator).
+   * When present, Claude treats this as the canonical copy and focuses on
+   * layout/design rather than inventing new headlines.
+   */
+  structured_content?: LandingStructuredContent | null
 }
 
 export type LandingDesignTokens = {
@@ -204,6 +220,54 @@ OUTPUT CONTRACT — read carefully:
 START your response with <!doctype html> and END with </html>. Nothing else.`
 }
 
+function buildStructuredContentBlock(content?: LandingStructuredContent | null): string {
+  if (!content) return ''
+  const lines: string[] = ['', 'PRE-DRAFTED COPY (use this as the canonical copy — you may polish but do not drift from intent):']
+  if (content.hero) {
+    lines.push('Hero:')
+    if (content.hero.headline) lines.push(`  Headline: ${content.hero.headline}`)
+    if (content.hero.subheadline) lines.push(`  Subheadline: ${content.hero.subheadline}`)
+    if (content.hero.cta_text) lines.push(`  CTA: ${content.hero.cta_text}`)
+  }
+  if (content.problem) {
+    lines.push('Problem:')
+    if (content.problem.headline) lines.push(`  Headline: ${content.problem.headline}`)
+    if (content.problem.body) lines.push(`  Body: ${content.problem.body}`)
+  }
+  if (content.solution) {
+    lines.push('Solution:')
+    if (content.solution.headline) lines.push(`  Headline: ${content.solution.headline}`)
+    if (content.solution.body) lines.push(`  Body: ${content.solution.body}`)
+  }
+  if (content.benefits?.length) {
+    lines.push('Benefits:')
+    content.benefits.forEach((b, i) => {
+      lines.push(`  ${i + 1}. ${b.headline || ''}${b.body ? ` — ${b.body}` : ''}`)
+    })
+  }
+  if (content.social_proof) {
+    lines.push('Social proof:')
+    if (content.social_proof.headline) lines.push(`  Headline: ${content.social_proof.headline}`)
+    if (content.social_proof.testimonial) lines.push(`  Testimonial: "${content.social_proof.testimonial}"`)
+    if (content.social_proof.attribution) lines.push(`  Attribution: ${content.social_proof.attribution}`)
+    if (content.social_proof.stat) lines.push(`  Stat: ${content.social_proof.stat}`)
+  }
+  if (content.faq?.length) {
+    lines.push('FAQ:')
+    content.faq.forEach((f, i) => {
+      lines.push(`  Q${i + 1}: ${f.question || ''}`)
+      if (f.answer) lines.push(`  A${i + 1}: ${f.answer}`)
+    })
+  }
+  if (content.final_cta) {
+    lines.push('Final CTA:')
+    if (content.final_cta.headline) lines.push(`  Headline: ${content.final_cta.headline}`)
+    if (content.final_cta.body) lines.push(`  Body: ${content.final_cta.body}`)
+    if (content.final_cta.cta_text) lines.push(`  CTA: ${content.final_cta.cta_text}`)
+  }
+  return lines.join('\n')
+}
+
 function buildUserPrompt(brief: LandingBriefData, brandName: string): string {
   return `Design and write a complete landing page for ${brandName} based on this campaign brief:
 
@@ -213,6 +277,7 @@ Offer:       ${brief.offer || 'Not specified'}
 Key message: ${brief.key_message || 'Not specified'}
 Angle:       ${brief.angle || 'Not specified'}
 Audience:    ${brief.audience || 'Brand target audience'}
+${buildStructuredContentBlock(brief.structured_content)}
 
 Requirements:
 1. Hero section with a bold headline (brand heading font, uppercase), a sharp subheadline, and a primary CTA button using the brand accent color.
