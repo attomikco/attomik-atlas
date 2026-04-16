@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { colors, font, fontWeight, fontSize, zIndex, transition, letterSpacing } from '@/lib/design-tokens'
+import { useEffect, useRef, useState } from 'react'
+import { colors, font, fontWeight, fontSize, radius, zIndex, transition, letterSpacing } from '@/lib/design-tokens'
 
 interface MagicModalProps {
   isOpen: boolean
@@ -10,54 +10,118 @@ interface MagicModalProps {
   onComplete?: () => void
   headline?: string
   bodyText?: string
+  brandColors?: string[]
 }
 
-const STEPS = [
-  'Scanning brand identity',
-  'Building creative strategy',
-  'Generating ad creatives',
-  'Preparing your Atlas',
+const LOG_LINES: Array<{ text: string; color: string; bold?: boolean }> = [
+  { text: '✦ Scanning brand identity...', color: colors.whiteAlpha60 },
+  { text: '✦ Extracting color palette', color: colors.whiteAlpha60 },
+  { text: '✦ Loading typography system', color: colors.whiteAlpha60 },
+  { text: '✦ Analyzing brand voice', color: colors.whiteAlpha60 },
+  { text: '✦ Mapping target audience', color: colors.whiteAlpha60 },
+  { text: '✦ Building creative strategy', color: colors.whiteAlpha60 },
+  { text: '✦ Generating ad creative 1/3', color: colors.accent },
+  { text: '✦ Generating ad creative 2/3', color: colors.accent },
+  { text: '✦ Generating ad creative 3/3', color: colors.accent },
+  { text: '✦ Writing email campaign', color: colors.accent },
+  { text: '✦ Structuring landing page', color: colors.accent },
+  { text: '✦ Calibrating brand systems', color: colors.whiteAlpha60 },
+  { text: '✓ Atlas ready.', color: colors.accent, bold: true },
 ]
 
-const STEP_STAGGER_MS = 1200
+const LINE_INTERVAL_MS = 600
+const PCT_INTERVAL_MS = 80
+const TOTAL_DURATION_MS = LOG_LINES.length * LINE_INTERVAL_MS
+const PCT_INCREMENT = 100 / (TOTAL_DURATION_MS / PCT_INTERVAL_MS)
 
 export default function MagicModal({
   isOpen,
   mode: _mode,
-  isDone,
+  isDone: _isDone,
   brandName,
-  onComplete: _onComplete,
+  onComplete,
   headline: _headline,
   bodyText: _bodyText,
+  brandColors,
 }: MagicModalProps) {
   const [visible, setVisible] = useState(false)
-  const [activeStep, setActiveStep] = useState(0)
+  const [currentLine, setCurrentLine] = useState(0)
+  const [pct, setPct] = useState(0)
+  const [complete, setComplete] = useState(false)
 
-  // Mount fade-in
+  const logRef = useRef<HTMLDivElement>(null)
+  const lineInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pctInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const completeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     if (isOpen) {
+      setCurrentLine(0)
+      setPct(0)
+      setComplete(false)
       const t = setTimeout(() => setVisible(true), 50)
       return () => clearTimeout(t)
     }
     setVisible(false)
   }, [isOpen])
 
-  // Sequential step progression — 1.2s stagger. The last step stays
-  // "active" (pulsing) until the parent flips `isDone`, at which point
-  // every step snaps to the complete state.
+  // Log line progression
   useEffect(() => {
-    if (!isOpen || isDone) return
-    setActiveStep(0)
-    const timers: ReturnType<typeof setTimeout>[] = []
-    for (let i = 1; i < STEPS.length; i++) {
-      timers.push(setTimeout(() => setActiveStep(i), i * STEP_STAGGER_MS))
+    if (!isOpen || !visible) return
+
+    let line = 0
+    lineInterval.current = setInterval(() => {
+      line++
+      if (line >= LOG_LINES.length) {
+        if (lineInterval.current) clearInterval(lineInterval.current)
+        lineInterval.current = null
+        setCurrentLine(LOG_LINES.length)
+        setComplete(true)
+        completeTimeout.current = setTimeout(() => {
+          onComplete?.()
+        }, 800)
+        return
+      }
+      setCurrentLine(line)
+    }, LINE_INTERVAL_MS)
+
+    return () => {
+      if (lineInterval.current) clearInterval(lineInterval.current)
+      if (completeTimeout.current) clearTimeout(completeTimeout.current)
     }
-    return () => timers.forEach(clearTimeout)
-  }, [isOpen, isDone])
+  }, [isOpen, visible]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Percentage counter
+  useEffect(() => {
+    if (!isOpen || !visible) return
+
+    let p = 0
+    pctInterval.current = setInterval(() => {
+      p = Math.min(100, p + PCT_INCREMENT)
+      setPct(Math.round(p))
+      if (p >= 100) {
+        if (pctInterval.current) clearInterval(pctInterval.current)
+        pctInterval.current = null
+      }
+    }, PCT_INTERVAL_MS)
+
+    return () => {
+      if (pctInterval.current) clearInterval(pctInterval.current)
+    }
+  }, [isOpen, visible])
+
+  // Auto-scroll the log
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight
+    }
+  }, [currentLine])
 
   if (!isOpen) return null
 
-  const displayName = brandName && brandName.trim() ? brandName.trim() : null
+  const displayName = brandName?.trim() || null
+  const displayColors = brandColors?.slice(0, 6) || []
+  const isComplete = currentLine >= LOG_LINES.length
 
   return (
     <div style={{
@@ -68,100 +132,154 @@ export default function MagicModal({
       overflow: 'hidden',
     }}>
       <style>{`
-        @keyframes atlasBreathe { 0%, 100% { opacity: 0.4 } 50% { opacity: 1 } }
-        @keyframes radialPulse { 0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.55 } 100% { transform: translate(-50%, -50%) scale(1.25); opacity: 1 } }
-        @keyframes stepPulse { 0%, 100% { opacity: 1; transform: scale(1) } 50% { opacity: 0.35; transform: scale(0.75) } }
+        @keyframes mmFadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes mmBgPulse { from { opacity: 0.4 } to { opacity: 1 } }
+        @keyframes mmPulseText { 0%, 100% { opacity: 1 } 50% { opacity: 0.5 } }
+        @keyframes mmBlink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
       `}</style>
 
-      {/* Slow radial gradient pulse — sits behind the content */}
+      {/* Background radial pulse */}
       <div style={{
-        position: 'absolute',
-        top: '50%', left: '50%',
-        width: '150vmax', height: '150vmax',
-        background: `radial-gradient(circle at center, ${colors.accentAlpha10} 0%, transparent 55%)`,
-        transform: 'translate(-50%, -50%)',
-        animation: 'radialPulse 4s ease-in-out infinite alternate',
+        position: 'absolute', inset: 0,
+        background: `radial-gradient(ellipse at center, ${colors.accentAlpha10} 0%, transparent 70%)`,
+        animation: 'mmBgPulse 4s ease-in-out infinite alternate',
         pointerEvents: 'none',
       }} />
 
-      {/* Centered content stack */}
+      {/* Three-zone layout */}
       <div style={{
         position: 'relative',
         width: '100%', height: '100%',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: '0 32px',
+        padding: '48px 24px',
+        gap: 40,
       }}>
-        {/* ATLAS wordmark — breathing opacity */}
+        {/* ZONE 1 — Atlas wordmark */}
         <div style={{
           fontFamily: font.heading,
           fontWeight: fontWeight.heading,
-          fontSize: 'clamp(48px, 8vw, 96px)',
-          lineHeight: 1,
-          letterSpacing: letterSpacing.tight,
-          color: colors.paper,
+          fontSize: fontSize['4xl'],
+          color: colors.whiteAlpha45,
+          letterSpacing: letterSpacing.widest,
           textTransform: 'uppercase',
-          animation: 'atlasBreathe 3s ease-in-out infinite',
-          marginBottom: 20,
-          textAlign: 'center',
+          opacity: 0,
+          animation: 'mmFadeIn 0.5s ease 0s forwards',
+          flexShrink: 0,
         }}>
           ATLAS
         </div>
 
-        {/* Brand name — only when provided */}
-        <div style={{
-          fontFamily: font.mono,
-          fontSize: fontSize.caption,
-          color: colors.whiteAlpha60,
-          textTransform: 'uppercase',
-          letterSpacing: letterSpacing.wide,
-          marginBottom: 56,
-          minHeight: fontSize.caption + 4,
-          textAlign: 'center',
-        }}>
-          {displayName ? `Processing · ${displayName}` : ''}
-        </div>
-
-        {/* Progress steps */}
+        {/* ZONE 2 — Terminal + counter */}
         <div style={{
           display: 'flex', flexDirection: 'column',
-          gap: 16, alignItems: 'flex-start',
+          alignItems: 'center', gap: 32,
+          width: '100%', maxWidth: 640,
+          flexShrink: 1, minHeight: 0,
         }}>
-          {STEPS.map((label, i) => {
-            const isComplete = isDone || i < activeStep
-            const isActive = !isDone && i === activeStep
-            const isPending = !isDone && i > activeStep
-
-            return (
+          {/* Terminal window */}
+          <div
+            ref={logRef}
+            style={{
+              width: '100%',
+              maxHeight: 280,
+              overflowY: 'auto',
+              background: colors.whiteAlpha5,
+              border: `1px solid ${colors.whiteAlpha10}`,
+              borderRadius: radius.xl,
+              padding: '32px 40px',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none' as React.CSSProperties['msOverflowStyle'],
+            }}
+          >
+            {LOG_LINES.slice(0, currentLine).map((line, i) => (
               <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                opacity: isPending ? 0 : 1,
-                transform: isPending ? 'translateY(6px)' : 'translateY(0)',
-                transition: `opacity ${transition.modal}, transform ${transition.modal}`,
+                fontFamily: font.mono,
+                fontSize: fontSize.body,
+                color: line.color,
+                fontWeight: line.bold ? fontWeight.bold : fontWeight.normal,
+                lineHeight: 2,
+                whiteSpace: 'nowrap',
+                animation: (isComplete && i === LOG_LINES.length - 1)
+                  ? 'mmPulseText 2s ease-in-out infinite'
+                  : 'none',
               }}>
-                <div style={{
-                  width: 8, height: 8,
-                  borderRadius: '50%',
-                  background: colors.accent,
-                  flexShrink: 0,
-                  animation: isActive ? 'stepPulse 1.4s ease-in-out infinite' : 'none',
-                  opacity: isComplete ? 1 : isActive ? 1 : 0.3,
-                }} />
-                <span style={{
-                  fontFamily: font.mono,
-                  fontSize: fontSize.caption,
-                  color: isComplete ? colors.paper : colors.whiteAlpha60,
-                  textTransform: 'uppercase',
-                  letterSpacing: letterSpacing.wide,
-                  transition: `color ${transition.modal}`,
-                  whiteSpace: 'nowrap',
-                }}>
-                  {label}
-                </span>
+                {line.text}
               </div>
-            )
-          })}
+            ))}
+            {/* Blinking cursor while lines are still appearing */}
+            {!isComplete && (
+              <span style={{
+                fontFamily: font.mono,
+                fontSize: fontSize.body,
+                color: colors.accent,
+                animation: 'mmBlink 0.8s step-end infinite',
+              }}>
+                ▋
+              </span>
+            )}
+          </div>
+
+          {/* Percentage counter */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontFamily: font.heading,
+              fontWeight: fontWeight.heading,
+              fontSize: 'clamp(80px, 12vw, 140px)',
+              lineHeight: 1,
+              color: colors.paper,
+              letterSpacing: letterSpacing.tight,
+            }}>
+              {pct}%
+            </div>
+            <div style={{
+              fontFamily: font.mono,
+              fontSize: fontSize.caption,
+              color: colors.whiteAlpha45,
+              letterSpacing: letterSpacing.widest,
+              textTransform: 'uppercase',
+              marginTop: 8,
+            }}>
+              building your atlas
+            </div>
+          </div>
         </div>
+
+        {/* ZONE 3 — Brand signal strip */}
+        {(displayColors.length > 0 || displayName) && (
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', gap: 10,
+            flexShrink: 0,
+            opacity: 0,
+            animation: 'mmFadeIn 0.5s ease 1s forwards',
+          }}>
+            {displayColors.length > 0 && (
+              <div style={{
+                display: 'flex', gap: 8, justifyContent: 'center',
+              }}>
+                {displayColors.map((c, i) => (
+                  <div key={c + i} style={{
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: c,
+                    border: `1px solid ${colors.whiteAlpha15}`,
+                  }} />
+                ))}
+              </div>
+            )}
+            {displayName && (
+              <div style={{
+                fontFamily: font.mono,
+                fontSize: fontSize.caption,
+                color: colors.whiteAlpha30,
+                textTransform: 'uppercase',
+                letterSpacing: letterSpacing.wide,
+              }}>
+                {displayName}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

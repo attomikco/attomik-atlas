@@ -58,6 +58,10 @@ export default function OnboardingWizard() {
   async function discover() {
     const trimmed = url.trim()
     if (!trimmed) { setError('Enter a URL'); return }
+    if (!trimmed.includes('.') || trimmed.length < 4) {
+      setError('Enter a valid URL — e.g. yourbrand.com')
+      return
+    }
     setError('')
     setLoading(true)
     setReady(false)
@@ -73,7 +77,14 @@ export default function OnboardingWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmed }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
+      const hasAnyData = !!(data.name || data.logo || data.colors?.length || data.images?.length || data.font)
+      if (!hasAnyData) {
+        setError("Couldn't read that site — try another URL")
+        setLoading(false)
+        return
+      }
       if (data.name) setBrandName(data.name)
       if (data.colors?.[0]) setPrimaryColor(data.colors[0])
       if (data.colors?.[1]) setSecondaryColor(data.colors[1])
@@ -95,6 +106,7 @@ export default function OnboardingWizard() {
       if (data.offerings?.length) setOfferings(data.offerings)
       setReady(true)
     } catch {
+      setReady(false)
       setError("Couldn't read that site — try another URL")
     }
     setLoading(false)
@@ -182,7 +194,7 @@ export default function OnboardingWizard() {
       position: 'fixed', inset: 0, zIndex: 50,
       background: colors.ink, overflow: 'hidden',
     }}>
-      <MagicModal isOpen={showModal} mode="scan" isDone={false} brandName={brandName} />
+      <MagicModal isOpen={showModal} mode="scan" isDone={false} brandName={brandName} brandColors={detectedColors} />
 
       <style>{`
         @keyframes discFadeIn { from { opacity: 0 } to { opacity: 1 } }
@@ -380,15 +392,15 @@ export default function OnboardingWizard() {
                   opacity: 0, animation: 'discFadeIn 0.5s ease 0.9s forwards',
                 }}>
                   <div style={{
-                    fontFamily: font.mono, fontSize: fontSize.caption,
-                    color: colors.whiteAlpha45, textTransform: 'uppercase',
+                    fontFamily: font.mono, fontSize: fontSize.body,
+                    color: colors.whiteAlpha45,
                     letterSpacing: letterSpacing.wide, marginBottom: 6,
                   }}>
-                    {brandFont}
+                    Font: {brandFont}
                   </div>
                   <div style={{
                     fontFamily: `${brandFont}, ${font.heading}`,
-                    fontSize: fontSize.xl,
+                    fontSize: fontSize['2xl'],
                     color: colors.whiteAlpha80,
                     fontStyle: 'italic',
                     lineHeight: 1.4,
