@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import MagicModal from '@/components/ui/MagicModal'
+import EmailGateModal from '@/components/auth/EmailGateModal'
 import { colors, font, fontWeight, fontSize, radius, transition, letterSpacing } from '@/lib/design-tokens'
 
 type BusinessType = 'shopify' | 'ecommerce' | 'saas' | 'restaurant' | 'service' | 'brand'
@@ -22,6 +23,7 @@ export default function OnboardingWizard() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showEmailGate, setShowEmailGate] = useState(false)
   const [generationReady, setGenerationReady] = useState(false)
   const pendingRedirect = useRef<string | null>(null)
   const [carouselPaused, setCarouselPaused] = useState(false)
@@ -126,6 +128,23 @@ export default function OnboardingWizard() {
     if (pendingRedirect.current) {
       router.push(pendingRedirect.current)
     }
+  }
+
+  // Entry point for the "Build my Atlas" button. Gates AI generation behind
+  // auth for anonymous users so we don't burn API credits on visitors who
+  // abandon before signing up. Logged-in users skip the gate entirely.
+  async function handleStart() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      buildAtlas()
+      return
+    }
+    setShowEmailGate(true)
+  }
+
+  function handleAuthSuccess() {
+    setShowEmailGate(false)
+    buildAtlas()
   }
 
   async function buildAtlas() {
@@ -314,7 +333,11 @@ export default function OnboardingWizard() {
         brandImages={displayImages.slice(0, 6).map(i => i.url)}
         generationReady={generationReady}
         onComplete={handleModalComplete}
-        enableEmailGate
+      />
+
+      <EmailGateModal
+        isOpen={showEmailGate}
+        onAuthSuccess={handleAuthSuccess}
       />
 
       <style>{`
@@ -554,7 +577,7 @@ export default function OnboardingWizard() {
                   opacity: 0, animation: 'discFadeIn 0.5s ease 0.3s forwards',
                 }}>
                   <button
-                    onClick={buildAtlas}
+                    onClick={handleStart}
                     disabled={saving}
                     style={{
                       background: colors.accent, color: colors.ink,
