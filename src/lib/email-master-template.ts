@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // email-master-template.ts
-// Attomik Marketing OS — Email Builder
+// Attomik Atlas — Email Builder
 // Replaces: src/lib/email-master-template.ts
 // ─────────────────────────────────────────────────────────────
 // Block system: 13 toggleable content blocks + fixed shell

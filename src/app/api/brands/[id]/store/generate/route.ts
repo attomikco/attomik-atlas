@@ -113,7 +113,7 @@ async function authorizeBrandMember(brandId: string) {
 // Step 0 — Image Assignment (rewritten to read from brand_images)
 // ---------------------------------------------------------------------------
 
-// Factory's role vocabulary mapped onto Marketing OS brand_image tags.
+// Factory's role vocabulary mapped onto Attomik Atlas brand_image tags.
 // `shopify` is first for product slots so Shopify brands get the clean
 // /products.json shots over scraped ones. Non-Shopify brands fall through
 // to `product` naturally because they have no `shopify`-tagged rows.
@@ -351,7 +351,7 @@ CAMPAIGN CONTEXT — inject this into every copy field (hero, footer, checklist,
 - Key message: ${campaign.key_message || 'Not specified'}`
     : ''
 
-  // Prepend the Marketing OS brand system prompt so the generator inherits
+  // Prepend the Attomik Atlas brand system prompt so the generator inherits
   // brand voice, tone, avoid_words, competitors, voice examples — the same
   // way Creative Studio and Copy Creator do.
   const systemPrompt = `${buildBrandSystemPrompt(brand)}
@@ -606,7 +606,7 @@ function buildImagePoolFromBrandImages(
   images: BrandImage[],
   businessType: ReturnType<typeof getBusinessType>
 ): Array<{ url: string; tag: string }> {
-  // Use bucketBrandImages to get the Marketing OS default ordering (which
+  // Use bucketBrandImages to get the Attomik Atlas default ordering (which
   // already handles the Shopify vs non-Shopify tag rules), but return the
   // flat pool with original tags so the factory's role-based round-robin
   // can do its thing.
@@ -678,7 +678,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const primary = brief.primary_color || '#000000'
   const secondary = brief.secondary_color || '#2c2c2c'
 
-  // Build the image pool from brand_images using Marketing OS's tag buckets.
+  // Build the image pool from brand_images using Attomik Atlas's tag buckets.
   const imagePool = buildImagePoolFromBrandImages(supabase, brandImages, getBusinessType(brand as Brand))
 
   try {

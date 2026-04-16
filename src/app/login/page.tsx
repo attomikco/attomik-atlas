@@ -123,7 +123,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-extrabold tracking-tighter">Attomik</h1>
-          <p className="text-muted text-sm mt-1">Marketing OS</p>
+          <p className="text-muted text-sm mt-1">Atlas</p>
         </div>
 
         <div className="card bg-paper border border-border rounded-card p-8">

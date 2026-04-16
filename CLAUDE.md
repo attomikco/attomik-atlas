@@ -1,11 +1,11 @@
-# CLAUDE.md — Attomik Marketing OS
+# CLAUDE.md — Attomik Atlas
 # Read this file at the start of EVERY session before making any changes.
 
 ---
 
 ## WHAT THIS IS
 
-Attomik Marketing OS is an AI-powered marketing tool for CPG brands. Brand teams generate ad creatives, copy, emails, and landing pages — all brand-aware. The core flow:
+Attomik Atlas is an AI-powered marketing tool for CPG brands. Brand teams generate ad creatives, copy, emails, and landing pages — all brand-aware. The core flow:
 
 1. Enter brand URL → AI scrapes colors, fonts, logo, images, products
 2. Animation plays while AI builds a full funnel
@@ -629,7 +629,7 @@ Always use direct fetch to Meta Graph API — no facebook-nodejs-business-sdk or
 
 **Store is accessed via the user avatar dropdown → Admin → Store.** Only visible to `pablo@attomik.co`. The gate is a hardcoded email check in `src/components/ui/TopNav.tsx` (`SUPER_ADMIN_EMAIL` constant); the Admin section of the avatar dropdown only renders when `user.email === SUPER_ADMIN_EMAIL`. The `/store` routes themselves are still protected by the existing `/store/:path*` middleware matcher, so non-admin users can't reach the feature even if they type the URL — they just won't see it in the nav. When Store is ready to expose to clients, move the gate to role-based access via `brand_members.role` (e.g. owner/admin only) rather than a hardcoded email.
 
-The Store tool generates and deploys a Shopify theme for each brand. It ports the legacy `attomik-factory` app into Marketing OS, replacing the CLI-based deploy with direct Admin REST Asset API calls. Scraping is gone — brand data comes from `brands` + `brand_images`.
+The Store tool generates and deploys a Shopify theme for each brand. It ports the legacy `attomik-factory` app into Attomik Atlas, replacing the CLI-based deploy with direct Admin REST Asset API calls. Scraping is gone — brand data comes from `brands` + `brand_images`.
 
 ### `store_themes` table (`supabase/migrations/20260415_store_themes.sql`)
 
@@ -684,7 +684,7 @@ Tokens come from a non-embedded OAuth authorization-code flow with offline acces
 |---|---|
 | `SHOPIFY_CLIENT_ID` | Client ID from the Shopify Dev Dashboard app |
 | `SHOPIFY_CLIENT_SECRET` | Client secret from the Shopify Dev Dashboard — server-only, never expose with `NEXT_PUBLIC_` |
-| `NEXT_PUBLIC_APP_URL` | Full public origin of the Marketing OS app, e.g. `https://app.attomik.co`. Used to build the `redirect_uri` the install route passes to Shopify. Must match the registered redirect URI in the Dev Dashboard exactly (including protocol, host, and no trailing slash). |
+| `NEXT_PUBLIC_APP_URL` | Full public origin of the Attomik Atlas app, e.g. `https://app.attomik.co`. Used to build the `redirect_uri` the install route passes to Shopify. Must match the registered redirect URI in the Dev Dashboard exactly (including protocol, host, and no trailing slash). |
 
 **Shopify Dev Dashboard setup:**
 - **Redirect URL** (must be registered): `{NEXT_PUBLIC_APP_URL}/api/shopify/callback`
@@ -701,16 +701,16 @@ Tokens come from a non-embedded OAuth authorization-code flow with offline acces
 Route: `POST /api/brands/[id]/store/generate` (any brand member).
 
 1. **Brief from brand** — `buildBriefFromBrand()` reads `brand.name`, `primary_color`, `secondary_color`, parsed `font_heading`/`font_body`, `mission`, `target_audience`, `tone_keywords`, `competitors`, `values`, `products`, `notes.business_type`, `notes.what_you_do`. No scraper.
-2. **Image pool** — `brand_images` rows are bucketed via `bucketBrandImages()`. The factory's `ROLE_TAG_PRIORITY` map is rewritten to use Marketing OS tags (`shopify` first on product slots so Shopify brands use the clean `/products.json` shots). Round-robin `takeForRole()` assigns images to slots defined in `templates/store/image-map.json`.
+2. **Image pool** — `brand_images` rows are bucketed via `bucketBrandImages()`. The factory's `ROLE_TAG_PRIORITY` map is rewritten to use Attomik Atlas tags (`shopify` first on product slots so Shopify brands use the clean `/products.json` shots). Round-robin `takeForRole()` assigns images to slots defined in `templates/store/image-map.json`.
 3. **Color variants** — `generateColorVariants()` calls `claude-sonnet-4-20250514` with an inline prompt (no prompt file) asking for 4 variants in a fixed JSON shape, mapped via `mapColorVariants()` to theme-settings keys. On Claude failure, `neutralVariantsFallback()` seeds 4 variants from the brand's primary + secondary.
-4. **Variables (184)** — `generateVariableValues()` prepends `buildBrandSystemPrompt(brand)` so the generator inherits the Marketing OS brand voice, then appends `templates/store/prompts/design-rules.md`, the brief block, optional `CAMPAIGN CONTEXT` block (when the POST body carries `activeCampaignId`), and the factory's long-form generation rules (nav, announcement bar, footer, PDP badge/checklist/perks/variant cards, colors). Claude returns a JSON map keyed by variable name. Truncation repair kicks in if `stop_reason !== 'end_turn'`.
+4. **Variables (184)** — `generateVariableValues()` prepends `buildBrandSystemPrompt(brand)` so the generator inherits the Attomik Atlas brand voice, then appends `templates/store/prompts/design-rules.md`, the brief block, optional `CAMPAIGN CONTEXT` block (when the POST body carries `activeCampaignId`), and the factory's long-form generation rules (nav, announcement bar, footer, PDP badge/checklist/perks/variant cards, colors). Claude returns a JSON map keyed by variable name. Truncation repair kicks in if `stop_reason !== 'end_turn'`.
 5. **Template merge + persist** — `applyValuesToTemplate()` does pure string substitution into `base-template.json`, `base-pdp.json`, `base-footer-group.json`, and `base-about.json`, then `base-settings.json` is merged under each color variant. `injectImageAssignments()` runs against both `index_json` and `about_json` (the `image-map.json` entries for `about_hero` / `about_founder` / `about_cta` partition into the about JSON naturally). The final row is `upsert(... onConflict: 'brand_id')` into `store_themes`, populating `index_json` / `product_json` / `footer_group_json` / `about_json`.
 
 `templates/store/` holds the 4 base templates the generator substitutes into (`base-template.json` → homepage, `base-pdp.json` → PDP, `base-footer-group.json` → footer, `base-about.json` → about page) plus `base-settings.json`, `variable-map.json`, `image-map.json`, and `prompts/design-rules.md`.
 
 ### Deploy flow (Admin Asset API, no CLI)
 
-The factory shelled out to `shopify theme push`. Marketing OS never uses the Shopify CLI — it calls the REST Asset API directly via `src/lib/shopify.ts`. All Shopify helpers use plain `fetch()` — no SDK, no new dependencies.
+The factory shelled out to `shopify theme push`. Attomik Atlas never uses the Shopify CLI — it calls the REST Asset API directly via `src/lib/shopify.ts`. All Shopify helpers use plain `fetch()` — no SDK, no new dependencies.
 
 **`src/lib/shopify.ts` exports:** `SHOPIFY_API_VERSION`, `shopifyHeaders()`, `validateCredentials()` (GET `/admin/api/{v}/shop.json`), `listThemes()` (GET `/themes.json`), `getAsset()`, `putAsset()` (text/JSON), `putBinaryAsset()` (base64). All functions throw with the Shopify error message on non-2xx.
 
@@ -730,7 +730,7 @@ The factory shelled out to `shopify theme push`. Marketing OS never uses the Sho
 
 ### `src/theme/` — live Shopify theme source
 
-`src/theme/` is a first-class source directory, not a static asset bundle. It's ported verbatim from `attomik-factory/theme/` (minus `.claude/` and `tmux-*.log`) and is edited directly in Marketing OS — add snippets, tweak sections, update assets in place. `install-base-theme` walks this directory and pushes it to Shopify via the Asset API. Binary extensions (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `ico`, `woff`, `woff2`, `eot`, `ttf`, `otf`, `mp3`, `wav`, `mp4`, `mov`, `pdf`) are base64-encoded via `putBinaryAsset`; everything else is uploaded as utf-8 text via `putAsset`.
+`src/theme/` is a first-class source directory, not a static asset bundle. It's ported verbatim from `attomik-factory/theme/` (minus `.claude/` and `tmux-*.log`) and is edited directly in Attomik Atlas — add snippets, tweak sections, update assets in place. `install-base-theme` walks this directory and pushes it to Shopify via the Asset API. Binary extensions (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `ico`, `woff`, `woff2`, `eot`, `ttf`, `otf`, `mp3`, `wav`, `mp4`, `mov`, `pdf`) are base64-encoded via `putBinaryAsset`; everything else is uploaded as utf-8 text via `putAsset`.
 
 Next.js's file tracer bundles `src/theme/` with the serverless function automatically because the install route reads paths via `join(process.cwd(), 'src/theme')` — a static prefix the tracer picks up.
 

@@ -17,7 +17,7 @@ const dmMono = DM_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Attomik Marketing OS',
+  title: 'Attomik Atlas',
   description: 'Brand management and AI content platform',
   icons: { icon: '/favicon.png', apple: '/favicon.png' },
 }

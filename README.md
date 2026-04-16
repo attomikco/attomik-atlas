@@ -1,4 +1,4 @@
-# Attomik Marketing OS
+# Attomik Atlas
 
 Brand management + AI content platform. Separate app from the main dashboard.
 
