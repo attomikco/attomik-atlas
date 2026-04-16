@@ -18,6 +18,7 @@ import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 import GridTemplate from '@/components/creatives/templates/GridTemplate'
 import AttomikLogo from '@/components/ui/AttomikLogo'
 import AccountModal from '@/components/ui/AccountModal'
+import LogoImage from '@/components/ui/LogoImage'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, letterSpacing } from '@/lib/design-tokens'
 
 interface AdVariation {
@@ -886,9 +887,8 @@ export default function PreviewClient({
         }} />
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {brand.logo_url && (
-            <img src={brand.logo_url} alt="" style={{
+            <LogoImage src={brand.logo_url} alt="" onDark style={{
               maxHeight: 48, maxWidth: 200, objectFit: 'contain',
-              filter: 'brightness(0) invert(1)',
               marginBottom: 16,
             }} onError={e => { e.currentTarget.style.display = 'none' }} />
           )}
@@ -1070,7 +1070,7 @@ export default function PreviewClient({
                       overflow: 'hidden',
                     }}>
                       {brand.logo_url ? (
-                        <img src={brand.logo_url} alt="" style={{
+                        <LogoImage src={brand.logo_url} alt="" onDark={!isLightColor(brandPrimary)} style={{
                           width: 28, height: 28, objectFit: 'contain',
                         }} onError={e => { e.currentTarget.style.display = 'none' }} />
                       ) : (
@@ -1127,7 +1127,7 @@ export default function PreviewClient({
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {brand.logo_url ? (
-                              <img src={brand.logo_url} alt="" style={{
+                              <LogoImage src={brand.logo_url} alt="" onDark={!isLightColor(brandPrimary)} style={{
                                 width: 20, height: 20, objectFit: 'contain',
                               }} onError={e => { e.currentTarget.style.display = 'none' }} />
                             ) : (
