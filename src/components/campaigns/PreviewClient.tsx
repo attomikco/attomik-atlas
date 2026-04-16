@@ -15,11 +15,6 @@ import StatTemplate from '@/components/creatives/templates/StatTemplate'
 import TestimonialTemplate from '@/components/creatives/templates/TestimonialTemplate'
 import UGCTemplate from '@/components/creatives/templates/UGCTemplate'
 import GridTemplate from '@/components/creatives/templates/GridTemplate'
-import MagicModal from '@/components/ui/MagicModal'
-import CreativeReel from './CreativeReel'
-import FunnelReadyModal from '@/components/ui/FunnelReadyModal'
-import AttomikLogo from '@/components/ui/AttomikLogo'
-import BrandControlBar from './BrandControlBar'
 import AccountModal from '@/components/ui/AccountModal'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, letterSpacing } from '@/lib/design-tokens'
 
@@ -258,21 +253,10 @@ export default function PreviewClient({
       })()
     : null
 
-  // Generation state
+  // Content state — generation now happens before redirect (in OnboardingWizard)
   const [adVariations, setAdVariations] = useState<AdVariation[]>(existingAdVariations)
   const adVariation = adVariations[0] || null
   const [landingBrief, setLandingBrief] = useState<LandingBrief | null>(existingLandingBrief)
-  const [magicModal, setMagicModal] = useState<{ mode: 'adcopy' | 'landing'; isDone: boolean } | null>(null)
-  const [showReel, setShowReel] = useState(false)
-  const [showReadyModal, setShowReadyModal] = useState(false)
-  const [previewReady, setPreviewReady] = useState(hasContent)
-  const [showWelcomeBack, setShowWelcomeBack] = useState(hasContent)
-
-  useEffect(() => {
-    if (!hasContent) return
-    const t = setTimeout(() => setShowWelcomeBack(false), 2000)
-    return () => clearTimeout(t)
-  }, [hasContent])
 
   // Brand image URLs
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null)
@@ -556,87 +540,25 @@ export default function PreviewClient({
     }
   }, [brand.id, brandImages])
 
-  // Safety timeout — force-unlock the preview if the generation modal
-  // sequence breaks. The preview is hidden behind a black gate
-  // (`previewReady`) while MagicModal cycles through adcopy → landing →
-  // CreativeReel → FunnelReadyModal. If any step of that chain fails to
-  // call its completion handler (transient 5xx, network drop, component
-  // unmount mid-flight), the gate would never lift and the user would
-  // be stuck on black. This 30s fallback unblocks them. Do NOT remove
-  // it thinking it's dead code — it fires exactly when the happy path
-  // is broken, so under normal operation you never see it run.
+  // Brand voice — if generation already ran (from OnboardingWizard), the
+  // brand object has mission/audience/voice baked in. If it's missing
+  // (e.g. direct URL visit to an old brand), fetch it in background.
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!previewReady) {
-        console.warn('[Preview] Safety timeout — forcing previewReady')
-        setPreviewReady(true)
-      }
-    }, 30000)
-    return () => clearTimeout(timeout)
-  }, [previewReady])
-
-  // Auto-generate if no content exists — sequential with MagicModal
-  useEffect(() => {
-    if (hasContent) return
-
-    async function generate() {
-      // Generate brand voice — update local state when done
-      const needsVoice = !brand.mission && !brand.target_audience && !brand.brand_voice
-      if (needsVoice) {
-        // Show fallbacks immediately while AI generates
-        if (!brandMission) setBrandMission(`${brand.name} delivers quality products to customers who care about what they buy.`)
-        if (!brandAudience) setBrandAudience(`Customers interested in ${brand.name} products`)
-        if (!brandVoice) setBrandVoice('Professional and approachable')
-        if (brandTone.length === 0) setBrandTone(['trustworthy', 'approachable'])
-
-        fetch(`/api/brands/${brand.id}/generate-voice`, { method: 'POST' })
-          .then(res => res.json())
-          .then(data => {
-            if (data.voice) {
-              if (data.voice.mission) setBrandMission(data.voice.mission)
-              if (data.voice.target_audience) setBrandAudience(data.voice.target_audience)
-              if (data.voice.brand_voice) setBrandVoice(data.voice.brand_voice)
-              if (data.voice.tone_keywords?.length) setBrandTone(data.voice.tone_keywords)
-            }
-          })
-          .catch(() => {})
-      }
-
-      // Ad copy
-      setMagicModal({ mode: 'adcopy', isDone: false })
-      try {
-        const res = await fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' })
-        // Parse defensively — a transient 5xx from Anthropic can surface here
-        // as an empty response body, which JSON.parse would choke on.
-        const data = await res.json().catch(() => null)
-        if (!res.ok) {
-          console.error('[Generation] Ad copy failed:', res.status, data?.error || res.statusText)
-        } else if (data?.variations) {
-          setAdVariations(data.variations)
-        }
-      } catch (e) { console.error('[Generation] Ad copy failed:', e) }
-      setMagicModal({ mode: 'adcopy', isDone: true })
-      await new Promise(r => setTimeout(r, 1500))
-      setMagicModal(null)
-      await new Promise(r => setTimeout(r, 600))
-
-      // Landing brief
-      setMagicModal({ mode: 'landing', isDone: false })
-      try {
-        const res = await fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' })
-        const data = await res.json()
-        if (data?.hero) setLandingBrief(data)
-      } catch (e) { console.error('[Generation] Landing failed:', e) }
-      setMagicModal({ mode: 'landing', isDone: true })
-      await new Promise(r => setTimeout(r, 1500))
-      setMagicModal(null)
-      await new Promise(r => setTimeout(r, 600))
-
-      // Reel
-      setShowReel(true)
-    }
-    generate()
-  }, [])
+    if (brand.mission || brand.target_audience || brand.brand_voice) return
+    // Refresh brand data from DB in case generate-voice wrote it after
+    // the server component rendered the page.
+    const t = setTimeout(() => {
+      supabase.from('brands').select('mission, target_audience, brand_voice, tone_keywords')
+        .eq('id', brand.id).single()
+        .then(({ data }) => {
+          if (data?.mission) setBrandMission(data.mission)
+          if (data?.target_audience) setBrandAudience(data.target_audience)
+          if (data?.brand_voice) setBrandVoice(data.brand_voice)
+          if (data?.tone_keywords?.length) setBrandTone(data.tone_keywords)
+        })
+    }, 2000)
+    return () => clearTimeout(t)
+  }, [brand.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const headingStyle: React.CSSProperties = {
     fontFamily: fontFamily ? `${fontFamily}, sans-serif` : undefined,
@@ -716,317 +638,204 @@ export default function PreviewClient({
 
   const skeleton = 'animate-pulse bg-cream rounded'
 
+  const brandColorDots = [brandPrimary, brandSecondary, brandAccent].filter(c => c && c !== colors.ink)
+
+  const ctaLabel = (() => {
+    if (brand.status === 'draft') return activating ? 'Activating...' : 'Activate & save →'
+    if (viewerCanSaveBrand) return savingBrandToWorkspace ? 'Saving...' : 'Save to workspace →'
+    return 'Get full access →'
+  })()
+  const ctaAction = () => {
+    if (brand.status === 'draft') return requireAuth(activateBrand)
+    if (viewerCanSaveBrand) return saveBrandToWorkspace()
+    return setShowAccountModal(true)
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: colors.ink }}>
-      {/* Persistent black screen gate */}
-      {!previewReady && (
-        <div style={{ position: 'fixed', inset: 0, background: colors.ink, zIndex: zIndex.reelOverlay, pointerEvents: 'none' }} />
-      )}
-
-      {/* Save this brand CTA — only for logged-in viewers of an unclaimed
-          brand. The onboarding wizard no longer auto-assigns brands to logged
-          in users, so this is the explicit "save to workspace" action. */}
-      {viewerCanSaveBrand && (
-        <div
-          style={{
-            position: 'sticky', top: 72, zIndex: 40,
-            background: colors.accent, color: colors.ink,
-            padding: '14px 24px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: 16, flexWrap: 'wrap',
-            borderBottom: `1px solid ${colors.ink}`,
-          }}
-        >
-          <div style={{
-            fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.body,
-            textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-          }}>
-            This brand is not in your workspace yet
-          </div>
-          <button
-            onClick={saveBrandToWorkspace}
-            disabled={savingBrandToWorkspace}
-            style={{
-              background: colors.ink, color: colors.accent,
-              fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize.caption,
-              letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
-              padding: '9px 20px', borderRadius: radius.pill, border: 'none',
-              cursor: savingBrandToWorkspace ? 'wait' : 'pointer',
-              opacity: savingBrandToWorkspace ? 0.6 : 1,
-            }}
-          >
-            {savingBrandToWorkspace ? 'Saving…' : 'Save this brand →'}
-          </button>
-          {saveBrandError && (
-            <div style={{ fontSize: fontSize.caption, color: colors.ink, fontWeight: fontWeight.semibold }}>
-              {saveBrandError}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* MagicModal */}
-      <MagicModal
-        isOpen={!!magicModal}
-        mode={magicModal?.mode || 'adcopy'}
-        isDone={magicModal?.isDone || false}
-        brandName={brand.name}
-        headline={adVariations[0]?.headline}
-        bodyText={adVariations[0]?.primary_text}
-      />
-
-      {/* CreativeReel — always mounted, controlled via style */}
-      <CreativeReel
-        brand={brand}
-        adVariation={adVariations[0] || adVariation || { headline: brand.name, primary_text: '', description: '' }}
-        imageUrl={img0}
-        allImageUrls={[...lifestyleImageUrls, ...shopifyImageUrls, ...productImageUrls]}
-        adVariations={adVariations}
-        isActive={showReel}
-        onComplete={() => { setShowReel(false); setShowReadyModal(true) }}
-        style={{
-          opacity: showReel ? 1 : 0,
-          pointerEvents: showReel ? 'auto' : 'none',
-          transition: `opacity ${transition.modal}`,
-        }}
-      />
-
-      <FunnelReadyModal
-        isOpen={showReadyModal}
-        brandName={brand.name}
-        onContinue={() => { setShowReadyModal(false); setPreviewReady(true) }}
-      />
-
-      {showWelcomeBack && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          zIndex: zIndex.modal, background: colors.ink,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: 16,
-          opacity: showWelcomeBack ? 1 : 0,
-          transition: `opacity ${transition.overlay}`,
-        }}>
-          <AttomikLogo height={36} color={colors.paper} />
-          <div style={{
-            fontFamily: font.heading,
-            fontWeight: fontWeight.heading, fontSize: fontSize['5xl'],
-            color: colors.paper, textTransform: 'uppercase',
-            marginTop: 8,
-          }}>
-            Your funnel is ready.
-          </div>
-          <div style={{
-            fontSize: fontSize.body,
-            color: colors.whiteAlpha40,
-          }}>
-            Loading {brand.name}...
-          </div>
-        </div>
-      )}
-
-      {/* Preview content — hidden until ready */}
-      <div style={{ display: previewReady ? 'block' : 'none', background: 'var(--cream, #f8f7f4)' }}>
       <style>{`
+        @keyframes sectionReveal { from { opacity:0; transform: translateY(32px) } to { opacity:1; transform: translateY(0) } }
+        @keyframes pvSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @media (max-width: 768px) {
-          .pv-hero { padding: 40px 20px 32px !important; }
-          .pv-hero h1 { font-size: clamp(28px, 8vw, 56px) !important; }
-          .pv-funnel-flow { flex-direction: column !important; gap: 24px !important; }
-          .pv-funnel-flow .pv-arrow { display: none !important; }
-          .pv-compare { grid-template-columns: 1fr !important; }
-          .pv-compare-vs { display: none !important; }
-          .pv-point { padding-top: 32px !important; }
-          .pv-bcb-row { flex-direction: column !important; gap: 20px !important; }
-          .pv-bcb-divider { display: none !important; }
-          .pv-bcb-grid { grid-template-columns: 180px 1fr !important; }
-          .pv-section-head { margin-bottom: 20px !important; }
-          .pv-section-head span[style*="fontSize: 26"] { font-size: 20px !important; }
-          .pv-draft-bar { flex-direction: column !important; gap: 12px !important; text-align: center !important; }
-          .pv-draft-bar button { width: 100% !important; }
+          .pv-hero-band { height: clamp(160px, 32vw, 240px) !important; }
+          .pv-hero-name { font-size: clamp(28px, 7vw, 48px) !important; }
+          .pv-sticky-bar { padding: 10px 16px !important; }
+          .pv-section { padding-left: 16px !important; padding-right: 16px !important; }
           .pv-iframe { height: 380px !important; }
-          .pv-brand-bar { flex-direction: column !important; }
         }
         @media (max-width: 480px) {
-          .pv-bcb-grid { grid-template-columns: 1fr !important; }
-          .pv-hero { padding: 32px 16px 24px !important; }
           .pv-iframe { height: 280px !important; }
         }
       `}</style>
 
-
-      {brand.status === 'draft' && (
-        <div className="max-w-5xl mx-auto px-4 md:px-10 mt-8">
-          <div className="pv-draft-bar" style={{
-            background: colors.ink,
-            borderRadius: radius['3xl'],
-            padding: '20px 24px',
-            margin: '0 0 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            flexWrap: 'wrap',
+      {/* ═══ STICKY TOP BAR ═══ */}
+      <div className="pv-sticky-bar" style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        background: colors.ink,
+        borderBottom: `1px solid ${colors.whiteAlpha10}`,
+        padding: '12px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {brand.logo_url && (
+            <img src={brand.logo_url} alt="" style={{
+              maxHeight: 28, objectFit: 'contain',
+              filter: 'brightness(0) invert(1)',
+            }} onError={e => { e.currentTarget.style.display = 'none' }} />
+          )}
+          <span style={{
+            fontFamily: font.heading, fontWeight: fontWeight.bold,
+            fontSize: fontSize.body, color: colors.paper,
           }}>
+            {brand.name}
+          </span>
+        </div>
+        <button
+          onClick={ctaAction}
+          disabled={activating || savingBrandToWorkspace}
+          style={{
+            background: colors.accent, color: colors.ink,
+            fontFamily: font.heading, fontWeight: fontWeight.bold,
+            fontSize: fontSize.caption, borderRadius: radius.pill,
+            padding: '10px 24px', border: 'none',
+            cursor: (activating || savingBrandToWorkspace) ? 'wait' : 'pointer',
+            opacity: (activating || savingBrandToWorkspace) ? 0.6 : 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {ctaLabel}
+        </button>
+      </div>
+
+      {/* ═══ HERO BAND ═══ */}
+      <div className="pv-hero-band" style={{
+        position: 'relative',
+        width: '100%',
+        height: 'clamp(200px, 28vw, 320px)',
+        background: brandPrimary,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(0,0,0,0.6)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%',
+          background: `linear-gradient(to bottom, transparent 0%, ${colors.ink} 100%)`,
+          pointerEvents: 'none',
+        }} />
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {brand.logo_url && (
+            <img src={brand.logo_url} alt="" style={{
+              maxHeight: 80, maxWidth: 240, objectFit: 'contain',
+              filter: 'brightness(0) invert(1)',
+              marginBottom: 16,
+            }} onError={e => { e.currentTarget.style.display = 'none' }} />
+          )}
+          <div className="pv-hero-name" style={{
+            fontFamily: font.heading, fontWeight: fontWeight.heading,
+            fontSize: 'clamp(40px, 6vw, 80px)',
+            color: colors.paper, textAlign: 'center',
+            lineHeight: 1.05, textTransform: 'uppercase',
+          }}>
+            {brand.name}
+          </div>
+          {brandColorDots.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              {brandColorDots.map((c, i) => (
+                <div key={i} style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: c, border: `2px solid ${colors.whiteAlpha20}`,
+                }} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ SECTIONS ═══ */}
+
+      {/* Brand Knowledge */}
+      {(brandMission || brandVoice || brandAudience || brandTone.length > 0) && (
+        <div className="pv-section" style={{
+          maxWidth: 1080, margin: '0 auto', padding: '0 24px',
+          marginTop: 'clamp(60px, 8vw, 100px)',
+          marginBottom: 'clamp(80px, 10vw, 140px)',
+          opacity: 0, animation: 'sectionReveal 0.6s 0.1s ease-out forwards',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
+            <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
             <div>
-              <div style={{
-                fontFamily: font.heading,
-                fontWeight: fontWeight.heading, fontSize: fontSize.xl,
-                color: colors.paper, marginBottom: 4,
-                textTransform: 'uppercase',
-              }}>
-                Your funnel is ready — save it to your account.
+              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+                Brand Knowledge
               </div>
-              <div style={{
-                fontSize: fontSize.md,
-                color: colors.whiteAlpha45,
-              }}>
-                Activate to unlock editing, custom images, and export.
+              <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
+                ✦ AI-generated from your website
               </div>
             </div>
-            <button
-              onClick={() => requireAuth(activateBrand)}
-              disabled={activating}
-              style={{
-                background: colors.accent, color: colors.ink,
-                fontFamily: font.heading,
-                fontWeight: fontWeight.extrabold, fontSize: fontSize.base,
-                padding: '12px 28px', borderRadius: radius.pill,
-                border: 'none', cursor: 'pointer',
-                flexShrink: 0, whiteSpace: 'nowrap',
-              }}
-            >
-              {activating ? 'Activating...' : 'Activate & save →'}
-            </button>
+          </div>
+          <div style={{ paddingLeft: 18 }}>
+            {[
+              brandMission && { label: 'What you do', text: brandMission },
+              brandAudience && { label: 'Who buys from you', text: brandAudience },
+              brandVoice && { label: 'How you sound', text: brandVoice },
+            ].filter(Boolean).map((field, i, arr) => (
+              <div key={i} style={{ marginBottom: i < arr.length - 1 ? 32 : 0 }}>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 8 }}>
+                  {(field as { label: string; text: string }).label}
+                </div>
+                <div style={{ fontSize: fontSize['2xl'], color: colors.whiteAlpha80, lineHeight: 1.75, maxWidth: 720 }}>
+                  {(field as { label: string; text: string }).text}
+                </div>
+              </div>
+            ))}
+            {brandTone.length > 0 && (
+              <div style={{ marginTop: 32 }}>
+                <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 10 }}>
+                  Tone
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {brandTone.map((kw: string, i: number) => (
+                    <span key={i} style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.paper, background: colors.whiteAlpha8, border: `1px solid ${colors.whiteAlpha15}`, padding: '6px 16px', borderRadius: radius.pill }}>{kw}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 md:px-10 py-8 space-y-8">
-        {/* Make your creatives better banner */}
-        <div style={{ background: colors.darkBg, borderRadius: radius['4xl'], padding: '36px 36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, boxShadow: shadow.xl }}>
-          <div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['3xl'], color: colors.paper, marginBottom: 6, textTransform: 'uppercase' }}><span style={{ color: colors.accent }}>✦</span> Make your creatives better</div>
-            <div style={{ fontSize: fontSize.base, color: colors.whiteAlpha50, lineHeight: 1.6 }}>Add your brand voice, target audience and products to get more accurate copy and creatives.</div>
-          </div>
-          <button onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/brand-setup/${brand.id}`) })} style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize.base, padding: '14px 28px', borderRadius: radius.pill, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Complete Brand Hub →</button>
-        </div>
-
-        {/* Brand control bar */}
-        <BrandControlBar
-          primaryColor={brandPrimary}
-          secondaryColor={brandSecondary}
-          accentColor={brandAccent}
-          fontFamily={fontFamily}
-          allImageUrls={allImageUrls}
-          shopifyImageUrls={shopifyImageUrls}
-          productImageUrls={productImageUrls}
-          lifestyleImageUrls={lifestyleImageUrls}
-          logoUrl={brand.logo_url}
-          logoImageUrls={logoImageUrls}
-          activeImageIndex={activeImageIndex}
-          onPrimaryChange={setBrandPrimary}
-          onSecondaryChange={setBrandSecondary}
-          onAccentChange={setBrandAccent}
-          onFontChange={setFontFamily}
-          onImageIndexChange={setActiveImageIndex}
-          onAddImages={async (files: File[]) => {
-            const newUrls: string[] = []
-            for (const file of files) {
-              const ext = file.name.split('.').pop() || 'jpg'
-              const path = `${brand.id}/manual_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-              const { error } = await supabase.storage.from('brand-images').upload(path, file, { contentType: file.type })
-              if (!error) {
-                await supabase.from('brand_images').insert({ brand_id: brand.id, file_name: file.name, storage_path: path, mime_type: file.type, tag: 'product' })
-                const { data } = supabase.storage.from('brand-images').getPublicUrl(path)
-                newUrls.push(data.publicUrl)
-              }
-            }
-            setAllImageUrls(prev => [...prev, ...newUrls])
-            setProductImageUrls(prev => [...prev, ...newUrls])
-          }}
-          onRemoveImage={(url: string) => {
-            setAllImageUrls(prev => prev.filter(u => u !== url))
-            setShopifyImageUrls(prev => prev.filter(u => u !== url))
-            setProductImageUrls(prev => prev.filter(u => u !== url))
-            setLifestyleImageUrls(prev => prev.filter(u => u !== url))
-            setLogoImageUrls(prev => prev.filter(u => u !== url))
-            setActiveImageIndex(0)
-            // Delete immediately from brand_images + storage
-            void deleteBrandImageByUrl(url)
-          }}
-          onSave={() => requireAuth(saveBrandColors)}
-          saving={savingBrand}
-        />
-
-        {/* ═══ BRAND KNOWLEDGE ═══ */}
-        {(brandMission || brandVoice || brandAudience || brandTone.length > 0) && (
-          <div>
-            {/* Section header */}
-            <div style={{ padding: '48px 0 32px', textAlign: 'center' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.ink, borderRadius: radius.pill, padding: '6px 16px', fontFamily: font.mono, fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 14 }}>
-                ✦ AI-generated from your website
+      {/* Ad Creatives — hero moment with full-bleed bg */}
+      <div style={{
+        background: `linear-gradient(135deg, ${colors.whiteAlpha5} 0%, transparent 100%)`,
+        padding: '60px 0',
+        margin: '0 -60px',
+        paddingLeft: 60, paddingRight: 60,
+      }}>
+        <div className="pv-section" style={{
+          maxWidth: 1080, margin: '0 auto', padding: '0 24px',
+          marginBottom: 'clamp(80px, 10vw, 140px)',
+          opacity: 0, animation: 'sectionReveal 0.6s 0.2s ease-out forwards',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
+            <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
+            <div>
+              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+                Ad Creatives
               </div>
-              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['9xl'], textTransform: 'uppercase', color: colors.ink, lineHeight: 1.1, marginBottom: 12 }}>
-                What We Know About {brand.name}
-              </div>
-              <div style={{ fontSize: fontSize['2xl'], color: colors.muted, lineHeight: 1.6, maxWidth: 480, margin: '0 auto', marginBottom: 14 }}>
-                Our AI scraped your site and built a brand profile. The more you fill in, the better your funnel gets.
+              <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
+                ✦ 9 multi-format creatives
               </div>
             </div>
-
-            {/* Brand fields — clean column layout */}
-            <div style={{ padding: '0 0 48px', textAlign: 'center' }}>
-              {[
-                brandMission && { label: 'What you do', text: brandMission },
-                brandAudience && { label: 'Who buys from you', text: brandAudience },
-                brandVoice && { label: 'How you sound', text: brandVoice },
-              ].filter(Boolean).map((field, i, arr) => (
-                <div key={i}>
-                  <div style={{ display: 'inline-flex', fontFamily: font.mono, fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.accent, background: colors.ink, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 8, padding: '6px 16px', borderRadius: radius.pill }}>
-                    {(field as { label: string; text: string }).label}
-                  </div>
-                  <div style={{ fontSize: fontSize['2xl'], color: colors.grayText, lineHeight: 1.75 }}>
-                    {(field as { label: string; text: string }).text}
-                  </div>
-                  {i < arr.length - 1 && (
-                    <div style={{ borderBottom: `1px solid ${colors.blackAlpha6}`, margin: '24px 0' }} />
-                  )}
-                </div>
-              ))}
-              {brandTone.length > 0 && (
-                <div style={{ marginTop: 24 }}>
-                  <div style={{ display: 'inline-flex', fontFamily: font.mono, fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.accent, background: colors.ink, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 10, padding: '6px 16px', borderRadius: radius.pill }}>
-                    Tone
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
-                    {brandTone.map((kw: string, i: number) => (
-                      <span key={i} style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: colors.ink, background: colors.accentLight, border: `1.5px solid ${colors.ink}`, padding: '6px 16px', borderRadius: radius.pill }}>{kw}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        {/* ═══ SECTION 1: Ad Creatives ═══ */}
-        <div>
-          <div style={{ padding: '48px 0 32px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.ink, borderRadius: radius.pill, padding: '6px 16px', fontFamily: font.mono, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 14 }}>
-              ✦ 9 multi-format creatives
-            </div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['9xl'], textTransform: 'uppercase', color: colors.ink, lineHeight: 1.1, marginBottom: 16 }}>
-              Ad Creatives
-            </div>
-            <button onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`) })} style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.extrabold, fontSize: fontSize.base, padding: '14px 28px', borderRadius: radius.pill, border: 'none', cursor: 'pointer' }}>
-              Customize in builder →
-            </button>
           </div>
 
           {adVariation ? (() => {
             const v0 = adVariations[0] || adVariation
             const v1 = adVariations[1] || v0
             const v2 = adVariations[2] || v0
-
             const SRC_W = 1080
             const SRC_H = 1350
             const STORY_SRC_W = 1080
@@ -1043,7 +852,6 @@ export default function PreviewClient({
               { label: 'Split Alt', Comp: SplitTemplate, img: img7, variation: v0, tp: 'center' as const, bgColor: brandPrimary },
               { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
             ]
-
             const storyCards = [
               { label: 'Story — Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left' as const, bgColor: brandPrimary },
               { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center' as const, bgColor: brandSecondary },
@@ -1088,44 +896,27 @@ export default function PreviewClient({
 
             return (
               <>
-                {/* ── 4:5 GRID — 9 creatives, 3 per row ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
+                <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 20, marginBottom: 48 }}>
                   {gridCards.map((card, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', color: colors.gray750, marginBottom: 8 }}>
+                      <div style={{ fontSize: fontSize.caption, fontWeight: fontWeight.semibold, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', color: colors.whiteAlpha45, marginBottom: 8 }}>
                         {card.label}
                       </div>
-                      <ScaledCreative
-                        Comp={card.Comp}
-                        props={makeProps(card)}
-                        srcW={SRC_W}
-                        srcH={SRC_H}
-                        aspectRatio="4/5"
-                        borderRadius={radius['2xl']}
-                      />
+                      <ScaledCreative Comp={card.Comp} props={makeProps(card)} srcW={SRC_W} srcH={SRC_H} aspectRatio="4/5" borderRadius={radius['2xl']} />
                     </div>
                   ))}
                 </div>
-
-                {/* ── 9:16 STORIES — 3 in a row ── */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 32, marginBottom: 8 }}>
-                  <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.gray750, marginBottom: 20, textAlign: 'center' }}>
+                <div style={{ borderTop: `1px solid ${colors.whiteAlpha10}`, paddingTop: 32 }}>
+                  <div style={{ fontSize: fontSize.caption, fontWeight: fontWeight.semibold, letterSpacing: letterSpacing.wider, textTransform: 'uppercase', color: colors.whiteAlpha45, marginBottom: 20, textAlign: 'center' }}>
                     Instagram & TikTok Stories
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3" style={{ gap: 16 }}>
                     {storyCards.map((card, i) => (
                       <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', color: colors.gray750, marginBottom: 8 }}>
+                        <div style={{ fontSize: fontSize.caption, fontWeight: fontWeight.semibold, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', color: colors.whiteAlpha45, marginBottom: 8 }}>
                           {card.label}
                         </div>
-                        <ScaledCreative
-                          Comp={card.Comp}
-                          props={makeProps(card)}
-                          srcW={STORY_SRC_W}
-                          srcH={STORY_SRC_H}
-                          aspectRatio="9/16"
-                          borderRadius={radius['3xl']}
-                        />
+                        <ScaledCreative Comp={card.Comp} props={makeProps(card)} srcW={STORY_SRC_W} srcH={STORY_SRC_H} aspectRatio="9/16" borderRadius={radius['3xl']} />
                       </div>
                     ))}
                   </div>
@@ -1133,279 +924,202 @@ export default function PreviewClient({
               </>
             )
           })() : (
-            <div className="flex gap-4 overflow-hidden">
-              {[1,2,3,4,5].map(i => <div key={i} className="flex-shrink-0 w-[280px]"><div className={skeleton + ' w-full aspect-square'} /></div>)}
+            <div style={{ display: 'flex', gap: 20, overflow: 'hidden' }}>
+              {[1,2,3].map(i => <div key={i} style={{ flex: 1 }}><div className="animate-pulse" style={{ width: '100%', aspectRatio: '4/5', background: colors.whiteAlpha5, borderRadius: radius['2xl'] }} /></div>)}
             </div>
           )}
         </div>
+      </div>
 
-        {/* ═══ SECTION 2: Ad Copy ═══ */}
-        <div>
-          <div style={{ padding: '48px 0 32px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.ink, borderRadius: radius.pill, padding: '6px 16px', fontFamily: font.mono, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 14 }}>
-              ✦ 3 copy variations
-            </div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['9xl'], textTransform: 'uppercase', color: colors.ink, lineHeight: 1.1 }}>
+      {/* Ad Copy */}
+      <div className="pv-section" style={{
+        maxWidth: 1080, margin: '0 auto', padding: '0 24px',
+        marginBottom: 'clamp(80px, 10vw, 140px)',
+        opacity: 0, animation: 'sectionReveal 0.6s 0.3s ease-out forwards',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
+          <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
+          <div>
+            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
               Ad Copy
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {adVariations.slice(0, 3).map((v, i) => (
-              <div key={i} style={{
-                background: i === 0 ? colors.ink : colors.paper,
-                border: i === 0 ? 'none' : '1px solid var(--border)',
-                borderRadius: radius['3xl'], padding: '28px 28px 24px',
-                display: 'flex', flexDirection: 'column', gap: 0,
-              }}>
-                <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: i === 0 ? colors.accent : colors.gray500, marginBottom: 12 }}>
-                  Variation {i + 1}
-                </div>
-                <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['7xl'], lineHeight: 1.1, letterSpacing: letterSpacing.snug, color: i === 0 ? colors.paper : colors.ink, marginBottom: 20, textTransform: 'uppercase' }}>
-                  {v.headline}
-                </div>
-                <div style={{ width: 32, height: 2, background: i === 0 ? colors.accent : colors.ink, borderRadius: 1, marginBottom: 20 }} />
-                <div style={{ fontSize: fontSize.md, lineHeight: 1.7, color: i === 0 ? colors.whiteAlpha65 : colors.grayText, flex: 1, marginBottom: 20 }}>
-                  {v.primary_text}
-                </div>
-                {v.description && (
-                  <div style={{ display: 'inline-block', background: i === 0 ? colors.accentAlpha12 : colors.gray150, border: `1px solid ${i === 0 ? colors.accentAlpha25 : colors.border}`, borderRadius: radius.md, padding: '8px 14px', fontSize: fontSize.md, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.label, textTransform: 'uppercase', color: i === 0 ? colors.accent : colors.muted, marginBottom: 16 }}>
-                    {v.description}
-                  </div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, borderTop: `1px solid ${i === 0 ? colors.whiteAlpha10 : colors.gray300}` }}>
-                  <span style={{ fontFamily: font.mono, fontSize: fontSize.body, color: i === 0 ? colors.whiteAlpha30 : colors.gray500 }}>
-                    {v.primary_text.length} chars
-                  </span>
-                  <button
-                    onClick={() => copyVariation(i, v)}
-                    style={{
-                      background: copiedId === i ? colors.accent : (i === 0 ? colors.whiteAlpha10 : colors.gray250),
-                      color: copiedId === i ? colors.ink : (i === 0 ? colors.paper : colors.ink),
-                      border: 'none', borderRadius: radius.md,
-                      padding: '6px 14px',
-                      fontSize: fontSize.md, fontWeight: fontWeight.semibold,
-                      cursor: 'pointer',
-                      transition: `background ${transition.base}, color ${transition.base}`,
-                    }}>
-                    {copiedId === i ? 'Copied ✓' : 'Copy all'}
-                  </button>
-                </div>
-              </div>
-            ))}
-            {adVariations.length < 3 && [...Array(3 - adVariations.length)].map((_, i) => (
-              <div key={`skel-${i}`} style={{
-                minHeight: 200,
-                border: `1px dashed ${colors.border}`,
-                borderRadius: radius['2xl'],
-                padding: 20,
-                background: colors.paper,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-              }}>
-                <div className="animate-pulse" style={{ width: 32, height: 32, borderRadius: '50%', background: colors.cream, marginBottom: 8 }} />
-                <div style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.muted }}>Variation {adVariations.length + i + 1}</div>
-                <div style={{ fontSize: fontSize.sm, color: colors.muted, marginTop: 4 }}>Generating...</div>
-              </div>
-            ))}
+            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
+              ✦ 3 copy variations
+            </div>
           </div>
         </div>
-
-        {/* ═══ SECTION 3: Landing Page ═══ */}
-        <div>
-          <div style={{ padding: '48px 0 32px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.ink, borderRadius: radius.pill, padding: '6px 16px', fontFamily: font.mono, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 14 }}>
-              ✦ Conversion-optimized page
+        <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 16 }}>
+          {adVariations.slice(0, 3).map((v, i) => (
+            <div key={i} style={{
+              background: i === 0 ? colors.whiteAlpha5 : colors.whiteAlpha5,
+              border: `1px solid ${colors.whiteAlpha10}`,
+              borderRadius: radius['3xl'], padding: '28px 28px 24px',
+              display: 'flex', flexDirection: 'column', gap: 0,
+            }}>
+              <div style={{ fontSize: fontSize.caption, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.widest, textTransform: 'uppercase', color: i === 0 ? colors.accent : colors.whiteAlpha45, marginBottom: 12 }}>
+                Variation {i + 1}
+              </div>
+              <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['7xl'], lineHeight: 1.1, letterSpacing: letterSpacing.snug, color: colors.paper, marginBottom: 20, textTransform: 'uppercase' }}>
+                {v.headline}
+              </div>
+              <div style={{ width: 32, height: 2, background: i === 0 ? colors.accent : colors.whiteAlpha20, borderRadius: 1, marginBottom: 20 }} />
+              <div style={{ fontSize: fontSize.md, lineHeight: 1.7, color: colors.whiteAlpha65, flex: 1, marginBottom: 20 }}>
+                {v.primary_text}
+              </div>
+              {v.description && (
+                <div style={{ display: 'inline-block', background: colors.whiteAlpha8, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.md, padding: '8px 14px', fontSize: fontSize.md, fontWeight: fontWeight.bold, letterSpacing: letterSpacing.label, textTransform: 'uppercase', color: colors.whiteAlpha60, marginBottom: 16 }}>
+                  {v.description}
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, borderTop: `1px solid ${colors.whiteAlpha10}` }}>
+                <span style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha30 }}>
+                  {v.primary_text.length} chars
+                </span>
+                <button
+                  onClick={() => copyVariation(i, v)}
+                  style={{
+                    background: copiedId === i ? colors.accent : colors.whiteAlpha10,
+                    color: copiedId === i ? colors.ink : colors.paper,
+                    border: 'none', borderRadius: radius.md,
+                    padding: '6px 14px',
+                    fontSize: fontSize.md, fontWeight: fontWeight.semibold,
+                    cursor: 'pointer',
+                    transition: `background ${transition.base}, color ${transition.base}`,
+                  }}>
+                  {copiedId === i ? 'Copied ✓' : 'Copy all'}
+                </button>
+              </div>
             </div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['9xl'], textTransform: 'uppercase', color: colors.ink, lineHeight: 1.1 }}>
+          ))}
+        </div>
+      </div>
+
+      {/* Landing Page */}
+      <div className="pv-section" style={{
+        maxWidth: 1080, margin: '0 auto', padding: '0 24px',
+        marginBottom: 'clamp(80px, 10vw, 140px)',
+        opacity: 0, animation: 'sectionReveal 0.6s 0.4s ease-out forwards',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
+          <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
+          <div>
+            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
               Landing Page
             </div>
-          </div>
-          {landingBrief ? (
-            <div className="pv-iframe" style={{
-              width: '100%',
-              height: 680,
-              position: 'relative',
-              borderRadius: radius['4xl'],
-              overflow: 'hidden',
-              border: '1px solid var(--border)',
-              boxShadow: shadow.heavy,
-              background: colors.paper,
-            }}>
-              <iframe
-                src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
-                style={{
-                  position: 'absolute',
-                  top: 0, left: 0,
-                  width: '250%',
-                  height: '250%',
-                  border: 'none',
-                  transform: 'scale(0.4)',
-                  transformOrigin: 'top left',
-                  pointerEvents: 'none',
-                }}
-                title="Landing page preview"
-                loading="lazy"
-              />
-              <div style={{
-                position: 'absolute',
-                bottom: 0, left: 0, right: 0,
-                height: 120,
-                background: `linear-gradient(to bottom, transparent, ${colors.paper})`,
-                pointerEvents: 'none',
-              }} />
-              <div style={{
-                position: 'absolute',
-                bottom: 20, left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex', gap: 10,
-              }}>
-                <a
-                  href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    background: colors.ink, color: colors.accent,
-                    fontSize: fontSize.body, fontWeight: fontWeight.bold,
-                    padding: '10px 20px', borderRadius: radius.pill,
-                    textDecoration: 'none',
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    boxShadow: shadow.dark,
-                  }}
-                >
-                  ↗ View full page
-                </a>
-              </div>
-            </div>
-          ) : (
-            <div className={skeleton + ' w-full h-64 rounded-card'} />
-          )}
-        </div>
-
-        {/* ═══ SECTION 4: EMAIL ═══ */}
-        <div>
-          {/* Section header */}
-          <div style={{ padding: '48px 0 32px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.ink, borderRadius: radius.pill, padding: '6px 16px', fontFamily: font.mono, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 14 }}>
-              ✦ Campaign email · Klaviyo ready
-            </div>
-            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['9xl'], textTransform: 'uppercase', color: colors.ink, lineHeight: 1.1 }}>
-              Email Master Template
+            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
+              ✦ Conversion-optimized page
             </div>
           </div>
-
-          {!emailGenerated ? (
-            <div style={{ background: colors.paper, border: `1px solid ${colors.border}`, borderRadius: radius['4xl'], padding: '48px 40px', textAlign: 'center' }}>
-              {generatingEmail ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 40, height: 40, border: `3px solid ${colors.gray300}`, borderTopColor: colors.ink, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                  <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['2xl'], color: colors.ink, textTransform: 'uppercase' }}>Writing your email...</div>
-                  <div style={{ fontSize: fontSize.body, color: colors.muted }}>Generating campaign email from your brief</div>
-                  <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: fontSize['9xl'], marginBottom: 16 }}>✉</div>
-                  <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.ink, textTransform: 'uppercase', marginBottom: 8 }}>Generate campaign email</div>
-                  <div style={{ fontSize: fontSize.md, color: colors.muted, marginBottom: 28, maxWidth: 400, margin: '0 auto 28px', lineHeight: 1.6 }}>
-                    AI generates a complete email using your campaign brief and brand template. Export HTML or push directly to Klaviyo.
-                  </div>
-                  <button onClick={generateEmail}
-                    style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md, padding: '12px 32px', borderRadius: radius.pill, border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    ✉ Generate email →
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div>
-              <div style={{ border: `1px solid ${colors.border}`, borderRadius: radius.xl, overflow: 'hidden', background: colors.paper, width: 600, maxWidth: '100%', margin: '0 auto' }}>
-                <iframe srcDoc={emailHtml || ''} style={{ width: '100%', height: 900, border: 'none', display: 'block' }} title="Email preview" />
-              </div>
-            </div>
-          )}
         </div>
-
-        {/* ═══ Context banner ═══ */}
-        {brand.status === 'draft' ? (
-          <div style={{
-            marginTop: 48,
-            background: colors.ink,
-            borderRadius: radius['4xl'],
-            padding: '48px 40px',
-            textAlign: 'center',
+        {landingBrief ? (
+          <div className="pv-iframe" style={{
+            width: '100%', height: 680, position: 'relative',
+            borderRadius: radius['4xl'], overflow: 'hidden',
+            border: `1px solid ${colors.whiteAlpha10}`,
+            boxShadow: shadow.heavy, background: colors.paper,
           }}>
-            <div style={{
-              fontFamily: font.heading,
-              fontWeight: fontWeight.heading, fontSize: fontSize['8xl'],
-              color: colors.paper, marginBottom: 12,
-              textTransform: 'uppercase',
-              lineHeight: 1.1,
-            }}>
-              Ready to launch?
+            <iframe
+              src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+              style={{ position: 'absolute', top: 0, left: 0, width: '250%', height: '250%', border: 'none', transform: 'scale(0.4)', transformOrigin: 'top left', pointerEvents: 'none' }}
+              title="Landing page preview" loading="lazy"
+            />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: `linear-gradient(to bottom, transparent, ${colors.paper})`, pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)' }}>
+              <a
+                href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandSecondary)}&accent=${encodeURIComponent(brandAccent)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ background: colors.ink, color: colors.accent, fontSize: fontSize.body, fontWeight: fontWeight.bold, padding: '10px 20px', borderRadius: radius.pill, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: shadow.dark }}
+              >
+                ↗ View full page
+              </a>
             </div>
-            <div style={{
-              fontSize: fontSize.lg, color: colors.whiteAlpha45,
-              maxWidth: 440, margin: '0 auto 32px',
-              lineHeight: 1.7,
-            }}>
-              Upload your creatives to Meta, deploy your landing page,
-              and start finding your winners. This funnel was built
-              in 30 seconds — testing it takes even less.
-            </div>
-            <button
-              onClick={() => requireAuth(activateBrand)}
-              style={{
-                background: colors.accent, color: colors.ink,
-                fontFamily: font.heading,
-                fontWeight: fontWeight.heading, fontSize: fontSize.lg,
-                padding: '16px 40px', borderRadius: radius.pill,
-                border: 'none', cursor: 'pointer',
-              }}
-            >
-              Activate & continue →
-            </button>
           </div>
         ) : (
-          <div style={{
-            marginTop: 48,
-            background: colors.ink,
-            borderRadius: radius['4xl'],
-            padding: '48px 40px',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              fontFamily: font.heading,
-              fontWeight: fontWeight.heading, fontSize: fontSize['8xl'],
-              color: colors.paper, marginBottom: 12,
-              textTransform: 'uppercase',
-              lineHeight: 1.1,
-            }}>
-              Make it yours.
+          <div className="animate-pulse" style={{ width: '100%', height: 256, background: colors.whiteAlpha5, borderRadius: radius['4xl'] }} />
+        )}
+      </div>
+
+      {/* Email */}
+      <div className="pv-section" style={{
+        maxWidth: 1080, margin: '0 auto', padding: '0 24px',
+        marginBottom: 'clamp(80px, 10vw, 140px)',
+        opacity: 0, animation: 'sectionReveal 0.6s 0.5s ease-out forwards',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
+          <div style={{ width: 2, height: 40, background: colors.accent, flexShrink: 0 }} />
+          <div>
+            <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', lineHeight: 1.1 }}>
+              Email
             </div>
-            <div style={{
-              fontSize: fontSize.lg, color: colors.whiteAlpha45,
-              maxWidth: 440, margin: '0 auto 32px',
-              lineHeight: 1.7,
-            }}>
-              Open the creative builder to customize templates,
-              swap images, and download ad-ready assets.
+            <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill, padding: '4px 12px', marginTop: 8, display: 'inline-block' }}>
+              ✦ Campaign email · Klaviyo ready
             </div>
-            <button
-              onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`) })}
-              style={{
-                background: colors.accent, color: colors.ink,
-                fontFamily: font.heading,
-                fontWeight: fontWeight.extrabold, fontSize: fontSize.base,
-                padding: '14px 28px', borderRadius: radius.pill,
-                border: 'none', cursor: 'pointer',
-              }}
-            >
-              Customize in creative builder →
-            </button>
+          </div>
+        </div>
+
+        {!emailGenerated ? (
+          <div style={{ background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius['4xl'], padding: '48px 40px', textAlign: 'center' }}>
+            {generatingEmail ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 40, height: 40, border: `3px solid ${colors.whiteAlpha20}`, borderTopColor: colors.accent, borderRadius: '50%', animation: 'pvSpin 0.8s linear infinite' }} />
+                <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['2xl'], color: colors.paper, textTransform: 'uppercase' }}>Writing your email...</div>
+                <div style={{ fontSize: fontSize.body, color: colors.whiteAlpha45 }}>Generating campaign email from your brief</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: fontSize['9xl'], marginBottom: 16 }}>✉</div>
+                <div style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.paper, textTransform: 'uppercase', marginBottom: 8 }}>Generate campaign email</div>
+                <div style={{ fontSize: fontSize.md, color: colors.whiteAlpha45, marginBottom: 28, maxWidth: 400, margin: '0 auto 28px', lineHeight: 1.6 }}>
+                  AI generates a complete email using your campaign brief and brand template.
+                </div>
+                <button onClick={generateEmail}
+                  style={{ background: colors.accent, color: colors.ink, fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.md, padding: '12px 32px', borderRadius: radius.pill, border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  ✉ Generate email →
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div style={{ border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.xl, overflow: 'hidden', background: colors.paper, width: 600, maxWidth: '100%', margin: '0 auto' }}>
+            <iframe srcDoc={emailHtml || ''} style={{ width: '100%', height: 600, border: 'none', display: 'block' }} title="Email preview" />
           </div>
         )}
       </div>
-      </div>{/* end preview gate */}
+
+      {/* ═══ BOTTOM CTA ═══ */}
+      <div style={{
+        width: '100%', background: colors.accent,
+        padding: 'clamp(48px, 6vw, 80px) 24px',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          fontFamily: font.heading, fontWeight: fontWeight.heading,
+          fontSize: 'clamp(32px, 4vw, 56px)',
+          color: colors.ink, textTransform: 'uppercase',
+          lineHeight: 1.1,
+        }}>
+          Ready to make it yours?
+        </div>
+        <div style={{
+          fontFamily: font.mono, fontSize: fontSize.body,
+          color: colors.ink, opacity: 0.7,
+          marginTop: 12,
+        }}>
+          Customize, publish, and launch — all from one place.
+        </div>
+        <button
+          onClick={() => requireAuth(() => { localStorage.setItem('attomik_active_brand_id', brand.id); router.push(`/creatives?brand=${brand.id}&campaign=${campaign.id}`) })}
+          style={{
+            background: colors.ink, color: colors.accent,
+            fontFamily: font.heading, fontWeight: fontWeight.bold,
+            fontSize: fontSize.lg, padding: '18px 48px',
+            borderRadius: radius.pill, border: 'none',
+            cursor: 'pointer', marginTop: 32,
+          }}
+        >
+          Customize in creative builder →
+        </button>
+      </div>
 
       <AccountModal
         isOpen={showAccountModal}

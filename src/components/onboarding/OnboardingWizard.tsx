@@ -122,9 +122,16 @@ export default function OnboardingWizard() {
     return [...lifestyle, ...product, ...rest].slice(0, 12)
   })()
 
+  function handleModalComplete() {
+    if (pendingRedirect.current) {
+      router.push(pendingRedirect.current)
+    }
+  }
+
   async function buildAtlas() {
     setSaving(true)
     setShowModal(true)
+    setGenerationReady(false)
     await new Promise(r => setTimeout(r, 100))
 
     const name = brandName.trim() || url.trim().replace(/https?:\/\//, '').split('/')[0]
@@ -170,8 +177,9 @@ export default function OnboardingWizard() {
 
     sessionStorage.setItem('attomik_demo_brand_id', brand.id)
     sessionStorage.setItem('attomik_demo_campaign_id', campaign.id)
-    router.push(`/preview/${campaign.id}`)
+    pendingRedirect.current = `/preview/${campaign.id}`
 
+    // Fire-and-forget: image upload (same as before — don't await)
     fetch(`/api/brands/${brand.id}/upload-scraped-images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -184,6 +192,26 @@ export default function OnboardingWizard() {
         ].slice(0, 25),
       }),
     }).catch(() => {})
+
+    // Run all AI generation in parallel — MagicModal animation covers this.
+    // Standalone 12s safety fires setGenerationReady(true) no matter what.
+    // Animation is ~8s so there's a 4s buffer for fast generation.
+    const safetyTimer = setTimeout(() => setGenerationReady(true), 18000)
+
+    await Promise.race([
+      Promise.allSettled([
+        fetch(`/api/brands/${brand.id}/generate-voice`, { method: 'POST' }),
+        fetch(`/api/campaigns/${campaign.id}/ad-copy`, { method: 'POST' }),
+        fetch(`/api/campaigns/${campaign.id}/landing-brief`, { method: 'POST' }),
+        fetch(`/api/campaigns/${campaign.id}/email`, { method: 'POST' }),
+      ]),
+      new Promise<void>(resolve => setTimeout(resolve, 18000)),
+    ])
+    clearTimeout(safetyTimer)
+
+    // Signal the modal that generation is done — it will wait for animation
+    // to finish too, then call handleModalComplete which redirects.
+    setGenerationReady(true)
   }
 
   const showCanvas = loading || ready
@@ -268,7 +296,16 @@ export default function OnboardingWizard() {
       position: 'fixed', inset: 0, zIndex: 50,
       background: colors.ink, overflow: 'hidden',
     }}>
-      <MagicModal isOpen={showModal} mode="scan" isDone={false} brandName={brandName} brandColors={detectedColors} />
+      <MagicModal
+        isOpen={showModal}
+        mode="scan"
+        isDone={false}
+        brandName={brandName}
+        brandColors={detectedColors}
+        brandImages={displayImages.slice(0, 6).map(i => i.url)}
+        generationReady={generationReady}
+        onComplete={handleModalComplete}
+      />
 
       <style>{`
         @keyframes discFadeIn { from { opacity: 0 } to { opacity: 1 } }
