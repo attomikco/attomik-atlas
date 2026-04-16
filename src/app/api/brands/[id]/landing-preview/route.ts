@@ -1,16 +1,75 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import type { Brand, FontStyle } from '@/types'
+import type { Brand, BrandImage, FontStyle } from '@/types'
+import { bucketBrandImages, type BusinessType } from '@/lib/brand-images'
 import {
   buildLandingPrompts,
   generateLandingPageFromPrompts,
   hashLandingPrompts,
   LandingBriefData,
+  LandingImage,
   LandingStructuredContent,
   LandingPageGenerationError,
 } from '@/lib/landing-page-generator'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const VALID_TRANSFORMS: ReadonlyArray<FontStyle['transform']> = ['none', 'uppercase', 'lowercase', 'capitalize']
+
+// Cap on content images (product + lifestyle) passed to Claude. Logos are structural
+// and always included when available, on top of this cap.
+const PRODUCT_CAP = 3
+const LIFESTYLE_CAP = 3
+
+function parseBrandNotes(raw: string | null): Record<string, unknown> {
+  if (!raw) return {}
+  try { return JSON.parse(raw) } catch { return {} }
+}
+
+async function loadLandingImages(
+  supabase: SupabaseClient,
+  brand: Brand,
+): Promise<LandingImage[]> {
+  const { data } = await supabase
+    .from('brand_images')
+    .select('id, storage_path, tag, width, height, alt_text')
+    .eq('brand_id', brand.id)
+  const rows = (data || []) as BrandImage[]
+
+  const toUrl = (img: BrandImage): string | null => {
+    if (!img.storage_path) return null
+    const cleanPath = img.storage_path.replace(/^brand-images\//, '')
+    return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl || null
+  }
+
+  const notes = parseBrandNotes(brand.notes)
+  const businessType = (notes.business_type as BusinessType) ?? null
+  const logoLightUrl = typeof notes.logo_url_light === 'string' ? notes.logo_url_light : null
+
+  const { productImages, lifestyleImages } = bucketBrandImages(rows, businessType)
+
+  const toLanding = (img: BrandImage, role: LandingImage['role']): LandingImage | null => {
+    const url = toUrl(img)
+    if (!url) return null
+    return { url, role, width: img.width, height: img.height, alt: img.alt_text }
+  }
+
+  const out: LandingImage[] = []
+  if (brand.logo_url) {
+    out.push({ url: brand.logo_url, role: 'logo' })
+  }
+  if (logoLightUrl) {
+    out.push({ url: logoLightUrl, role: 'logo_light' })
+  }
+  for (const img of productImages.slice(0, PRODUCT_CAP)) {
+    const entry = toLanding(img, 'product')
+    if (entry) out.push(entry)
+  }
+  for (const img of lifestyleImages.slice(0, LIFESTYLE_CAP)) {
+    const entry = toLanding(img, 'lifestyle')
+    if (entry) out.push(entry)
+  }
+  return out
+}
 
 function decodeBriefParam(briefParam: string | null): LandingStructuredContent | null {
   if (!briefParam) return null
@@ -89,7 +148,8 @@ export async function GET(
     structured_content: structured,
   }
 
-  const prompts = buildLandingPrompts({ brandData: brand, briefData })
+  const images = await loadLandingImages(supabase, brand)
+  const prompts = buildLandingPrompts({ brandData: brand, briefData, images })
   const hash = hashLandingPrompts(prompts)
 
   if (briefRow?.generated_html && briefRow.generated_html_hash === hash) {
