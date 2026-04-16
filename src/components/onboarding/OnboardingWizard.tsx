@@ -28,6 +28,12 @@ export default function OnboardingWizard() {
   const pendingRedirect = useRef<string | null>(null)
   const [carouselPaused, setCarouselPaused] = useState(false)
 
+  // Set by the resume effect below once wizard state has been rehydrated from
+  // localStorage. A second effect watches this and fires buildAtlas() on the
+  // *next* render — so buildAtlas closes over the hydrated values, not the
+  // initial state.
+  const [pendingResume, setPendingResume] = useState(false)
+
   const [brandName, setBrandName] = useState('')
   const [logo, setLogo] = useState<string | null>(null)
   const [ogImage, setOgImage] = useState<string | null>(null)
@@ -44,7 +50,69 @@ export default function OnboardingWizard() {
   const [offerings, setOfferings] = useState<DetectedOffering[]>([])
   const [images, setImages] = useState<ScrapedImage[]>([])
 
+  // Resume from EmailGateModal auth redirect. When the user hit the gate,
+  // authed (Google or magic link), and came back via /auth/confirm, that page
+  // routes here with ?resume=1. We rehydrate every field the wizard collected
+  // from the snapshot EmailGateModal stashed in localStorage, then flip
+  // pendingResume so the next effect fires buildAtlas() with the hydrated
+  // closure values.
   useEffect(() => {
+    if (searchParams.get('resume') !== '1') return
+    if (autoAnalyzed.current) return
+    autoAnalyzed.current = true // block the auto-discover effect below
+
+    let raw: string | null = null
+    try { raw = localStorage.getItem('attomik_pending_wizard') } catch { return }
+    if (!raw) return
+
+    type ResumeSnapshot = { savedAt?: number; state?: Record<string, unknown> }
+    let parsed: ResumeSnapshot | null = null
+    try { parsed = JSON.parse(raw) as ResumeSnapshot } catch { return }
+    const savedAt = typeof parsed?.savedAt === 'number' ? parsed.savedAt : 0
+    if (!parsed?.state || !savedAt || Date.now() - savedAt > 60 * 60 * 1000) {
+      try { localStorage.removeItem('attomik_pending_wizard') } catch {}
+      return
+    }
+
+    const s = parsed.state as Record<string, unknown>
+    if (typeof s.url === 'string') setUrl(s.url)
+    if (typeof s.brandName === 'string') setBrandName(s.brandName)
+    if (s.logo === null || typeof s.logo === 'string') setLogo(s.logo as string | null)
+    if (s.ogImage === null || typeof s.ogImage === 'string') setOgImage(s.ogImage as string | null)
+    if (typeof s.primaryColor === 'string') setPrimaryColor(s.primaryColor)
+    if (typeof s.secondaryColor === 'string') setSecondaryColor(s.secondaryColor)
+    if (typeof s.accentColor === 'string') setAccentColor(s.accentColor)
+    if (Array.isArray(s.detectedColors)) setDetectedColors(s.detectedColors as string[])
+    if (Array.isArray(s.scrapedPalette)) setScrapedPalette(s.scrapedPalette as string[])
+    if (typeof s.brandFont === 'string') setBrandFont(s.brandFont)
+    if (s.fontTransform === 'none' || s.fontTransform === 'uppercase' || s.fontTransform === 'lowercase' || s.fontTransform === 'capitalize') {
+      setFontTransform(s.fontTransform)
+    }
+    if (s.fontLetterSpacing === 'wide' || s.fontLetterSpacing === 'tight' || s.fontLetterSpacing === 'normal') {
+      setFontLetterSpacing(s.fontLetterSpacing)
+    }
+    if (
+      s.businessType === 'shopify' || s.businessType === 'ecommerce' || s.businessType === 'saas' ||
+      s.businessType === 'restaurant' || s.businessType === 'service' || s.businessType === 'brand'
+    ) {
+      setBusinessType(s.businessType)
+    }
+    if (Array.isArray(s.products)) setProducts(s.products as DetectedProduct[])
+    if (Array.isArray(s.offerings)) setOfferings(s.offerings as DetectedOffering[])
+    if (Array.isArray(s.images)) setImages(s.images as ScrapedImage[])
+    setReady(true)
+
+    try { localStorage.removeItem('attomik_pending_wizard') } catch {}
+    setPendingResume(true)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!pendingResume) return
+    buildAtlas()
+  }, [pendingResume]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (searchParams.get('resume') === '1') return
     if (searchParams.get('url') && !autoAnalyzed.current) {
       autoAnalyzed.current = true
       discover()
@@ -338,6 +406,13 @@ export default function OnboardingWizard() {
       <EmailGateModal
         isOpen={showEmailGate}
         onAuthSuccess={handleAuthSuccess}
+        getResumeState={() => ({
+          url, brandName, logo, ogImage,
+          primaryColor, secondaryColor, accentColor,
+          detectedColors, scrapedPalette,
+          brandFont, fontTransform, fontLetterSpacing,
+          businessType, products, offerings, images,
+        })}
       />
 
       <style>{`

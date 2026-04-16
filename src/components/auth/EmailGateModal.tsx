@@ -7,6 +7,26 @@ import { colors, font, fontWeight, fontSize, radius, zIndex, transition, letterS
 interface EmailGateModalProps {
   isOpen: boolean
   onAuthSuccess: () => void
+  // Wizard state snapshot to persist across the auth redirect. Called
+  // immediately before signInWithOAuth/signInWithOtp so the caller can capture
+  // the freshest values. Return null to skip the stash (e.g. nothing to resume).
+  getResumeState?: () => Record<string, unknown> | null
+}
+
+// localStorage key for the pending wizard snapshot. Read by /auth/confirm
+// (existence check, to route back to the wizard) and by OnboardingWizard
+// (rehydrates state when mounted with ?resume=1).
+const RESUME_KEY = 'attomik_pending_wizard'
+
+function stashResume(getResumeState: (() => Record<string, unknown> | null) | undefined) {
+  if (!getResumeState) return
+  const state = getResumeState()
+  if (!state) return
+  try {
+    localStorage.setItem(RESUME_KEY, JSON.stringify({ savedAt: Date.now(), state }))
+  } catch {
+    // quota / privacy mode — safe to ignore; user lands on /dashboard post-auth
+  }
 }
 
 type Step = 'choice' | 'email' | 'sent'
@@ -20,7 +40,7 @@ function isValidEmail(value: string): boolean {
   return true
 }
 
-export default function EmailGateModal({ isOpen, onAuthSuccess }: EmailGateModalProps) {
+export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }: EmailGateModalProps) {
   const [visible, setVisible] = useState(false)
   const [readyToShow, setReadyToShow] = useState(false)
   const [step, setStep] = useState<Step>('choice')
@@ -65,11 +85,47 @@ export default function EmailGateModal({ isOpen, onAuthSuccess }: EmailGateModal
     return () => { cancelled = true; if (showTimer) clearTimeout(showTimer) }
   }, [isOpen])
 
+  // Session-aware gate for the magic-link flow. Once the modal enters the
+  // 'sent' step we start watching for a real session instead of letting the
+  // user click through. Two paths:
+  //   1. onAuthStateChange → SIGNED_IN fires when the magic link is clicked
+  //      in the same tab (the callback page calls back into here via the
+  //      shared Supabase client). Instant.
+  //   2. getUser() poll every 3s — cross-tab / cross-device clicks don't
+  //      emit SIGNED_IN in this tab, but @supabase/ssr cookies are shared
+  //      across tabs so getUser() will flip truthy once cookies land.
+  // Either path fires onAuthSuccess exactly once (guarded by `fired`).
+  useEffect(() => {
+    if (!isOpen || step !== 'sent') return
+    const supabase = createClient()
+    let fired = false
+    const succeed = () => {
+      if (fired) return
+      fired = true
+      onAuthSuccessRef.current()
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) succeed()
+    })
+
+    const poll = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) succeed()
+    }, 3000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearInterval(poll)
+    }
+  }, [isOpen, step])
+
   if (!isOpen || !readyToShow) return null
 
   async function handleGoogle() {
     setGoogleLoading(true)
     setError('')
+    stashResume(getResumeState)
     const supabase = createClient()
     const { error: oauthErr } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -91,6 +147,7 @@ export default function EmailGateModal({ isOpen, onAuthSuccess }: EmailGateModal
     }
     setEmailLoading(true)
     setError('')
+    stashResume(getResumeState)
     const supabase = createClient()
     const { error: otpErr } = await supabase.auth.signInWithOtp({
       email: email.trim(),
@@ -123,6 +180,16 @@ export default function EmailGateModal({ isOpen, onAuthSuccess }: EmailGateModal
           0% { box-shadow: 0 0 0 0 ${colors.accentAlpha30} }
           70% { box-shadow: 0 0 0 10px transparent }
           100% { box-shadow: 0 0 0 0 transparent }
+        }
+        @keyframes egmDotPulse {
+          0%, 100% { opacity: 0.3; transform: scale(0.8) }
+          50% { opacity: 1; transform: scale(1) }
+        }
+        .egm-dot {
+          width: 8px; height: 8px; border-radius: 50%;
+          background: ${colors.accent};
+          display: inline-block;
+          animation: egmDotPulse 1.4s ease-in-out infinite;
         }
       `}</style>
 
@@ -339,26 +406,29 @@ export default function EmailGateModal({ isOpen, onAuthSuccess }: EmailGateModal
               marginBottom: 28,
             }}>
               We sent a magic link to <strong style={{ color: colors.paper }}>{email}</strong>.<br />
-              Click it to save your brand.
+              Click the link in your email. We&rsquo;ll pick up automatically.
             </div>
 
             <button
-              onClick={() => onAuthSuccess()}
+              type="button"
+              disabled
+              aria-live="polite"
               style={{
                 width: '100%',
                 padding: '14px 20px',
-                background: colors.accent,
-                color: colors.ink,
+                background: colors.whiteAlpha8,
+                color: colors.whiteAlpha70,
                 fontFamily: font.heading,
                 fontWeight: fontWeight.bold,
                 fontSize: fontSize.lg,
-                border: 'none',
+                border: `1px solid ${colors.whiteAlpha15}`,
                 borderRadius: radius.pill,
-                cursor: 'pointer',
-                animation: 'egmPulseGlow 2.4s infinite',
+                cursor: 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
               }}
             >
-              Continue →
+              <span className="egm-dot" aria-hidden="true" />
+              Waiting for email verification…
             </button>
           </div>
         )}

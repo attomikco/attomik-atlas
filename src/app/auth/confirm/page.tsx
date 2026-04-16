@@ -4,6 +4,29 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+// localStorage key written by EmailGateModal before firing auth. Existence
+// here means the user was mid-wizard when they were sent to Google / email —
+// route them back to /onboarding?resume=1 so the wizard can rehydrate and
+// auto-continue instead of dumping them on an empty dashboard.
+const RESUME_KEY = 'attomik_pending_wizard'
+const RESUME_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+function hasPendingWizard(): boolean {
+  try {
+    const raw = localStorage.getItem(RESUME_KEY)
+    if (!raw) return false
+    const parsed = JSON.parse(raw)
+    const savedAt = typeof parsed?.savedAt === 'number' ? parsed.savedAt : 0
+    if (!savedAt || Date.now() - savedAt > RESUME_TTL_MS) {
+      localStorage.removeItem(RESUME_KEY)
+      return false
+    }
+    return !!parsed?.state
+  } catch {
+    return false
+  }
+}
+
 export default function AuthConfirmPage() {
   const router = useRouter()
   const [error, setError] = useState('')
@@ -36,9 +59,16 @@ export default function AuthConfirmPage() {
       sessionStorage.removeItem('attomik_demo_campaign_id')
       if (campaignId) {
         router.push(`/preview/${campaignId}`)
-      } else {
-        router.push('/dashboard')
+        return
       }
+      // No preview in flight, but the user may have been mid-wizard when we
+      // sent them through auth. Resume the wizard if a snapshot is waiting;
+      // otherwise fall through to the dashboard.
+      if (hasPendingWizard()) {
+        router.push('/onboarding?resume=1')
+        return
+      }
+      router.push('/dashboard')
     }
 
     // Session should already be set by the server-side code exchange
