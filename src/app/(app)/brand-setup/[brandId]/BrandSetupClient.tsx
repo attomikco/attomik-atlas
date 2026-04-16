@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Brand, BrandImage } from '@/types'
 import ColorPickerPopover from '@/components/ui/ColorPickerPopover'
+import LogoImage from '@/components/ui/LogoImage'
 import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
 
 const POPULAR_FONTS = [
@@ -700,7 +701,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             {/* Left: logo + name + url */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, zIndex: 1 }}>
               {logoDark ? (
-                <img src={light ? logoDark : (logoLight || logoDark)} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain', filter: light ? 'none' : (logoLight ? 'none' : 'brightness(0) invert(1)') }} alt={name} />
+                <LogoImage src={light ? logoDark : (logoLight || logoDark)} onDark={!light} style={{ height: 40, width: 'auto', maxWidth: 100, objectFit: 'contain' }} alt={name} />
               ) : (
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: ghost, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 18, color: textOn, flexShrink: 0 }}>
                   {name[0]?.toUpperCase()}
