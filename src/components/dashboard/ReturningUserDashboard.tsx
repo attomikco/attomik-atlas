@@ -146,56 +146,9 @@ export default function ReturningUserDashboard({ user, brands, campaignsByBrand,
           Pick up where you left off, or scan a new brand to start fresh.
         </p>
 
-        {/* Brand grid section */}
-        <div style={{ marginTop: 56 }}>
-          <div style={{
-            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            marginBottom: 20, flexWrap: 'wrap', gap: 8,
-          }}>
-            <div style={{
-              fontFamily: font.mono, fontSize: fontSize.caption,
-              color: colors.whiteAlpha60, letterSpacing: letterSpacing.wide,
-              textTransform: 'uppercase',
-            }}>
-              ▸ Your brands
-            </div>
-            <div style={{
-              fontFamily: font.mono, fontSize: fontSize.caption,
-              color: colors.whiteAlpha30, letterSpacing: letterSpacing.wide,
-              textTransform: 'uppercase',
-            }}>
-              {loading ? 'Loading...' : `${brands.length} ${brands.length === 1 ? 'brand' : 'brands'}`}
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="rud-grid">
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{
-                  background: colors.darkCard,
-                  border: `1px solid ${colors.whiteAlpha10}`,
-                  borderRadius: radius['2xl'],
-                  height: 220,
-                  opacity: 0.5,
-                }} />
-              ))}
-            </div>
-          ) : (
-            <div className="rud-grid">
-              {brands.map(b => (
-                <BrandCard
-                  key={b.id}
-                  brand={b}
-                  latestCampaignId={campaignsByBrand[b.id] || null}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Start a new brand */}
         <div style={{
-          marginTop: 64,
+          marginTop: 56,
           padding: '40px',
           background: colors.darkCard,
           border: `1px solid ${colors.whiteAlpha10}`,
@@ -254,6 +207,53 @@ export default function ReturningUserDashboard({ user, brands, campaignsByBrand,
               Scan brand →
             </button>
           </div>
+        </div>
+
+        {/* Brand grid section */}
+        <div style={{ marginTop: 64 }}>
+          <div style={{
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            marginBottom: 20, flexWrap: 'wrap', gap: 8,
+          }}>
+            <div style={{
+              fontFamily: font.mono, fontSize: fontSize.caption,
+              color: colors.whiteAlpha60, letterSpacing: letterSpacing.wide,
+              textTransform: 'uppercase',
+            }}>
+              ▸ Your brands
+            </div>
+            <div style={{
+              fontFamily: font.mono, fontSize: fontSize.caption,
+              color: colors.whiteAlpha30, letterSpacing: letterSpacing.wide,
+              textTransform: 'uppercase',
+            }}>
+              {loading ? 'Loading...' : `${brands.length} ${brands.length === 1 ? 'brand' : 'brands'}`}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="rud-grid">
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  background: colors.darkCard,
+                  border: `1px solid ${colors.whiteAlpha10}`,
+                  borderRadius: radius['2xl'],
+                  height: 220,
+                  opacity: 0.5,
+                }} />
+              ))}
+            </div>
+          ) : (
+            <div className="rud-grid">
+              {brands.map(b => (
+                <BrandCard
+                  key={b.id}
+                  brand={b}
+                  latestCampaignId={campaignsByBrand[b.id] || null}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
