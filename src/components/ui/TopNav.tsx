@@ -7,6 +7,7 @@ import { useBrand } from '@/lib/brand-context'
 import { useProfile } from '@/lib/profile-context'
 import AttomikLogo from './AttomikLogo'
 import InitialsAvatar from './InitialsAvatar'
+import LogoImage from './LogoImage'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, layout } from '@/lib/design-tokens'
 
 const NAV_LINKS = [
@@ -132,7 +133,7 @@ export default function TopNav() {
           }}>
             <div style={{ width: 28, height: 28, borderRadius: radius.md, background: displayBrand.primary_color || colors.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
               {displayBrand.logo_url ? (
-                <img src={displayBrand.logo_url} style={{ width: 20, height: 20, objectFit: 'contain', filter: isLight(displayBrand.primary_color || colors.paper) ? 'none' : 'brightness(0) invert(1)' }} alt="" />
+                <LogoImage src={displayBrand.logo_url} onDark={!isLight(displayBrand.primary_color || colors.paper)} style={{ width: 20, height: 20, objectFit: 'contain' }} alt="" />
               ) : (
                 <span style={{ fontSize: fontSize.caption, fontWeight: fontWeight.heading, color: isLight(displayBrand.primary_color || colors.ink) ? colors.ink : colors.paper, fontFamily: font.heading }}>{displayBrand.name[0]}</span>
               )}
@@ -154,7 +155,7 @@ export default function TopNav() {
                   onMouseLeave={e => { if (b.id !== displayBrand.id) e.currentTarget.style.background = 'transparent' }}>
                   <div style={{ width: 28, height: 28, borderRadius: radius.md, background: b.primary_color || colors.ink, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     {b.logo_url ? (
-                      <img src={b.logo_url} style={{ width: 18, height: 18, objectFit: 'contain', filter: isLight(b.primary_color || colors.paper) ? 'none' : 'brightness(0) invert(1)' }} alt="" />
+                      <LogoImage src={b.logo_url} onDark={!isLight(b.primary_color || colors.paper)} style={{ width: 18, height: 18, objectFit: 'contain' }} alt="" />
                     ) : (
                       <span style={{ fontSize: fontSize.caption, fontWeight: fontWeight.heading, color: isLight(b.primary_color || colors.ink) ? colors.ink : colors.paper, fontFamily: font.heading }}>{b.name[0]}</span>
                     )}
