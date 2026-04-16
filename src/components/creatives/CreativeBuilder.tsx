@@ -17,6 +17,7 @@ import PreviewCanvas from './preview/PreviewCanvas'
 import VariationStrip from './preview/VariationStrip'
 import DraftStrip from './preview/DraftStrip'
 import MetaLaunchModal from './MetaLaunchModal'
+import { colors, font } from '@/lib/design-tokens'
 
 export default function CreativeBuilder({
   brands,
@@ -61,22 +62,22 @@ export default function CreativeBuilder({
   const [ctaType, setCtaType] = useState<CtaType>('LEARN_MORE')
   const [textPosition, setTextPosition] = useState<TextPosition>('bottom-left')
   const [showCta, setShowCta] = useState(true)
-  const [headlineColor, setHeadlineColor] = useState<string>('#ffffff')
-  const [bodyColor, setBodyColor] = useState<string>('#ffffff')
+  const [headlineColor, setHeadlineColor] = useState<string>(colors.white)
+  const [bodyColor, setBodyColor] = useState<string>(colors.white)
   const [headlineFont, setHeadlineFont] = useState<string>('')
   const [bodyFont, setBodyFont] = useState<string>('')
   const [headlineWeight, setHeadlineWeight] = useState<string>('700')
   const [headlineTransform, setHeadlineTransform] = useState<string>('none')
   const [bodyWeight, setBodyWeight] = useState<string>('400')
   const [bodyTransform, setBodyTransform] = useState<string>('none')
-  const [bgColor, setBgColor] = useState<string>('#000000')
+  const [bgColor, setBgColor] = useState<string>(colors.ink)
   const [headlineSizeMul, setHeadlineSizeMul] = useState(1)
   const [bodySizeMul, setBodySizeMul] = useState(1)
   const [showOverlay, setShowOverlay] = useState(false)
   const [overlayOpacity, setOverlayOpacity] = useState(10)
   const [imagePosition, setImagePosition] = useState<string>('center')
   const [textBanner, setTextBanner] = useState<'none' | 'top' | 'bottom'>('none')
-  const [textBannerColor, setTextBannerColor] = useState<string>('#000000')
+  const [textBannerColor, setTextBannerColor] = useState<string>(colors.ink)
   // Template-specific state
   const defaultCallouts: Callout[] = [
     { icon: '🌿', label: 'Natural', description: 'Clean ingredients' },
@@ -122,8 +123,8 @@ export default function CreativeBuilder({
       setHeadlineColor(brand.text_on_accent); setBodyColor(brand.text_on_accent); return
     }
     // Fallback: auto-detect
-    setHeadlineColor(light ? '#000000' : '#ffffff')
-    setBodyColor(light ? '#1a1a1a' : '#ffffff')
+    setHeadlineColor(light ? colors.ink : colors.white)
+    setBodyColor(light ? '#1a1a1a' : colors.white)
   }
 
   // ── Derived ────────────────────────────────────────────────────────
@@ -136,9 +137,9 @@ export default function CreativeBuilder({
       return !!(n.meta_access_token && n.meta_ad_account_id && n.meta_page_id)
     } catch { return false }
   })()
-  const brandColor = brand?.primary_color || '#00ff97'
+  const brandColor = brand?.primary_color || colors.accent
   const [ctaColor, setCtaColor] = useState(brand?.accent_color || brandColor)
-  const [ctaFontColor, setCtaFontColor] = useState(brand?.accent_font_color || '#000000')
+  const [ctaFontColor, setCtaFontColor] = useState(brand?.accent_font_color || colors.ink)
   const [ctaSizeMul, setCtaSizeMul] = useState(1)
   // Build color palette from all brand colors (deduped)
   const allColors: { label: string; value: string }[] = []
@@ -171,8 +172,8 @@ export default function CreativeBuilder({
   addColor('Btn tertiary', brand?.btn_tertiary)
   addColor('Btn tertiary text', brand?.btn_tertiary_text)
   // Always include black and white
-  addColor('Black', '#000000')
-  addColor('White', '#ffffff')
+  addColor('Black', colors.ink)
+  addColor('White', colors.white)
   const brandColors = allColors
   const size = SIZES.find(s => s.id === sizeId)!
   const template = TEMPLATES.find(t => t.id === templateId)!
@@ -269,13 +270,13 @@ FB_DESCRIPTION: <under 12 words>`,
     const bTransform = bo?.transform || bParts[2] || 'none'
 
     // Colors for dark bg (overlay, stat)
-    const darkText = nb?.text_on_dark || nb?.heading_color || '#ffffff'
-    const darkBody = nb?.text_on_dark || nb?.body_color || '#ffffff'
+    const darkText = nb?.text_on_dark || nb?.heading_color || colors.white
+    const darkBody = nb?.text_on_dark || nb?.body_color || colors.white
     // Colors for brand bg (split, card, testimonial, grid)
-    const brandBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || '#000000'
+    const brandBg = nb?.bg_dark || nb?.bg_base || nb?.primary_color || colors.ink
     const lightBg = isLightColor(brandBg)
-    const bgText = lightBg ? (nb?.text_on_base || '#000000') : (nb?.text_on_dark || '#ffffff')
-    const bgBody = lightBg ? (nb?.text_on_base || '#1a1a1a') : (nb?.text_on_dark || '#ffffff')
+    const bgText = lightBg ? (nb?.text_on_base || colors.ink) : (nb?.text_on_dark || colors.white)
+    const bgBody = lightBg ? (nb?.text_on_base || '#1a1a1a') : (nb?.text_on_dark || colors.white)
 
     const shared = {
       headlineFont: hFont, headlineWeight: hWeight, headlineTransform: hTransform,
@@ -285,19 +286,19 @@ FB_DESCRIPTION: <under 12 words>`,
     }
 
     // Primary color + smart text-on for split/card/testimonial
-    const primary = nb?.primary_color || '#000000'
-    const secondary = nb?.secondary_color || '#ffffff'
+    const primary = nb?.primary_color || colors.ink
+    const secondary = nb?.secondary_color || colors.white
     const primaryIsLight = isLightColor(primary)
     const secondaryIsLight = isLightColor(secondary)
-    const textOnPrimary = nb?.text_on_dark || (primaryIsLight ? '#000000' : '#ffffff')
-    const bodyOnPrimary = nb?.text_on_dark || (primaryIsLight ? '#1a1a1a' : '#ffffff')
-    const textOnSecondary = nb?.text_on_base || (secondaryIsLight ? '#000000' : '#ffffff')
+    const textOnPrimary = nb?.text_on_dark || (primaryIsLight ? colors.ink : colors.white)
+    const bodyOnPrimary = nb?.text_on_dark || (primaryIsLight ? '#1a1a1a' : colors.white)
+    const textOnSecondary = nb?.text_on_base || (secondaryIsLight ? colors.ink : colors.white)
 
     switch (tid) {
       case 'overlay':
-        return { ...shared, headlineColor: '#ffffff', bodyColor: '#ffffff', textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: '#000', showCta: true }
+        return { ...shared, headlineColor: colors.white, bodyColor: colors.white, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: colors.ink, showCta: true }
       case 'stat':
-        return { ...shared, headlineColor: '#ffffff', bodyColor: '#ffffff', textPosition: 'center', showOverlay: true, overlayOpacity: 30, imagePosition: 'center', bgColor: '#000', showCta: false }
+        return { ...shared, headlineColor: colors.white, bodyColor: colors.white, textPosition: 'center', showOverlay: true, overlayOpacity: 30, imagePosition: 'center', bgColor: colors.ink, showCta: false }
       case 'split':
         return { ...shared, headlineColor: textOnPrimary, bodyColor: bodyOnPrimary, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: primary, showCta: true }
       case 'testimonial':
@@ -307,7 +308,7 @@ FB_DESCRIPTION: <under 12 words>`,
       case 'grid':
         return { ...shared, headlineColor: textOnSecondary, bodyColor: textOnPrimary, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: secondary, showCta: true }
       case 'mission':
-        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: true, overlayOpacity: 50, imagePosition: 'center', bgColor: '#000', showCta: false }
+        return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: true, overlayOpacity: 50, imagePosition: 'center', bgColor: colors.ink, showCta: false }
       case 'infographic':
         return { ...shared, headlineColor: darkText, bodyColor: darkBody, textPosition: 'center', showOverlay: false, overlayOpacity: 10, imagePosition: 'center', bgColor: brandBg, showCta: false }
       case 'comparison':
@@ -741,19 +742,19 @@ FB_DESCRIPTION: <under 12 words>`,
   const pill = (active: boolean) => ({
     className: "text-xs px-2.5 py-1 rounded-pill transition-all duration-150 font-semibold cursor-pointer",
     style: active
-      ? { background: '#111', color: '#4ade80', border: 'none' } as const
-      : { background: '#fff', border: '1px solid #ddd', color: '#333' } as const,
+      ? { background: colors.gray900, color: colors.tailGreen400, border: 'none' } as const
+      : { background: colors.white, border: `1px solid ${colors.gray400}`, color: colors.gray333 } as const,
   })
 
   // ── Style reset handler ────────────────────────────────────────────
   function handleStyleReset() {
     const h = brand?.font_heading; const hP = (brand?.font_primary || '').split('|')
     const b = brand?.font_body; const bP = (brand?.font_secondary || '').split('|')
-    setHeadlineColor(brand?.heading_color || brand?.primary_color || '#ffffff')
-    setBodyColor(brand?.body_color || '#ffffff')
+    setHeadlineColor(brand?.heading_color || brand?.primary_color || colors.white)
+    setBodyColor(brand?.body_color || colors.white)
     setHeadlineFont(h?.family || hP[0] || ''); setHeadlineWeight(h?.weight || hP[1] || '700'); setHeadlineTransform(h?.transform || hP[2] || 'none')
     setBodyFont(b?.family || bP[0] || ''); setBodyWeight(b?.weight || bP[1] || '400'); setBodyTransform(b?.transform || bP[2] || 'none')
-    setBgColor(brand?.primary_color || '#000000'); setHeadlineSizeMul(1); setBodySizeMul(1)
+    setBgColor(brand?.primary_color || colors.ink); setHeadlineSizeMul(1); setBodySizeMul(1)
     setShowOverlay(false); setOverlayOpacity(50); setTextBanner('none')
   }
 
@@ -798,10 +799,10 @@ FB_DESCRIPTION: <under 12 words>`,
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: colors.gray200 }}>
 
       {/* ── TOPBAR ── */}
-      <div className="creative-topbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', height: 48, minHeight: 48, background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+      <div className="creative-topbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', height: 48, minHeight: 48, background: colors.white, borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
         <style>{`@media(max-width:767px){.creative-topbar{overflow-x:auto;white-space:nowrap;scrollbar-width:none;-ms-overflow-style:none}.creative-topbar::-webkit-scrollbar{display:none}}`}</style>
         {/* Size pills */}
         {SIZES.map(s => (
@@ -841,8 +842,8 @@ FB_DESCRIPTION: <under 12 words>`,
             {...pill(templateId === t.id)}
             style={{
               ...(templateId === t.id
-                ? { background: '#111', color: '#4ade80', border: 'none' }
-                : { background: '#fff', border: '1px solid #ddd', color: '#333' }),
+                ? { background: colors.gray900, color: colors.tailGreen400, border: 'none' }
+                : { background: colors.white, border: `1px solid ${colors.gray400}`, color: colors.gray333 }),
               whiteSpace: 'nowrap',
             }}
           >
@@ -866,7 +867,7 @@ FB_DESCRIPTION: <under 12 words>`,
 
         {/* ── PREVIEW PANEL ── */}
         <div ref={leftPanelRef} className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
+          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16 }}>
             <PreviewCanvas
               templateLabel={template.label}
               size={size}
@@ -943,12 +944,12 @@ FB_DESCRIPTION: <under 12 words>`,
 
         {/* ── IMAGES PANEL ── */}
         <div className="w-full md:w-auto" style={{ flex: 0.5, minWidth: 0 }}>
-          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
+          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
             {/* Lifestyle first — sets the emotional tone for a creative and is the
                 default pick downstream. Product shots come after as fallback. */}
             {lifestyleImages.length > 0 && (
               <>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>LIFESTYLE</div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>LIFESTYLE</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {lifestyleImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
@@ -961,7 +962,7 @@ FB_DESCRIPTION: <under 12 words>`,
             )}
             {productImages.length > 0 && (
               <>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: lifestyleImages.length > 0 ? 16 : 0, marginBottom: 8 }}>PRODUCT</div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: lifestyleImages.length > 0 ? 16 : 0, marginBottom: 8 }}>PRODUCT</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {productImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
@@ -974,7 +975,7 @@ FB_DESCRIPTION: <under 12 words>`,
             )}
             {otherImages.length > 0 && (
               <>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>OTHER</div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 16, marginBottom: 8 }}>OTHER</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {otherImages.map(img => (
                     <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
@@ -986,21 +987,21 @@ FB_DESCRIPTION: <under 12 words>`,
               </>
             )}
             {images.length === 0 && (
-              <div style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: '24px 0' }}>No images</div>
+              <div style={{ fontSize: 12, color: colors.gray700, textAlign: 'center', padding: '24px 0' }}>No images</div>
             )}
 
             {/* ── AI GENERATED SECTION ── */}
             <div style={{ marginTop: images.length > 0 ? 20 : 0, paddingTop: images.length > 0 ? 16 : 0, borderTop: images.length > 0 ? '1px solid rgba(0,0,0,0.08)' : 'none' }}>
-              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#00ff97', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>AI GENERATED</div>
-              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#999', lineHeight: 1.4, marginBottom: 10 }}>AI-generated lifestyle scenes — place your product on top</div>
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>AI GENERATED</div>
+              <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.gray700, lineHeight: 1.4, marginBottom: 10 }}>AI-generated lifestyle scenes — place your product on top</div>
               <button
                 onClick={generateImage}
                 disabled={generatingImage || !brandId}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   width: '100%', padding: '10px 12px', borderRadius: 8,
-                  background: generatingImage ? '#1a1a1a' : '#000', color: '#fff',
-                  fontFamily: 'DM Mono, monospace', fontSize: 11, fontWeight: 700,
+                  background: generatingImage ? '#1a1a1a' : colors.ink, color: colors.white,
+                  fontFamily: font.mono, fontSize: 11, fontWeight: 700,
                   textTransform: 'uppercase', letterSpacing: '0.06em',
                   border: 'none', cursor: generatingImage ? 'default' : 'pointer',
                   opacity: generatingImage ? 0.7 : 1, marginBottom: 8,
@@ -1017,7 +1018,7 @@ FB_DESCRIPTION: <under 12 words>`,
                 )}
               </button>
               {generateError && (
-                <div style={{ fontSize: 11, color: '#d4183d', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>{generateError}</div>
+                <div style={{ fontSize: 11, color: colors.dangerAlt, fontFamily: font.mono, marginBottom: 8 }}>{generateError}</div>
               )}
               {generatedImages.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -1035,7 +1036,7 @@ FB_DESCRIPTION: <under 12 words>`,
 
         {/* ── STYLE & COPY PANEL ── */}
         <div className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ background: '#fff', borderRadius: 12, margin: 12, padding: 16 }}>
+          <div style={{ background: colors.white, borderRadius: 12, margin: 12, padding: 16 }}>
           <StylePanel
             templateId={templateId}
             brand={brand}
@@ -1118,11 +1119,11 @@ FB_DESCRIPTION: <under 12 words>`,
 
           {templateId === 'grid' && images.length > 1 && (
             <div style={{ padding: 16 }}>
-              <label style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'block', marginBottom: 4 }}>Second image</label>
+              <label style={{ fontSize: 10, color: colors.gray700, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'block', marginBottom: 4 }}>Second image</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
                 {images.map(img => (
                   <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
-                    style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? '#4ade80' : '#e0e0e0'}`, padding: 0, background: 'none', cursor: 'pointer' }}>
+                    style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : '#e0e0e0'}`, padding: 0, background: 'none', cursor: 'pointer' }}>
                     <img src={getPublicUrl(img.storage_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
                   </button>
                 ))}
@@ -1140,14 +1141,14 @@ FB_DESCRIPTION: <under 12 words>`,
 
       {/* Toast */}
       {(exporting || exportingAll) && !exportToast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12, background: '#000', color: '#fff', padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#00ff97', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12, background: colors.ink, color: colors.white, padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
           {exportingAll ? 'Generating all sizes...' : 'Generating PNG...'}
         </div>
       )}
       {exportToast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, background: '#000', color: '#00ff97', padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,10.5 12,3.5" stroke="#00ff97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, background: colors.ink, color: colors.accent, padding: '14px 24px', borderRadius: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,10.5 12,3.5" stroke={colors.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           {exportToast}
         </div>
       )}
