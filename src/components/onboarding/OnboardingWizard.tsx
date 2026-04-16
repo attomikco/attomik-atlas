@@ -305,6 +305,7 @@ export default function OnboardingWizard() {
         brandImages={displayImages.slice(0, 6).map(i => i.url)}
         generationReady={generationReady}
         onComplete={handleModalComplete}
+        enableEmailGate
       />
 
       <style>{`

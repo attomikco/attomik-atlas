@@ -1,0 +1,353 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { colors, font, fontWeight, fontSize, radius, zIndex, transition, letterSpacing } from '@/lib/design-tokens'
+
+interface EmailGateModalProps {
+  isOpen: boolean
+  onAuthSuccess: () => void
+}
+
+type Step = 'choice' | 'email' | 'sent'
+
+function isValidEmail(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed.includes('@') || !trimmed.includes('.')) return false
+  const [local, domain] = trimmed.split('@')
+  if (!local || !domain) return false
+  if (!domain.includes('.') || domain.endsWith('.')) return false
+  return true
+}
+
+export default function EmailGateModal({ isOpen, onAuthSuccess }: EmailGateModalProps) {
+  const [visible, setVisible] = useState(false)
+  const [step, setStep] = useState<Step>('choice')
+  const [email, setEmail] = useState('')
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [emailLoading, setEmailLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) { setVisible(false); return }
+    setStep('choice')
+    setEmail('')
+    setError('')
+    setGoogleLoading(false)
+    setEmailLoading(false)
+    const t = setTimeout(() => setVisible(true), 50)
+    return () => clearTimeout(t)
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  async function handleGoogle() {
+    setGoogleLoading(true)
+    setError('')
+    const supabase = createClient()
+    const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (oauthErr) {
+      setError(oauthErr.message)
+      setGoogleLoading(false)
+    }
+    // On success the browser navigates away — no further state to handle.
+  }
+
+  async function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim()) return
+    if (!isValidEmail(email)) {
+      setError('Enter a valid email address.')
+      return
+    }
+    setEmailLoading(true)
+    setError('')
+    const supabase = createClient()
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (otpErr) {
+      setError(otpErr.message)
+      setEmailLoading(false)
+      return
+    }
+    setEmailLoading(false)
+    setStep('sent')
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      zIndex: zIndex.modal + 10,
+      background: colors.blackAlpha50,
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+      opacity: visible ? 1 : 0,
+      transition: `opacity ${transition.overlay}`,
+    }}>
+      <style>{`
+        @keyframes egmRise { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes egmPulseGlow {
+          0% { box-shadow: 0 0 0 0 ${colors.accentAlpha30} }
+          70% { box-shadow: 0 0 0 10px transparent }
+          100% { box-shadow: 0 0 0 0 transparent }
+        }
+      `}</style>
+
+      <div style={{
+        width: '100%', maxWidth: 460,
+        background: colors.darkCard,
+        border: `1px solid ${colors.whiteAlpha10}`,
+        borderRadius: radius['3xl'],
+        padding: '40px 36px 36px',
+        opacity: 0,
+        animation: 'egmRise 0.4s ease 0.1s forwards',
+      }}>
+        {/* ── Step: choice ── */}
+        {step === 'choice' && (
+          <>
+            <div style={{
+              fontFamily: font.heading,
+              fontWeight: fontWeight.heading,
+              fontSize: 'clamp(28px, 4vw, 36px)',
+              lineHeight: 1.05,
+              color: colors.paper,
+              textTransform: 'uppercase',
+              letterSpacing: letterSpacing.tight,
+              textAlign: 'center',
+              marginBottom: 12,
+            }}>
+              Your brand is<br />almost ready
+            </div>
+
+            <div style={{
+              fontFamily: font.mono,
+              fontSize: fontSize.body,
+              color: colors.whiteAlpha60,
+              textAlign: 'center',
+              lineHeight: 1.6,
+              marginBottom: 32,
+            }}>
+              Enter your email to see your full marketing engine
+            </div>
+
+            <button
+              onClick={handleGoogle}
+              disabled={googleLoading}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: colors.paper,
+                color: colors.ink,
+                fontFamily: font.heading,
+                fontWeight: fontWeight.bold,
+                fontSize: fontSize.lg,
+                border: 'none',
+                borderRadius: radius.pill,
+                cursor: googleLoading ? 'wait' : 'pointer',
+                opacity: googleLoading ? 0.6 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                animation: googleLoading ? 'none' : 'egmPulseGlow 2.4s infinite',
+                transition: `opacity ${transition.normal}`,
+              }}
+            >
+              <GoogleIcon />
+              {googleLoading ? 'Redirecting...' : 'Continue with Google'}
+            </button>
+
+            <button
+              onClick={() => { setStep('email'); setError('') }}
+              style={{
+                width: '100%',
+                marginTop: 14,
+                padding: '12px',
+                background: 'transparent',
+                color: colors.whiteAlpha70,
+                fontFamily: font.mono,
+                fontSize: fontSize.body,
+                border: 'none',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: letterSpacing.wide,
+                transition: `color ${transition.normal}`,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = colors.accent }}
+              onMouseLeave={e => { e.currentTarget.style.color = colors.whiteAlpha70 }}
+            >
+              or enter email →
+            </button>
+
+            {error && (
+              <div style={{
+                marginTop: 16, textAlign: 'center',
+                fontFamily: font.mono, fontSize: fontSize.caption,
+                color: colors.dangerSoft,
+              }}>
+                {error}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Step: email input ── */}
+        {step === 'email' && (
+          <>
+            <div style={{
+              fontFamily: font.heading,
+              fontWeight: fontWeight.heading,
+              fontSize: 'clamp(28px, 4vw, 36px)',
+              lineHeight: 1.05,
+              color: colors.paper,
+              textTransform: 'uppercase',
+              letterSpacing: letterSpacing.tight,
+              textAlign: 'center',
+              marginBottom: 12,
+            }}>
+              Enter your email
+            </div>
+            <div style={{
+              fontFamily: font.mono,
+              fontSize: fontSize.body,
+              color: colors.whiteAlpha60,
+              textAlign: 'center',
+              lineHeight: 1.6,
+              marginBottom: 28,
+            }}>
+              We&rsquo;ll send a magic link to save your brand
+            </div>
+
+            <form onSubmit={handleEmailSubmit}>
+              <input
+                type="email"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError('') }}
+                placeholder="you@company.com"
+                autoFocus
+                required
+                style={{
+                  width: '100%', padding: '14px 18px',
+                  fontSize: fontSize.lg, fontWeight: fontWeight.medium,
+                  background: colors.whiteAlpha8,
+                  border: `1.5px solid ${colors.whiteAlpha15}`,
+                  borderRadius: radius['2xl'],
+                  color: colors.paper, outline: 'none',
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.background = colors.whiteAlpha10 }}
+                onBlur={e => { e.currentTarget.style.borderColor = colors.whiteAlpha15; e.currentTarget.style.background = colors.whiteAlpha8 }}
+              />
+
+              {error && (
+                <div style={{
+                  marginTop: 10, textAlign: 'center',
+                  fontFamily: font.mono, fontSize: fontSize.caption,
+                  color: colors.dangerSoft,
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={emailLoading || !email.trim()}
+                style={{
+                  width: '100%',
+                  marginTop: 16,
+                  padding: '14px 20px',
+                  background: !email.trim() ? colors.accentAlpha30 : colors.accent,
+                  color: colors.ink,
+                  fontFamily: font.heading,
+                  fontWeight: fontWeight.bold,
+                  fontSize: fontSize.lg,
+                  border: 'none',
+                  borderRadius: radius.pill,
+                  cursor: emailLoading ? 'wait' : (!email.trim() ? 'not-allowed' : 'pointer'),
+                  opacity: emailLoading ? 0.6 : 1,
+                  transition: `opacity ${transition.normal}, background ${transition.normal}`,
+                }}
+              >
+                {emailLoading ? 'Sending...' : 'Send magic link →'}
+              </button>
+            </form>
+
+            <button
+              onClick={() => { setStep('choice'); setError('') }}
+              style={{
+                display: 'block', margin: '16px auto 0',
+                background: 'transparent', border: 'none',
+                color: colors.whiteAlpha45, cursor: 'pointer',
+                fontFamily: font.mono, fontSize: fontSize.caption,
+                textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
+              }}
+            >
+              ← Back
+            </button>
+          </>
+        )}
+
+        {/* ── Step: sent confirmation ── */}
+        {step === 'sent' && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontFamily: font.heading,
+              fontWeight: fontWeight.heading,
+              fontSize: 'clamp(28px, 4vw, 36px)',
+              lineHeight: 1.05,
+              color: colors.paper,
+              textTransform: 'uppercase',
+              letterSpacing: letterSpacing.tight,
+              marginBottom: 12,
+            }}>
+              Check your email
+            </div>
+            <div style={{
+              fontFamily: font.mono,
+              fontSize: fontSize.body,
+              color: colors.whiteAlpha60,
+              lineHeight: 1.6,
+              marginBottom: 28,
+            }}>
+              We sent a magic link to <strong style={{ color: colors.paper }}>{email}</strong>.<br />
+              Click it to save your brand.
+            </div>
+
+            <button
+              onClick={() => onAuthSuccess()}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: colors.accent,
+                color: colors.ink,
+                fontFamily: font.heading,
+                fontWeight: fontWeight.bold,
+                fontSize: fontSize.lg,
+                border: 'none',
+                borderRadius: radius.pill,
+                cursor: 'pointer',
+                animation: 'egmPulseGlow 2.4s infinite',
+              }}
+            >
+              Continue →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
+      <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" />
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z" />
+    </svg>
+  )
+}
