@@ -2,8 +2,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { colors, font, fontWeight, fontSize, radius, zIndex, transition, letterSpacing } from '@/lib/design-tokens'
 import AttomikLogo from '@/components/ui/AttomikLogo'
-import EmailGateModal from '@/components/auth/EmailGateModal'
-import { createClient } from '@/lib/supabase/client'
 
 interface MagicModalProps {
   isOpen: boolean
@@ -16,7 +14,6 @@ interface MagicModalProps {
   brandColors?: string[]
   brandImages?: string[]
   generationReady?: boolean
-  enableEmailGate?: boolean
 }
 
 const LOG_LINES: Array<{ text: string; color: string; bold?: boolean }> = [
@@ -62,7 +59,6 @@ export default function MagicModal({
   brandColors,
   brandImages,
   generationReady = false,
-  enableEmailGate = false,
 }: MagicModalProps) {
   const [visible, setVisible] = useState(false)
   const [currentLine, setCurrentLine] = useState(0)
@@ -70,10 +66,6 @@ export default function MagicModal({
   const [animationDone, setAnimationDone] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [showFinalizing, setShowFinalizing] = useState(false)
-  const [gateOpen, setGateOpen] = useState(false)
-  const [gateResolved, setGateResolved] = useState(false)
-  const [authChecked, setAuthChecked] = useState(false)
-  const [userIsAuthed, setUserIsAuthed] = useState(false)
 
   const logRef = useRef<HTMLDivElement>(null)
   const lineInterval = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -86,35 +78,11 @@ export default function MagicModal({
       setAnimationDone(false)
       setRevealed(false)
       setShowFinalizing(false)
-      setGateOpen(false)
-      setGateResolved(false)
-      setAuthChecked(false)
-      setUserIsAuthed(false)
       const t = setTimeout(() => setVisible(true), 50)
       return () => clearTimeout(t)
     }
     setVisible(false)
   }, [isOpen])
-
-  // Check auth state once when modal opens — if logged in, skip the gate entirely
-  useEffect(() => {
-    if (!isOpen || !enableEmailGate || authChecked) return
-    let cancelled = false
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (cancelled) return
-      setUserIsAuthed(!!user)
-      setAuthChecked(true)
-      if (user) setGateResolved(true)
-    })
-    return () => { cancelled = true }
-  }, [isOpen, enableEmailGate, authChecked])
-
-  // Trigger the email gate at ~50% progress (only if not already resolved/auth'd)
-  useEffect(() => {
-    if (!enableEmailGate || !authChecked || userIsAuthed || gateResolved) return
-    if (pct >= 50 && !gateOpen) setGateOpen(true)
-  }, [pct, enableEmailGate, authChecked, userIsAuthed, gateResolved, gateOpen])
 
   // Only show "finalizing" state if generation is still pending 2s after animation ends
   useEffect(() => {
@@ -470,12 +438,6 @@ export default function MagicModal({
             </div>
           )}
         </div>
-
-        {/* Email gate — appears at ~50% if user is not logged in */}
-        <EmailGateModal
-          isOpen={gateOpen}
-          onAuthSuccess={() => { setGateOpen(false); setGateResolved(true) }}
-        />
 
         {/* Brand signal strip — always visible */}
         {(displayColors.length > 0 || displayName) && (
