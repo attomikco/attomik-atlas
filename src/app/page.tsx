@@ -6,8 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { colors, font, fontWeight } from '@/lib/design-tokens'
 import AttomikLogo from '@/components/ui/AttomikLogo'
 import MarketingFooter from '@/components/ui/MarketingFooter'
-import ReturningUserDashboard from '@/components/dashboard/ReturningUserDashboard'
 import type { BrandCardData } from '@/components/dashboard/BrandCard'
+import YourBrandsSection from '@/components/home/YourBrandsSection'
 
 const BG = '#0a0a0a'
 const BG_ALT = '#111111'
@@ -193,20 +193,6 @@ export default function HomePage() {
     })
   }, [])
 
-  // Returning users with brands get the dashboard; everyone else falls
-  // through to the cold marketing homepage. Logged-in users with no brands
-  // see the cold homepage so they land on the URL-input flow directly
-  // (no email gate is needed since they're already authed).
-  if (authChecked && brandsLoaded && user && userBrands.length > 0) {
-    return (
-      <ReturningUserDashboard
-        user={user}
-        brands={userBrands}
-        campaignsByBrand={campaignsByBrand}
-      />
-    )
-  }
-
   function go(url: string) {
     const v = url.trim()
     if (!v) return
@@ -382,7 +368,7 @@ export default function HomePage() {
             Used by Afterdream · Jolene Coffee · WESAKE · Stuzzi · La Monjita
           </div>
 
-          {isLoggedIn && (
+          {isLoggedIn && brandsLoaded && userBrands.length === 0 && (
             <a href="/dashboard" style={{ ...label, marginTop: 32, color: colors.accent, textDecoration: 'none' }}>Go to dashboard →</a>
           )}
         </div>
@@ -393,6 +379,11 @@ export default function HomePage() {
           <div className="stamp-hide" style={{ ...label, textAlign: 'right' }}>EST. 2026 · SF · NYC</div>
         </div>
       </section>
+
+      {/* ── YOUR BRANDS (logged-in only) ───────────────── */}
+      {isLoggedIn && brandsLoaded && userBrands.length > 0 && (
+        <YourBrandsSection brands={userBrands} campaignsByBrand={campaignsByBrand} />
+      )}
 
       {/* ── 2. CAPABILITIES STRIP ───────────────────────── */}
       <section style={{ background: BG_ALT, borderBottom: `1px solid ${BORDER}` }}>
