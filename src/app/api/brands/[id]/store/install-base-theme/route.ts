@@ -45,6 +45,30 @@ function extOf(path: string): string {
   return dot >= 0 ? path.slice(dot + 1).toLowerCase() : ''
 }
 
+// Shopify validates section-group JSON (sections/*.json like
+// footer-group.json, header-group.json, overlay-group.json) AT UPLOAD and
+// rejects them if the liquid sections they reference don't exist yet on
+// the theme. Ordering the upload so liquid sections land first prevents
+// these rejections. Order:
+//   1 — assets/*              (CSS, JS, fonts, images)
+//   2 — snippets/*            (snippet .liquid)
+//   3 — sections/*.liquid     (section .liquid — MUST precede section JSON)
+//   4 — layout/*              (theme.liquid, etc.)
+//   5 — config/*              (settings schema)
+//   6 — sections/*.json       (section groups)
+//   7 — templates/*           (template JSONs — reference everything above)
+//   8 — anything else         (locales, etc.)
+function getSortPriority(assetKey: string): number {
+  if (assetKey.startsWith('assets/')) return 1
+  if (assetKey.startsWith('snippets/')) return 2
+  if (assetKey.startsWith('sections/') && assetKey.endsWith('.liquid')) return 3
+  if (assetKey.startsWith('layout/')) return 4
+  if (assetKey.startsWith('config/')) return 5
+  if (assetKey.startsWith('sections/') && assetKey.endsWith('.json')) return 6
+  if (assetKey.startsWith('templates/')) return 7
+  return 8
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: brandId } = await params
   const { supabase, error, status } = await authorizeOwnerOrAdmin(brandId)
@@ -88,6 +112,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const msg = e instanceof Error ? e.message : String(e)
     return new Response(JSON.stringify({ error: `Failed to read src/theme: ${msg}` }), { status: 500, headers: { 'Content-Type': 'application/json' } })
   }
+
+  // Sort the files so Shopify's upload-time validation of section-group
+  // JSONs sees the liquid sections they reference already in place.
+  // Memoize assetKey per file — avoid recomputing O(n log n) times during
+  // the sort. The sort is stable in modern JS, so files within the same
+  // priority bucket keep their filesystem order.
+  const fileKeys = new Map<string, string>()
+  for (const absPath of files) fileKeys.set(absPath, encodeAssetKey(themeRoot, absPath))
+  files.sort((a, b) => getSortPriority(fileKeys.get(a)!) - getSortPriority(fileKeys.get(b)!))
+
   const total = files.length
 
   // Stream newline-delimited JSON events back to the client as uploads

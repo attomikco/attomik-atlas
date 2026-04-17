@@ -10,6 +10,7 @@ import {
   colorsToThemeSettings,
   isValidHex,
   neutralColorsForVariant,
+  parseThemeColors,
   type ThemeColors,
 } from '@/lib/store-colors'
 import type { Brand, BrandImage } from '@/types'
@@ -721,11 +722,37 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       theme_settings: { ...baseSettings, ...v.theme_settings } as Record<string, string>,
     }))
 
+    // Preserve manually edited colors — regenerate only refreshes copy.
+    // If a row already exists for this brand and has per-variant `colors`
+    // populated (from a prior generate or from the color editor), keep
+    // those colors and re-derive theme_settings from them. Match by index:
+    // variant 0 preserves its colors, variant 1 preserves its colors, etc.
+    // Variants that exist in the new generation but not in the existing
+    // row (e.g. existing=2, new=4) fall through to the AI-generated colors.
+    // parseThemeColors returns null on missing/malformed shapes, so a row
+    // that exists but has no colors yet (legacy) correctly uses AI output.
+    const { data: existing } = await supabase
+      .from('store_themes')
+      .select('color_variants')
+      .eq('brand_id', brandId)
+      .maybeSingle()
+    const existingVariants = Array.isArray(existing?.color_variants) ? existing.color_variants : []
+    const finalVariants = mergedVariants.map((v, i) => {
+      const existingVariant = existingVariants[i] as Record<string, unknown> | undefined
+      const preservedColors = existingVariant ? parseThemeColors(existingVariant.colors) : null
+      if (!preservedColors) return v
+      return {
+        name: v.name,
+        colors: preservedColors,
+        theme_settings: { ...baseSettings, ...colorsToThemeSettings(preservedColors) } as Record<string, string>,
+      }
+    })
+
     // Persist — upsert on brand_id
     const row = {
       brand_id: brandId,
       name: 'Default theme',
-      color_variants: mergedVariants,
+      color_variants: finalVariants,
       selected_variant: 0,
       index_json: indexJson,
       product_json: product,
