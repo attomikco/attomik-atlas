@@ -18,9 +18,6 @@
   assign badge_padding_y = block.settings.padding_y | default: 6
   assign badge_border_width = block.settings.border_width | default: 1
   assign badge_border_radius = block.settings.border_radius | default: 20
-  assign bg_opacity = block.settings.bg_opacity | default: 100 | divided_by: 100.0
-  assign border_opacity = block.settings.border_opacity | default: 100 | divided_by: 100.0
-  assign badge_border_color = block.settings.border_color | default: block.settings.badge_bg_color
 -%}
 
 <div
@@ -32,6 +29,7 @@
 >
   <div
     {{ block.shopify_attributes }}
+    class="{{ block.settings.color_scheme }}"
     style="
       display: inline-flex !important;
       align-items: center !important;
@@ -42,9 +40,7 @@
       font-weight: {{ badge_font_weight }} !important;
       text-transform: {{ badge_text_transform }} !important;
       letter-spacing: {{ badge_letter_spacing }}px !important;
-      color: {{ block.settings.badge_font_color | default: '#ffffff' }} !important;
-      background-color: {{ block.settings.badge_bg_color | default: '#000000' | color_modify: 'alpha', bg_opacity }} !important;
-      border: {{ badge_border_width }}px solid {{ badge_border_color | color_modify: 'alpha', border_opacity }} !important;
+      border: {{ badge_border_width }}px solid currentColor !important;
       border-radius: {{ badge_border_radius }}px !important;
       padding: {{ badge_padding_y }}px {{ badge_padding_x }}px !important;
       line-height: 1.4 !important;

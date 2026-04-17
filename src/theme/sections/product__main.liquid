@@ -5122,16 +5122,42 @@
           "content": "Card"
         },
         {
-          "type": "color",
-          "id": "card_bg",
-          "label": "Card background",
-          "default": "#ffffff"
+          "type": "select",
+          "id": "color_scheme",
+          "label": "t:general.settings.color_scheme.label",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-body color__text"
         },
         {
-          "type": "color",
-          "id": "card_border_color",
-          "label": "Card border color",
-          "default": "#e0e0e0"
+          "type": "select",
+          "id": "selected_color_scheme",
+          "label": "Selected card color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-tertiary color__tertiary"
         },
         {
           "type": "range",
@@ -5152,18 +5178,6 @@
           "step": 2,
           "unit": "px",
           "default": 12
-        },
-        {
-          "type": "color",
-          "id": "card_selected_border",
-          "label": "Selected card border color",
-          "default": "#000000"
-        },
-        {
-          "type": "color",
-          "id": "card_selected_bg",
-          "label": "Selected card background",
-          "default": "#f5f5f5"
         },
         {
           "type": "header",
@@ -5192,12 +5206,6 @@
           "default": "700"
         },
         {
-          "type": "color",
-          "id": "name_color",
-          "label": "Option name color",
-          "default": "#000000"
-        },
-        {
           "type": "header",
           "content": "Price"
         },
@@ -5210,12 +5218,6 @@
           "step": 1,
           "unit": "px",
           "default": 13
-        },
-        {
-          "type": "color",
-          "id": "price_color",
-          "label": "Price color",
-          "default": "#666666"
         },
         {
           "type": "header",
@@ -5232,12 +5234,6 @@
           "default": 11
         },
         {
-          "type": "color",
-          "id": "savings_color",
-          "label": "Savings color",
-          "default": "#000000"
-        },
-        {
           "type": "header",
           "content": "Free Shipping"
         },
@@ -5252,26 +5248,27 @@
           "default": 11
         },
         {
-          "type": "color",
-          "id": "shipping_color",
-          "label": "Shipping color",
-          "default": "#666666"
-        },
-        {
           "type": "header",
-          "content": "Popular Badge"
+          "content": "Popular / Best Badges"
         },
         {
-          "type": "color",
-          "id": "popular_badge_bg",
-          "label": "Popular badge background",
-          "default": "#f5c842"
-        },
-        {
-          "type": "color",
-          "id": "popular_badge_text",
-          "label": "Popular badge text",
-          "default": "#000000"
+          "type": "select",
+          "id": "badge_color_scheme",
+          "label": "Popular/Best badge color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-secondary color__secondary"
         },
         {
           "type": "range",
@@ -5292,22 +5289,6 @@
           "step": 2,
           "unit": "px",
           "default": 20
-        },
-        {
-          "type": "header",
-          "content": "Best Value Badge"
-        },
-        {
-          "type": "color",
-          "id": "best_badge_bg",
-          "label": "Best value badge background",
-          "default": "#000000"
-        },
-        {
-          "type": "color",
-          "id": "best_badge_text",
-          "label": "Best value badge text",
-          "default": "#ffffff"
         }
       ]
     },
@@ -5602,36 +5583,27 @@
           "content": "t:general.headers.color.content"
         },
         {
-          "type": "color",
-          "id": "badge_bg_color",
-          "label": "Badge background color",
-          "default": "#000000"
-        },
-        {
-          "type": "range",
-          "id": "bg_opacity",
-          "min": 0,
-          "max": 100,
-          "step": 5,
-          "unit": "%",
-          "label": "Background opacity",
-          "default": 100
-        },
-        {
-          "type": "color",
-          "id": "badge_font_color",
-          "label": "Badge text color",
-          "default": "#ffffff"
+          "type": "select",
+          "id": "color_scheme",
+          "label": "t:general.settings.color_scheme.label",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-primary color__primary"
         },
         {
           "type": "header",
           "content": "Border"
-        },
-        {
-          "type": "color",
-          "id": "border_color",
-          "label": "Border color",
-          "default": "#000000"
         },
         {
           "type": "range",
@@ -5642,16 +5614,6 @@
           "unit": "px",
           "label": "Border width",
           "default": 1
-        },
-        {
-          "type": "range",
-          "id": "border_opacity",
-          "min": 0,
-          "max": 100,
-          "step": 5,
-          "unit": "%",
-          "label": "Border opacity",
-          "default": 100
         },
         {
           "type": "range",
@@ -5747,44 +5709,46 @@
           "content": "t:general.headers.color.content"
         },
         {
-          "type": "color",
-          "id": "check_color",
-          "label": "Checkmark color",
-          "default": "#000000"
+          "type": "select",
+          "id": "color_scheme",
+          "label": "t:general.settings.color_scheme.label",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-body color__text"
         },
         {
           "type": "header",
           "content": "Value badge styling"
         },
         {
-          "type": "color",
-          "id": "value_bg",
-          "label": "Value badge background",
-          "default": "#f5f5f5"
-        },
-        {
-          "type": "color",
-          "id": "value_text_color",
-          "label": "Value badge text color",
-          "default": "#1a1a1a"
-        },
-        {
-          "type": "color",
-          "id": "value_tag_bg",
-          "label": "Value tag background",
-          "default": "#000000"
-        },
-        {
-          "type": "color",
-          "id": "value_tag_text",
-          "label": "Value tag text color",
-          "default": "#ffffff"
-        },
-        {
-          "type": "color",
-          "id": "value_border_color",
-          "label": "Value badge border color",
-          "default": "#e0e0e0"
+          "type": "select",
+          "id": "badge_color_scheme",
+          "label": "Badge color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-primary color__primary"
         },
         {
           "type": "range",

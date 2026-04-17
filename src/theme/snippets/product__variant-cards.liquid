@@ -233,8 +233,7 @@
           type="button"
           class="ac-vc-card{% unless option_available %} ac-vc-card--unavailable{% endunless %}"
           style="
-            background: {{ block.settings.card_bg }};
-            border: {{ block.settings.card_border_width }}px solid {{ block.settings.card_border_color }};
+            border: {{ block.settings.card_border_width }}px solid currentColor;
             border-radius: {{ block.settings.card_border_radius }}px;
             padding: 12px 12px;
             display: flex;
@@ -243,9 +242,10 @@
             align-items: center;
             text-align: center;
           "
-          :style="option{{ card_option_position }} == `{{ value_encoded }}`
-            ? { background: '{{ block.settings.card_selected_bg }}', borderColor: '{{ block.settings.card_selected_border }}', borderWidth: '2px' }
-            : {}"
+          :class="option{{ card_option_position }} == `{{ value_encoded }}`
+            ? '{{ block.settings.selected_color_scheme }}'
+            : '{{ block.settings.color_scheme }}'"
+          :style="option{{ card_option_position }} == `{{ value_encoded }}` ? { borderWidth: '2px' } : {}"
           data-option-value-id="{{ value.id }}"
           data-option-position="{{ card_option_position }}"
           data-variant-id="{% if card_variant %}{{ card_variant.id }}{% endif %}"
@@ -264,15 +264,8 @@
 
           {% if badge_text != blank %}
             <span
-              class="ac-vc-badge"
+              class="ac-vc-badge {{ block.settings.badge_color_scheme }}"
               style="
-                {% if badge_type == 'popular' %}
-                  background: {{ block.settings.popular_badge_bg }};
-                  color: {{ block.settings.popular_badge_text }};
-                {% else %}
-                  background: {{ block.settings.best_badge_bg }};
-                  color: {{ block.settings.best_badge_text }};
-                {% endif %}
                 font-size: {{ block.settings.badge_font_size }}px;
                 border-radius: {{ block.settings.badge_border_radius }}px;
               "
@@ -286,7 +279,6 @@
               style="
                 font-size: {{ block.settings.name_font_size }}px;
                 font-weight: {{ block.settings.name_font_weight }};
-                color: {{ block.settings.name_color }};
                 font-family: var(--type__font-heading-family, sans-serif);
               "
             >{{ value }}</div>
@@ -299,7 +291,6 @@
                     class="ac-vc-price"
                     style="
                       font-size: {{ block.settings.price_font_size }}px;
-                      color: {{ block.settings.price_color }};
                       font-family: var(--type__font-body-family, sans-serif);
                       font-weight: 700;
                     "
@@ -309,7 +300,6 @@
                       class="ac-vc-compare"
                       style="
                         font-size: {{ block.settings.price_font_size | minus: 2 }}px;
-                        color: {{ block.settings.price_color }};
                         opacity: 0.45;
                         text-decoration: line-through;
                         font-family: var(--type__font-body-family, sans-serif);
@@ -324,7 +314,6 @@
                   class="ac-vc-perunit"
                   style="
                     font-size: {{ block.settings.price_font_size }}px;
-                    color: {{ block.settings.price_color }};
                     font-family: var(--type__font-body-family, sans-serif);
                     margin-top: 2px;
                   "
@@ -336,7 +325,6 @@
                   class="ac-vc-savings"
                   style="
                     font-size: {{ block.settings.savings_font_size }}px;
-                    color: {{ block.settings.savings_color }};
                     font-family: var(--type__font-body-family, sans-serif);
                     font-weight: 700;
                     margin-top: 2px;
@@ -349,7 +337,6 @@
                   class="ac-vc-shipping"
                   style="
                     font-size: {{ block.settings.shipping_font_size }}px;
-                    color: {{ block.settings.shipping_color }};
                     font-family: var(--type__font-body-family, sans-serif);
                     margin-top: 2px;
                   "
