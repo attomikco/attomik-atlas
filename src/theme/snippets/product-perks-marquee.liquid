@@ -29,6 +29,26 @@
     assign items_str = items_str | append: block.settings.perk_5 | append: '|||'
   endif
   assign items_array = items_str | split: '|||'
+
+  # Derive the outer border color from the marquee scheme's background
+  # class so the frame visually belongs to the marquee strip (the larger
+  # of the two regions). Maps the color__bg-* class name to the same
+  # CSS variable that the class itself resolves to on the rendered element.
+  assign border_bg_class = block.settings.marquee_color_scheme | split: ' ' | first
+  case border_bg_class
+    when 'color__bg-body'        ; assign border_var = 'var(--color__background-body)'
+    when 'color__bg-neutral'     ; assign border_var = 'var(--color__background-neutral)'
+    when 'color__bg-overlay-1'   ; assign border_var = 'var(--color__background-overlay-1)'
+    when 'color__bg-overlay-2'   ; assign border_var = 'var(--color__background-overlay-2)'
+    when 'color__bg-overlay-3'   ; assign border_var = 'var(--color__background-overlay-3)'
+    when 'color__bg-shade-1'     ; assign border_var = 'var(--color__background-shade-1)'
+    when 'color__bg-shade-2'     ; assign border_var = 'var(--color__background-shade-2)'
+    when 'color__bg-shade-3'     ; assign border_var = 'var(--color__background-shade-3)'
+    when 'color__bg-primary'     ; assign border_var = 'var(--color__background-primary)'
+    when 'color__bg-secondary'   ; assign border_var = 'var(--color__background-secondary)'
+    when 'color__bg-tertiary'    ; assign border_var = 'var(--color__background-tertiary)'
+    else                         ; assign border_var = 'currentColor'
+  endcase
 -%}
 
 {% if items_array.size > 0 %}
@@ -39,19 +59,13 @@
     <div
       class="ac-perks"
       style="
-        border: {{ block.settings.border_width }}px solid {{ block.settings.border_color }};
+        border: {{ block.settings.border_width }}px solid {{ border_var }};
         border-radius: {{ block.settings.border_radius }}px;
         overflow: hidden;
         margin: 8px 16px;
       "
     >
-      <div
-        class="ac-perks__header"
-        style="
-          background-color: {{ block.settings.header_bg }};
-          color: {{ block.settings.header_text }};
-        "
-      >
+      <div class="ac-perks__header {{ block.settings.header_color_scheme }}">
         <svg class="ac-perks__icon" viewBox="0 0 24 24"><path d="M21 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"></path><path d="M17 12H3"></path><path d="M21 12l-4-4"></path><path d="M21 12l-4 4"></path></svg>
         <span
           class="ac-perks__label"
@@ -61,13 +75,7 @@
           "
         >{{ label }}</span>
       </div>
-      <div
-        class="ac-perks__marquee"
-        style="
-          background-color: {{ block.settings.marquee_bg }};
-          color: {{ block.settings.marquee_text }};
-        "
-      >
+      <div class="ac-perks__marquee {{ block.settings.marquee_color_scheme }}">
         <div class="ac-perks__track" style="--ac-marquee-speed: {{ speed }}s;">
           {% for pass in (1..2) %}
             <div class="ac-perks__set">

@@ -20,7 +20,7 @@
   <ul class="ac-checklist">
     {% if block.settings.item_1 != blank %}
       <li class="ac-checklist__item">
-        <span class="ac-checklist__check" style="background: currentColor;">
+        <span class="ac-checklist__check {{ block.settings.check_color_scheme }}">
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span class="ac-checklist__text">{{ block.settings.item_1 }}</span>
@@ -28,7 +28,7 @@
     {% endif %}
     {% if block.settings.item_2 != blank %}
       <li class="ac-checklist__item">
-        <span class="ac-checklist__check" style="background: currentColor;">
+        <span class="ac-checklist__check {{ block.settings.check_color_scheme }}">
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span class="ac-checklist__text">{{ block.settings.item_2 }}</span>
@@ -36,7 +36,7 @@
     {% endif %}
     {% if block.settings.item_3 != blank %}
       <li class="ac-checklist__item">
-        <span class="ac-checklist__check" style="background: currentColor;">
+        <span class="ac-checklist__check {{ block.settings.check_color_scheme }}">
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span class="ac-checklist__text">{{ block.settings.item_3 }}</span>
@@ -44,7 +44,7 @@
     {% endif %}
     {% if block.settings.item_4 != blank %}
       <li class="ac-checklist__item">
-        <span class="ac-checklist__check" style="background: currentColor;">
+        <span class="ac-checklist__check {{ block.settings.check_color_scheme }}">
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span class="ac-checklist__text">{{ block.settings.item_4 }}</span>
@@ -52,7 +52,7 @@
     {% endif %}
     {% if block.settings.item_5 != blank %}
       <li class="ac-checklist__item">
-        <span class="ac-checklist__check" style="background: currentColor;">
+        <span class="ac-checklist__check {{ block.settings.check_color_scheme }}">
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span class="ac-checklist__text">{{ block.settings.item_5 }}</span>
@@ -68,7 +68,7 @@
         "
       >
         {% unless block.settings.value_prop_tag == blank %}
-          <span class="ac-checklist__value-tag {{ block.settings.badge_color_scheme }}">{{ block.settings.value_prop_tag }}</span>
+          <span class="ac-checklist__value-tag {{ block.settings.tag_color_scheme }}">{{ block.settings.value_prop_tag }}</span>
         {% endunless %}
         <span class="ac-checklist__value-text">{{ block.settings.value_prop_text }}</span>
       </li>

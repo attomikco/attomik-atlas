@@ -18,6 +18,25 @@
   assign badge_padding_y = block.settings.padding_y | default: 6
   assign badge_border_width = block.settings.border_width | default: 1
   assign badge_border_radius = block.settings.border_radius | default: 20
+
+  # Extract the background class from the border scheme pair and map it to
+  # the matching CSS variable so the border paints independently of the
+  # wrapper's color_scheme inherited text color.
+  assign border_bg_class = block.settings.border_color_scheme | split: ' ' | first
+  case border_bg_class
+    when 'color__bg-body'        ; assign border_var = 'var(--color__background-body)'
+    when 'color__bg-neutral'     ; assign border_var = 'var(--color__background-neutral)'
+    when 'color__bg-overlay-1'   ; assign border_var = 'var(--color__background-overlay-1)'
+    when 'color__bg-overlay-2'   ; assign border_var = 'var(--color__background-overlay-2)'
+    when 'color__bg-overlay-3'   ; assign border_var = 'var(--color__background-overlay-3)'
+    when 'color__bg-shade-1'     ; assign border_var = 'var(--color__background-shade-1)'
+    when 'color__bg-shade-2'     ; assign border_var = 'var(--color__background-shade-2)'
+    when 'color__bg-shade-3'     ; assign border_var = 'var(--color__background-shade-3)'
+    when 'color__bg-primary'     ; assign border_var = 'var(--color__background-primary)'
+    when 'color__bg-secondary'   ; assign border_var = 'var(--color__background-secondary)'
+    when 'color__bg-tertiary'    ; assign border_var = 'var(--color__background-tertiary)'
+    else                         ; assign border_var = 'currentColor'
+  endcase
 -%}
 
 <div
@@ -40,7 +59,7 @@
       font-weight: {{ badge_font_weight }} !important;
       text-transform: {{ badge_text_transform }} !important;
       letter-spacing: {{ badge_letter_spacing }}px !important;
-      border: {{ badge_border_width }}px solid currentColor !important;
+      border: {{ badge_border_width }}px solid {{ border_var }} !important;
       border-radius: {{ badge_border_radius }}px !important;
       padding: {{ badge_padding_y }}px {{ badge_padding_x }}px !important;
       line-height: 1.4 !important;

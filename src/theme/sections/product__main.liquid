@@ -5356,16 +5356,23 @@
           "content": "Header"
         },
         {
-          "type": "color",
-          "id": "header_bg",
-          "label": "Header background",
-          "default": "#000000"
-        },
-        {
-          "type": "color",
-          "id": "header_text",
-          "label": "Header text color",
-          "default": "#ffffff"
+          "type": "select",
+          "id": "header_color_scheme",
+          "label": "Header color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-primary color__primary"
         },
         {
           "type": "range",
@@ -5394,16 +5401,23 @@
           "content": "Marquee"
         },
         {
-          "type": "color",
-          "id": "marquee_bg",
-          "label": "Marquee background",
-          "default": "#000000"
-        },
-        {
-          "type": "color",
-          "id": "marquee_text",
-          "label": "Marquee text color",
-          "default": "#ffffff"
+          "type": "select",
+          "id": "marquee_color_scheme",
+          "label": "Marquee color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-body color__text"
         },
         {
           "type": "range",
@@ -5430,12 +5444,6 @@
         {
           "type": "header",
           "content": "Border"
-        },
-        {
-          "type": "color",
-          "id": "border_color",
-          "label": "Border color",
-          "default": "#000000"
         },
         {
           "type": "range",
@@ -5606,6 +5614,25 @@
           "content": "Border"
         },
         {
+          "type": "select",
+          "id": "border_color_scheme",
+          "label": "Border color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-primary color__primary"
+        },
+        {
           "type": "range",
           "id": "border_width",
           "min": 0,
@@ -5728,6 +5755,25 @@
           "default": "color__bg-body color__text"
         },
         {
+          "type": "select",
+          "id": "check_color_scheme",
+          "label": "Checkmark color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-primary color__primary"
+        },
+        {
           "type": "header",
           "content": "Value badge styling"
         },
@@ -5749,6 +5795,25 @@
             { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
           ],
           "default": "color__bg-primary color__primary"
+        },
+        {
+          "type": "select",
+          "id": "tag_color_scheme",
+          "label": "Value tag color scheme",
+          "options": [
+            { "value": "color__bg-body color__text", "label": "t:general.settings.color_scheme.body.label" },
+            { "value": "color__bg-neutral color__text", "label": "t:general.settings.color_scheme.neutral.label" },
+            { "value": "color__bg-overlay-1 color__text", "label": "t:general.settings.color_scheme.accent_1.label" },
+            { "value": "color__bg-overlay-2 color__text", "label": "t:general.settings.color_scheme.accent_2.label" },
+            { "value": "color__bg-overlay-3 color__text", "label": "t:general.settings.color_scheme.accent_3.label" },
+            { "value": "color__bg-shade-1 color__text", "label": "t:general.settings.color_scheme.shade_1.label" },
+            { "value": "color__bg-shade-2 color__text", "label": "t:general.settings.color_scheme.shade_2.label" },
+            { "value": "color__bg-shade-3 color__text", "label": "t:general.settings.color_scheme.shade_3.label" },
+            { "value": "color__bg-primary color__primary", "label": "t:general.settings.color_scheme.primary.label" },
+            { "value": "color__bg-secondary color__secondary", "label": "t:general.settings.color_scheme.secondary.label" },
+            { "value": "color__bg-tertiary color__tertiary", "label": "t:general.settings.color_scheme.tertiary.label" }
+          ],
+          "default": "color__bg-secondary color__secondary"
         },
         {
           "type": "range",
