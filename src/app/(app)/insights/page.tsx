@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useBrand } from '@/lib/brand-context'
 import { colors, font, fontWeight, fontSize, radius, shadow, letterSpacing } from '@/lib/design-tokens'
 import { ComposedChart, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import MetaTrendChart from '@/components/charts/MetaTrendChart'
+import CreativeSparkline from '@/components/charts/CreativeSparkline'
 
 // ── CSV Parser (handles quoted fields, no deps) ─────────────────
 function parseCSV(text: string): Record<string, string>[] {
@@ -161,6 +163,7 @@ interface AggRow {
   ctr: number
   spend: number
   purchases: number
+  purchase_value: number
   roas: number
   cpa: number
   creative_title: string | null
@@ -288,6 +291,7 @@ export default function InsightsPage() {
       ctr: v.count > 0 ? v.ctr_sum / v.count : 0,
       spend: v.spend,
       purchases: v.purchases,
+      purchase_value: v.purchase_value,
       roas: v.count > 0 ? v.roas_sum / v.count : 0,
       cpa: v.purchases > 0 ? v.spend / v.purchases : 0,
       creative_title: v.creative_title,
@@ -316,17 +320,14 @@ export default function InsightsPage() {
       const { data: rows } = await query
       if (!rows || rows.length === 0) { setChartData([]); return }
 
-      const dateMap: Record<string, { spend: number; revenue: number; clicks: number; roas_num: number; roas_den: number }> = {}
+      const dateMap: Record<string, { spend: number; revenue: number; clicks: number }> = {}
       for (const r of rows) {
         if (!r.date) continue
-        if (!dateMap[r.date]) dateMap[r.date] = { spend: 0, revenue: 0, clicks: 0, roas_num: 0, roas_den: 0 }
+        if (!dateMap[r.date]) dateMap[r.date] = { spend: 0, revenue: 0, clicks: 0 }
         const d = dateMap[r.date]
         d.spend += r.spend || 0
         d.clicks += r.clicks || 0
-        const rev = (r.purchases || 0) > 0 ? (r.roas || 0) * (r.spend || 0) : 0
-        d.revenue += rev
-        d.roas_num += rev
-        d.roas_den += r.spend || 0
+        d.revenue += r.purchase_value || 0
       }
       setChartData(
         Object.entries(dateMap)
@@ -335,7 +336,7 @@ export default function InsightsPage() {
             date,
             spend: Math.round(d.spend * 100) / 100,
             revenue: Math.round(d.revenue * 100) / 100,
-            roas: d.roas_den > 0 ? Math.round((d.roas_num / d.roas_den) * 100) / 100 : 0,
+            roas: d.spend > 0 ? Math.round((d.revenue / d.spend) * 100) / 100 : 0,
             clicks: d.clicks,
           }))
       )
@@ -357,7 +358,7 @@ export default function InsightsPage() {
     async function loadSparklines() {
       let query = supabase
         .from('brand_insight_rows')
-        .select('ad_name, date, roas, spend, purchases')
+        .select('ad_name, date, spend, purchase_value')
         .eq('brand_id', activeBrandId!)
         .in('ad_name', topAdNames)
         .order('date', { ascending: true })
@@ -376,7 +377,7 @@ export default function InsightsPage() {
         if (!adDateMap[r.ad_name][r.date]) adDateMap[r.ad_name][r.date] = { revenue: 0, spend: 0 }
         const d = adDateMap[r.ad_name][r.date]
         d.spend += r.spend || 0
-        d.revenue += (r.purchases || 0) > 0 ? (r.roas || 0) * (r.spend || 0) : 0
+        d.revenue += r.purchase_value || 0
       }
 
       const result: Record<string, { date: string; roas: number; spend: number; revenue: number }[]> = {}
@@ -817,7 +818,7 @@ export default function InsightsPage() {
   const totalClicks = aggRows.reduce((s, r) => s + r.clicks, 0)
   const totalImpressions = aggRows.reduce((s, r) => s + r.impressions, 0)
   const totalPurchases = aggRows.reduce((s, r) => s + r.purchases, 0)
-  const totalRevenue = aggRows.reduce((s, r) => s + (r.purchases > 0 ? r.roas * r.spend : 0), 0)
+  const totalRevenue = aggRows.reduce((s, r) => s + (r.purchase_value || 0), 0)
   const blendedRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0
   const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
 
@@ -1097,88 +1098,7 @@ export default function InsightsPage() {
               background: colors.paper, border: `1px solid ${colors.border}`, borderRadius: radius['3xl'],
               padding: '24px 20px 16px', boxShadow: shadow.card, height: 380,
             }}>
-              {chartData.length > 1 ? (
-                <>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} barCategoryGap="20%" barGap={2}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
-                        tickFormatter={v => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}` }}
-                        stroke={colors.border}
-                        interval={Math.ceil(chartData.length / 10) - 1}
-                        angle={-35}
-                        textAnchor="end"
-                        height={40}
-                      />
-                      {/* Left Y-axis — dollars (Spend + Revenue bars) */}
-                      <YAxis
-                        yAxisId="left"
-                        tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.muted }}
-                        tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
-                        stroke={colors.border}
-                        width={56}
-                      />
-                      {/* Right Y-axis — ROAS ratio */}
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        tick={{ fontFamily: font.mono, fontSize: 10, fill: colors.gray700 }}
-                        tickFormatter={v => `${Number(v).toFixed(1)}x`}
-                        stroke={colors.border}
-                        width={44}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          background: colors.ink, border: 'none', borderRadius: radius.lg,
-                          fontFamily: font.mono, fontSize: 11, color: colors.paper,
-                        }}
-                        labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
-                        formatter={(value: number, name: string) => {
-                          if (name === 'roas') return [`${value.toFixed(2)}x`, 'ROAS']
-                          const label = name === 'spend' ? 'Spend' : 'Revenue'
-                          return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label]
-                        }}
-                        labelFormatter={v => { const d = new Date(v + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
-                      />
-                      <Bar yAxisId="left" dataKey="spend" fill={colors.accent} opacity={0.85} radius={[3, 3, 0, 0]} />
-                      <Bar yAxisId="left" dataKey="revenue" fill={colors.border} opacity={0.7} radius={[3, 3, 0, 0]} />
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="roas"
-                        stroke={colors.gray700}
-                        strokeWidth={1.5}
-                        strokeDasharray="4 3"
-                        dot={false}
-                        activeDot={{ r: 3, strokeWidth: 0, fill: colors.gray700 }}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                  {/* Legend */}
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 12 }}>
-                    {[
-                      { label: 'Spend', type: 'bar' as const, color: colors.accent },
-                      { label: 'Revenue', type: 'bar' as const, color: colors.border },
-                      { label: 'ROAS', type: 'line' as const, color: colors.gray700 },
-                    ].map(item => (
-                      <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {item.type === 'bar' ? (
-                          <div style={{ width: 14, height: 10, borderRadius: 2, background: item.color, opacity: item.label === 'Revenue' ? 0.7 : 0.85 }} />
-                        ) : (
-                          <div style={{ width: 20, height: 0, borderTop: `2px dashed ${item.color}` }} />
-                        )}
-                        <span style={{ fontFamily: font.mono, fontSize: fontSize.xs, color: colors.muted }}>{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.muted, fontFamily: font.mono, fontSize: fontSize.caption }}>
-                  Not enough daily data to chart
-                </div>
-              )}
+              <MetaTrendChart data={chartData} height={300} />
             </div>
           </div>
 
@@ -1245,8 +1165,6 @@ export default function InsightsPage() {
               const creativeType = parseCreativeType(r.ad_name)
               const sparkPoints = sparklineData[r.ad_name]
               const hasChart = sparkPoints && sparkPoints.length >= 2
-              let declining = false
-              if (hasChart) declining = sparkPoints[sparkPoints.length - 1].roas < sparkPoints[0].roas
 
               return (
                 <div key={i} style={{
@@ -1339,79 +1257,7 @@ export default function InsightsPage() {
                       marginBottom: 8,
                     }}>{shortAdName(r.ad_name)}</div>
                     {hasChart ? (
-                      <>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <ComposedChart data={sparkPoints} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} barCategoryGap="20%" barGap={2}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
-                            <XAxis
-                              dataKey="date"
-                              tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
-                              tickFormatter={v => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}` }}
-                              stroke={colors.border}
-                              interval={Math.ceil(sparkPoints.length / 10) - 1}
-                              angle={-35}
-                              textAnchor="end"
-                              height={40}
-                            />
-                            <YAxis
-                              yAxisId="left"
-                              tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.muted }}
-                              tickFormatter={v => { const n = Number(v); return n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}` }}
-                              stroke={colors.border}
-                              width={46}
-                            />
-                            <YAxis
-                              yAxisId="right"
-                              orientation="right"
-                              tick={{ fontFamily: font.mono, fontSize: 9, fill: colors.gray700 }}
-                              tickFormatter={v => `${Number(v).toFixed(1)}x`}
-                              stroke={colors.border}
-                              width={36}
-                            />
-                            <Tooltip
-                              contentStyle={{
-                                background: colors.ink, border: 'none', borderRadius: radius.lg,
-                                fontFamily: font.mono, fontSize: 11, color: colors.paper,
-                              }}
-                              labelStyle={{ color: colors.accent, fontWeight: fontWeight.bold, marginBottom: 4 }}
-                              formatter={(value: number, name: string) => {
-                                if (name === 'roas') return [`${value.toFixed(2)}x`, 'ROAS']
-                                const label = name === 'spend' ? 'Spend' : 'Revenue'
-                                return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label]
-                              }}
-                              labelFormatter={v => { const d = new Date(v + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
-                            />
-                            <Bar yAxisId="left" dataKey="spend" fill={colors.accent} opacity={0.85} radius={[3, 3, 0, 0]} />
-                            <Bar yAxisId="left" dataKey="revenue" fill={colors.border} opacity={0.7} radius={[3, 3, 0, 0]} />
-                            <Line
-                              yAxisId="right"
-                              type="monotone"
-                              dataKey="roas"
-                              stroke={declining ? colors.dangerSoft : colors.accent}
-                              strokeWidth={1.5}
-                              strokeDasharray="4 3"
-                              dot={false}
-                              activeDot={{ r: 3, strokeWidth: 0, fill: declining ? colors.dangerSoft : colors.accent }}
-                              isAnimationActive={false}
-                            />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                        {/* Legend */}
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <div style={{ width: 12, height: 8, borderRadius: 2, background: colors.accent, opacity: 0.85 }} />
-                            <span style={{ fontFamily: font.mono, fontSize: 9, color: colors.muted }}>Spend</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <div style={{ width: 12, height: 8, borderRadius: 2, background: colors.border, opacity: 0.7 }} />
-                            <span style={{ fontFamily: font.mono, fontSize: 9, color: colors.muted }}>Revenue</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <div style={{ width: 16, height: 0, borderTop: `2px dashed ${declining ? colors.dangerSoft : colors.accent}` }} />
-                            <span style={{ fontFamily: font.mono, fontSize: 9, color: colors.muted }}>ROAS</span>
-                          </div>
-                        </div>
-                      </>
+                      <CreativeSparkline data={sparkPoints} height={200} variant="full" />
                     ) : (
                       <div style={{
                         height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',

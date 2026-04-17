@@ -46,6 +46,17 @@ async function parseShopifyError(res: Response): Promise<string> {
   }
 }
 
+// 429 = rate limit; 5xx = server error. Shopify's theme-assets bucket is 40/s
+// leaky — concurrent installers regularly see 429s and the leaky bucket drains
+// in ~1s. One retry after a 1s wait clears the vast majority of these.
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status < 600)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 export async function validateCredentials(
   shop: string,
   token: string
@@ -114,12 +125,19 @@ export async function putAsset(
   key: string,
   value: string
 ): Promise<void> {
-  const res = await fetch(`${apiBase(shop)}/themes/${themeId}/assets.json`, {
-    method: 'PUT',
-    headers: shopifyHeaders(token),
-    body: JSON.stringify({ asset: { key, value } }),
-  })
-  if (!res.ok) {
+  const url = `${apiBase(shop)}/themes/${themeId}/assets.json`
+  const body = JSON.stringify({ asset: { key, value } })
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: shopifyHeaders(token),
+      body,
+    })
+    if (res.ok) return
+    if (attempt === 0 && isRetryableStatus(res.status)) {
+      await sleep(1000)
+      continue
+    }
     const msg = await parseShopifyError(res)
     throw new Error(`Failed to put asset ${key} (${res.status}): ${msg}`)
   }
@@ -132,12 +150,19 @@ export async function putBinaryAsset(
   key: string,
   base64: string
 ): Promise<void> {
-  const res = await fetch(`${apiBase(shop)}/themes/${themeId}/assets.json`, {
-    method: 'PUT',
-    headers: shopifyHeaders(token),
-    body: JSON.stringify({ asset: { key, attachment: base64 } }),
-  })
-  if (!res.ok) {
+  const url = `${apiBase(shop)}/themes/${themeId}/assets.json`
+  const body = JSON.stringify({ asset: { key, attachment: base64 } })
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: shopifyHeaders(token),
+      body,
+    })
+    if (res.ok) return
+    if (attempt === 0 && isRetryableStatus(res.status)) {
+      await sleep(1000)
+      continue
+    }
     const msg = await parseShopifyError(res)
     throw new Error(`Failed to put binary asset ${key} (${res.status}): ${msg}`)
   }

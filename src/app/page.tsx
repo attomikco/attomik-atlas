@@ -221,6 +221,7 @@ export default function HomePage() {
         .hero-input:focus { outline: none; }
         .cta-btn:hover { opacity: 0.85; }
         .ghost:hover { color: #fff !important; }
+        .header-pill:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.22) !important; }
         .cap:hover { background: rgba(255,255,255,0.02) !important; }
 
         /* streaming headline caret — opacity toggles every 530ms */
@@ -314,7 +315,24 @@ export default function HomePage() {
 
         {/* top bar */}
         <div className="page-pad nav-top" style={{ padding: '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', position: 'relative', zIndex: 1 }}>
-          {!isLoggedIn && (
+          {isLoggedIn ? (
+            <a
+              href="/dashboard"
+              className="header-pill"
+              style={{
+                ...label,
+                color: '#fff',
+                padding: '8px 18px',
+                borderRadius: 999,
+                background: 'transparent',
+                border: `1px solid ${BORDER_STRONG}`,
+                textDecoration: 'none',
+                transition: 'background 0.15s, border-color 0.15s',
+              }}
+            >
+              Go to dashboard →
+            </a>
+          ) : (
             <button
               type="button"
               onClick={() => setSignInOpen(true)}
@@ -378,10 +396,6 @@ export default function HomePage() {
           <div className="fade4 hero-proof" style={{ ...label, marginTop: 14, color: FAINT }}>
             Used by Afterdream · Jolene Coffee · WESAKE · Stuzzi · La Monjita
           </div>
-
-          {isLoggedIn && brandsLoaded && userBrands.length === 0 && (
-            <a href="/dashboard" style={{ ...label, marginTop: 32, color: colors.accent, textDecoration: 'none' }}>Go to dashboard →</a>
-          )}
         </div>
 
         {/* corner stamps */}

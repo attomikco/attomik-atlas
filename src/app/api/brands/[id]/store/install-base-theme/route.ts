@@ -130,43 +130,55 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           } catch (e) {
             failed++
             const msg = e instanceof Error ? e.message : String(e)
+            // Log to server so a stalled install is debuggable without the
+            // streamed events (Vercel Function logs persist; NDJSON doesn't).
+            console.error(`[install-base-theme] ${key}: ${msg}`)
             errors.push({ file: key, error: msg })
             write({ done, total, file: key, error: msg })
           }
         }
       }
 
-      const workers: Promise<void>[] = []
-      for (let w = 0; w < CONCURRENCY; w++) workers.push(worker())
-      await Promise.all(workers)
+      try {
+        const workers: Promise<void>[] = []
+        for (let w = 0; w < CONCURRENCY; w++) workers.push(worker())
+        await Promise.all(workers)
 
-      if (failed === 0) {
-        // Mark base theme as installed in brand.notes so the /store page
-        // can surface the status without re-listing the remote theme.
-        //
-        // CRITICAL: re-read notes right before writing. brand.notes is TEXT,
-        // not jsonb — there's no atomic server-side merge. The install can
-        // take minutes streaming files to Shopify, and unrelated routes
-        // (OAuth callback, email save, etc.) may have touched brand.notes
-        // in the meantime. Using the `notes` snapshot captured at request
-        // start would silently stomp those changes.
-        const { data: freshRow } = await supabase
-          .from('brands')
-          .select('notes')
-          .eq('id', brandId)
-          .maybeSingle()
-        const currentNotes = parseNotes(freshRow?.notes)
-        const updated = {
-          ...currentNotes,
-          shopify_base_theme_installed_at: new Date().toISOString(),
+        if (failed === 0) {
+          // Mark base theme as installed in brand.notes so the /store page
+          // can surface the status without re-listing the remote theme.
+          //
+          // CRITICAL: re-read notes right before writing. brand.notes is TEXT,
+          // not jsonb — there's no atomic server-side merge. The install can
+          // take minutes streaming files to Shopify, and unrelated routes
+          // (OAuth callback, email save, etc.) may have touched brand.notes
+          // in the meantime. Using the `notes` snapshot captured at request
+          // start would silently stomp those changes.
+          const { data: freshRow } = await supabase
+            .from('brands')
+            .select('notes')
+            .eq('id', brandId)
+            .maybeSingle()
+          const currentNotes = parseNotes(freshRow?.notes)
+          const updated = {
+            ...currentNotes,
+            shopify_base_theme_installed_at: new Date().toISOString(),
+          }
+          await supabase.from('brands').update({ notes: JSON.stringify(updated) }).eq('id', brandId)
+          write({ done, total, status: 'complete' })
+        } else {
+          write({ done, total, status: 'complete_with_errors', failed, errors: errors.slice(0, 20) })
         }
-        await supabase.from('brands').update({ notes: JSON.stringify(updated) }).eq('id', brandId)
-        write({ done, total, status: 'complete' })
-      } else {
-        write({ done, total, status: 'complete_with_errors', failed, errors: errors.slice(0, 20) })
+      } catch (e) {
+        // Catastrophic failure — the worker loop or the post-install write
+        // threw unexpectedly. Emit a terminal error event so the UI can
+        // surface it rather than hang on an indefinite "processing" state.
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error(`[install-base-theme] fatal: ${msg}`)
+        write({ error: true, file: null, message: msg, done, total })
+      } finally {
+        controller.close()
       }
-
-      controller.close()
     },
   })
 

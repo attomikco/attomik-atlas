@@ -1,6 +1,6 @@
 'use client'
 
-import { colors, font, fontSize, letterSpacing } from '@/lib/design-tokens'
+import { colors, font, fontSize, fontWeight, letterSpacing, radius, transition } from '@/lib/design-tokens'
 import BrandCard, { type BrandCardData } from '@/components/dashboard/BrandCard'
 
 interface YourBrandsSectionProps {
@@ -23,6 +23,7 @@ export default function YourBrandsSection({ brands, campaignsByBrand }: YourBran
         @media (max-width: 600px) {
           .ybs-grid { grid-template-columns: 1fr !important; }
         }
+        .ybs-dashboard-btn:hover { opacity: 0.85; }
       `}</style>
 
       <div className="ybs-pad" style={{
@@ -31,8 +32,8 @@ export default function YourBrandsSection({ brands, campaignsByBrand }: YourBran
         margin: '0 auto',
       }}>
         <div style={{
-          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          marginBottom: 20, flexWrap: 'wrap', gap: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 20, flexWrap: 'wrap', gap: 12,
         }}>
           <div style={{
             fontFamily: font.mono, fontSize: fontSize.caption,
@@ -42,11 +43,36 @@ export default function YourBrandsSection({ brands, campaignsByBrand }: YourBran
             ▸ Your brands
           </div>
           <div style={{
-            fontFamily: font.mono, fontSize: fontSize.caption,
-            color: colors.whiteAlpha30, letterSpacing: letterSpacing.wide,
-            textTransform: 'uppercase',
+            display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
           }}>
-            {`${brands.length} ${brands.length === 1 ? 'brand' : 'brands'}`}
+            <div style={{
+              fontFamily: font.mono, fontSize: fontSize.caption,
+              color: colors.whiteAlpha30, letterSpacing: letterSpacing.wide,
+              textTransform: 'uppercase',
+            }}>
+              {`${brands.length} ${brands.length === 1 ? 'brand' : 'brands'}`}
+            </div>
+            <a
+              href="/dashboard"
+              className="ybs-dashboard-btn"
+              style={{
+                display: 'inline-block',
+                padding: '10px 22px',
+                background: colors.accent,
+                color: colors.ink,
+                fontFamily: font.heading,
+                fontWeight: fontWeight.heading,
+                fontSize: fontSize.base,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                border: 'none',
+                borderRadius: radius.pill,
+                textDecoration: 'none',
+                transition: `opacity ${transition.normal}`,
+              }}
+            >
+              Go to dashboard →
+            </a>
           </div>
         </div>
 

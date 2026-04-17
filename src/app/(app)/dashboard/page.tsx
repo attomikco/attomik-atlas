@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import BrandSync from './BrandSync'
 import LogoImage from '@/components/ui/LogoImage'
+import MetaTrendChart, { type MetaTrendChartDatum } from '@/components/charts/MetaTrendChart'
+import CreativeSparkline, { type CreativeSparklineDatum } from '@/components/charts/CreativeSparkline'
 
 export default async function DashboardPage({
   searchParams,
@@ -230,6 +232,63 @@ export default async function DashboardPage({
     .sort((a, b) => b.purchases - a.purchases)
     .slice(0, 3)
 
+  // Daily aggregation for the trend chart. Revenue sums purchase_value per
+  // row (Meta's directly-reported attributed revenue), matching the dashboard
+  // KPI tile and the Insights chart/KPI.
+  const dailyMap = new Map<string, { spend: number; revenue: number; clicks: number }>()
+  for (const r of (insightRows || []) as any[]) {
+    if (!r.date) continue
+    let d = dailyMap.get(r.date)
+    if (!d) {
+      d = { spend: 0, revenue: 0, clicks: 0 }
+      dailyMap.set(r.date, d)
+    }
+    d.spend += Number(r.spend || 0)
+    d.revenue += Number(r.purchase_value || 0)
+    d.clicks += Number(r.clicks || 0)
+  }
+  const trendData: MetaTrendChartDatum[] = Array.from(dailyMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, d]) => ({
+      date,
+      spend: Math.round(d.spend * 100) / 100,
+      revenue: Math.round(d.revenue * 100) / 100,
+      roas: d.spend > 0 ? Math.round((d.revenue / d.spend) * 100) / 100 : 0,
+      clicks: d.clicks,
+    }))
+
+  // Per-ad daily rollup for the top-3 creative sparklines. Only builds data
+  // for ads that made the topAds cut, so the loop skips everything else.
+  const topAdNameSet = new Set(topAds.map(a => a.ad_name))
+  const adDailyMap = new Map<string, Map<string, { spend: number; revenue: number }>>()
+  for (const r of (insightRows || []) as any[]) {
+    if (!r.date || !r.ad_name || !topAdNameSet.has(r.ad_name)) continue
+    let byDate = adDailyMap.get(r.ad_name)
+    if (!byDate) {
+      byDate = new Map()
+      adDailyMap.set(r.ad_name, byDate)
+    }
+    let bucket = byDate.get(r.date)
+    if (!bucket) {
+      bucket = { spend: 0, revenue: 0 }
+      byDate.set(r.date, bucket)
+    }
+    bucket.spend += Number(r.spend || 0)
+    bucket.revenue += Number(r.purchase_value || 0)
+  }
+  const sparklineByAd = new Map<string, CreativeSparklineDatum[]>()
+  adDailyMap.forEach((byDate, adName) => {
+    const points: CreativeSparklineDatum[] = Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, bucket]) => ({
+        date,
+        spend: Math.round(bucket.spend * 100) / 100,
+        revenue: Math.round(bucket.revenue * 100) / 100,
+        roas: bucket.spend > 0 ? Math.round((bucket.revenue / bucket.spend) * 100) / 100 : 0,
+      }))
+    sparklineByAd.set(adName, points)
+  })
+
   const primaryColor = brand.primary_color || '#000'
   function isLight(hex: string) {
     const c = hex.replace('#', '')
@@ -444,6 +503,11 @@ export default async function DashboardPage({
               ))}
             </div>
 
+            {/* Trend chart */}
+            <div style={{ marginBottom: 24 }}>
+              <MetaTrendChart data={trendData} height={260} />
+            </div>
+
             {/* Top creatives */}
             {topAds.length > 0 && (
               <>
@@ -452,7 +516,7 @@ export default async function DashboardPage({
                   letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)',
                   marginBottom: 12,
                 }}>Top creatives</div>
-                <div style={{ display: 'flex', gap: 12, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {topAds.map((ad, i) => {
                     const initials = (ad.ad_name || 'AD')
                       .split(/\s+/)
@@ -462,11 +526,15 @@ export default async function DashboardPage({
                       .toUpperCase()
                     return (
                       <div key={i} style={{
-                        flex: '0 0 160px', width: 160,
-                        display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0,
+                        display: 'flex', alignItems: 'center', gap: 16,
+                        padding: 12,
+                        background: '#fff',
+                        border: '1px solid var(--border)',
+                        borderRadius: 12,
                       }}>
+                        {/* LEFT — thumbnail */}
                         <div style={{
-                          width: 160, height: 160, borderRadius: 8, overflow: 'hidden', position: 'relative',
+                          width: 80, height: 80, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
                           backgroundColor: '#2a2a2a',
                           backgroundImage: ad.creative_image_url ? `url("${ad.creative_image_url}")` : undefined,
                           backgroundSize: 'cover',
@@ -475,31 +543,41 @@ export default async function DashboardPage({
                         }}>
                           {!ad.creative_image_url && (
                             <div style={{
-                              fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 36,
+                              fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 24,
                               color: 'rgba(255,255,255,0.5)', letterSpacing: '-0.02em',
                             }}>{initials}</div>
                           )}
-                          <div style={{
-                            position: 'absolute', bottom: 8, right: 8,
-                            background: '#000', color: '#00ff97',
-                            fontSize: 10, fontWeight: 700,
-                            padding: '4px 9px', borderRadius: 999,
-                            fontFamily: 'DM Mono, monospace',
-                            letterSpacing: '0.04em',
-                            whiteSpace: 'nowrap',
-                          }}>{ad.purchases} purchases</div>
                         </div>
-                        <div
-                          title={ad.ad_name}
-                          style={{
-                            fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--ink)',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            marginTop: 4,
-                          }}
-                        >{ad.ad_name}</div>
-                        <div style={{
-                          fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--muted)',
-                        }}>${Math.round(ad.spend).toLocaleString()}</div>
+
+                        {/* MIDDLE — ad name + compact metrics */}
+                        <div style={{ flex: '0 0 200px', minWidth: 0 }}>
+                          <div
+                            title={ad.ad_name}
+                            style={{
+                              fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 14,
+                              color: 'var(--ink)', letterSpacing: '-0.01em',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              marginBottom: 6,
+                            }}
+                          >{ad.ad_name}</div>
+                          <div style={{
+                            fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--muted)',
+                            display: 'flex', gap: 10, alignItems: 'baseline',
+                          }}>
+                            <span><strong style={{ color: 'var(--ink)', fontWeight: 700 }}>{ad.purchases}</strong> purchases</span>
+                            <span style={{ opacity: 0.4 }}>·</span>
+                            <span><strong style={{ color: 'var(--ink)', fontWeight: 700 }}>${Math.round(ad.spend).toLocaleString()}</strong> spend</span>
+                          </div>
+                        </div>
+
+                        {/* RIGHT — sparkline fills remaining */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <CreativeSparkline
+                            data={sparklineByAd.get(ad.ad_name) || []}
+                            height={80}
+                            variant="bars"
+                          />
+                        </div>
                       </div>
                     )
                   })}

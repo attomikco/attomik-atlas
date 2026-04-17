@@ -66,6 +66,7 @@ export default function MagicModal({
   const [animationDone, setAnimationDone] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [showFinalizing, setShowFinalizing] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
   const logRef = useRef<HTMLDivElement>(null)
   const lineInterval = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -176,6 +177,7 @@ export default function MagicModal({
           70% { box-shadow: 0 0 0 12px transparent }
           100% { box-shadow: 0 0 0 0 transparent }
         }
+        @keyframes mmTransitioning { 0%, 100% { opacity: 1 } 50% { opacity: 0.7 } }
         @media (max-width: 768px) {
           .mm-orb { opacity: 0.08 !important; filter: blur(80px) !important; }
           .mm-side-img { width: clamp(90px, 18vw, 130px) !important; }
@@ -419,7 +421,12 @@ export default function MagicModal({
                 </div>
               </div>
               <button
-                onClick={() => onComplete?.()}
+                onClick={() => {
+                  if (isTransitioning) return
+                  setIsTransitioning(true)
+                  onComplete?.()
+                }}
+                disabled={isTransitioning}
                 style={{
                   marginTop: 32,
                   background: colors.accent, color: colors.ink,
@@ -428,9 +435,12 @@ export default function MagicModal({
                   padding: '18px 48px',
                   borderRadius: radius.pill,
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: isTransitioning ? 'wait' : 'pointer',
+                  pointerEvents: isTransitioning ? 'none' : 'auto',
                   opacity: 0,
-                  animation: 'mmRevealFadeIn 0.5s ease 0.2s forwards, mmPulseGlow 2s 0.7s infinite',
+                  animation: isTransitioning
+                    ? 'mmRevealFadeIn 0.5s ease 0.2s forwards, mmTransitioning 1.5s ease-in-out 0.7s infinite'
+                    : 'mmRevealFadeIn 0.5s ease 0.2s forwards, mmPulseGlow 2s 0.7s infinite',
                 }}
               >
                 View my Atlas →
