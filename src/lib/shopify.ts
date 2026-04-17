@@ -80,6 +80,31 @@ export async function validateCredentials(
   }
 }
 
+export async function createTheme(
+  shop: string,
+  token: string,
+  name: string
+): Promise<{ id: number; name: string; role: string }> {
+  // Always force role: 'unpublished' — an accidental 'main' would publish
+  // the empty theme to the storefront instantly. The Admin API respects
+  // this value and creates a development/unpublished theme we can push to.
+  const res = await fetch(`${apiBase(shop)}/themes.json`, {
+    method: 'POST',
+    headers: shopifyHeaders(token),
+    body: JSON.stringify({ theme: { name, role: 'unpublished' } }),
+  })
+  if (!res.ok) {
+    const msg = await parseShopifyError(res)
+    throw new Error(`Failed to create theme (${res.status}): ${msg}`)
+  }
+  const body = (await res.json()) as { theme?: { id?: number; name?: string; role?: string } }
+  const t = body.theme
+  if (!t?.id || !t.name || !t.role) {
+    throw new Error('Shopify createTheme returned an unexpected shape')
+  }
+  return { id: t.id, name: t.name, role: t.role }
+}
+
 export async function listThemes(shop: string, token: string): Promise<ShopifyTheme[]> {
   const res = await fetch(`${apiBase(shop)}/themes.json`, {
     method: 'GET',

@@ -60,10 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
-  const themeId = typeof body.themeId === 'number' ? body.themeId : null
-  if (!themeId) {
-    return NextResponse.json({ error: 'themeId required' }, { status: 400 })
-  }
+  const bodyThemeId = typeof body.themeId === 'number' ? body.themeId : null
 
   // Load brand credentials + store_themes row in parallel.
   const [brandRes, themeRes] = await Promise.all([
@@ -74,6 +71,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const storeTheme = themeRes.data
   if (!brand) return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
   if (!storeTheme) return NextResponse.json({ error: 'No store theme generated yet — run /generate first' }, { status: 400 })
+
+  // Fall back to the persisted target on store_themes when the caller
+  // omits themeId. Callers that used to require themeId in the body still
+  // work identically; new callers can rely on the stored selection.
+  const themeId = bodyThemeId ?? (typeof storeTheme.shopify_theme_id === 'number' ? storeTheme.shopify_theme_id : null)
+  if (!themeId) {
+    return NextResponse.json({ error: 'themeId required — pass in body or set a target theme via PATCH /store/target-theme' }, { status: 400 })
+  }
 
   const notes = parseNotes(brand.notes)
   const shop = typeof notes.shopify_store_url === 'string' ? notes.shopify_store_url : null

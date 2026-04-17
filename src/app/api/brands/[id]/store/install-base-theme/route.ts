@@ -99,21 +99,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const write = (obj: Record<string, unknown>) => {
         controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
       }
+      const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
+      // `done` counts PROCESSED files (success + failure) so the progress
+      // bar advances on both paths. Failures are tracked separately in
+      // failedFiles so the UI can show a retry panel.
       let done = 0
-      let failed = 0
-      const errors: Array<{ file: string; error: string }> = []
+      const failedFiles: Array<{ file: string; error: string }> = []
 
-      // Concurrency limit — 3 concurrent PUTs against Shopify at a time.
-      // Shopify's asset-API rate limit is 40/sec leaky bucket; 3 is safe
-      // for the worst-case (large image files take seconds each).
-      const CONCURRENCY = 3
-      let index = 0
+      // Sequential processing with a 600ms gap. Shopify's theme-assets
+      // bucket is 2 req/sec, not the 40/sec leaky bucket that applies to
+      // other endpoints. Prior concurrency=3 + 1 retry saturated the bucket
+      // and produced cascading 429s across 40+ files. At ~900ms per file
+      // (PUT + 600ms sleep) the whole install runs ~2 minutes for 217 files
+      // — acceptable for a one-time operation.
+      const THROTTLE_MS = 600
 
-      async function worker() {
-        while (true) {
-          const i = index++
-          if (i >= files.length) return
+      try {
+        for (let i = 0; i < files.length; i++) {
           const absPath = files[i]
           const key = encodeAssetKey(themeRoot, absPath)
           try {
@@ -128,23 +131,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             done++
             write({ done, total, file: key })
           } catch (e) {
-            failed++
+            done++
             const msg = e instanceof Error ? e.message : String(e)
             // Log to server so a stalled install is debuggable without the
             // streamed events (Vercel Function logs persist; NDJSON doesn't).
             console.error(`[install-base-theme] ${key}: ${msg}`)
-            errors.push({ file: key, error: msg })
+            failedFiles.push({ file: key, error: msg })
             write({ done, total, file: key, error: msg })
+            // Continue to the next file — a single failure shouldn't abort
+            // the entire install. The UI surfaces the failed list at the end.
           }
+          // Throttle between every request (including after failures) so the
+          // 2/sec bucket never fills. Skip the final sleep to avoid a wasted
+          // tick after the last file.
+          if (i < files.length - 1) await sleep(THROTTLE_MS)
         }
-      }
 
-      try {
-        const workers: Promise<void>[] = []
-        for (let w = 0; w < CONCURRENCY; w++) workers.push(worker())
-        await Promise.all(workers)
-
-        if (failed === 0) {
+        if (failedFiles.length === 0) {
           // Mark base theme as installed in brand.notes so the /store page
           // can surface the status without re-listing the remote theme.
           //
@@ -165,14 +168,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             shopify_base_theme_installed_at: new Date().toISOString(),
           }
           await supabase.from('brands').update({ notes: JSON.stringify(updated) }).eq('id', brandId)
-          write({ done, total, status: 'complete' })
+          write({ done: total, total, complete: true })
         } else {
-          write({ done, total, status: 'complete_with_errors', failed, errors: errors.slice(0, 20) })
+          // Partial install — do NOT mark as installed. The UI surfaces a
+          // warning + retry button so the user can re-run to pick up the
+          // files that failed.
+          write({ done: total, total, failedFiles, warning: true })
         }
       } catch (e) {
-        // Catastrophic failure — the worker loop or the post-install write
-        // threw unexpectedly. Emit a terminal error event so the UI can
-        // surface it rather than hang on an indefinite "processing" state.
+        // Catastrophic failure — the loop or the post-install write threw
+        // unexpectedly. Emit a terminal error event so the UI can surface
+        // it rather than hang on an indefinite "processing" state.
         const msg = e instanceof Error ? e.message : String(e)
         console.error(`[install-base-theme] fatal: ${msg}`)
         write({ error: true, file: null, message: msg, done, total })

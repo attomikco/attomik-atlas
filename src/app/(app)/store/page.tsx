@@ -380,6 +380,10 @@ function BaseThemeSection({ brandId, creds, onInstalled }: {
   creds: CredentialStatus | null
   onInstalled: () => void
 }) {
+  const { brands } = useBrand()
+  const brand = brands?.find((b: { id: string }) => b.id === brandId)
+  const brandName: string = (brand?.name as string) || 'Brand'
+
   const [themes, setThemes] = useState<RemoteTheme[]>([])
   const [selectedThemeId, setSelectedThemeId] = useState<number | null>(null)
   const [loadingThemes, setLoadingThemes] = useState(false)
@@ -387,7 +391,30 @@ function BaseThemeSection({ brandId, creds, onInstalled }: {
   const [installing, setInstalling] = useState(false)
   const [installError, setInstallError] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number; file?: string } | null>(null)
+  const [failedFiles, setFailedFiles] = useState<Array<{ file: string; error: string }>>([])
   const abortRef = useRef<AbortController | null>(null)
+
+  // Default: "existing" when the brand has already done a base-theme install
+  // before (they're likely re-installing into the same target), "new" when
+  // it's the first time (most users want a fresh unpublished theme).
+  const alreadyInstalled = !!creds?.shopify_base_theme_installed_at
+  const [mode, setMode] = useState<'existing' | 'new'>(alreadyInstalled ? 'existing' : 'new')
+  const [newThemeName, setNewThemeName] = useState(`Attomik Atlas - ${brandName}`)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  // Keep the default name in sync if the user hasn't typed a custom value
+  // yet — brand name loads async via the BrandContext.
+  useEffect(() => {
+    setNewThemeName(prev => {
+      const defaultStart = 'Attomik Atlas - '
+      if (prev === defaultStart || prev.startsWith(defaultStart)) {
+        return `Attomik Atlas - ${brandName}`
+      }
+      return prev
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandName])
 
   const connected = !!creds?.connected
 
@@ -414,18 +441,47 @@ function BaseThemeSection({ brandId, creds, onInstalled }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected])
 
-  async function install() {
-    if (!selectedThemeId) return
+  async function saveTargetTheme(themeId: number, themeName: string) {
+    // Best-effort persistence of the selection. Failures here don't block
+    // the install — they just mean the Deploy fallback won't be usable
+    // until the next successful save. Surfacing the error via installError
+    // is noisy for a preference write; we log and move on.
+    try {
+      await fetch(`/api/brands/${brandId}/store/target-theme`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopify_theme_id: themeId,
+          shopify_theme_name: themeName,
+        }),
+      })
+    } catch (e) {
+      console.warn('[store] target-theme save failed:', e)
+    }
+  }
+
+  async function install(themeIdOverride?: number, themeNameOverride?: string) {
+    const themeId = themeIdOverride ?? selectedThemeId
+    if (!themeId) return
+    const themeName = themeNameOverride
+      ?? themes.find(t => t.id === themeId)?.name
+      ?? null
     setInstalling(true)
     setInstallError(null)
+    setFailedFiles([])
     setProgress(null)
+
+    // Persist the selection before streaming so later Deploy calls can fall
+    // back to store_themes.shopify_theme_id even if the user navigates away.
+    if (themeName) await saveTargetTheme(themeId, themeName)
+
     const controller = new AbortController()
     abortRef.current = controller
     try {
       const res = await fetch(`/api/brands/${brandId}/store/install-base-theme`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ themeId: selectedThemeId }),
+        body: JSON.stringify({ themeId }),
         signal: controller.signal,
       })
       if (!res.ok || !res.body) {
@@ -444,9 +500,21 @@ function BaseThemeSection({ brandId, creds, onInstalled }: {
         for (const line of lines) {
           if (!line.trim()) continue
           try {
-            const evt = JSON.parse(line) as { done: number; total: number; file?: string; error?: string; status?: string }
-            setProgress({ done: evt.done, total: evt.total, file: evt.file })
-            if (evt.status === 'complete_with_errors') setInstallError('Some files failed to upload. Check the server logs.')
+            const evt = JSON.parse(line) as {
+              done: number; total: number; file?: string; error?: string | boolean;
+              complete?: boolean; warning?: boolean;
+              failedFiles?: Array<{ file: string; error: string }>;
+              message?: string;
+            }
+            if (evt.error === true) {
+              // Catastrophic terminal event
+              setInstallError(evt.message || 'Install failed')
+              continue
+            }
+            setProgress({ done: evt.done, total: evt.total, file: typeof evt.file === 'string' ? evt.file : undefined })
+            if (evt.warning && evt.failedFiles) {
+              setFailedFiles(evt.failedFiles)
+            }
           } catch { /* ignore malformed line */ }
         }
       }
@@ -456,6 +524,35 @@ function BaseThemeSection({ brandId, creds, onInstalled }: {
     } finally {
       setInstalling(false)
       abortRef.current = null
+    }
+  }
+
+  async function createAndInstall() {
+    const name = newThemeName.trim()
+    if (!name) return
+    setCreating(true)
+    setCreateError(null)
+    setInstallError(null)
+    try {
+      const res = await fetch(`/api/brands/${brandId}/store/create-theme`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || `Create theme failed: ${res.status}`)
+      }
+      const theme = data.theme as { id: number; name: string; role: string }
+      // create-theme already persisted the selection on store_themes, so
+      // install() doesn't need to PATCH target-theme again. Passing the id
+      // + name directly avoids a race with the async setSelectedThemeId.
+      setSelectedThemeId(theme.id)
+      setCreating(false)
+      await install(theme.id, theme.name)
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : 'Create theme failed')
+      setCreating(false)
     }
   }
 
@@ -479,39 +576,95 @@ function BaseThemeSection({ brandId, creds, onInstalled }: {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: spacing[3], marginBottom: spacing[3], alignItems: 'end' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-                Target theme
-              </label>
-              <select
-                value={selectedThemeId || ''}
-                onChange={e => setSelectedThemeId(Number(e.target.value))}
-                disabled={loadingThemes || themes.length === 0}
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: radius.md,
-                  border: '1px solid var(--border)', background: colors.paper,
-                  fontFamily: font.mono, fontSize: fontSize.body, color: colors.ink,
-                }}
-              >
-                {loadingThemes && <option>Loading themes…</option>}
-                {!loadingThemes && themes.length === 0 && <option>No non-live themes found — create an unpublished theme in Shopify Admin</option>}
-                {themes.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.role})</option>
-                ))}
-              </select>
-            </div>
-            <Button variant="secondary" onClick={fetchThemes} disabled={loadingThemes}>
-              Refresh
-            </Button>
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: spacing[4], background: colors.gray100, padding: 4, borderRadius: radius.pill, width: 'fit-content' }}>
+            {[
+              { key: 'existing', label: 'Existing theme' },
+              { key: 'new', label: 'New theme' },
+            ].map(({ key, label }) => {
+              const active = mode === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMode(key as 'existing' | 'new')}
+                  disabled={installing || creating}
+                  style={{
+                    fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xs,
+                    letterSpacing: '0.06em', textTransform: 'uppercase',
+                    padding: '8px 18px', borderRadius: radius.pill, border: 'none',
+                    background: active ? colors.ink : 'transparent',
+                    color: active ? colors.accent : colors.muted,
+                    cursor: installing || creating ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
-          {themeError && (
-            <div style={{ marginBottom: spacing[3], color: '#b91c1c', fontSize: fontSize.caption }}>{themeError}</div>
-          )}
 
-          <Button onClick={install} disabled={installing || !selectedThemeId}>
-            {installing ? 'Installing…' : 'Install base theme'}
-          </Button>
+          {mode === 'existing' ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: spacing[3], marginBottom: spacing[3], alignItems: 'end' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                    Target theme
+                  </label>
+                  <select
+                    value={selectedThemeId || ''}
+                    onChange={e => setSelectedThemeId(Number(e.target.value))}
+                    disabled={loadingThemes || themes.length === 0}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: radius.md,
+                      border: '1px solid var(--border)', background: colors.paper,
+                      fontFamily: font.mono, fontSize: fontSize.body, color: colors.ink,
+                    }}
+                  >
+                    {loadingThemes && <option>Loading themes…</option>}
+                    {!loadingThemes && themes.length === 0 && <option>No non-live themes found — switch to New theme or create one in Shopify Admin</option>}
+                    {themes.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.role})</option>
+                    ))}
+                  </select>
+                </div>
+                <Button variant="secondary" onClick={fetchThemes} disabled={loadingThemes}>
+                  Refresh
+                </Button>
+              </div>
+              {themeError && (
+                <div style={{ marginBottom: spacing[3], color: '#b91c1c', fontSize: fontSize.caption }}>{themeError}</div>
+              )}
+
+              <Button onClick={() => install()} disabled={installing || !selectedThemeId}>
+                {installing ? 'Installing… (~2 min)' : 'Install base theme'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <div style={{ marginBottom: spacing[3] }}>
+                <label style={{ display: 'block', fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                  New theme name
+                </label>
+                <Input
+                  type="text"
+                  value={newThemeName}
+                  onChange={e => setNewThemeName(e.target.value)}
+                  disabled={installing || creating}
+                  placeholder={`Attomik Atlas - ${brandName}`}
+                />
+                <div style={{ color: colors.muted, fontSize: fontSize.xs, marginTop: 6 }}>
+                  Creates a new unpublished theme on Shopify. Safe — never touches your live theme.
+                </div>
+              </div>
+              {createError && (
+                <div style={{ marginBottom: spacing[3], color: '#b91c1c', fontSize: fontSize.caption }}>{createError}</div>
+              )}
+              <Button onClick={createAndInstall} disabled={installing || creating || !newThemeName.trim()}>
+                {creating ? 'Creating theme…' : installing ? 'Installing… (~2 min)' : 'Create & install'}
+              </Button>
+            </>
+          )}
 
           {installing && progress && (
             <div style={{ marginTop: spacing[4] }}>
@@ -538,6 +691,39 @@ function BaseThemeSection({ brandId, creds, onInstalled }: {
 
           {installError && (
             <div style={{ marginTop: spacing[3], color: '#b91c1c', fontSize: fontSize.caption }}>{installError}</div>
+          )}
+
+          {failedFiles.length > 0 && !installing && (
+            <div style={{
+              marginTop: spacing[4],
+              padding: spacing[3],
+              background: '#fef9c3',
+              border: '1px solid #facc15',
+              borderRadius: radius.md,
+            }}>
+              <div style={{ fontWeight: fontWeight.bold, fontSize: fontSize.body, color: '#713f12', marginBottom: 6 }}>
+                Install incomplete — {failedFiles.length} file{failedFiles.length === 1 ? '' : 's'} failed
+              </div>
+              <div style={{ fontSize: fontSize.caption, color: '#713f12', marginBottom: spacing[3] }}>
+                The base theme is not marked as installed. Retry to upload the missing files.
+              </div>
+              <ul style={{
+                margin: 0, padding: `0 0 0 ${spacing[4]}px`,
+                fontFamily: font.mono, fontSize: fontSize.xs, color: '#713f12',
+                maxHeight: 200, overflowY: 'auto',
+              }}>
+                {failedFiles.map(f => (
+                  <li key={f.file} style={{ marginBottom: 4 }}>
+                    <strong>{f.file}</strong> — {f.error}
+                  </li>
+                ))}
+              </ul>
+              <div style={{ marginTop: spacing[3] }}>
+                <Button onClick={() => install()} disabled={installing || !selectedThemeId}>
+                  Retry install
+                </Button>
+              </div>
+            </div>
           )}
         </>
       )}
