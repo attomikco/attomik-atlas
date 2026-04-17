@@ -27,8 +27,8 @@
           "type": "content",
           "settings": {
             "icon": "",
-            "label": "Fair Trade Certified",
-            "tooltip": "Ensures farmers receive fair compensation and ethical sourcing practices",
+            "label": "{{comparison_table__content_1__label}}",
+            "tooltip": "{{comparison_table__content_1__tooltip}}",
             "color_scheme": "color__bg-transparent",
             "column_1_icon": "check",
             "column_2_icon": "slash",
@@ -37,14 +37,14 @@
             "column_1_content": "",
             "column_2_content": "",
             "column_3_content": "",
-            "column_4_content": "Often not certified"
+            "column_4_content": "{{comparison_table__content_1__column_4_content}}"
           }
         },
         "content_R6jMnh": {
           "type": "content",
           "settings": {
             "icon": "",
-            "label": "Single-Origin Beans",
+            "label": "{{comparison_table__content_3__label}}",
             "tooltip": "",
             "color_scheme": "color__bg-transparent",
             "column_1_icon": "check",
@@ -54,15 +54,15 @@
             "column_1_content": "",
             "column_2_content": "",
             "column_3_content": "",
-            "column_4_content": "Blend of unknown origins"
+            "column_4_content": "{{comparison_table__content_3__column_4_content}}"
           }
         },
         "content_qzG3qg": {
           "type": "content",
           "settings": {
             "icon": "",
-            "label": "12-Hour Cold Brewing",
-            "tooltip": "Slow extraction process reduces acidity and enhances natural sweetness",
+            "label": "{{comparison_table__content_2__label}}",
+            "tooltip": "{{comparison_table__content_2__tooltip}}",
             "color_scheme": "color__bg-transparent",
             "column_1_icon": "check",
             "column_2_icon": "slash",
@@ -91,7 +91,7 @@
         "style_border": "",
         "enable_margin": true,
         "spacing_bottom": 100,
-        "table_headings": "Jolene Coffee, Everyone Else",
+        "table_headings": "{{comparison_table__table_headings}}",
         "color_background": "#ffffff",
         "enable_color_fade": false,
         "layout_x_alignment": "justify-between",
@@ -111,8 +111,8 @@
         "buttons_7z4C9R": {
           "type": "buttons",
           "settings": {
-            "button_url": "",
-            "button_label": "",
+            "button_url": "{{bottom_banner__buttons_1__button_url}}",
+            "button_label": "{{bottom_banner__buttons_1__button_label}}",
             "color_button": "btn btn--secondary",
             "floating_button_url": "",
             "secondary_button_url": "",
@@ -125,13 +125,13 @@
         "content_PiQ9yB": {
           "type": "content",
           "settings": {
-            "content": ""
+            "content": "{{bottom_banner__content_1__content}}"
           }
         },
         "heading_wGWGqw": {
           "type": "heading",
           "settings": {
-            "content": "",
+            "content": "{{bottom_banner__heading_1__content}}",
             "font_size_mobile": 34,
             "font_size_desktop": 50
           }
@@ -154,7 +154,8 @@
         "enable_border_margin": false,
         "enable_header_overlap": false,
         "enable_background_overlay": false,
-        "show_video_background_mobile": true
+        "show_video_background_mobile": true,
+        "image_background_desktop": "{{bottom_banner__image_background_desktop}}"
       },
       "block_order": [
         "heading_wGWGqw",
@@ -169,37 +170,40 @@
         "image_3YqJhd": {
           "type": "image",
           "settings": {
-            "image_height": 44
+            "image_height": 44,
+            "image": "{{marquee_ticker__image_1__image}}"
           }
         },
         "image_MFaLCd": {
           "type": "image",
           "settings": {
-            "image_height": 44
+            "image_height": 44,
+            "image": "{{marquee_ticker__image_3__image}}"
           }
         },
         "image_VET3xm": {
           "type": "image",
           "settings": {
-            "image_height": 44
+            "image_height": 44,
+            "image": "{{marquee_ticker__image_2__image}}"
           }
         },
         "heading_B8MzC8": {
           "type": "heading",
           "settings": {
-            "content": ""
+            "content": "{{marquee_ticker__heading_3__content}}"
           }
         },
         "heading_LPqGmG": {
           "type": "heading",
           "settings": {
-            "content": ""
+            "content": "{{marquee_ticker__heading_1__content}}"
           }
         },
         "heading_xVjwzg": {
           "type": "heading",
           "settings": {
-            "content": ""
+            "content": "{{marquee_ticker__heading_2__content}}"
           }
         }
       },
@@ -234,8 +238,8 @@
         "icon_YwWaLw": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{ingredients_grid__pillar_3__content}}",
+            "heading": "{{ingredients_grid__pillar_3__heading}}",
             "alignment": "flex-col",
             "icon_height": "h-32",
             "x_alignment": "text-center justify-center",
@@ -243,14 +247,15 @@
             "color_scheme": "color__bg-transparent",
             "enable_padding": true,
             "layout_col_span": "col-span-1 md:col-span-1",
-            "layout_row_span": "row-span-1"
+            "layout_row_span": "row-span-1",
+            "icon": "{{ingredients_grid__pillar_3__icon}}"
           }
         },
         "icon_a8tFjJ": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{ingredients_grid__pillar_4__content}}",
+            "heading": "{{ingredients_grid__pillar_4__heading}}",
             "alignment": "flex-row",
             "icon_height": "h-32",
             "x_alignment": "text-center justify-center",
@@ -258,14 +263,15 @@
             "color_scheme": "color__bg-transparent",
             "enable_padding": true,
             "layout_col_span": "col-span-1 md:col-span-1",
-            "layout_row_span": "row-span-1"
+            "layout_row_span": "row-span-1",
+            "icon": "{{ingredients_grid__pillar_4__icon}}"
           }
         },
         "icon_c4fYX6": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{ingredients_grid__pillar_2__content}}",
+            "heading": "{{ingredients_grid__pillar_2__heading}}",
             "alignment": "flex-col",
             "icon_height": "h-32",
             "x_alignment": "text-center justify-center",
@@ -273,14 +279,15 @@
             "color_scheme": "color__bg-transparent",
             "enable_padding": true,
             "layout_col_span": "col-span-1 md:col-span-1",
-            "layout_row_span": "row-span-1"
+            "layout_row_span": "row-span-1",
+            "icon": "{{ingredients_grid__pillar_2__icon}}"
           }
         },
         "icon_x4TXnw": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{ingredients_grid__pillar_1__content}}",
+            "heading": "{{ingredients_grid__pillar_1__heading}}",
             "alignment": "flex-col",
             "icon_height": "h-32",
             "x_alignment": "text-center justify-center",
@@ -288,13 +295,14 @@
             "color_scheme": "color__bg-transparent",
             "enable_padding": true,
             "layout_col_span": "col-span-1 md:col-span-1",
-            "layout_row_span": "row-span-1"
+            "layout_row_span": "row-span-1",
+            "icon": "{{ingredients_grid__pillar_1__icon}}"
           }
         }
       },
       "settings": {
         "content": "",
-        "heading": "",
+        "heading": "{{ingredients_grid__heading}}",
         "button_url": "",
         "color_text": "color__light",
         "visibility": "",
@@ -329,8 +337,8 @@
           "type": "content",
           "settings": {
             "icon": "",
-            "content": "",
-            "heading": "",
+            "content": "{{faq__content_3__content}}",
+            "heading": "{{faq__content_3__heading}}",
             "enable_open": false,
             "color_scheme": "btn"
           }
@@ -339,8 +347,8 @@
           "type": "content",
           "settings": {
             "icon": "",
-            "content": "",
-            "heading": "",
+            "content": "{{faq__content_5__content}}",
+            "heading": "{{faq__content_5__heading}}",
             "enable_open": false,
             "color_scheme": "btn"
           }
@@ -349,8 +357,8 @@
           "type": "content",
           "settings": {
             "icon": "",
-            "content": "",
-            "heading": "",
+            "content": "{{faq__content_6__content}}",
+            "heading": "{{faq__content_6__heading}}",
             "enable_open": false,
             "color_scheme": "btn"
           }
@@ -359,8 +367,8 @@
           "type": "content",
           "settings": {
             "icon": "",
-            "content": "",
-            "heading": "",
+            "content": "{{faq__content_1__content}}",
+            "heading": "{{faq__content_1__heading}}",
             "enable_open": true,
             "color_scheme": "btn"
           }
@@ -369,8 +377,8 @@
           "type": "content",
           "settings": {
             "icon": "",
-            "content": "",
-            "heading": "",
+            "content": "{{faq__content_2__content}}",
+            "heading": "{{faq__content_2__heading}}",
             "enable_open": false,
             "color_scheme": "btn"
           }
@@ -379,8 +387,8 @@
           "type": "content",
           "settings": {
             "icon": "",
-            "content": "",
-            "heading": "",
+            "content": "{{faq__content_4__content}}",
+            "heading": "{{faq__content_4__heading}}",
             "enable_open": false,
             "color_scheme": "btn"
           }
@@ -388,7 +396,7 @@
       },
       "settings": {
         "content": "",
-        "heading": "",
+        "heading": "{{faq__heading}}",
         "button_url": "",
         "color_text": "",
         "visibility": "",
@@ -424,8 +432,8 @@
           "type": "content",
           "settings": {
             "url": "",
-            "content": "",
-            "heading": "",
+            "content": "{{features_detail_mobile__content_2__content}}",
+            "heading": "{{features_detail_mobile__content_2__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
             "button_label": "",
@@ -442,15 +450,16 @@
             "layout_x_alignment": "center",
             "layout_y_alignment": "justify-center",
             "spacing_minimum_height": 250,
-            "show_image_as_background": false
+            "show_image_as_background": false,
+            "image": "{{features_detail_mobile__content_2__image}}"
           }
         },
         "content_Xiprzb": {
           "type": "content",
           "settings": {
             "url": "",
-            "content": "",
-            "heading": "",
+            "content": "{{features_detail_mobile__content_1__content}}",
+            "heading": "{{features_detail_mobile__content_1__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
             "button_label": "",
@@ -467,7 +476,8 @@
             "layout_x_alignment": "center",
             "layout_y_alignment": "justify-center",
             "spacing_minimum_height": 250,
-            "show_image_as_background": false
+            "show_image_as_background": false,
+            "image": "{{features_detail_mobile__content_1__image}}"
           }
         }
       },
@@ -505,12 +515,12 @@
         "content_6EQNYk": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{subscription_desktop__content_1__url}}",
+            "content": "{{subscription_desktop__content_1__content}}",
+            "heading": "{{subscription_desktop__content_1__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
-            "button_label": "",
+            "button_label": "{{subscription_desktop__content_1__button_label}}",
             "color_border": "outline--width color__outline-divider-1",
             "color_button": "btn--small btn--secondary",
             "color_scheme": "color__bg-primary color__primary",
@@ -549,7 +559,8 @@
             "layout_x_alignment": "left",
             "layout_y_alignment": "justify-end",
             "spacing_minimum_height": 400,
-            "show_image_as_background": true
+            "show_image_as_background": true,
+            "image": "{{subscription_desktop__content_2__image}}"
           }
         }
       },
@@ -587,9 +598,9 @@
         "content_bH8tpB": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{founder_mobile__content_1__url}}",
+            "content": "{{founder_mobile__content_1__content}}",
+            "heading": "{{founder_mobile__content_1__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
             "button_label": "",
@@ -606,7 +617,8 @@
             "layout_x_alignment": "center",
             "layout_y_alignment": "justify-center",
             "spacing_minimum_height": 250,
-            "show_image_as_background": false
+            "show_image_as_background": false,
+            "image": "{{founder_mobile__content_1__image}}"
           }
         }
       },
@@ -644,8 +656,8 @@
           "type": "content",
           "settings": {
             "url": "",
-            "content": "",
-            "heading": "",
+            "content": "{{features_mobile__content_2__content}}",
+            "heading": "{{features_mobile__content_2__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
             "button_label": "",
@@ -662,15 +674,16 @@
             "layout_x_alignment": "center",
             "layout_y_alignment": "justify-center",
             "spacing_minimum_height": 250,
-            "show_image_as_background": false
+            "show_image_as_background": false,
+            "image": "{{features_mobile__content_2__image}}"
           }
         },
         "content_tbK8Y4": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{features_mobile__content_1__url}}",
+            "content": "{{features_mobile__content_1__content}}",
+            "heading": "{{features_mobile__content_1__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
             "button_label": "",
@@ -687,7 +700,8 @@
             "layout_x_alignment": "center",
             "layout_y_alignment": "justify-center",
             "spacing_minimum_height": 0,
-            "show_image_as_background": false
+            "show_image_as_background": false,
+            "image": "{{features_mobile__content_1__image}}"
           }
         }
       },
@@ -726,12 +740,12 @@
         "content_WfQxEw": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{founder_desktop__content_2__url}}",
+            "content": "{{founder_desktop__content_2__content}}",
+            "heading": "{{founder_desktop__content_2__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
-            "button_label": "",
+            "button_label": "{{founder_desktop__content_2__button_label}}",
             "color_border": "outline--width color__outline-divider-1",
             "color_button": "btn--small btn--secondary",
             "color_scheme": "color__bg-primary color__primary",
@@ -770,7 +784,8 @@
             "layout_x_alignment": "left",
             "layout_y_alignment": "justify-end",
             "spacing_minimum_height": 500,
-            "show_image_as_background": true
+            "show_image_as_background": true,
+            "image": "{{founder_desktop__content_1__image}}"
           }
         }
       },
@@ -808,12 +823,12 @@
         "content_7bQBtz": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{subscription_mobile__content_1__url}}",
+            "content": "{{subscription_mobile__content_1__content}}",
+            "heading": "{{subscription_mobile__content_1__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
-            "button_label": "",
+            "button_label": "{{subscription_mobile__content_1__button_label}}",
             "color_border": "outline--width color__outline-divider-1",
             "color_button": "btn--small btn--tertiary",
             "color_scheme": "color__bg-secondary color__secondary",
@@ -827,7 +842,8 @@
             "layout_x_alignment": "center",
             "layout_y_alignment": "justify-center",
             "spacing_minimum_height": 250,
-            "show_image_as_background": false
+            "show_image_as_background": false,
+            "image": "{{subscription_mobile__content_1__image}}"
           }
         }
       },
@@ -863,12 +879,12 @@
         "content_KRrNeM": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{features_detail_desktop__content_1__url}}",
+            "content": "{{features_detail_desktop__content_1__content}}",
+            "heading": "{{features_detail_desktop__content_1__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
-            "button_label": "",
+            "button_label": "{{features_detail_desktop__content_1__button_label}}",
             "color_border": "outline--width color__outline-divider-1",
             "color_button": "btn--small btn--secondary",
             "color_scheme": "color__bg-primary color__primary",
@@ -907,7 +923,8 @@
             "layout_x_alignment": "left",
             "layout_y_alignment": "justify-end",
             "spacing_minimum_height": 400,
-            "show_image_as_background": true
+            "show_image_as_background": true,
+            "image": "{{features_detail_desktop__content_3__image}}"
           }
         },
         "content_nbkPaz": {
@@ -932,18 +949,19 @@
             "layout_x_alignment": "left",
             "layout_y_alignment": "justify-end",
             "spacing_minimum_height": 400,
-            "show_image_as_background": true
+            "show_image_as_background": true,
+            "image": "{{features_detail_desktop__content_2__image}}"
           }
         },
         "content_tdT9JF": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{features_detail_desktop__content_4__url}}",
+            "content": "{{features_detail_desktop__content_4__content}}",
+            "heading": "{{features_detail_desktop__content_4__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
-            "button_label": "",
+            "button_label": "{{features_detail_desktop__content_4__button_label}}",
             "color_border": "outline--width color__outline-divider-1",
             "color_button": "btn--small btn--secondary",
             "color_scheme": "color__bg-tertiary color__tertiary",
@@ -996,7 +1014,7 @@
         "content": "",
         "heading": "",
         "button_url": "",
-        "collection": "all-products",
+        "collection": "{{product_grid__collection}}",
         "color_text": "",
         "visibility": "",
         "spacing_top": 0,
@@ -1024,12 +1042,12 @@
         "content_iXr89U": {
           "type": "content",
           "settings": {
-            "url": "",
-            "content": "",
-            "heading": "",
+            "url": "{{product_slider__content_1__url}}",
+            "content": "{{product_slider__content_1__content}}",
+            "heading": "{{product_slider__content_1__heading}}",
             "color_text": "color__text",
             "enable_loop": true,
-            "button_label": "",
+            "button_label": "{{product_slider__content_1__button_label}}",
             "color_border": "outline--width color__outline-divider-1",
             "color_button": "btn--small btn--secondary",
             "color_scheme": "color__bg-primary color__primary",
@@ -1047,9 +1065,9 @@
       },
       "settings": {
         "content": "",
-        "heading": "",
+        "heading": "{{product_slider__heading}}",
         "button_url": "",
-        "collection": "all-products",
+        "collection": "{{product_slider__collection}}",
         "color_text": "",
         "visibility": "",
         "spacing_top": 100,
@@ -1087,28 +1105,31 @@
         "testimonial_4m7Eq8": {
           "type": "testimonial",
           "settings": {
-            "title": "",
-            "content": ""
+            "title": "{{customer_reviews__testimonial_2__title}}",
+            "content": "{{customer_reviews__testimonial_2__content}}",
+            "avatar": "{{customer_reviews__testimonial_2__avatar}}"
           }
         },
         "testimonial_GdxFz9": {
           "type": "testimonial",
           "settings": {
-            "title": "",
-            "content": ""
+            "title": "{{customer_reviews__testimonial_1__title}}",
+            "content": "{{customer_reviews__testimonial_1__content}}",
+            "avatar": "{{customer_reviews__testimonial_1__avatar}}"
           }
         },
         "testimonial_wUztfP": {
           "type": "testimonial",
           "settings": {
-            "title": "",
-            "content": ""
+            "title": "{{customer_reviews__testimonial_3__title}}",
+            "content": "{{customer_reviews__testimonial_3__content}}",
+            "avatar": "{{customer_reviews__testimonial_3__avatar}}"
           }
         }
       },
       "settings": {
         "content": "",
-        "heading": "",
+        "heading": "{{customer_reviews__heading}}",
         "button_url": "",
         "color_text": "",
         "visibility": "",
@@ -1143,9 +1164,10 @@
           "settings": {
             "name": "",
             "title": "",
-            "content": "",
+            "content": "{{press_slider__testimonial_4__content}}",
             "logo_height": 80,
-            "layout_x_alignment": "text-center justify-center items-center"
+            "layout_x_alignment": "text-center justify-center items-center",
+            "logo": "{{press_slider__testimonial_4__logo}}"
           }
         },
         "testimonial_Net3Mq": {
@@ -1153,9 +1175,10 @@
           "settings": {
             "name": "",
             "title": "",
-            "content": "",
+            "content": "{{press_slider__testimonial_2__content}}",
             "logo_height": 80,
-            "layout_x_alignment": "text-center justify-center items-center"
+            "layout_x_alignment": "text-center justify-center items-center",
+            "logo": "{{press_slider__testimonial_2__logo}}"
           }
         },
         "testimonial_eCjygz": {
@@ -1163,9 +1186,10 @@
           "settings": {
             "name": "",
             "title": "",
-            "content": "",
+            "content": "{{press_slider__testimonial_5__content}}",
             "logo_height": 60,
-            "layout_x_alignment": "text-center justify-center items-center"
+            "layout_x_alignment": "text-center justify-center items-center",
+            "logo": "{{press_slider__testimonial_5__logo}}"
           }
         },
         "testimonial_nAKf8z": {
@@ -1173,9 +1197,10 @@
           "settings": {
             "name": "",
             "title": "",
-            "content": "",
+            "content": "{{press_slider__testimonial_3__content}}",
             "logo_height": 80,
-            "layout_x_alignment": "text-center justify-center items-center"
+            "layout_x_alignment": "text-center justify-center items-center",
+            "logo": "{{press_slider__testimonial_3__logo}}"
           }
         },
         "testimonial_qW4RjP": {
@@ -1183,9 +1208,10 @@
           "settings": {
             "name": "",
             "title": "",
-            "content": "",
+            "content": "{{press_slider__testimonial_1__content}}",
             "logo_height": 80,
-            "layout_x_alignment": "text-center justify-center items-center"
+            "layout_x_alignment": "text-center justify-center items-center",
+            "logo": "{{press_slider__testimonial_1__logo}}"
           }
         }
       },
@@ -1219,8 +1245,8 @@
         "54152c4b-4fca-46e6-802e-ef313f236c4e": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{value_props__pillar_2__content}}",
+            "heading": "{{value_props__pillar_2__heading}}",
             "alignment": "flex-row",
             "icon_height": "h-14",
             "x_alignment": "text-center justify-center",
@@ -1228,14 +1254,15 @@
             "color_scheme": "color__bg-body color__text",
             "enable_padding": true,
             "layout_col_span": "col-span-1 md:col-span-1",
-            "layout_row_span": "row-span-1"
+            "layout_row_span": "row-span-1",
+            "icon": "{{value_props__pillar_2__icon}}"
           }
         },
         "e5b5ea4b-be8f-4673-a833-0ca548dff15c": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{value_props__pillar_3__content}}",
+            "heading": "{{value_props__pillar_3__heading}}",
             "alignment": "flex-row",
             "icon_height": "h-14",
             "x_alignment": "text-center justify-center",
@@ -1243,14 +1270,15 @@
             "color_scheme": "color__bg-body color__text",
             "enable_padding": true,
             "layout_col_span": "col-span-1 md:col-span-1",
-            "layout_row_span": "row-span-1"
+            "layout_row_span": "row-span-1",
+            "icon": "{{value_props__pillar_3__icon}}"
           }
         },
         "template--16628482343091__d508d7f2-ab32-4de7-b0f5-07c0fc755b51-icon-1": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{value_props__pillar_1__content}}",
+            "heading": "{{value_props__pillar_1__heading}}",
             "alignment": "flex-row",
             "icon_height": "h-14",
             "x_alignment": "text-center justify-center",
@@ -1258,18 +1286,19 @@
             "color_scheme": "color__bg-body color__text",
             "enable_padding": true,
             "layout_col_span": "col-span-1 md:col-span-1",
-            "layout_row_span": "row-span-1"
+            "layout_row_span": "row-span-1",
+            "icon": "{{value_props__pillar_1__icon}}"
           }
         }
       },
       "settings": {
-        "content": "",
-        "heading": "",
+        "content": "{{value_props__content}}",
+        "heading": "{{value_props__heading}}",
         "button_url": "",
         "color_text": "",
         "visibility": "",
         "spacing_top": 100,
-        "button_label": "",
+        "button_label": "{{value_props__button_label}}",
         "color_border": "color__border-divider-1",
         "color_button": "btn btn--secondary",
         "color_scheme": "color__bg-body",
@@ -1296,8 +1325,8 @@
         "buttons_tAAWWt": {
           "type": "buttons",
           "settings": {
-            "button_url": "",
-            "button_label": "",
+            "button_url": "{{hero_banner__buttons_1__button_url}}",
+            "button_label": "{{hero_banner__buttons_1__button_label}}",
             "color_button": "btn btn--secondary",
             "floating_button_url": "",
             "secondary_button_url": "",
@@ -1310,7 +1339,7 @@
         "8adfc70a-eb67-46a2-adf4-6f8358aaac51": {
           "type": "heading",
           "settings": {
-            "content": "",
+            "content": "{{hero_banner__heading_1__content}}",
             "font_size_mobile": 34,
             "font_size_desktop": 50
           }
@@ -1318,7 +1347,7 @@
         "template--15898491977911__de4cc432-8e1c-49bc-8935-1f94a9d9d797-content-1": {
           "type": "content",
           "settings": {
-            "content": ""
+            "content": "{{hero_banner__content_1__content}}"
           }
         }
       },
@@ -1339,7 +1368,9 @@
         "enable_border_margin": false,
         "enable_header_overlap": false,
         "enable_background_overlay": false,
-        "show_video_background_mobile": false
+        "show_video_background_mobile": false,
+        "image_background_desktop": "{{hero_banner__image_background_desktop}}",
+        "image_background_mobile": "{{hero_banner__image_background_mobile}}"
       },
       "block_order": [
         "8adfc70a-eb67-46a2-adf4-6f8358aaac51",

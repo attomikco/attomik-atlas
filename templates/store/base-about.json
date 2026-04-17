@@ -13,8 +13,8 @@
         "cta_buttons": {
           "type": "buttons",
           "settings": {
-            "button_url": "",
-            "button_label": "",
+            "button_url": "{{about_cta_url}}",
+            "button_label": "{{about_cta_label}}",
             "color_button": "btn",
             "floating_button_url": "",
             "secondary_button_url": "",
@@ -27,13 +27,13 @@
         "cta_content": {
           "type": "content",
           "settings": {
-            "content": ""
+            "content": "{{about_cta_body}}"
           }
         },
         "cta_heading": {
           "type": "heading",
           "settings": {
-            "content": "",
+            "content": "{{about_cta_heading}}",
             "font_size_mobile": 34,
             "font_size_desktop": 50
           }
@@ -55,7 +55,8 @@
         "enable_border_margin": false,
         "enable_header_overlap": false,
         "enable_background_overlay": false,
-        "show_video_background_mobile": true
+        "show_video_background_mobile": true,
+        "url": "{{about_cta_image_background}}"
       },
       "block_order": [
         "cta_heading",
@@ -69,13 +70,13 @@
         "content_1": {
           "type": "content",
           "settings": {
-            "content": ""
+            "content": "{{about_hero_subhead}}"
           }
         },
         "heading_1": {
           "type": "heading",
           "settings": {
-            "content": "",
+            "content": "{{about_hero_heading}}",
             "font_size_mobile": 34,
             "font_size_desktop": 50
           }
@@ -97,7 +98,8 @@
         "enable_border_margin": false,
         "enable_header_overlap": false,
         "enable_background_overlay": false,
-        "show_video_background_mobile": false
+        "show_video_background_mobile": false,
+        "url": "{{about_hero_image_background}}"
       },
       "block_order": [
         "heading_1",
@@ -110,8 +112,8 @@
         "value_1": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{about_value_1_body}}",
+            "heading": "{{about_value_1_heading}}",
             "alignment": "flex-row",
             "icon_height": "h-14",
             "x_alignment": "text-center justify-center",
@@ -125,8 +127,8 @@
         "value_2": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{about_value_2_body}}",
+            "heading": "{{about_value_2_heading}}",
             "alignment": "flex-row",
             "icon_height": "h-14",
             "x_alignment": "text-center justify-center",
@@ -140,8 +142,8 @@
         "value_3": {
           "type": "icon",
           "settings": {
-            "content": "",
-            "heading": "",
+            "content": "{{about_value_3_body}}",
+            "heading": "{{about_value_3_heading}}",
             "alignment": "flex-row",
             "icon_height": "h-14",
             "x_alignment": "text-center justify-center",
@@ -205,15 +207,16 @@
             "layout_x_alignment": "left",
             "layout_y_alignment": "justify-end",
             "spacing_minimum_height": 500,
-            "show_image_as_background": true
+            "show_image_as_background": true,
+            "url": "{{about_founder_image}}"
           }
         },
         "founder_content": {
           "type": "content",
           "settings": {
             "url": "",
-            "content": "",
-            "heading": "",
+            "content": "{{about_founder_story}}",
+            "heading": "{{about_founder_name}}",
             "color_text": "color__text",
             "enable_loop": true,
             "button_label": "",
@@ -264,8 +267,8 @@
     "about_mission": {
       "type": "text",
       "settings": {
-        "content": "",
-        "heading": "",
+        "content": "{{about_mission_body}}",
+        "heading": "{{about_mission_heading}}",
         "button_url": "",
         "color_text": "",
         "visibility": "",

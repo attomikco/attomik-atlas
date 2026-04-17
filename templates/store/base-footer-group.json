@@ -13,8 +13,8 @@
       "name": "t:sections.text.name",
       "type": "text",
       "settings": {
-        "content": "",
-        "heading": "",
+        "content": "{{footer_richtext_content}}",
+        "heading": "{{footer_richtext_heading}}",
         "button_url": "",
         "color_text": "",
         "visibility": "",
@@ -57,10 +57,10 @@
         "content_LVnE3Q": {
           "type": "content",
           "settings": {
-            "content": "",
-            "heading": "",
-            "button_url": "",
-            "button_label": "",
+            "content": "{{footer_about_content}}",
+            "heading": "{{footer_tagline}}",
+            "button_url": "{{footer_cta_url}}",
+            "button_label": "{{footer_cta_label}}",
             "logo_mobile_height": 50,
             "logo_desktop_height": 70
           }
@@ -69,11 +69,11 @@
           "type": "newsletter",
           "disabled": true,
           "settings": {
-            "button": "Subscribe",
-            "content": "",
-            "heading": "",
+            "button": "{{footer_newsletter_button}}",
+            "content": "{{footer_newsletter_content}}",
+            "heading": "{{footer_newsletter_heading}}",
             "success": "<p>Success! You've been subscribed.</p>",
-            "disclaimer": "<p>We respect your privacy and never share your information.</p>"
+            "disclaimer": "{{footer_newsletter_disclaimer}}"
           }
         }
       },

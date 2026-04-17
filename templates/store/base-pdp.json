@@ -13,37 +13,37 @@
             "font_size": 13,
             "padding_x": 12,
             "padding_y": 6,
-            "badge_text": "Fair Trade · Single-Origin",
+            "badge_text": "{{pdp_badge_text}}",
             "bg_opacity": 100,
-            "badge_emoji": "✦",
+            "badge_emoji": "{{pdp_badge_emoji}}",
             "font_weight": "700",
             "spacing_top": 10,
             "border_width": 0,
             "border_radius": 6,
-            "badge_bg_color": "#1a1a1a",
+            "badge_bg_color": "{{pdp_badge_bg_color}}",
             "border_opacity": 100,
             "letter_spacing": 1,
             "spacing_bottom": 10,
             "text_transform": "uppercase",
-            "badge_font_color": "#ffffff"
+            "badge_font_color": "{{pdp_badge_font_color}}"
           }
         },
         "perks_j9yce9": {
           "type": "perks",
           "settings": {
-            "label": "Subscriber Perks",
+            "label": "{{pdp_perks_label}}",
             "speed": 20,
-            "perk_1": "Save 15% every order",
-            "perk_2": "Free shipping included",
-            "perk_3": "Cancel anytime",
-            "perk_4": "Priority customer support",
-            "perk_5": "Early access to new flavors",
-            "header_bg": "#1a1a1a",
-            "marquee_bg": "#ffffff",
-            "header_text": "#ffffff",
+            "perk_1": "{{pdp_perks_item_1}}",
+            "perk_2": "{{pdp_perks_item_2}}",
+            "perk_3": "{{pdp_perks_item_3}}",
+            "perk_4": "{{pdp_perks_item_4}}",
+            "perk_5": "{{pdp_perks_item_5}}",
+            "header_bg": "{{pdp_perks_header_bg}}",
+            "marquee_bg": "{{pdp_perks_marquee_bg}}",
+            "header_text": "{{pdp_perks_header_text}}",
             "border_color": "#1a1a1a",
             "border_width": 1,
-            "marquee_text": "#1a1a1a",
+            "marquee_text": "{{pdp_perks_marquee_text}}",
             "border_radius": 10,
             "header_font_size": 15,
             "marquee_font_size": 15,
@@ -56,7 +56,7 @@
           "settings": {
             "icon": "",
             "title": "",
-            "content": "",
+            "content": "{{pdp_shipping_content}}",
             "position": "right",
             "enable_open": false,
             "spacing_top": 10,
@@ -71,7 +71,7 @@
           "settings": {
             "icon": "",
             "title": "",
-            "content": "",
+            "content": "{{pdp_ingredients_content}}",
             "position": "right",
             "enable_open": false,
             "spacing_top": 10,
@@ -84,29 +84,29 @@
         "checklist_QUhJj4": {
           "type": "checklist",
           "settings": {
-            "item_1": "Fair Trade certified beans",
-            "item_2": "12-hour slow cold brewing",
-            "item_3": "Non-GMO and gluten-free",
-            "item_4": "No artificial flavors added",
-            "item_5": "Convenient 8oz ready-to-drink cans",
-            "check_color": "#1a1a1a",
+            "item_1": "{{pdp_checklist_item_1}}",
+            "item_2": "{{pdp_checklist_item_2}}",
+            "item_3": "{{pdp_checklist_item_3}}",
+            "item_4": "{{pdp_checklist_item_4}}",
+            "item_5": "{{pdp_checklist_item_5}}",
+            "check_color": "{{pdp_checklist_check_color}}",
             "spacing_top": 10,
             "spacing_bottom": 10,
-            "value_prop_tag": "★ Best Value",
-            "value_prop_text": "Mix Pack — 12 cans, $2.33 each"
+            "value_prop_tag": "{{pdp_checklist_value_tag}}",
+            "value_prop_text": "{{pdp_checklist_value_text}}"
           }
         },
         "variant_cards_JhQkVx": {
           "type": "variant_cards",
           "settings": {
-            "option_name": "Pack",
+            "option_name": "{{pdp_variant_option_name}}",
             "spacing_top": 10,
-            "best_badge_bg": "#1a1a1a",
+            "best_badge_bg": "{{pdp_best_badge_bg}}",
             "show_per_unit": true,
             "spacing_bottom": 10,
             "desktop_columns": "3",
-            "popular_badge_bg": "#ffc600",
-            "free_shipping_threshold": "50"
+            "popular_badge_bg": "{{pdp_popular_badge_bg}}",
+            "free_shipping_threshold": "{{pdp_free_shipping_threshold}}"
           }
         },
         "moast_carousel_eeK4GX": {
