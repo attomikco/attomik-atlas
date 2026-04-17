@@ -726,7 +726,7 @@ The factory shelled out to `shopify theme push`. Attomik Atlas never uses the Sh
 | `target-theme` | PATCH | Persists `{ shopify_theme_id, shopify_theme_name }` to the `store_themes` row (upsert on `brand_id`, partial update — other columns like `color_variants` / `index_json` are preserved). Used by the UI to save a target selection before install or deploy so later calls can fall back to the stored value. | **Owner/admin** |
 | `install-base-theme` | POST | Walks `src/theme/` recursively and PUTs every file to the selected Shopify theme via the Asset API. **Sequential** processing with a 600ms throttle between calls (Shopify theme-assets bucket is 2/sec — prior concurrency=3 produced cascading 429s). Streams NDJSON progress events (`{ done, total, file }`, final `{ done: total, total, complete: true }` on success or `{ done: total, total, failedFiles, warning: true }` on partial failure). Each file failure is logged to `console.error` and the loop continues — a partial install does NOT set `shopify_base_theme_installed_at`, so the UI can show a retry panel listing the failed files. Catastrophic throws emit `{ error: true, file: null, message, done, total }` before the stream closes. Runtime ~2–3 min for 217 files. | **Owner/admin** |
 | `deploy` | POST | PUTs the 5 generated JSONs (`templates/index.json`, `templates/product.json`, `sections/footer-group.json`, `templates/page.about.json`, `config/settings_data.json`) to the selected Shopify theme. Updates `store_themes.last_deploy_*`. Returns `{ preview_url }`. **Refuses `role='main'`** — return 400. Body: `{ themeId }` — optional; when omitted, falls back to `store_themes.shopify_theme_id` so callers that previously set the target via `create-theme` or `target-theme` don't need to re-pass it. `templates/page.about.json` is only pushed when `about_json` is present on the row (legacy rows without it are skipped). | **Owner/admin** |
-| `pull-settings` | POST | GETs `config/settings_data.json` from the selected Shopify theme, unwraps the `current` key, and merges it into `store_themes.color_variants[selected_variant].theme_settings`. | **Owner/admin** |
+| `pull-settings` | POST | Captures the **complete theme state** from the selected Shopify theme. GETs 5 files in sequence — `config/settings_data.json`, `templates/index.json`, `templates/product.json`, `templates/page.about.json`, `sections/footer-group.json` — and upserts each into its corresponding `store_themes` column (`color_variants[selected_variant].theme_settings` for settings, plus `index_json`, `product_json`, `about_json`, `footer_group_json`). For settings it also reverse-maps the 9 Shopify color keys back into `color_variants[selected_variant].colors` via `themeSettingsToColors()` so the in-app editor stays in sync with merchant edits in the Shopify theme editor. Per-file failures log to `console.error` and are skipped — a missing about page or group file leaves that field untouched rather than aborting the pull. Returns `{ ok, theme, pulled: { settings, index_json, product_json, about_json, footer_group_json } }` flagging which files succeeded. | **Owner/admin** |
 
 **`src/lib/authorize-store.ts`** exposes `authorizeOwnerOrAdmin(brandId)` — mirrors the existing `authorizeOwner` pattern in `/api/brands/[id]/members/[userId]/route.ts` but widens the allow-list to both `owner` and `admin` roles.
 
@@ -735,6 +735,21 @@ The factory shelled out to `shopify theme push`. Attomik Atlas never uses the Sh
 `src/theme/` is a first-class source directory, not a static asset bundle. It's ported verbatim from `attomik-factory/theme/` (minus `.claude/` and `tmux-*.log`) and is edited directly in Attomik Atlas — add snippets, tweak sections, update assets in place. `install-base-theme` walks this directory and pushes it to Shopify via the Asset API. Binary extensions (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `ico`, `woff`, `woff2`, `eot`, `ttf`, `otf`, `mp3`, `wav`, `mp4`, `mov`, `pdf`) are base64-encoded via `putBinaryAsset`; everything else is uploaded as utf-8 text via `putAsset`.
 
 Next.js's file tracer bundles `src/theme/` with the serverless function automatically because the install route reads paths via `join(process.cwd(), 'src/theme')` — a static prefix the tracer picks up.
+
+### Base-snapshot workflow (capturing a theme state as the global default)
+
+`pull-settings` is the mechanism for turning a manually-tuned Shopify theme into the new default baseline for every brand's `generate`. Typical loop:
+
+1. **Tune the theme in Shopify's editor.** Colors, section settings, block copy, product layout, about page, footer group — whatever you want the next generation cycle to inherit.
+2. **Hit Pull all settings** (`/store` → Deploy card → Pull all settings). The route writes the complete theme state — `config/settings_data.json`, `templates/index.json`, `templates/product.json`, `templates/page.about.json`, `sections/footer-group.json` — into the brand's `store_themes` row. Colors are reverse-mapped into `color_variants[selected_variant].colors` so the in-app editor matches.
+3. **Promote to global default** (manual): copy the pulled values from `store_themes` into the corresponding `templates/store/base-*.json` files so every future `generate` call on every brand starts from the new baseline:
+   - `store_themes.index_json` → `templates/store/base-template.json`
+   - `store_themes.product_json` → `templates/store/base-pdp.json`
+   - `store_themes.footer_group_json` → `templates/store/base-footer-group.json`
+   - `store_themes.about_json` → `templates/store/base-about.json`
+   - `color_variants[selected_variant].theme_settings` → `templates/store/base-settings.json`
+
+Step 3 is deliberately manual today — it's a judgement call which brand's tuning deserves to become the codebase-wide default, and the `base-*.json` files are source-controlled, not database state.
 
 ### Deploy safety rules
 

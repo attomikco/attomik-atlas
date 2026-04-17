@@ -892,7 +892,7 @@ function DeploySection({ brandId, creds, theme, onDeployed }: {
     : null
 
   return (
-    <Card title="Deploy" subtitle="Push the 4 generated JSON files to a non-live Shopify theme. Deploy is blocked on the live theme.">
+    <Card title="Deploy" subtitle="Push the 4 generated JSON files to a non-live Shopify theme, or pull colors, copy, and section settings from the live Shopify theme back into Marketing OS. Deploy is blocked on the live theme.">
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[4], flexWrap: 'wrap' }}>
         <Badge status={theme?.last_deploy_status ?? 'idle'} />
         {theme?.last_deployed_at && (
@@ -946,7 +946,7 @@ function DeploySection({ brandId, creds, theme, onDeployed }: {
           {action === 'deploying' ? 'Deploying…' : 'Deploy theme'}
         </Button>
         <Button variant="secondary" onClick={pullSettings} disabled={action !== 'idle' || !selectedThemeId || !baseInstalled}>
-          {action === 'pulling' ? 'Pulling…' : 'Pull settings'}
+          {action === 'pulling' ? 'Pulling…' : 'Pull all settings'}
         </Button>
       </div>
 

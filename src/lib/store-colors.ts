@@ -97,6 +97,41 @@ export function colorsToThemeSettings(colors: ThemeColors): Record<string, strin
   }
 }
 
+// Reverse of colorsToThemeSettings — reads the 9 Shopify theme-settings
+// color keys back into the editor's canonical ThemeColors shape. Used by
+// the pull-settings route to capture merchant edits made in Shopify's
+// theme editor (which writes to the Shopify keys) back into `colors` so
+// the in-app color editor stays in sync. Returns null if ANY of the 9
+// required keys is missing or isn't a valid hex — callers fall back to
+// the existing stored colors in that case rather than half-populating.
+export function themeSettingsToColors(settings: Record<string, unknown>): ThemeColors | null {
+  const pick = (k: string): string | null => {
+    const raw = settings[k]
+    return isValidHex(raw) ? raw : null
+  }
+  const body = pick('color_background_body')
+  const text = pick('color_foreground_body')
+  const alternative_text = pick('color_foreground_body_alt')
+  const primary_background = pick('color_background_primary')
+  const primary_foreground = pick('color_foreground_primary')
+  const secondary_background = pick('color_background_secondary')
+  const secondary_foreground = pick('color_foreground_secondary')
+  const tertiary_background = pick('color_background_tertiary')
+  const tertiary_foreground = pick('color_foreground_tertiary')
+  if (!body || !text || !alternative_text
+    || !primary_background || !primary_foreground
+    || !secondary_background || !secondary_foreground
+    || !tertiary_background || !tertiary_foreground) {
+    return null
+  }
+  return {
+    body, text, alternative_text,
+    primary_background, primary_foreground,
+    secondary_background, secondary_foreground,
+    tertiary_background, tertiary_foreground,
+  }
+}
+
 // Deterministic fallback colors derived from the brand's primary + secondary.
 // Used when Claude's color generation fails for a variant, or when PATCH
 // needs to seed a missing slot for legacy rows.
