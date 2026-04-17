@@ -304,6 +304,47 @@ interface CampaignContext {
   key_message?: string | null
 }
 
+async function callClaudeForVars(
+  systemPrompt: string,
+  userMessage: string,
+  maxTokens: number,
+  label: string
+): Promise<Record<string, string>> {
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
+  })
+
+  const textBlock = message.content.find(b => b.type === 'text')
+  if (!textBlock || textBlock.type !== 'text') throw new Error(`[store/generate ${label}] no response from variable generation`)
+
+  if (message.stop_reason !== 'end_turn') {
+    console.warn(`[store/generate ${label}] WARNING: output truncated, stop_reason:`, message.stop_reason)
+  }
+
+  let json = textBlock.text.trim()
+  if (json.startsWith('```')) json = json.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+
+  if (!json.endsWith('}')) {
+    console.warn(`[store/generate ${label}] JSON appears truncated, attempting repair...`)
+    const lastQuote = json.lastIndexOf('"')
+    const lastComma = json.lastIndexOf(',')
+    const cutPoint = Math.max(lastQuote, lastComma)
+    if (cutPoint > 0) {
+      let repaired = json.substring(0, lastComma > 0 ? lastComma : cutPoint)
+      if (!repaired.endsWith('}') && !repaired.endsWith('"')) {
+        repaired = repaired.substring(0, repaired.lastIndexOf('"') + 1)
+      }
+      repaired += '}'
+      json = repaired
+    }
+  }
+
+  return JSON.parse(json) as Record<string, string>
+}
+
 async function generateVariableValues(
   brief: BrandBrief,
   brand: Brand,
@@ -313,14 +354,25 @@ async function generateVariableValues(
   const variableMap = await loadJSON<VariableEntry[]>('templates/store/variable-map.json')
   const generatableVars = variableMap.filter(v => GENERATABLE_TYPES.has(v.type))
 
-  let variableBlock = ''
-  let currentSection = ''
-  for (const v of generatableVars) {
-    if (v.section !== currentSection) {
-      currentSection = v.section
-      variableBlock += `\n### ${v.section}\n`
+  // Split the generation into two focused Claude calls. About-page keys sit
+  // at the end of variable-map.json, so when a single call's response gets
+  // long they were the first to be silently truncated — leaving every
+  // about_* slot as an empty string after the applyValuesToTemplate
+  // fallback cleanup. Splitting guarantees about copy always arrives.
+  const aboutVars = generatableVars.filter(v => v.key.startsWith('about_'))
+  const homepageVars = generatableVars.filter(v => !v.key.startsWith('about_'))
+
+  function buildVariableBlock(vars: VariableEntry[]): string {
+    let block = ''
+    let currentSection = ''
+    for (const v of vars) {
+      if (v.section !== currentSection) {
+        currentSection = v.section
+        block += `\n### ${v.section}\n`
+      }
+      block += `- "${v.key}" (${v.type}): ${v.instructions}\n`
     }
-    variableBlock += `- "${v.key}" (${v.type}): ${v.instructions}\n`
+    return block
   }
 
   const productList = brief.products?.length
@@ -355,7 +407,7 @@ CAMPAIGN CONTEXT — inject this into every copy field (hero, footer, checklist,
   // Prepend the Attomik Atlas brand system prompt so the generator inherits
   // brand voice, tone, avoid_words, competitors, voice examples — the same
   // way Creative Studio and Copy Creator do.
-  const systemPrompt = `${buildBrandSystemPrompt(brand)}
+  const baseSystemPrompt = `${buildBrandSystemPrompt(brand)}
 
 ---
 
@@ -457,44 +509,36 @@ For collection variables: infer the most likely Shopify collection handle from t
 For color variables: return a valid hex color string (e.g. "#D4266A")
 For richtext variables: return valid HTML (e.g. "<p>Free Shipping On Orders Over $50</p>")
 
-VARIABLES:
-${variableBlock}`
+VARIABLES:`
 
-  const userMessage = `Generate the complete JSON object now with all ${generatableVars.length} variables filled in. Use "${brief.brand_name}" as the brand name in all copy. For table_headings use "${brief.brand_name}, Everyone Else". All social URL variables must be empty strings.`
+  const homepageSystemPrompt = `${baseSystemPrompt}${buildVariableBlock(homepageVars)}`
+  const aboutSystemPrompt = `${baseSystemPrompt}${buildVariableBlock(aboutVars)}`
 
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 16384,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  })
+  const homepageUserMessage = `Generate the complete JSON object now with all ${homepageVars.length} variables filled in. Use "${brief.brand_name}" as the brand name in all copy. For table_headings use "${brief.brand_name}, Everyone Else". All social URL variables must be empty strings.`
+  const aboutUserMessage = `Generate the complete JSON object with all ${aboutVars.length} About-page variables filled in. Use "${brief.brand_name}" as the brand name. Return ONLY a valid JSON object, no markdown, no preamble.`
 
-  const textBlock = message.content.find(b => b.type === 'text')
-  if (!textBlock || textBlock.type !== 'text') throw new Error('No response from variable generation')
+  // Fire both calls in parallel — no order dependency, so wall time is
+  // bounded by the slower of the two rather than their sum.
+  const [homepageValues, aboutValues] = await Promise.all([
+    callClaudeForVars(homepageSystemPrompt, homepageUserMessage, 8096, 'homepage'),
+    callClaudeForVars(aboutSystemPrompt, aboutUserMessage, 4096, 'about'),
+  ])
 
-  if (message.stop_reason !== 'end_turn') {
-    console.warn('[store/generate] WARNING: output truncated, stop_reason:', message.stop_reason)
-  }
+  const merged: Record<string, string> = { ...homepageValues, ...aboutValues }
 
-  let json = textBlock.text.trim()
-  if (json.startsWith('```')) json = json.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-
-  if (!json.endsWith('}')) {
-    console.warn('[store/generate] JSON appears truncated, attempting repair...')
-    const lastQuote = json.lastIndexOf('"')
-    const lastComma = json.lastIndexOf(',')
-    const cutPoint = Math.max(lastQuote, lastComma)
-    if (cutPoint > 0) {
-      let repaired = json.substring(0, lastComma > 0 ? lastComma : cutPoint)
-      if (!repaired.endsWith('}') && !repaired.endsWith('"')) {
-        repaired = repaired.substring(0, repaired.lastIndexOf('"') + 1)
-      }
-      repaired += '}'
-      json = repaired
+  // Hard validation — every text/richtext key in variable-map.json must
+  // have a non-empty string value. Missing/empty values log per-key so
+  // a truncated response or a malformed LLM output is visible in server
+  // logs instead of silently bottoming out as "" in applyValuesToTemplate.
+  for (const v of variableMap) {
+    if (v.type !== 'text' && v.type !== 'richtext') continue
+    const value = merged[v.key]
+    if (value === undefined || value === null || value === '') {
+      console.warn(`[store/generate] missing value for required key: ${v.key} (section=${v.section}, type=${v.type})`)
     }
   }
 
-  return JSON.parse(json) as Record<string, string>
+  return merged
 }
 
 // ---------------------------------------------------------------------------
