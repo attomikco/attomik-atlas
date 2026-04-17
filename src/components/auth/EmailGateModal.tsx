@@ -7,10 +7,24 @@ import { colors, font, fontWeight, fontSize, radius, zIndex, transition, letterS
 interface EmailGateModalProps {
   isOpen: boolean
   onAuthSuccess: () => void
+  // Optional dismiss handler. When provided, a × close button renders in the
+  // top-right corner of the card. Omit for modal flows where the only exit is
+  // successful auth (e.g. onboarding).
+  onClose?: () => void
   // Wizard state snapshot to persist across the auth redirect. Called
   // immediately before signInWithOAuth/signInWithOtp so the caller can capture
   // the freshest values. Return null to skip the stash (e.g. nothing to resume).
   getResumeState?: () => Record<string, unknown> | null
+  // Per-caller copy overrides. Each field falls back to the onboarding-flavored
+  // default below. Use choiceTitle with \n to split across two lines.
+  copy?: {
+    choiceTitle?: string
+    choiceSubtitle?: string
+    emailTitle?: string
+    emailSubtitle?: string
+    emailCta?: string
+    sentSubtitle?: string
+  }
 }
 
 // localStorage key for the pending wizard snapshot. Read by /auth/confirm
@@ -40,7 +54,14 @@ function isValidEmail(value: string): boolean {
   return true
 }
 
-export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }: EmailGateModalProps) {
+export default function EmailGateModal({ isOpen, onAuthSuccess, onClose, getResumeState, copy }: EmailGateModalProps) {
+  const choiceTitle = copy?.choiceTitle ?? 'Your brand is\nalmost ready'
+  const choiceSubtitle = copy?.choiceSubtitle ?? 'Enter your email to see your full marketing engine'
+  const emailTitle = copy?.emailTitle ?? 'Enter your email'
+  const emailSubtitle = copy?.emailSubtitle ?? 'We\u2019ll send a magic link to save your brand'
+  const emailCta = copy?.emailCta ?? 'Send magic link →'
+  const sentSubtitle = copy?.sentSubtitle ?? 'Click the link in your email. We\u2019ll pick up automatically.'
+
   const [visible, setVisible] = useState(false)
   const [readyToShow, setReadyToShow] = useState(false)
   const [step, setStep] = useState<Step>('choice')
@@ -201,7 +222,28 @@ export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }
         padding: '40px 36px 36px',
         opacity: 0,
         animation: 'egmRise 0.4s ease 0.1s forwards',
+        position: 'relative',
       }}>
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              position: 'absolute', top: 14, right: 14,
+              width: 32, height: 32,
+              background: 'transparent', border: 'none',
+              color: colors.whiteAlpha45,
+              fontSize: 22, lineHeight: 1,
+              cursor: 'pointer',
+              transition: `color ${transition.normal}`,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = colors.paper }}
+            onMouseLeave={e => { e.currentTarget.style.color = colors.whiteAlpha45 }}
+          >
+            ×
+          </button>
+        )}
+
         {/* ── Step: choice ── */}
         {step === 'choice' && (
           <>
@@ -215,8 +257,9 @@ export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }
               letterSpacing: letterSpacing.tight,
               textAlign: 'center',
               marginBottom: 12,
+              whiteSpace: 'pre-line',
             }}>
-              Your brand is<br />almost ready
+              {choiceTitle}
             </div>
 
             <div style={{
@@ -227,7 +270,7 @@ export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }
               lineHeight: 1.6,
               marginBottom: 32,
             }}>
-              Enter your email to see your full marketing engine
+              {choiceSubtitle}
             </div>
 
             <button
@@ -301,8 +344,9 @@ export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }
               letterSpacing: letterSpacing.tight,
               textAlign: 'center',
               marginBottom: 12,
+              whiteSpace: 'pre-line',
             }}>
-              Enter your email
+              {emailTitle}
             </div>
             <div style={{
               fontFamily: font.mono,
@@ -312,7 +356,7 @@ export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }
               lineHeight: 1.6,
               marginBottom: 28,
             }}>
-              We&rsquo;ll send a magic link to save your brand
+              {emailSubtitle}
             </div>
 
             <form onSubmit={handleEmailSubmit}>
@@ -364,7 +408,7 @@ export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }
                   transition: `opacity ${transition.normal}, background ${transition.normal}`,
                 }}
               >
-                {emailLoading ? 'Sending...' : 'Send magic link →'}
+                {emailLoading ? 'Sending...' : emailCta}
               </button>
             </form>
 
@@ -406,7 +450,7 @@ export default function EmailGateModal({ isOpen, onAuthSuccess, getResumeState }
               marginBottom: 28,
             }}>
               We sent a magic link to <strong style={{ color: colors.paper }}>{email}</strong>.<br />
-              Click the link in your email. We&rsquo;ll pick up automatically.
+              {sentSubtitle}
             </div>
 
             <button

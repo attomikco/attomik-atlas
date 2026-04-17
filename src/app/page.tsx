@@ -8,6 +8,7 @@ import AttomikLogo from '@/components/ui/AttomikLogo'
 import MarketingFooter from '@/components/ui/MarketingFooter'
 import type { BrandCardData } from '@/components/dashboard/BrandCard'
 import YourBrandsSection from '@/components/home/YourBrandsSection'
+import EmailGateModal from '@/components/auth/EmailGateModal'
 
 const BG = '#0a0a0a'
 const BG_ALT = '#111111'
@@ -156,6 +157,7 @@ export default function HomePage() {
   const [userBrands, setUserBrands] = useState<BrandCardData[]>([])
   const [campaignsByBrand, setCampaignsByBrand] = useState<Record<string, string>>({})
   const [brandsLoaded, setBrandsLoaded] = useState(false)
+  const [signInOpen, setSignInOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -312,7 +314,16 @@ export default function HomePage() {
 
         {/* top bar */}
         <div className="page-pad nav-top" style={{ padding: '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', position: 'relative', zIndex: 1 }}>
-          <a href="/login" className="ghost" style={{ ...label, color: MUTED, textDecoration: 'none', transition: 'color 0.15s' }}>Sign in →</a>
+          {!isLoggedIn && (
+            <button
+              type="button"
+              onClick={() => setSignInOpen(true)}
+              className="ghost"
+              style={{ ...label, color: MUTED, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', transition: 'color 0.15s' }}
+            >
+              Sign in →
+            </button>
+          )}
         </div>
 
         {/* center content */}
@@ -515,6 +526,20 @@ export default function HomePage() {
 
       {/* ── FOOTER ──────────────────────────────────────── */}
       <MarketingFooter />
+
+      <EmailGateModal
+        isOpen={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        onAuthSuccess={() => window.location.reload()}
+        copy={{
+          choiceTitle: 'Sign in',
+          choiceSubtitle: 'Continue with Google or get a magic link',
+          emailTitle: 'Sign in with email',
+          emailSubtitle: "We'll send you a magic link",
+          emailCta: 'Send magic link →',
+          sentSubtitle: 'Click the link in your email to sign in',
+        }}
+      />
     </div>
   )
 }
