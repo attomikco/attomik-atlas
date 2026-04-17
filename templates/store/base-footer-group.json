@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "Footer group",
   "type": "footer",
   "order": [
     "text_zM9YDz",
@@ -10,7 +10,7 @@
   ],
   "sections": {
     "text_zM9YDz": {
-      "name": "",
+      "name": "t:sections.text.name",
       "type": "text",
       "settings": {
         "content": "",
@@ -102,7 +102,7 @@
       ]
     },
     "liquid_4B4dQU": {
-      "name": "",
+      "name": "t:sections.liquid.name",
       "type": "liquid",
       "disabled": true,
       "settings": {

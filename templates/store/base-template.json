@@ -105,7 +105,7 @@
       ]
     },
     "banner_j6wcjX": {
-      "name": "",
+      "name": "t:sections.banner.name",
       "type": "banner",
       "blocks": {
         "buttons_7z4C9R": {
@@ -163,7 +163,7 @@
       ]
     },
     "marquee_BqJJTc": {
-      "name": "",
+      "name": "t:sections.marquee.name",
       "type": "marquee",
       "blocks": {
         "image_3YqJhd": {
@@ -228,7 +228,7 @@
       ]
     },
     "icon_grid_pAWkqU": {
-      "name": "",
+      "name": "t:sections.icon_grid.name",
       "type": "icon-grid",
       "blocks": {
         "icon_YwWaLw": {
@@ -322,7 +322,7 @@
       ]
     },
     "accordions_LrLbTK": {
-      "name": "",
+      "name": "t:sections.accordions.name",
       "type": "accordions",
       "blocks": {
         "content_3jkmy8": {
@@ -417,7 +417,7 @@
       ]
     },
     "content_grid_3GJfUT": {
-      "name": "",
+      "name": "t:sections.content_grid.name",
       "type": "content-grid",
       "blocks": {
         "content_MazXh6": {
@@ -499,7 +499,7 @@
       ]
     },
     "content_grid_DwtYHh": {
-      "name": "",
+      "name": "t:sections.content_grid.name",
       "type": "content-grid",
       "blocks": {
         "content_6EQNYk": {
@@ -581,7 +581,7 @@
       ]
     },
     "content_grid_fAJFeY": {
-      "name": "",
+      "name": "t:sections.content_grid.name",
       "type": "content-grid",
       "blocks": {
         "content_bH8tpB": {
@@ -637,7 +637,7 @@
       ]
     },
     "content_grid_kXU8Qz": {
-      "name": "",
+      "name": "t:sections.content_grid.name",
       "type": "content-grid",
       "blocks": {
         "content_UDd3CH": {
@@ -720,7 +720,7 @@
       ]
     },
     "content_grid_tMrLNn": {
-      "name": "",
+      "name": "t:sections.content_grid.name",
       "type": "content-grid",
       "blocks": {
         "content_WfQxEw": {
@@ -802,7 +802,7 @@
       ]
     },
     "content_grid_wGT9Va": {
-      "name": "",
+      "name": "t:sections.content_grid.name",
       "type": "content-grid",
       "blocks": {
         "content_7bQBtz": {
@@ -1018,7 +1018,7 @@
       }
     },
     "product_slider_AQDing": {
-      "name": "",
+      "name": "t:sections.product_slider.name",
       "type": "product-slider",
       "blocks": {
         "content_iXr89U": {
@@ -1081,7 +1081,7 @@
       ]
     },
     "testimonial_grid_ppc7zf": {
-      "name": "",
+      "name": "t:sections.testimonial_grid.name",
       "type": "testimonial-grid",
       "blocks": {
         "testimonial_4m7Eq8": {
@@ -1135,7 +1135,7 @@
       ]
     },
     "testimonial_slider_hTJXnt": {
-      "name": "",
+      "name": "t:sections.testimonial_slider.name",
       "type": "testimonial-slider",
       "blocks": {
         "testimonial_7XQnba": {
