@@ -2075,10 +2075,24 @@ export default function PreviewClient({
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
                   </div>
-                  <div className="pv-iframe" style={{ width: '100%', height: 600, overflow: 'auto', borderRadius: '8px 8px 0 0', background: colors.paper }}>
+                  {/* Render the iframe at a desktop viewport (1 / 0.6 ≈ 1.67× parent
+                      width) and scale it down to fit. transform-origin: top left
+                      anchors the left edge to the frame, so wide-viewport CSS
+                      tricks (full-bleed negative margins, `calc(50vw - 50%)`)
+                      that were previously pushing text off the left in an
+                      860px iframe now have room to resolve correctly. Same
+                      pattern used on the mobile phone frame below. */}
+                  <div className="pv-iframe" style={{ width: '100%', height: 600, overflow: 'hidden', borderRadius: '8px 8px 0 0', background: colors.paper }}>
                     <iframe
                       src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
-                      style={{ width: '100%', height: 600, border: 'none', display: 'block' }}
+                      style={{
+                        width: 'calc(100% / 0.6)',
+                        height: 'calc(100% / 0.6)',
+                        border: 'none',
+                        display: 'block',
+                        transform: 'scale(0.6)',
+                        transformOrigin: 'top left',
+                      }}
                       title="Landing page preview" loading="lazy"
                     />
                   </div>
