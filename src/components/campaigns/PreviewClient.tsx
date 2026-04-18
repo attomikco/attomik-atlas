@@ -1053,6 +1053,9 @@ export default function PreviewClient({
           .pv-iframe { height: 280px !important; }
           .pv-bar-btn { font-size: 12px !important; padding: 7px 12px !important; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .pv-atlas-beat { animation: none !important; opacity: 1 !important; transform: none !important; }
+        }
       `}</style>
 
       {/* ═══ STICKY TOP BAR ═══ */}
@@ -1154,6 +1157,84 @@ export default function PreviewClient({
       </div>
 
       {/* ═══ SECTIONS ═══ */}
+
+      {/* ═══ ATLAS NARRATIVE ═══
+          Frame-setting beat above the generated outputs. Sequential
+          phrase fade-up using the existing `sectionReveal` keyframe
+          (120ms stagger). `prefers-reduced-motion` short-circuits to
+          instant render via the `.pv-atlas-beat` media-query rule in
+          the page-level style block. */}
+      <div className="pv-section" style={{
+        maxWidth: 1080, margin: '0 auto', padding: '0 24px',
+        marginTop: 'clamp(48px, 6vw, 88px)',
+        marginBottom: 'clamp(56px, 7vw, 96px)',
+        textAlign: 'center', position: 'relative',
+      }}>
+        <div className="pv-atlas-beat" style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          marginBottom: 40,
+          opacity: 0, animation: 'sectionReveal 0.6s 0.1s ease-out forwards',
+        }}>
+          <div style={{ width: 40, height: 2, background: colors.accent, marginBottom: 16 }} />
+          <div className="pv-section-heading" style={{
+            fontFamily: font.heading, fontWeight: fontWeight.heading,
+            fontSize: fontSize['4xl'], color: colors.paper,
+            textTransform: 'uppercase', lineHeight: 1.1,
+          }}>
+            Atlas
+          </div>
+          <div style={{
+            fontFamily: font.mono, fontSize: fontSize.caption,
+            color: colors.whiteAlpha45, background: colors.whiteAlpha5,
+            border: `1px solid ${colors.whiteAlpha10}`, borderRadius: radius.pill,
+            padding: '4px 12px', marginTop: 8, display: 'inline-block',
+          }}>
+            ✦ The work starts after launch
+          </div>
+        </div>
+
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <div className="pv-atlas-beat" style={{
+            fontFamily: font.heading, fontWeight: fontWeight.heading,
+            fontSize: 'clamp(24px, 3.2vw, 36px)',
+            color: colors.accent, lineHeight: 1.2,
+            letterSpacing: letterSpacing.snug,
+            marginBottom: 28,
+            opacity: 0, animation: 'sectionReveal 0.6s 0.22s ease-out forwards',
+          }}>
+            Everything below is just the first draft.
+          </div>
+
+          <div style={{
+            fontFamily: font.heading, fontWeight: fontWeight.medium,
+            fontSize: 'clamp(17px, 1.9vw, 20px)',
+            color: colors.whiteAlpha80, lineHeight: 1.55,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            <div className="pv-atlas-beat" style={{
+              opacity: 0, animation: 'sectionReveal 0.6s 0.34s ease-out forwards',
+            }}>
+              Atlas measures every ad you run,
+            </div>
+            <div className="pv-atlas-beat" style={{
+              opacity: 0, animation: 'sectionReveal 0.6s 0.46s ease-out forwards',
+            }}>
+              studies <span style={{ color: colors.accent, fontWeight: fontWeight.bold }}>what your competitors do</span>,
+            </div>
+            <div className="pv-atlas-beat" style={{
+              opacity: 0, animation: 'sectionReveal 0.6s 0.58s ease-out forwards',
+            }}>
+              and learns from every <span style={{ color: colors.accent, fontWeight: fontWeight.bold }}>campaign</span> on the platform.
+            </div>
+            <div className="pv-atlas-beat" style={{
+              marginTop: 16, color: colors.whiteAlpha55,
+              opacity: 0, animation: 'sectionReveal 0.6s 0.7s ease-out forwards',
+            }}>
+              The next batch is always sharper than the last.
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ═══ YOUR BRAND IN THE FEED ═══ */}
       {gridCards.length >= 6 && (
