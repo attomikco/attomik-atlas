@@ -111,7 +111,7 @@ export default function CreativesPage() {
   if (loading || !brandsLoaded) return null
 
   return (
-    <div className="p-4 md:p-10 max-w-[1600px]">
+    <div style={{ maxWidth: 1600 }}>
       <CreativeBuilder
         brands={brands}
         defaultBrandId={activeBrandId || undefined}

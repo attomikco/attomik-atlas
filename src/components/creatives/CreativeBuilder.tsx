@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { BrandImage } from '@/types'
 import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
 import { buildOrderedImagePool, filterByOrientation, pickImageForTemplate, pickSecondImage } from '@/lib/image-helpers'
-import { Download, Sparkles, Loader2, Check, Wand2 } from 'lucide-react'
+import { Bookmark, Download, Loader2, Sparkles, Wand2, X, Zap } from 'lucide-react'
 import { TextPosition } from './templates/types'
 import { Callout } from './templates/types'
 import { TEMPLATES, SIZES } from './templates/registry'
@@ -12,11 +12,10 @@ import type { Brand, GeneratedCopy, StyleSnapshot, Variation, Draft } from './ty
 import { useBrandSync, isLightColor } from './hooks/useBrandSync'
 import { useCreativeExport } from './hooks/useCreativeExport'
 import CopyEditor from './sidebar/CopyEditor'
+import ComparisonSidebar from './sidebar/ComparisonSidebar'
+import InfographicSidebar from './sidebar/InfographicSidebar'
+import MissionSidebar from './sidebar/MissionSidebar'
 import type { CtaType } from './types'
-import StylePanel from './sidebar/StylePanel'
-import PreviewCanvas from './preview/PreviewCanvas'
-import VariationStrip from './preview/VariationStrip'
-import DraftStrip from './preview/DraftStrip'
 import MetaLaunchModal from './MetaLaunchModal'
 import { colors, font, fontSize, fontWeight, spacing, radius, shadow, letterSpacing } from '@/lib/design-tokens'
 
@@ -108,6 +107,26 @@ export default function CreativeBuilder({
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [previewContainerW, setPreviewContainerW] = useState(600)
   const leftPanelRef = useRef<HTMLDivElement>(null)
+
+  // ── NEW (reshell-only): inspector + reel tab state, persisted to
+  // localStorage so a refresh keeps the user's last tab. No other new
+  // state is introduced; everything else reuses what was already here.
+  const [inspectorTab, setInspectorTab] = useState<'copy' | 'style' | 'layout'>(() => {
+    if (typeof window === 'undefined') return 'copy'
+    const saved = window.localStorage.getItem('atlas-creative-studio-inspector-tab')
+    return saved === 'style' || saved === 'layout' ? (saved as 'style' | 'layout') : 'copy'
+  })
+  const [reelTab, setReelTab] = useState<'drafts' | 'variations'>(() => {
+    if (typeof window === 'undefined') return 'drafts'
+    const saved = window.localStorage.getItem('atlas-creative-studio-reel-tab')
+    return saved === 'variations' ? 'variations' : 'drafts'
+  })
+  useEffect(() => {
+    try { window.localStorage.setItem('atlas-creative-studio-inspector-tab', inspectorTab) } catch { /* storage quota / privacy mode */ }
+  }, [inspectorTab])
+  useEffect(() => {
+    try { window.localStorage.setItem('atlas-creative-studio-reel-tab', reelTab) } catch { /* storage quota / privacy mode */ }
+  }, [reelTab])
 
   // ── Helpers ────────────────────────────────────────────────────────
   function updateBgColor(color: string) {
@@ -692,7 +711,7 @@ FB_DESCRIPTION: <under 12 words>`,
   })
 
   // ── Preview scaling ────────────────────────────────────────────────
-  const maxPreviewH = 460
+  const maxPreviewH = 420
   const maxPreviewW = Math.min(600, previewContainerW || 600)
   const scale = Math.min(maxPreviewH / size.h, maxPreviewW / size.w)
   const previewW = Math.round(size.w * scale)
@@ -758,337 +777,1091 @@ FB_DESCRIPTION: <under 12 words>`,
     }
   }
 
+  // ── Reshell helpers ────────────────────────────────────────────────
+  // Breadcrumb creative name per Open Q #5: headline, else "Untitled".
+  const creativeName = (headline && headline.trim()) || 'Untitled'
+  const crumbName = creativeName.length > 40 ? creativeName.slice(0, 38) + '…' : creativeName
+
+  // Toolbar Launch button targets the currently-loaded saved draft per Open Q #6.
+  const activeDraftRow = activeDraft !== null ? savedDrafts[activeDraft] : null
+  const launchCanFire = !!(activeDraftRow?.dbId && metaConnected && !activeDraftRow.metaAdId)
+  const launchTooltip = !activeDraftRow?.dbId
+    ? 'Save draft to launch'
+    : !metaConnected
+      ? 'Connect Meta in Brand Hub'
+      : activeDraftRow.metaAdId
+        ? `Already launched (${activeDraftRow.metaAdStatus || 'PAUSED'})`
+        : 'Launch to Meta'
+
+  // Background mode derivation per Open Q #7, widened to match ANY color in
+  // the full brand palette (bg_base / bg_dark / primary / secondary / accent /
+  // text_on_* / btn_*) so selecting bg_dark or secondary_color from the swatch
+  // grid is correctly classified as 'brand' instead of 'custom'. The
+  // brandColors array already includes black and white, so an ink match would
+  // register as 'brand'; we check `ink` explicitly first so pure-black stays
+  // classified as 'dark' — the more useful label for a user switching the
+  // background to a dark canvas.
+  const bgModeDerived: 'image' | 'brand' | 'dark' | 'custom' = (() => {
+    if (selectedImageId) return 'image'
+    const bg = bgColor.toLowerCase()
+    if (bg === colors.ink.toLowerCase()) return 'dark'
+    const matchesPalette = brandColors.some(c => c.value.toLowerCase() === bg)
+    if (matchesPalette) return 'brand'
+    return 'custom'
+  })()
+  function setBgMode(mode: 'image' | 'brand' | 'dark' | 'custom') {
+    if (mode === 'image') {
+      if (!selectedImageId) {
+        const first = lifestyleImages[0] || productImages[0] || generatedImages[0]
+        if (first) setSelectedImageId(first.id)
+      }
+    } else if (mode === 'brand') {
+      setSelectedImageId(null)
+      updateBgColor(brand?.primary_color || colors.ink)
+    } else if (mode === 'dark') {
+      setSelectedImageId(null)
+      updateBgColor(colors.ink)
+    } else {
+      // 'custom' — clear image, keep bgColor; user edits via color field
+      setSelectedImageId(null)
+    }
+  }
+
+  // Char soft-limits for Copy tab counters (warning style past limit).
+  // 40 for the on-creative headline mirrors the Meta FB_HEADLINE_LIMIT
+  // already used in CopyEditor and is a common "billboard" upper-bound.
+  const HEADLINE_BILLBOARD = 40
+  const BODY_LIMIT = 75
+
+  // 3×3 text position pad — render all 9 cells but disable the 2 unsupported
+  // middle-row side positions per Open Q #10.
+  const POS_GRID: (TextPosition | null)[] = [
+    'top-left', 'top-center', 'top-right',
+    null, 'center', null,
+    'bottom-left', 'bottom-center', 'bottom-right',
+  ]
+
   // ── Render ─────────────────────────────────────────────────────────
+  // Replaces the old 3-column flex stack with the new workspace shell
+  // per design handoff (README §4.1). Every handler below is reused
+  // verbatim from the state declarations above; no new data flow.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: colors.gray200 }}>
+    <div className="cs-shell" style={{
+      display: 'flex', flexDirection: 'column',
+      height: 'calc(100vh - 72px)',
+      overflow: 'hidden',
+      background: colors.previewCream,
+    }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        .cs-scroll::-webkit-scrollbar { width: 6px; height: 6px }
+        .cs-scroll::-webkit-scrollbar-thumb { background: ${colors.gray400}; border-radius: 3px }
+        .cs-scroll::-webkit-scrollbar-track { background: transparent }
+        .cs-grid { display: grid; grid-template-columns: 232px 1fr 320px; flex: 1; min-height: 0; }
+        .cs-stage {
+          background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+          background-size: 18px 18px;
+        }
+        .cs-template-card:hover { transform: translateY(-1px); border-color: ${colors.ink}; }
+        .cs-media-card:hover { transform: translateY(-1px); border-color: ${colors.ink}; }
+        .cs-crumb-link { text-decoration: none; }
+        .cs-crumb-link:hover { text-decoration: underline; }
+        @media (max-width: 1099px) and (min-width: 900px) {
+          .cs-grid { grid-template-columns: 200px 1fr 280px; }
+        }
+        @media (max-width: 899px) {
+          .cs-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
+          .cs-rail { max-height: 180px; overflow-x: auto; overflow-y: hidden; display: flex; border-right: none; border-bottom: 1px solid ${colors.border}; }
+          .cs-rail > section { flex-shrink: 0; min-width: 240px; border-bottom: none; border-right: 1px solid ${colors.border}; }
+          .cs-inspector { max-height: 300px; border-left: none; border-top: 1px solid ${colors.border}; }
+        }
+      `}</style>
 
-      {/* ── TOPBAR ── */}
-      <div className="creative-topbar" style={{ display: 'flex', alignItems: 'center', gap: spacing[2], padding: `0 ${spacing[4]}px`, height: 48, minHeight: 48, background: colors.paper, borderBottom: `1px solid ${colors.blackAlpha8}`, flexShrink: 0 }}>
-        <style>{`@media(max-width:767px){.creative-topbar{overflow-x:auto;white-space:nowrap;scrollbar-width:none;-ms-overflow-style:none}.creative-topbar::-webkit-scrollbar{display:none}}`}</style>
-        {/* Size pills */}
-        {SIZES.map(s => (
-          <button key={s.id} onClick={() => setSizeId(s.id)} {...pill(sizeId === s.id)}>{s.label}</button>
-        ))}
+      {/* ══════════ TOOLBAR (44px) ══════════ */}
+      <div className="cs-toolbar" style={{
+        display: 'flex', alignItems: 'center', gap: spacing[3],
+        padding: `0 ${spacing[4]}px`,
+        height: 44, minHeight: 44, flexShrink: 0,
+        background: colors.paper,
+        borderBottom: `1px solid ${colors.border}`,
+      }}>
+        {/* Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1,
+          fontFamily: font.mono, fontSize: 11, letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+        }}>
+          {campaignId ? (
+            <a href={`/preview/${campaignId}`} className="cs-crumb-link"
+              style={{ color: colors.subtle, fontFamily: font.mono, fontSize: 11, letterSpacing: letterSpacing.wide, textTransform: 'uppercase' }}>
+              Campaigns
+            </a>
+          ) : (
+            <span style={{ color: colors.subtle }}>Campaigns</span>
+          )}
+          <span style={{ color: colors.disabled }}>/</span>
+          <span style={{ color: colors.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
+            {campaignBrief ? 'Campaign' : 'Draft'}
+          </span>
+          <span style={{ color: colors.disabled }}>/</span>
+          <span style={{ color: colors.ink, fontWeight: fontWeight.bold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={creativeName}>
+            {crumbName}
+          </span>
+        </div>
 
-        {/* Divider */}
-        <div style={{ width: 1, height: 20, background: colors.blackAlpha10, flexShrink: 0 }} />
+        {/* Size pill group — active = ink bg + accent text, 700 weight */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {SIZES.map(s => {
+            const active = sizeId === s.id
+            return (
+              <button key={s.id} onClick={() => setSizeId(s.id)} style={{
+                padding: '5px 12px', borderRadius: radius.sm,
+                fontSize: 12, fontWeight: active ? 700 : 600,
+                fontFamily: font.mono,
+                background: active ? colors.ink : 'transparent',
+                color: active ? colors.accent : colors.muted,
+                border: active ? '1px solid transparent' : `1px solid ${colors.border}`,
+                cursor: 'pointer', transition: 'all 0.15s ease',
+              }}>{s.label}</button>
+            )
+          })}
+        </div>
 
-        {/* Template pills */}
-        {TEMPLATES.map(t => (
-          <button key={t.id}
-            onClick={() => {
-              setTemplateId(t.id)
-              if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) }
-              if (t.id === 'ugc') { setImagePosition('bottom') }
-              if (t.id === 'testimonial') { setImagePosition('bottom') }
-              const orderedImages = buildOrderedImagePool(lifestyleImages, productImages, otherImages)
-              const { portraits, landscapes, squares } = filterByOrientation(orderedImages)
-              const randFrom = (arr: typeof images) => arr[Math.floor(Math.random() * arr.length)]
-              if (t.id === 'overlay' || t.id === 'stat') { const sq = squares.length > 0 ? randFrom(squares) : randFrom(orderedImages); if (sq) setSelectedImageId(sq.id) }
-              if (t.id === 'split' && portraits.length > 0) setSelectedImageId(randFrom(portraits).id)
-              if ((t.id === 'ugc' || t.id === 'testimonial') && landscapes.length > 0) setSelectedImageId(randFrom(landscapes).id)
-              if (t.id === 'grid' && orderedImages.length > 1) {
-                setSelectedImageId(orderedImages[0].id)
-                const productShot = productImages[0] || orderedImages[1]
-                if (productShot) setSelectedProductImageId(productShot.id)
-              }
-            }}
-            {...pill(templateId === t.id)}
-            style={{
-              ...(templateId === t.id
-                ? { background: colors.gray900, color: colors.tailGreen400, border: 'none' }
-                : { background: colors.white, border: `1px solid ${colors.gray400}`, color: colors.gray333 }),
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+        {/* Dims */}
+        <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.subtle, letterSpacing: letterSpacing.wide, whiteSpace: 'nowrap' }}>
+          {size.w}×{size.h}
+        </div>
 
-        {campaignId && (
+        <div style={{ width: 1, height: 20, background: colors.border }} />
+
+        {/* Save draft — Update when editing, Save new otherwise */}
+        {activeDraft !== null && savedDrafts[activeDraft]?.dbId ? (
           <>
-            <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-              <a href={`/preview/${campaignId}`} style={{ fontSize: fontSize.caption, color: colors.subtle, textDecoration: 'none', fontWeight: fontWeight.semibold, whiteSpace: 'nowrap' }}>
-                ← Back to funnel
-              </a>
-            </div>
+            <button onClick={updateCurrentDraft} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: radius.sm,
+              background: colors.ink, color: colors.accent, border: 'none',
+              fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: 12,
+              letterSpacing: '0.02em',
+              cursor: 'pointer', transition: 'all 0.15s ease',
+            }}>
+              <Bookmark size={12} /> Update
+            </button>
+            <button onClick={saveCurrentAsDraft} style={{
+              padding: '6px 12px', borderRadius: radius.sm,
+              background: 'transparent', color: colors.ink, border: `1px solid ${colors.border}`,
+              fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: 12,
+              cursor: 'pointer', transition: 'all 0.15s ease',
+            }}>Save as new</button>
           </>
+        ) : (
+          <button onClick={saveCurrentAsDraft} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', borderRadius: radius.sm,
+            background: colors.ink, color: colors.accent, border: 'none',
+            fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: 12,
+            letterSpacing: '0.02em',
+            cursor: 'pointer', transition: 'all 0.15s ease',
+          }}>
+            <Bookmark size={12} /> Save draft
+          </button>
         )}
+
+        {/* Export PNG */}
+        <button onClick={exportPng} disabled={exporting || exportingAll} style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', borderRadius: radius.sm,
+          background: 'transparent', color: colors.ink, border: `1px solid ${colors.border}`,
+          fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: 12,
+          cursor: exporting ? 'wait' : 'pointer',
+          opacity: exporting ? 0.5 : 1,
+          transition: 'all 0.15s ease',
+        }}>
+          {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+          Export
+        </button>
+
+        {/* Export all sizes — ghost secondary per Open Q #15 */}
+        <button onClick={exportAllSizes} disabled={exporting || exportingAll} style={{
+          padding: '6px 12px', borderRadius: radius.sm,
+          background: 'transparent', color: colors.muted, border: 'none',
+          fontFamily: font.mono, fontWeight: 600, fontSize: 11,
+          letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+          cursor: exportingAll ? 'wait' : 'pointer',
+          opacity: exportingAll ? 0.5 : 1,
+          transition: 'all 0.15s ease',
+        }}>
+          {exportingAll ? 'Exporting…' : `Export all (${SIZES.length})`}
+        </button>
+
+        {/* Launch — primary, ink bg + accent text */}
+        <button
+          onClick={() => { if (launchCanFire && activeDraft !== null) setLaunchModalDraft(activeDraft) }}
+          disabled={!launchCanFire}
+          title={launchTooltip}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 16px', borderRadius: radius.sm,
+            background: colors.ink,
+            color: colors.accent,
+            border: 'none',
+            fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: 12,
+            letterSpacing: '0.02em',
+            cursor: launchCanFire ? 'pointer' : 'not-allowed',
+            opacity: launchCanFire ? 1 : 0.4,
+            boxShadow: launchCanFire ? shadow.accent : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Zap size={12} /> Launch
+        </button>
       </div>
 
-      {/* ── MAIN AREA ── */}
-      <div className="flex flex-col md:flex-row" style={{ alignItems: 'flex-start' }}>
+      {/* ══════════ 3-COLUMN GRID ══════════ */}
+      <div className="cs-grid">
 
-        {/* ── PREVIEW PANEL ── */}
-        <div ref={leftPanelRef} className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ background: colors.paper, borderRadius: radius.xl, margin: spacing[3], padding: spacing[4], boxShadow: shadow.card }}>
-            <PreviewCanvas
-              templateLabel={template.label}
-              size={size}
-              previewW={previewW}
-              previewH={previewH}
-              scale={scale}
-              TemplateComponent={TemplateComponent}
-              templateProps={templateProps}
-              bodyFont={bodyFont}
-              bodyText={bodyText}
-              headline={headline}
-              ctaText={ctaText}
-              fbPrimaryText={fbPrimaryText}
-              fbHeadline={fbHeadline}
-              fbDescription={fbDescription}
-              saveCurrentAsDraft={saveCurrentAsDraft}
-              updateCurrentDraft={updateCurrentDraft}
-              clearActiveDraft={clearActiveDraft}
-              isEditingDraft={activeDraft !== null && !!savedDrafts[activeDraft]?.dbId}
-              batchGenerating={batchGenerating}
-              batchCount={batchCount}
-              setBatchCount={setBatchCount}
-              generateBatch={generateBatch}
-              stopBatch={stopBatch}
-              variationsCount={variations.length}
-              imagesCount={images.length}
-              setExportToast={setExportToast}
-              exportPng={exportPng}
-              exportAllSizes={exportAllSizes}
-              exporting={exporting}
-              exportingAll={exportingAll}
-              afterBatchSlot={
-                variations.length > 0 ? (
-                  <div style={{ marginTop: spacing[3] }}>
-                    <VariationStrip
-                      variations={variations}
-                      activeVariation={activeVariation}
-                      loadVariation={loadVariation}
-                      saveVariationAsDraft={saveVariationAsDraft}
-                      savedDrafts={savedDrafts}
-                      size={size}
-                      images={images}
-                      getPublicUrl={getPublicUrl}
-                      thumbProps={thumbProps}
-                      exportAllVariations={exportAllVariations}
-                      exportingAll={exportingAll}
-                      sizeId={sizeId}
-                    />
-                  </div>
-                ) : null
-              }
-            />
-
-            {/* Draft strip */}
-            <div style={{ marginTop: spacing[3] }}>
-              <DraftStrip
-                savedDrafts={savedDrafts}
-                activeDraft={activeDraft}
-                loadDraft={loadDraft}
-                removeDraft={removeDraft}
-                size={size}
-                images={images}
-                getPublicUrl={getPublicUrl}
-                thumbProps={thumbProps}
-                exportAllDrafts={exportAllDrafts}
-                exportingAll={exportingAll}
-                metaConnected={metaConnected}
-                onLaunchDraft={i => setLaunchModalDraft(i)}
-              />
+        {/* ── LEFT RAIL ── */}
+        <aside className="cs-rail cs-scroll" style={{
+          borderRight: `1px solid ${colors.border}`,
+          background: colors.paper,
+          overflowY: 'auto', overflowX: 'hidden',
+        }}>
+          {/* Templates */}
+          <section style={{ padding: `${spacing[3]}px`, borderBottom: `1px solid ${colors.border}` }}>
+            <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', color: colors.muted, marginBottom: spacing[2] }}>
+              Templates
             </div>
-
-          </div>
-        </div>
-
-        {/* ── IMAGES PANEL ── */}
-        <div className="w-full md:w-auto" style={{ flex: 0.5, minWidth: 0 }}>
-          <div style={{ background: colors.paper, borderRadius: radius.xl, margin: spacing[3], padding: spacing[4], boxShadow: shadow.card, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
-            {/* Lifestyle first — sets the emotional tone for a creative and is the
-                default pick downstream. Product shots come after as fallback. */}
-            {lifestyleImages.length > 0 && (
-              <>
-                <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: spacing[2] }}>LIFESTYLE</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {lifestyleImages.map(img => (
-                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {productImages.length > 0 && (
-              <>
-                <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginTop: lifestyleImages.length > 0 ? spacing[4] : 0, marginBottom: spacing[2] }}>PRODUCT</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {productImages.map(img => (
-                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {otherImages.length > 0 && (
-              <>
-                <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginTop: spacing[4], marginBottom: spacing[2] }}>OTHER</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {otherImages.map(img => (
-                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {images.length === 0 && (
-              <div style={{ fontSize: fontSize.caption, color: colors.gray700, textAlign: 'center', padding: `${spacing[6]}px 0` }}>No images</div>
-            )}
-
-            {/* ── AI GENERATED SECTION ── */}
-            <div style={{ marginTop: images.length > 0 ? spacing[5] : 0, paddingTop: images.length > 0 ? spacing[4] : 0, borderTop: images.length > 0 ? `1px solid ${colors.blackAlpha8}` : 'none' }}>
-              <div style={{ fontFamily: font.mono, fontSize: fontSize.sm, color: colors.accent, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: spacing[1] }}>AI GENERATED</div>
-              <div style={{ fontFamily: font.mono, fontSize: fontSize.xs, color: colors.gray700, lineHeight: 1.4, marginBottom: spacing[3] }}>AI-generated lifestyle scenes — place your product on top</div>
-              <button
-                onClick={generateImage}
-                disabled={generatingImage || !brandId}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing[2],
-                  width: '100%', padding: `${spacing[3]}px ${spacing[3]}px`, borderRadius: radius.md,
-                  background: generatingImage ? colors.darkCard : colors.ink, color: colors.white,
-                  fontFamily: font.mono, fontSize: fontSize.sm, fontWeight: fontWeight.bold,
-                  textTransform: 'uppercase', letterSpacing: letterSpacing.wide,
-                  border: 'none', cursor: generatingImage ? 'default' : 'pointer',
-                  opacity: generatingImage ? 0.7 : 1, marginBottom: spacing[2],
-                }}
-              >
-                {generatingImage ? (
-                  <>
-                    <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Generating...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 size={14} /> Generate Background
-                  </>
-                )}
-              </button>
-              {generateError && (
-                <div style={{ fontSize: fontSize.sm, color: colors.dangerAlt, fontFamily: font.mono, marginBottom: spacing[2] }}>{generateError}</div>
-              )}
-              {generatedImages.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {generatedImages.map(img => (
-                    <div key={img.id} onClick={() => setSelectedImageId(img.id === selectedImageId ? null : img.id)}
-                      style={{ width: 'calc(50% - 3px)', aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', cursor: 'pointer', outline: img.id === selectedImageId ? `2px solid ${colors.accent}` : 'none', outlineOffset: 2 }}>
-                      <img src={getPublicUrl(img.storage_path)} alt={img.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── STYLE & COPY PANEL ── */}
-        <div className="w-full md:w-auto" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ background: colors.paper, borderRadius: radius.xl, margin: spacing[3], padding: spacing[4], boxShadow: shadow.card }}>
-          <StylePanel
-            templateId={templateId}
-            brand={brand}
-            textPosition={textPosition}
-            setTextPosition={setTextPosition}
-            imagePosition={imagePosition}
-            setImagePosition={setImagePosition}
-            bgColor={bgColor}
-            updateBgColor={updateBgColor}
-            showOverlay={showOverlay}
-            setShowOverlay={setShowOverlay}
-            overlayOpacity={overlayOpacity}
-            setOverlayOpacity={setOverlayOpacity}
-            textBanner={textBanner}
-            setTextBanner={setTextBanner}
-            textBannerColor={textBannerColor}
-            setTextBannerColor={setTextBannerColor}
-            headlineFont={headlineFont}
-            setHeadlineFont={setHeadlineFont}
-            headlineColor={headlineColor}
-            setHeadlineColor={setHeadlineColor}
-            headlineSizeMul={headlineSizeMul}
-            setHeadlineSizeMul={setHeadlineSizeMul}
-            bodyFont={bodyFont}
-            setBodyFont={setBodyFont}
-            bodyColor={bodyColor}
-            setBodyColor={setBodyColor}
-            bodySizeMul={bodySizeMul}
-            setBodySizeMul={setBodySizeMul}
-            brandColors={brandColors}
-            pill={pill}
-            onReset={handleStyleReset}
-            setHeadlineWeight={setHeadlineWeight}
-            setHeadlineTransform={setHeadlineTransform}
-            setBodyFont2={setBodyFont}
-            setBodyWeight={setBodyWeight}
-            setBodyTransform={setBodyTransform}
-            setBgColor={setBgColor}
-            setHeadlineSizeMul2={setHeadlineSizeMul}
-            setBodySizeMul2={setBodySizeMul}
-            setShowOverlay2={setShowOverlay}
-            setOverlayOpacity2={setOverlayOpacity}
-            setTextBanner2={setTextBanner}
-            ctaColor={ctaColor}
-            setCtaColor={setCtaColor}
-            ctaFontColor={ctaFontColor}
-            setCtaFontColor={setCtaFontColor}
-            ctaSizeMul={ctaSizeMul}
-            setCtaSizeMul={setCtaSizeMul}
-          />
-
-          <div style={{ marginTop: spacing[4] }}>
-          <CopyEditor
-            headline={headline}
-            setHeadline={setHeadline}
-            bodyText={bodyText}
-            setBodyText={setBodyText}
-            ctaText={ctaText}
-            setCtaText={setCtaText}
-            showCta={showCta}
-            setShowCta={setShowCta}
-            brandId={brandId}
-            setExportToast={setExportToast}
-            inputCls={inputCls}
-            generateCopy={generateCopy}
-            generating={generating}
-            destinationUrl={destinationUrl}
-            setDestinationUrl={setDestinationUrl}
-            ctaType={ctaType}
-            setCtaType={setCtaType}
-            fbPrimaryText={fbPrimaryText}
-            setFbPrimaryText={setFbPrimaryText}
-            fbHeadline={fbHeadline}
-            setFbHeadline={setFbHeadline}
-            fbDescription={fbDescription}
-            setFbDescription={setFbDescription}
-            brandWebsite={(brand as { website?: string | null } | null)?.website ?? null}
-          />
-          </div>
-
-          {templateId === 'grid' && images.length > 1 && (
-            <div style={{ padding: spacing[4] }}>
-              <label style={{ fontSize: fontSize.xs, color: colors.gray700, textTransform: 'uppercase', letterSpacing: letterSpacing.wider, fontWeight: fontWeight.semibold, display: 'block', marginBottom: spacing[1] }}>Second image</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-                {images.map(img => (
-                  <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
-                    style={{ aspectRatio: '1', borderRadius: radius.xs, overflow: 'hidden', border: `2px solid ${selectedProductImageId === img.id ? colors.tailGreen400 : colors.border}`, padding: 0, background: 'none', cursor: 'pointer' }}>
-                    <img src={getPublicUrl(img.storage_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {TEMPLATES.map(t => {
+                const active = templateId === t.id
+                return (
+                  <button key={t.id} className="cs-template-card"
+                    onClick={() => {
+                      setTemplateId(t.id)
+                      if (t.id === 'stat') { setTextPosition('center'); setShowOverlay(true); setOverlayOpacity(30) }
+                      if (t.id === 'ugc') { setImagePosition('bottom') }
+                      if (t.id === 'testimonial') { setImagePosition('bottom') }
+                      const orderedImages = buildOrderedImagePool(lifestyleImages, productImages, otherImages)
+                      const { portraits, landscapes, squares } = filterByOrientation(orderedImages)
+                      const randFrom = (arr: typeof images) => arr[Math.floor(Math.random() * arr.length)]
+                      if (t.id === 'overlay' || t.id === 'stat') { const sq = squares.length > 0 ? randFrom(squares) : randFrom(orderedImages); if (sq) setSelectedImageId(sq.id) }
+                      if (t.id === 'split' && portraits.length > 0) setSelectedImageId(randFrom(portraits).id)
+                      if ((t.id === 'ugc' || t.id === 'testimonial') && landscapes.length > 0) setSelectedImageId(randFrom(landscapes).id)
+                      if (t.id === 'grid' && orderedImages.length > 1) {
+                        setSelectedImageId(orderedImages[0].id)
+                        const productShot = productImages[0] || orderedImages[1]
+                        if (productShot) setSelectedProductImageId(productShot.id)
+                      }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      height: 52,
+                      border: active ? `2px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                      boxShadow: active ? `0 0 0 3px ${colors.accentAlpha30}` : 'none',
+                      borderRadius: radius.sm,
+                      background: active ? colors.gray150 : colors.white,
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      padding: '0 8px',
+                      fontFamily: font.heading,
+                      fontSize: 13,
+                      fontWeight: active ? fontWeight.heading : fontWeight.bold,
+                      color: colors.ink,
+                      letterSpacing: letterSpacing.slight,
+                      transition: 'all 0.15s ease',
+                    }}>
+                    {t.label}
                   </button>
-                ))}
-              </div>
+                )
+              })}
             </div>
+          </section>
+
+          {/* Lifestyle */}
+          {lifestyleImages.length > 0 && (
+            <section style={{ padding: `${spacing[3]}px`, borderBottom: `1px solid ${colors.border}` }}>
+              <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', color: colors.muted, marginBottom: spacing[2] }}>
+                Lifestyle
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {lifestyleImages.map(img => {
+                  const active = img.id === selectedImageId
+                  return (
+                    <button key={img.id} className="cs-media-card"
+                      onClick={() => setSelectedImageId(active ? null : img.id)}
+                      title={img.file_name}
+                      style={{
+                        position: 'relative',
+                        aspectRatio: '1',
+                        borderRadius: radius.sm,
+                        overflow: 'hidden', padding: 0,
+                        cursor: 'pointer',
+                        border: active ? `2px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                        boxShadow: active ? `0 0 0 3px ${colors.accentAlpha30}` : 'none',
+                        background: colors.gray150,
+                        transition: 'all 0.15s ease',
+                      }}>
+                      <img src={getPublicUrl(img.storage_path)} alt="" loading="lazy"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <span style={{
+                        position: 'absolute', top: 4, left: 4,
+                        fontFamily: font.mono, fontSize: 9, fontWeight: 700,
+                        background: colors.blackAlpha50, color: colors.white,
+                        padding: '1px 6px', borderRadius: 3,
+                        letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                      }}>lifestyle</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
           )}
 
-          </div>
-        </div>
+          {/* Product + Generate */}
+          <section style={{ padding: `${spacing[3]}px` }}>
+            <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', color: colors.muted, marginBottom: spacing[2] }}>
+              Product
+            </div>
+            {productImages.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {productImages.map(img => {
+                  const active = img.id === selectedImageId
+                  return (
+                    <button key={img.id} className="cs-media-card"
+                      onClick={() => setSelectedImageId(active ? null : img.id)}
+                      title={img.file_name}
+                      style={{
+                        position: 'relative',
+                        aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', padding: 0,
+                        cursor: 'pointer',
+                        border: active ? `2px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                        boxShadow: active ? `0 0 0 3px ${colors.accentAlpha30}` : 'none',
+                        background: colors.gray150, transition: 'all 0.15s ease',
+                      }}>
+                      <img src={getPublicUrl(img.storage_path)} alt="" loading="lazy"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <span style={{
+                        position: 'absolute', top: 4, left: 4,
+                        fontFamily: font.mono, fontSize: 9, fontWeight: 700,
+                        background: colors.blackAlpha50, color: colors.white,
+                        padding: '1px 6px', borderRadius: 3,
+                        letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                      }}>product</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.subtle }}>No product images</div>
+            )}
 
-      </div>{/* end MAIN AREA */}
+            {generatedImages.length > 0 && (
+              <div style={{ marginTop: spacing[3], display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {generatedImages.map(img => {
+                  const active = img.id === selectedImageId
+                  return (
+                    <button key={img.id} className="cs-media-card"
+                      onClick={() => setSelectedImageId(active ? null : img.id)}
+                      title={img.file_name}
+                      style={{
+                        position: 'relative',
+                        aspectRatio: '1', borderRadius: radius.sm, overflow: 'hidden', padding: 0,
+                        cursor: 'pointer',
+                        border: active ? `2px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                        boxShadow: active ? `0 0 0 3px ${colors.accentAlpha30}` : 'none',
+                        background: colors.gray150, transition: 'all 0.15s ease',
+                      }}>
+                      <img src={getPublicUrl(img.storage_path)} alt="" loading="lazy"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <span style={{
+                        position: 'absolute', top: 4, left: 4,
+                        fontFamily: font.mono, fontSize: 9, fontWeight: 700,
+                        background: colors.ink, color: colors.accent,
+                        padding: '1px 6px', borderRadius: 3,
+                        letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                      }}>AI</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Generate image — dashed-border CTA */}
+            <button
+              onClick={generateImage}
+              disabled={generatingImage || !brandId}
+              style={{
+                width: '100%', marginTop: spacing[3],
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '10px 12px',
+                border: `1.5px dashed ${colors.border}`, borderRadius: radius.sm,
+                background: 'transparent', color: colors.muted,
+                fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                cursor: generatingImage ? 'wait' : 'pointer',
+                transition: 'all 0.15s ease',
+              }}>
+              {generatingImage ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
+              {generatingImage ? 'Generating…' : 'Generate image'}
+            </button>
+            {generateError && (
+              <div style={{ marginTop: 6, fontSize: 10, color: colors.danger, fontFamily: font.mono }}>{generateError}</div>
+            )}
+          </section>
+        </aside>
+
+        {/* ── CANVAS CENTER ── */}
+        <main style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+
+          {/* Canvas stage — sizes to content (label + card + optional
+              editing indicator + padding). flex:0 0 auto prevents the
+              old `flex:1` behaviour that stretched the stage to fill all
+              leftover vertical space and left the card adrift in the
+              middle of an oversized dotted-grid region. Reel sits right
+              below; any remaining space in <main> is whitespace. */}
+          <div ref={leftPanelRef} className="cs-stage" style={{
+            flex: '0 0 auto',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            padding: spacing[6],
+            background: colors.previewCream,
+            backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)`,
+            backgroundSize: '18px 18px',
+          }}>
+            {/* Mono label above card */}
+            <div style={{
+              fontFamily: font.mono, fontSize: 10, color: colors.subtle,
+              letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+              marginBottom: spacing[3],
+            }}>
+              {template.id} · {size.w}×{size.h}
+            </div>
+
+            {/* Card with corner markers */}
+            <div style={{ position: 'relative', width: previewW, height: previewH }}>
+              {/* Four corner markers, 10×10 with 2px stroke, offset outside card */}
+              <div style={{ position: 'absolute', top: -14, left: -14, width: 10, height: 10, borderTop: `2px solid ${colors.ink}`, borderLeft: `2px solid ${colors.ink}` }} />
+              <div style={{ position: 'absolute', top: -14, right: -14, width: 10, height: 10, borderTop: `2px solid ${colors.ink}`, borderRight: `2px solid ${colors.ink}` }} />
+              <div style={{ position: 'absolute', bottom: -14, left: -14, width: 10, height: 10, borderBottom: `2px solid ${colors.ink}`, borderLeft: `2px solid ${colors.ink}` }} />
+              <div style={{ position: 'absolute', bottom: -14, right: -14, width: 10, height: 10, borderBottom: `2px solid ${colors.ink}`, borderRight: `2px solid ${colors.ink}` }} />
+              <div style={{
+                width: '100%', height: '100%', overflow: 'hidden',
+                background: colors.white,
+                boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)',
+              }}>
+                <div style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                  <TemplateComponent {...templateProps} width={size.w} height={size.h} />
+                </div>
+              </div>
+            </div>
+
+            {/* Editing-saved-creative indicator */}
+            {activeDraft !== null && savedDrafts[activeDraft]?.dbId && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                marginTop: spacing[3],
+                fontFamily: font.mono, fontSize: 11,
+              }}>
+                <span style={{
+                  padding: '3px 10px', borderRadius: radius.pill,
+                  background: colors.accentAlpha12, color: colors.accentDark,
+                  border: `1px solid ${colors.accentAlpha30}`,
+                  fontWeight: 700, letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                }}>Editing saved creative</span>
+                <button onClick={clearActiveDraft} style={{
+                  background: 'transparent', border: 'none', padding: 0,
+                  fontSize: 11, color: colors.subtle, fontFamily: font.mono,
+                  cursor: 'pointer', textDecoration: 'underline',
+                }}>Start new</button>
+              </div>
+            )}
+          </div>
+
+          {/* Reel */}
+          <div className="cs-reel" style={{
+            flexShrink: 0,
+            background: colors.paper,
+            borderTop: `1px solid ${colors.border}`,
+          }}>
+            {/* Reel tab bar */}
+            <div style={{
+              display: 'flex', alignItems: 'center',
+              padding: `${spacing[2]}px ${spacing[4]}px`,
+              borderBottom: `1px solid ${colors.border}`,
+              gap: spacing[3],
+            }}>
+              <button onClick={() => setReelTab('drafts')} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 0',
+                background: 'transparent', border: 'none',
+                borderBottom: reelTab === 'drafts' ? `2px solid ${colors.ink}` : '2px solid transparent',
+                color: reelTab === 'drafts' ? colors.ink : colors.muted,
+                fontFamily: font.heading, fontWeight: 700, fontSize: 12,
+                letterSpacing: '0.04em', textTransform: 'uppercase',
+                cursor: 'pointer', transition: 'all 0.15s ease',
+              }}>
+                Drafts
+                {savedDrafts.length > 0 && (
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: colors.accent, boxShadow: `0 0 8px ${colors.accentAlpha40}`,
+                  }} />
+                )}
+                <span style={{ color: colors.subtle, fontWeight: 500, fontFamily: font.mono, fontSize: 11 }}>({savedDrafts.length})</span>
+              </button>
+              <button onClick={() => setReelTab('variations')} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 0',
+                background: 'transparent', border: 'none',
+                borderBottom: reelTab === 'variations' ? `2px solid ${colors.ink}` : '2px solid transparent',
+                color: reelTab === 'variations' ? colors.ink : colors.muted,
+                fontFamily: font.heading, fontWeight: 700, fontSize: 12,
+                letterSpacing: '0.04em', textTransform: 'uppercase',
+                cursor: 'pointer', transition: 'all 0.15s ease',
+              }}>
+                AI variations
+                <span style={{ color: colors.subtle, fontWeight: 500, fontFamily: font.mono, fontSize: 11 }}>({variations.length})</span>
+              </button>
+
+              {/* Right-side actions */}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {reelTab === 'drafts' && savedDrafts.length > 0 && (
+                  <>
+                    {(activeDraft !== null || activeVariation !== null) && (
+                      <button onClick={clearActiveDraft} style={{
+                        padding: '6px 10px', borderRadius: radius.sm,
+                        background: 'transparent', color: colors.muted, border: 'none',
+                        fontFamily: font.mono, fontWeight: 600, fontSize: 11,
+                        letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                      }}>Clear</button>
+                    )}
+                    <button onClick={exportAllDrafts} disabled={exportingAll} style={{
+                      padding: '6px 12px', borderRadius: radius.sm,
+                      background: 'transparent', color: colors.ink, border: `1px solid ${colors.border}`,
+                      fontFamily: font.heading, fontWeight: 700, fontSize: 11,
+                      letterSpacing: '0.04em', textTransform: 'uppercase',
+                      cursor: exportingAll ? 'wait' : 'pointer', opacity: exportingAll ? 0.5 : 1,
+                      transition: 'all 0.15s ease',
+                    }}>{exportingAll ? 'Exporting…' : 'Export all'}</button>
+                  </>
+                )}
+                {reelTab === 'variations' && variations.length > 0 && (
+                  <button onClick={exportAllVariations} disabled={exportingAll} style={{
+                    padding: '6px 12px', borderRadius: radius.sm,
+                    background: 'transparent', color: colors.ink, border: `1px solid ${colors.border}`,
+                    fontFamily: font.heading, fontWeight: 700, fontSize: 11,
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                    cursor: exportingAll ? 'wait' : 'pointer', opacity: exportingAll ? 0.5 : 1,
+                    transition: 'all 0.15s ease',
+                  }}>{exportingAll ? 'Exporting…' : 'Export all'}</button>
+                )}
+
+                {/* Batch count selector + Generate N */}
+                {!batchGenerating ? (
+                  <>
+                    <div style={{ display: 'flex', gap: 2, padding: 3, background: colors.gray150, borderRadius: radius.sm }}>
+                      {[3, 5, 10, 15, 20].map(n => (
+                        <button key={n} onClick={() => setBatchCount(n)} style={{
+                          width: 22, height: 22, borderRadius: radius.xs,
+                          fontSize: 10, fontWeight: 700, fontFamily: font.mono,
+                          background: batchCount === n ? colors.ink : 'transparent',
+                          color: batchCount === n ? colors.accent : colors.subtle,
+                          border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}>{n}</button>
+                      ))}
+                    </div>
+                    <button onClick={generateBatch} disabled={images.length === 0} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 14px', borderRadius: radius.sm,
+                      background: images.length === 0 ? colors.gray400 : colors.ink,
+                      color: colors.accent, border: 'none',
+                      fontFamily: font.heading, fontWeight: 700, fontSize: 11,
+                      letterSpacing: '0.04em', textTransform: 'uppercase',
+                      cursor: images.length === 0 ? 'not-allowed' : 'pointer',
+                      boxShadow: shadow.accent, transition: 'all 0.15s ease',
+                    }}>
+                      <Sparkles size={11} /> Generate {batchCount}
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      fontFamily: font.mono, fontSize: 11, color: colors.muted,
+                    }}>
+                      <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} />
+                      {variations.length}/{batchCount}
+                    </div>
+                    <button onClick={stopBatch} style={{
+                      padding: '4px 10px', borderRadius: radius.sm,
+                      background: 'transparent', color: colors.muted, border: `1px solid ${colors.border}`,
+                      fontFamily: font.mono, fontWeight: 600, fontSize: 10,
+                      letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                    }}>Stop</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Reel thumbs */}
+            <div className="cs-scroll" style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: spacing[3],
+              minHeight: 100,
+              overflowX: 'auto',
+            }}>
+              {reelTab === 'drafts' ? (
+                savedDrafts.length === 0 ? (
+                  <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.subtle, padding: '20px 0' }}>
+                    No drafts yet — Save one from the toolbar above.
+                  </div>
+                ) : savedDrafts.map((d, i) => {
+                  const dImg = d.imageId ? images.find(img => img.id === d.imageId) : null
+                  const dImgUrl = dImg ? getPublicUrl(dImg.storage_path) : (d as { imageUrl?: string | null }).imageUrl || null
+                  const DTemplate = TEMPLATES.find(t => t.id === d.templateId)?.component
+                  const dSize = SIZES.find(s => s.id === d.sizeId) || size
+                  if (!DTemplate) return null
+                  const THUMB = 72
+                  const thumbScale = THUMB / dSize.h
+                  const thumbW = Math.round(dSize.w * thumbScale)
+                  const active = activeDraft === i
+                  const launched = !!d.metaAdId
+                  return (
+                    <div key={i} style={{ position: 'relative', flexShrink: 0, width: thumbW }}>
+                      <button onClick={() => loadDraft(i)} style={{
+                        width: thumbW, height: THUMB,
+                        padding: 0, overflow: 'hidden',
+                        border: active ? `2px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                        boxShadow: active ? `0 0 0 3px ${colors.accentAlpha30}` : 'none',
+                        borderRadius: radius.sm, cursor: 'pointer',
+                        background: colors.gray150, display: 'block',
+                      }}>
+                        <div style={{ width: dSize.w, height: dSize.h, transform: `scale(${thumbScale})`, transformOrigin: 'top left' }}>
+                          <DTemplate {...(thumbProps(d, dImgUrl, dSize.w, dSize.h) as any)} />
+                        </div>
+                      </button>
+                      {/* Saved check badge */}
+                      {d.dbId && (
+                        <span style={{
+                          position: 'absolute', top: 3, right: 3,
+                          width: 14, height: 14, borderRadius: '50%',
+                          background: colors.accent, color: colors.ink,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 700,
+                        }}>✓</span>
+                      )}
+                      {launched && (
+                        <span style={{
+                          position: 'absolute', top: 3, left: 3,
+                          fontFamily: font.mono, fontSize: 8, fontWeight: 700,
+                          background: d.metaAdStatus === 'ACTIVE' ? colors.accentDark : '#ffc107',
+                          color: colors.ink,
+                          padding: '1px 4px', borderRadius: 2,
+                          letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                        }}>{d.metaAdStatus === 'ACTIVE' ? 'LIVE' : 'PAUSED'}</span>
+                      )}
+                      <button onClick={e => { e.stopPropagation(); removeDraft(i) }}
+                        title="Delete"
+                        style={{
+                          position: 'absolute', bottom: -4, right: -4,
+                          width: 16, height: 16, borderRadius: '50%',
+                          background: colors.ink, color: colors.white,
+                          border: `1px solid ${colors.paper}`, padding: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', opacity: 0.85,
+                        }}>
+                        <X size={9} />
+                      </button>
+                    </div>
+                  )
+                })
+              ) : (
+                variations.length === 0 ? (
+                  <div style={{ fontFamily: font.mono, fontSize: 11, color: colors.subtle, padding: '20px 0' }}>
+                    No variations yet — use Generate {batchCount} to create a batch.
+                  </div>
+                ) : variations.map((v, i) => {
+                  const vImg = v.imageId ? images.find(img => img.id === v.imageId) : null
+                  const vImgUrl = vImg ? getPublicUrl(vImg.storage_path) : null
+                  const VTemplate = TEMPLATES.find(t => t.id === v.templateId)?.component
+                  if (!VTemplate) return null
+                  const THUMB = 72
+                  const thumbScale = THUMB / size.h
+                  const thumbW = Math.round(size.w * thumbScale)
+                  const active = activeVariation === i
+                  const isSaved = savedDrafts.some(d => d.headline === v.headline && d.imageId === v.imageId)
+                  return (
+                    <div key={i} style={{ position: 'relative', flexShrink: 0, width: thumbW }}>
+                      <button onClick={() => loadVariation(i)} style={{
+                        width: thumbW, height: THUMB,
+                        padding: 0, overflow: 'hidden',
+                        border: active ? `2px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                        boxShadow: active ? `0 0 0 3px ${colors.accentAlpha30}` : 'none',
+                        borderRadius: radius.sm, cursor: 'pointer',
+                        background: colors.gray150, display: 'block',
+                      }}>
+                        <div style={{ width: size.w, height: size.h, transform: `scale(${thumbScale})`, transformOrigin: 'top left' }}>
+                          <VTemplate {...(thumbProps(v, vImgUrl) as any)} />
+                        </div>
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); saveVariationAsDraft(i) }}
+                        title={isSaved ? 'Saved' : 'Save as draft'}
+                        style={{
+                          position: 'absolute', top: 3, right: 3,
+                          width: 16, height: 16, borderRadius: '50%',
+                          background: isSaved ? colors.accent : colors.blackAlpha50,
+                          color: isSaved ? colors.ink : colors.white,
+                          border: 'none', padding: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer',
+                        }}>
+                        <Bookmark size={9} fill={isSaved ? 'currentColor' : 'none'} />
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </main>
+
+        {/* ── RIGHT INSPECTOR ── */}
+        <aside className="cs-inspector cs-scroll" style={{
+          borderLeft: `1px solid ${colors.border}`,
+          background: colors.paper,
+          display: 'flex', flexDirection: 'column', minHeight: 0,
+          overflowY: 'auto',
+        }}>
+          {/* Tab bar */}
+          <div style={{
+            display: 'flex', flexShrink: 0,
+            borderBottom: `1px solid ${colors.border}`,
+            background: colors.paper,
+            position: 'sticky', top: 0, zIndex: 1,
+          }}>
+            {(['copy', 'style', 'layout'] as const).map(tab => (
+              <button key={tab} onClick={() => setInspectorTab(tab)} style={{
+                flex: 1, padding: '12px 0',
+                background: 'transparent', border: 'none',
+                borderBottom: inspectorTab === tab ? `2px solid ${colors.ink}` : '2px solid transparent',
+                color: inspectorTab === tab ? colors.ink : colors.muted,
+                fontFamily: font.heading, fontWeight: 700, fontSize: 12,
+                letterSpacing: '0.04em', textTransform: 'uppercase',
+                cursor: 'pointer', transition: 'all 0.15s ease',
+              }}>{tab}</button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div style={{ padding: spacing[3], display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+
+            {/* ─── COPY TAB ─── */}
+            {inspectorTab === 'copy' && (
+              <>
+                {/* Counters above headline/body via inline badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: font.mono, color: colors.subtle, letterSpacing: letterSpacing.wide, textTransform: 'uppercase' }}>
+                  <span>Headline</span>
+                  <span style={{
+                    marginLeft: 'auto',
+                    color: headline.length > HEADLINE_BILLBOARD ? colors.danger : colors.subtle,
+                    fontWeight: headline.length > HEADLINE_BILLBOARD ? 700 : 500,
+                  }}>
+                    {headline.length}{headline.length > HEADLINE_BILLBOARD ? ' · billboard' : ''}
+                  </span>
+                </div>
+                <CopyEditor
+                  headline={headline}
+                  setHeadline={setHeadline}
+                  bodyText={bodyText}
+                  setBodyText={setBodyText}
+                  ctaText={ctaText}
+                  setCtaText={setCtaText}
+                  showCta={showCta}
+                  setShowCta={setShowCta}
+                  brandId={brandId}
+                  setExportToast={setExportToast}
+                  inputCls={inputCls}
+                  generateCopy={generateCopy}
+                  generating={generating}
+                  destinationUrl={destinationUrl}
+                  setDestinationUrl={setDestinationUrl}
+                  ctaType={ctaType}
+                  setCtaType={setCtaType}
+                  fbPrimaryText={fbPrimaryText}
+                  setFbPrimaryText={setFbPrimaryText}
+                  fbHeadline={fbHeadline}
+                  setFbHeadline={setFbHeadline}
+                  fbDescription={fbDescription}
+                  setFbDescription={setFbDescription}
+                  brandWebsite={(brand as { website?: string | null } | null)?.website ?? null}
+                />
+                {headline.length > HEADLINE_BILLBOARD && (
+                  <div style={{ fontSize: 10, color: colors.danger, fontFamily: font.mono, letterSpacing: letterSpacing.wide }}>
+                    Headline is {headline.length} chars — aim for ≤ {HEADLINE_BILLBOARD}.
+                  </div>
+                )}
+                {bodyText.length > BODY_LIMIT && (
+                  <div style={{ fontSize: 10, color: colors.danger, fontFamily: font.mono, letterSpacing: letterSpacing.wide }}>
+                    Body is {bodyText.length} chars — aim for ≤ {BODY_LIMIT}.
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ─── STYLE TAB ─── */}
+            {inspectorTab === 'style' && (
+              <>
+                {/* Brand color swatches */}
+                <div>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600, marginBottom: 8 }}>
+                    Background color
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6 }}>
+                    {brandColors.map(c => {
+                      const active = bgColor.toLowerCase() === c.value.toLowerCase()
+                      return (
+                        <button key={c.value + c.label} onClick={() => updateBgColor(c.value)} title={`${c.label} — ${c.value}`} style={{
+                          aspectRatio: '1', borderRadius: radius.sm, padding: 0,
+                          background: c.value,
+                          border: `1px solid ${colors.blackAlpha10}`,
+                          outline: active ? `2px solid ${colors.ink}` : 'none',
+                          outlineOffset: 2,
+                          boxShadow: active ? `0 0 0 4px ${colors.accentAlpha25}` : 'none',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }} />
+                      )
+                    })}
+                    {/* "+" custom-color picker */}
+                    <label title="Custom color" style={{
+                      aspectRatio: '1', borderRadius: radius.sm,
+                      border: `1px dashed ${colors.border}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: colors.muted, fontFamily: font.mono, fontSize: 14, fontWeight: 700,
+                    }}>
+                      +
+                      <input type="color" value={/^#([0-9a-f]{6})$/i.test(bgColor) ? bgColor : '#000000'}
+                        onChange={e => updateBgColor(e.target.value)}
+                        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Background mode segmented */}
+                <div>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600, marginBottom: 8 }}>
+                    Background mode
+                  </div>
+                  <div style={{ display: 'flex', gap: 0, border: `1px solid ${colors.border}`, borderRadius: radius.sm, overflow: 'hidden' }}>
+                    {(['image', 'brand', 'dark', 'custom'] as const).map((mode, idx) => {
+                      const active = bgModeDerived === mode
+                      const labels = { image: 'Image', brand: 'Brand', dark: 'Dark', custom: 'Custom' }
+                      return (
+                        <button key={mode} onClick={() => setBgMode(mode)} style={{
+                          flex: 1, padding: '7px 0',
+                          fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                          letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                          background: active ? colors.ink : colors.white,
+                          color: active ? colors.accent : colors.muted,
+                          border: 'none',
+                          borderLeft: idx > 0 ? `1px solid ${colors.border}` : 'none',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}>{labels[mode]}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Overlay opacity — only for templates that support overlay */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600 }}>
+                      Overlay
+                    </span>
+                    <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontFamily: font.mono, fontSize: 10, color: colors.subtle }}>
+                      <input type="checkbox" checked={showOverlay} onChange={e => setShowOverlay(e.target.checked)} />
+                      On
+                    </label>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: colors.subtle, minWidth: 32, textAlign: 'right' }}>{overlayOpacity}%</span>
+                  </div>
+                  <input type="range" min={0} max={100} value={overlayOpacity}
+                    onChange={e => setOverlayOpacity(Number(e.target.value))}
+                    disabled={!showOverlay}
+                    style={{ width: '100%', opacity: showOverlay ? 1 : 0.4 }} />
+                </div>
+
+                {/* Headline size */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600 }}>Headline size</span>
+                    <span style={{ marginLeft: 'auto', fontFamily: font.mono, fontSize: 10, color: colors.subtle }}>{headlineSizeMul.toFixed(2)}×</span>
+                  </div>
+                  <input type="range" min={0.6} max={1.8} step={0.05} value={headlineSizeMul}
+                    onChange={e => setHeadlineSizeMul(Number(e.target.value))} style={{ width: '100%' }} />
+                </div>
+
+                {/* Body size */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600 }}>Body size</span>
+                    <span style={{ marginLeft: 'auto', fontFamily: font.mono, fontSize: 10, color: colors.subtle }}>{bodySizeMul.toFixed(2)}×</span>
+                  </div>
+                  <input type="range" min={0.6} max={1.8} step={0.05} value={bodySizeMul}
+                    onChange={e => setBodySizeMul(Number(e.target.value))} style={{ width: '100%' }} />
+                </div>
+
+                {/* Case — 3-way per Open Q #11 */}
+                <div>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>Headline case</div>
+                  <div style={{ display: 'flex', border: `1px solid ${colors.border}`, borderRadius: radius.sm, overflow: 'hidden' }}>
+                    {(['none', 'uppercase', 'lowercase'] as const).map((v, i) => {
+                      const labels = { none: 'None', uppercase: 'UPPER', lowercase: 'lower' }
+                      const active = headlineTransform === v
+                      return (
+                        <button key={v} onClick={() => setHeadlineTransform(v)} style={{
+                          flex: 1, padding: '6px 0',
+                          background: active ? colors.ink : colors.white, color: active ? colors.accent : colors.muted,
+                          border: 'none', borderLeft: i > 0 ? `1px solid ${colors.border}` : 'none',
+                          fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                          letterSpacing: letterSpacing.wide,
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}>{labels[v]}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ─── LAYOUT TAB ─── */}
+            {inspectorTab === 'layout' && (
+              <>
+                {/* 3×3 text position pad — 9 cells, mid-row sides disabled */}
+                <div>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600, marginBottom: 8 }}>
+                    Text position
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, maxWidth: 180 }}>
+                    {POS_GRID.map((pos, i) => {
+                      if (pos === null) {
+                        return <div key={i} style={{ aspectRatio: '1' }} />
+                      }
+                      const active = textPosition === pos
+                      return (
+                        <button key={pos} onClick={() => setTextPosition(pos)}
+                          title={pos}
+                          style={{
+                            aspectRatio: '1', padding: 0,
+                            background: active ? colors.ink : colors.white,
+                            border: active ? `1px solid ${colors.ink}` : `1px solid ${colors.border}`,
+                            borderRadius: radius.sm,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                          }}>
+                          <div style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: active ? colors.accent : colors.disabled,
+                          }} />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Image position segmented */}
+                <div>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>Image position</div>
+                  <div style={{ display: 'flex', border: `1px solid ${colors.border}`, borderRadius: radius.sm, overflow: 'hidden' }}>
+                    {(['top', 'center', 'bottom', 'fit'] as const).map((v, i) => {
+                      const active = imagePosition === v
+                      return (
+                        <button key={v} onClick={() => setImagePosition(v)} style={{
+                          flex: 1, padding: '6px 0',
+                          background: active ? colors.ink : colors.white, color: active ? colors.accent : colors.muted,
+                          border: 'none', borderLeft: i > 0 ? `1px solid ${colors.border}` : 'none',
+                          fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                          letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}>{v}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Text banner segmented */}
+                <div>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>Text banner</div>
+                  <div style={{ display: 'flex', border: `1px solid ${colors.border}`, borderRadius: radius.sm, overflow: 'hidden' }}>
+                    {(['none', 'top', 'bottom'] as const).map((v, i) => {
+                      const active = textBanner === v
+                      return (
+                        <button key={v} onClick={() => setTextBanner(v)} style={{
+                          flex: 1, padding: '6px 0',
+                          background: active ? colors.ink : colors.white, color: active ? colors.accent : colors.muted,
+                          border: 'none', borderLeft: i > 0 ? `1px solid ${colors.border}` : 'none',
+                          fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                          letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}>{v}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Per-template editors — previously orphaned, now surfaced per Open Q #12 */}
+                {templateId === 'comparison' && (
+                  <ComparisonSidebar
+                    brandName={brand?.name || 'the brand'}
+                    oldWayItems={oldWayItems}
+                    setOldWayItems={setOldWayItems}
+                    newWayItems={newWayItems}
+                    setNewWayItems={setNewWayItems}
+                    inputCls={inputCls}
+                  />
+                )}
+                {templateId === 'infographic' && (
+                  <InfographicSidebar
+                    callouts={callouts}
+                    setCallouts={setCallouts}
+                    statStripText={statStripText}
+                    setStatStripText={setStatStripText}
+                    inputCls={inputCls}
+                  />
+                )}
+                {templateId === 'mission' && (
+                  <MissionSidebar
+                    subtitle={subtitle}
+                    setSubtitle={setSubtitle}
+                    images={images}
+                    selectedProductImageId={selectedProductImageId}
+                    setSelectedProductImageId={setSelectedProductImageId}
+                    inputCls={inputCls}
+                  />
+                )}
+
+                {/* Grid template — second image picker */}
+                {templateId === 'grid' && images.length > 1 && (
+                  <div>
+                    <div style={{ fontFamily: font.mono, fontSize: 10, color: colors.muted, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>Second image</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                      {images.map(img => (
+                        <button key={img.id} onClick={() => setSelectedProductImageId(img.id === selectedProductImageId ? null : img.id)}
+                          style={{
+                            aspectRatio: '1', borderRadius: radius.xs, overflow: 'hidden', padding: 0,
+                            border: `2px solid ${selectedProductImageId === img.id ? colors.accent : colors.border}`,
+                            background: 'none', cursor: 'pointer',
+                          }}>
+                          <img src={getPublicUrl(img.storage_path)} alt="" loading="lazy"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </aside>
+
+      </div>
 
       {/* Hidden export container */}
       <div ref={exportRef} aria-hidden style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }} />
@@ -1110,9 +1883,6 @@ FB_DESCRIPTION: <under 12 words>`,
       {/* ── Meta launch modal ── */}
       {launchModalDraft !== null && brand && savedDrafts[launchModalDraft]?.dbId && (() => {
         const d = savedDrafts[launchModalDraft]
-        // Reconstruct the minimal SavedCreative shape the modal expects from
-        // the Draft + the saved row's dbId. The modal only needs image urls,
-        // copy, and the Meta-specific fields.
         const creative = {
           id: d.dbId!,
           created_at: '',
