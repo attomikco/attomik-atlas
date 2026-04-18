@@ -395,6 +395,25 @@ export default function PreviewClient({
   const [emailGenerated, setEmailGenerated] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [activeCreative, setActiveCreative] = useState(0)
+  // ── Creative Showcase cinematic-carousel state ──
+  // activeFloat is the continuous version of activeCreative. It updates
+  // every pointermove during a drag and every rAF tick during release /
+  // autoplay / dot-click tweens. Card transforms (translateX, scale,
+  // opacity, blur, shadow) are all pure functions of (cardIndex −
+  // activeFloat) with cyclic wrap-around so the carousel is continuous
+  // on every advance path.
+  const [activeFloat, setActiveFloat] = useState(0)
+  const activeFloatRef = useRef(0)
+  const tweenRafRef = useRef<number | null>(null)
+  const prefersReducedMotionRef = useRef(false)
+  // Tween implementation lives on a ref so consumer effects (autoplay,
+  // pointer handlers) never depend on the function's identity. Using
+  // useCallback here previously meant the autoplay setInterval was torn
+  // down and re-created every time showcaseCount or tween-related state
+  // re-memoized the callback — making autoplay brittle under async
+  // loads and dev-mode Fast Refresh. The ref always points to the
+  // newest impl with the latest showcaseCount closure.
+  const tweenActiveFloatRef = useRef<(target: number, durationMs?: number) => void>(() => {})
   const finaleRef = useRef<HTMLDivElement>(null)
   const showcaseScrollRef = useRef<HTMLDivElement>(null)
 
@@ -805,62 +824,225 @@ export default function PreviewClient({
   // Auto-advance: cycle the active card every 3s. Paused briefly after a user
   // gesture (swipe/wheel/dot click) so manual control doesn't fight the timer.
   const showcaseInteractionRef = useRef<number>(0)
+
+  // Reduced-motion preference — if on, tweens snap instantly. Drag still
+  // follows the finger; only the RELEASE animation and autoplay motion
+  // become instantaneous.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => { prefersReducedMotionRef.current = mq.matches }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  // Unmount guard — cancel any in-flight tween so we don't setState on an
+  // unmounted component.
+  useEffect(() => () => {
+    if (tweenRafRef.current !== null) cancelAnimationFrame(tweenRafRef.current)
+  }, [])
+
+  // Shared rAF tween helper — used by drag-release, autoplay, dot click,
+  // and wheel/trackpad step. Tweens activeFloat to `target` (which may be
+  // outside [0, N) to carry directional intent through a wrap-around);
+  // on completion, wraps activeFloat + activeCreative into [0, N). Cancels
+  // any in-flight tween before starting a new one, so a user gesture mid-
+  // autoplay immediately takes over.
+  //
+  // Stored on a ref and updated every render rather than memoized with
+  // useCallback. This keeps the autoplay setInterval stable across
+  // re-renders and showcaseCount changes — previously the callback's
+  // identity was part of the effect's dep array, which made the interval
+  // fragile.
+  useEffect(() => {
+    tweenActiveFloatRef.current = (target: number, durationMs: number = 300) => {
+      if (tweenRafRef.current !== null) {
+        cancelAnimationFrame(tweenRafRef.current)
+        tweenRafRef.current = null
+      }
+      const n = showcaseCount
+      if (n <= 0) return
+      const wrap = (v: number) => ((v % n) + n) % n
+
+      if (prefersReducedMotionRef.current) {
+        const wrapped = wrap(target)
+        activeFloatRef.current = wrapped
+        setActiveFloat(wrapped)
+        setActiveCreative(wrapped)
+        return
+      }
+
+      const start = activeFloatRef.current
+      const delta = target - start
+      if (delta === 0) {
+        const wrapped = wrap(target)
+        setActiveCreative(wrapped)
+        return
+      }
+      const t0 = performance.now()
+      const step = (t: number) => {
+        const p = Math.min(1, (t - t0) / durationMs)
+        // ease-out-cubic: starts fast, settles slowly — feels cinematic
+        const eased = 1 - Math.pow(1 - p, 3)
+        const next = start + delta * eased
+        activeFloatRef.current = next
+        setActiveFloat(next)
+        if (p < 1) {
+          tweenRafRef.current = requestAnimationFrame(step)
+        } else {
+          // Final snap — wrap float + int together so cyclic-distance math
+          // stays continuous (N ≡ 0 visually, so this is invisible).
+          const wrapped = wrap(target)
+          activeFloatRef.current = wrapped
+          setActiveFloat(wrapped)
+          setActiveCreative(wrapped)
+          tweenRafRef.current = null
+        }
+      }
+      tweenRafRef.current = requestAnimationFrame(step)
+    }
+  })
+
   useEffect(() => {
     if (showcaseCount <= 1) return
     const interval = setInterval(() => {
       if (Date.now() - showcaseInteractionRef.current < 6000) return
-      setActiveCreative(prev => (prev + 1) % showcaseCount)
+      // Target lives outside [0, N) to carry "forward" intent through a
+      // wrap-around. E.g. at activeFloat 8 of 9, target = 9. Tween reaches
+      // 9, then wraps to 0 on completion — visually continuous.
+      const target = Math.round(activeFloatRef.current) + 1
+      console.log('[showcase autoplay] advancing to', target)  // TEMP: verify interval firing
+      tweenActiveFloatRef.current(target, 700)
     }, 3000)
     return () => clearInterval(interval)
   }, [showcaseCount])
 
-  // Manual navigation: touch swipe (mobile) + horizontal wheel/trackpad
-  // (desktop). Both translate a gesture into a single index step and record
-  // an interaction timestamp to pause the auto-advance.
+  // Manual navigation: pointer drag (mouse + touch + pen) with live
+  // finger-follow, plus horizontal wheel/trackpad step (desktop). Vertical
+  // page scroll remains uninterrupted via touchAction: 'pan-y' on the
+  // band and the deltaX<deltaY early-return in the wheel handler.
   useEffect(() => {
     if (showcaseCount <= 1) return
     const el = showcaseScrollRef.current
     if (!el) return
 
-    const step = (dir: 1 | -1) => {
+    // ── Pointer drag ──
+    let dragActive = false
+    let pendingPointerId: number | null = null
+    let startX = 0
+    let startY = 0
+    let startFloat = 0
+    let lastMoveX = 0
+    let lastMoveT = 0
+    let velocityPxPerMs = 0
+    // "1 card drag distance" derived from band height. Card is aspect 4/5
+    // at 85% of band height, so card width ≈ 0.85 · H · 4/5 = 0.68 · H.
+    // translateX is 80% of card width per step ⇒ one-step drag ≈ 0.544 · H.
+    const getCardStepPx = () => Math.max(200, el.clientHeight * 0.544)
+    let cardStepPx = getCardStepPx()
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      // Cancel any in-flight tween so the finger takes over immediately.
+      if (tweenRafRef.current !== null) {
+        cancelAnimationFrame(tweenRafRef.current)
+        tweenRafRef.current = null
+      }
+      startX = e.clientX
+      startY = e.clientY
+      startFloat = activeFloatRef.current
+      lastMoveX = e.clientX
+      lastMoveT = performance.now()
+      velocityPxPerMs = 0
+      dragActive = false // claim on first horizontally-dominant move
+      pendingPointerId = e.pointerId
+      cardStepPx = getCardStepPx()
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (pendingPointerId !== e.pointerId) return
+      const dx = e.clientX - startX
+      const dy = e.clientY - startY
+
+      if (!dragActive) {
+        // Dead zone — wait for a real move
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+        // Vertical-dominant → let page scroll handle it, abort drag
+        if (Math.abs(dx) <= Math.abs(dy)) {
+          pendingPointerId = null
+          return
+        }
+        dragActive = true
+        showcaseInteractionRef.current = Date.now()
+        try { el.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+      }
+
+      e.preventDefault()
+      const now = performance.now()
+      const dt = now - lastMoveT
+      if (dt > 0) velocityPxPerMs = (e.clientX - lastMoveX) / dt
+      lastMoveX = e.clientX
+      lastMoveT = now
+      // Finger right → activeFloat decreases (pulls previous card in)
+      const next = startFloat - dx / cardStepPx
+      activeFloatRef.current = next
+      setActiveFloat(next)
+    }
+
+    const finishDrag = (e: PointerEvent) => {
+      if (pendingPointerId !== e.pointerId) return
+      const id = pendingPointerId
+      pendingPointerId = null
+      try { el.releasePointerCapture(id) } catch { /* ignore */ }
+      if (!dragActive) return
+      dragActive = false
+
+      const dx = e.clientX - startX
+      const dragFraction = Math.abs(dx) / cardStepPx
+      // Velocity-aware snap: either dragged past 30% of a card OR flicked
+      // hard enough. Threshold 0.3 px/ms ≈ 300 px/s.
+      const passed = dragFraction > 0.3 || Math.abs(velocityPxPerMs) > 0.3
+      let dir = 0
+      if (passed) {
+        if (Math.abs(velocityPxPerMs) > 0.3) {
+          // Velocity wins if it's significant (finger still moving at release)
+          dir = velocityPxPerMs > 0 ? -1 : 1
+        } else {
+          dir = dx > 0 ? -1 : 1
+        }
+      }
       showcaseInteractionRef.current = Date.now()
-      setActiveCreative(prev => (prev + dir + showcaseCount) % showcaseCount)
+      tweenActiveFloatRef.current(Math.round(startFloat) + dir, 500)
     }
 
-    let touchX = 0
-    let touchY = 0
-    const onTouchStart = (e: TouchEvent) => {
-      touchX = e.touches[0].clientX
-      touchY = e.touches[0].clientY
-    }
-    const onTouchEnd = (e: TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - touchX
-      const dy = e.changedTouches[0].clientY - touchY
-      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1)
-    }
-
+    // ── Horizontal wheel / trackpad ──
     let wheelAccum = 0
     let wheelTimer: ReturnType<typeof setTimeout> | null = null
     const onWheel = (e: WheelEvent) => {
-      // Only intercept gestures that are predominantly horizontal — vertical
-      // page scroll still works naturally over the band.
       if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
       e.preventDefault()
       wheelAccum += e.deltaX
       if (wheelTimer) clearTimeout(wheelTimer)
       wheelTimer = setTimeout(() => { wheelAccum = 0 }, 200)
       if (Math.abs(wheelAccum) >= 60) {
-        step(wheelAccum > 0 ? 1 : -1)
+        const dir = wheelAccum > 0 ? 1 : -1
+        showcaseInteractionRef.current = Date.now()
+        tweenActiveFloatRef.current(Math.round(activeFloatRef.current) + dir, 500)
         wheelAccum = 0
       }
     }
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true })
-    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('pointerup', finishDrag)
+    el.addEventListener('pointercancel', finishDrag)
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => {
-      el.removeEventListener('touchstart', onTouchStart)
-      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('pointerup', finishDrag)
+      el.removeEventListener('pointercancel', finishDrag)
       el.removeEventListener('wheel', onWheel)
       if (wheelTimer) clearTimeout(wheelTimer)
     }
@@ -1519,32 +1701,66 @@ export default function PreviewClient({
               position: 'relative', zIndex: 1, width: '100%', height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              {([-1, 0, 1] as const).map(offset => {
-                const idx = ((activeCreative + offset) % showcaseCount + showcaseCount) % showcaseCount
-                const card = gridCards[idx]
+              {gridCards.map((card, idx) => {
                 if (!card) return null
-                const isActive = offset === 0
+                // Cyclic distance from the continuous activeFloat. Wraps to
+                // [-N/2, N/2) so card N-1 appears to the LEFT of card 0 when
+                // activeFloat is near 0, etc. — visual continuity across the
+                // wrap-around.
+                const half = showcaseCount / 2
+                let distance = idx - activeFloat
+                while (distance >= half) distance -= showcaseCount
+                while (distance < -half) distance += showcaseCount
+
+                const absD = Math.abs(distance)
+                // Clamp visual weight to 1 at the edge; cards beyond |d|=1
+                // stay at the edge look so they don't keep shrinking/fading
+                // off into nothing during drag overshoot.
+                const d = Math.min(absD, 1)
+
+                // Endpoints match the old static values at rest:
+                //   translateX: ±80% at |d|=1 → 0 at center
+                //   scale:     0.85 at |d|=1 → 1 at center
+                //   opacity:   0.6 at |d|=1 → 1 at center
+                //   blur:      2px at |d|=1 → 0 at center
+                const translateXPct = distance * 80
+                const scale = 1 - d * 0.15
+                const opacity = 1 - d * 0.4
+                const blurPx = d * 2
+                // Fade the shadow alpha + vignette opacity continuously so
+                // the "active card" glow blooms in as a card approaches
+                // center rather than snapping on/off.
+                const shadowAlpha = (1 - d) * 0.5
+                const vignetteOpacity = 1 - d
+                // Hide far-off-screen cards from interaction + a11y tree so
+                // they don't steal clicks or announce to screen readers.
+                const interactive = absD < 0.5
+                // Keep the nearest card on top; distance grows z-index falls.
+                const zIndex = absD < 0.01 ? 3 : absD < 1 ? 2 : 1
+
                 return (
-                  <div key={offset} style={{
+                  <div key={idx} style={{
                     position: 'absolute',
                     height: '85%', aspectRatio: '4/5',
                     borderRadius: radius.xl, overflow: 'hidden',
-                    transform: isActive
-                      ? 'translateX(0) scale(1)'
-                      : `translateX(${offset * 80}%) scale(0.85)`,
-                    opacity: isActive ? 1 : 0.6,
-                    filter: isActive ? 'none' : 'blur(2px)',
-                    transition: 'opacity 0.5s ease, transform 0.5s ease, filter 0.5s ease',
-                    zIndex: isActive ? 2 : 1,
-                    boxShadow: isActive ? '0 40px 80px rgba(0,0,0,0.5)' : 'none',
+                    transform: `translateX(${translateXPct}%) scale(${scale})`,
+                    opacity,
+                    filter: blurPx > 0.05 ? `blur(${blurPx}px)` : 'none',
+                    zIndex,
+                    pointerEvents: interactive ? 'auto' : 'none',
+                    boxShadow: shadowAlpha > 0.01 ? `0 40px 80px rgba(0,0,0,${shadowAlpha})` : 'none',
+                    // No CSS transition — every tick drives the transforms
+                    // directly via activeFloat state changes (drag pointer-
+                    // move, release rAF, autoplay rAF, dot/wheel rAF).
                   }}>
                     <ScaledCreative Comp={card.Comp} props={makeCreativeProps(card)} srcW={SRC_W} srcH={SRC_H} aspectRatio="4/5" borderRadius={radius.xl} />
-                    {/* Vignette gradient on active creative */}
-                    {isActive && (
+                    {/* Vignette gradient — fades in as card approaches center */}
+                    {vignetteOpacity > 0.01 && (
                       <div style={{
                         position: 'absolute', bottom: 0, left: 0, right: 0,
                         background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%)',
                         height: '40%', zIndex: 2, pointerEvents: 'none',
+                        opacity: vignetteOpacity,
                       }} />
                     )}
                   </div>
@@ -1565,7 +1781,17 @@ export default function PreviewClient({
                   aria-label={`Show creative ${dotIdx + 1}`}
                   onClick={() => {
                     showcaseInteractionRef.current = Date.now()
-                    setActiveCreative(dotIdx)
+                    // Shortest cyclic path — carousel picks the direction
+                    // that minimizes travel, so clicking dot 0 from card N-1
+                    // moves forward (one card) instead of backward (N-1 cards).
+                    const current = activeFloatRef.current
+                    const roundedCurrent = Math.round(current)
+                    const forwardTarget = dotIdx >= roundedCurrent ? dotIdx : dotIdx + showcaseCount
+                    const backwardTarget = dotIdx <= roundedCurrent ? dotIdx : dotIdx - showcaseCount
+                    const target = (forwardTarget - roundedCurrent) <= (roundedCurrent - backwardTarget)
+                      ? forwardTarget
+                      : backwardTarget
+                    tweenActiveFloatRef.current(target, 600)
                   }}
                   style={{
                     height: 8,
