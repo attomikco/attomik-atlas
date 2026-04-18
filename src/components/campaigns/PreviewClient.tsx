@@ -1828,47 +1828,111 @@ export default function PreviewClient({
                 ✦ AI-generated from your website
               </div>
             </div>
-            <div className="pv-intel-cols" style={{ display: 'flex', gap: 48, alignItems: 'flex-start' }}>
-              <div className="pv-intel-left" style={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* ═══ Tier 1: featured Brand Voice quote ═══
+                Large-type hero treatment. `brand_voice` is the only field
+                that reads as a "voice sample" — giving it the featured slot
+                signals its role in shaping the rest of the knowledge.
+                Previously this string was also rendered as a third fact
+                card labeled "How you sound" (duplication bug); the fact
+                card is now dropped so voice only appears here. */}
+            {brandVoice && (
+              <div style={{
+                maxWidth: 860, margin: '0 auto 40px',
+                padding: '32px 36px',
+                background: colors.whiteAlpha5,
+                border: `1px solid ${colors.whiteAlpha10}`,
+                borderLeft: `3px solid ${colors.accent}`,
+                borderRadius: radius.xl,
+              }}>
+                <div style={{
+                  fontFamily: font.mono, fontSize: fontSize.caption, color: colors.accent,
+                  letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                  marginBottom: 14,
+                }}>Voice</div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                  <span style={{
+                    fontFamily: font.heading, fontWeight: fontWeight.heading,
+                    fontSize: fontSize['7xl'], color: colors.accent,
+                    lineHeight: 0.8, flexShrink: 0, marginTop: -4,
+                  }}>&ldquo;</span>
+                  <div style={{
+                    fontFamily: font.heading, fontWeight: fontWeight.bold,
+                    fontSize: fontSize['2xl'], color: colors.paper,
+                    lineHeight: 1.35,
+                  }}>{brandVoice}</div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ Tier 2: factual brand data ═══
+                2-col grid (collapses to single column below ~900px via the
+                existing `.pv-intel-grid` media query rule). `.pv-intel-grid`
+                is keyed off grid-template-columns so the initial value here
+                sets the desktop layout, then the media query overrides. */}
+            {(brandMission || brandAudience) && (
+              <div className="pv-intel-grid" style={{
+                display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 16, marginBottom: brandTone.length > 0 ? 40 : 0,
+              }}>
                 {[
                   brandMission && { label: 'What you do', text: brandMission },
                   brandAudience && { label: 'Who buys from you', text: brandAudience },
-                  brandVoice && { label: 'How you sound', text: brandVoice },
                 ].filter(Boolean).map((field, i) => {
                   const f = field as { label: string; text: string }
-                  const truncated = f.text.length > 60 ? f.text.slice(0, 60) + '...' : f.text
                   return (
-                    <div key={i} style={{ background: colors.whiteAlpha5, border: `1px solid ${colors.whiteAlpha10}`, borderLeft: `3px solid ${colors.accent}`, borderRadius: radius.xl, padding: '16px 20px' }}>
-                      <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.accent, letterSpacing: letterSpacing.wide, textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</div>
-                      <div style={{ fontSize: fontSize.body, color: colors.whiteAlpha80, lineHeight: 1.4 }}>{truncated}</div>
+                    <div key={i} style={{
+                      background: colors.whiteAlpha5,
+                      border: `1px solid ${colors.whiteAlpha10}`,
+                      borderTop: `3px solid ${colors.accent}`,
+                      borderRadius: radius.xl, padding: '22px 24px',
+                      display: 'flex', flexDirection: 'column',
+                    }}>
+                      <div style={{
+                        fontFamily: font.mono, fontSize: fontSize.caption, color: colors.accent,
+                        letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
+                        marginBottom: 10,
+                      }}>{f.label}</div>
+                      {/* No truncation — these are 1–3 sentence summaries;
+                          cards grow to fit naturally. */}
+                      <div style={{
+                        fontSize: fontSize.md, color: colors.whiteAlpha80,
+                        lineHeight: 1.55,
+                      }}>{f.text}</div>
                     </div>
                   )
                 })}
               </div>
-              <div className="pv-intel-right" style={{ flex: '1 1 50%' }}>
-                {brandTone.length > 0 && (
-                  <div>
-                    <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 12 }}>Brand Tone</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                      {brandTone.map((kw: string, i: number) => (
-                        <span key={i} style={{ background: `${brandPrimary}30`, border: `1px solid ${brandPrimary}60`, borderRadius: radius.pill, padding: '10px 24px', fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize.xl, color: colors.paper }}>{kw}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {brandVoice && (
-                  <div style={{ marginTop: 32 }}>
-                    <div style={{ fontFamily: font.mono, fontSize: fontSize.caption, color: colors.whiteAlpha45, textTransform: 'uppercase', letterSpacing: letterSpacing.wide, marginBottom: 12 }}>Brand Voice</div>
-                    <div style={{ borderLeft: `3px solid ${colors.accent}`, paddingLeft: 20, display: 'flex', gap: 0 }}>
-                      <span style={{ fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['4xl'], color: colors.accent, lineHeight: 1, marginRight: 4, flexShrink: 0 }}>"</span>
-                      <div style={{ fontFamily: font.heading, fontWeight: fontWeight.bold, fontSize: fontSize['2xl'], color: colors.paper, lineHeight: 1.3 }}>
-                        {brandVoice.length > 80 ? brandVoice.slice(0, 80) + '...' : brandVoice}
-                      </div>
-                    </div>
-                  </div>
-                )}
+            )}
+
+            {/* ═══ Tier 3: tone pills ═══
+                Lighter, ambient treatment. Centered below the facts. Small
+                label + flex-wrap pill row so 2 or 10 pills both lay out
+                naturally. */}
+            {brandTone.length > 0 && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontFamily: font.mono, fontSize: fontSize.caption,
+                  color: colors.whiteAlpha45, letterSpacing: letterSpacing.wide,
+                  textTransform: 'uppercase', marginBottom: 14,
+                }}>Tone</div>
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 10,
+                  justifyContent: 'center',
+                }}>
+                  {brandTone.map((kw: string, i: number) => (
+                    <span key={i} style={{
+                      background: colors.whiteAlpha5,
+                      border: `1px solid ${brandPrimary}60`,
+                      borderRadius: radius.pill,
+                      padding: '9px 22px',
+                      fontFamily: font.heading, fontWeight: fontWeight.bold,
+                      fontSize: fontSize.md, color: colors.paper,
+                      letterSpacing: letterSpacing.slight,
+                    }}>{kw}</span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
