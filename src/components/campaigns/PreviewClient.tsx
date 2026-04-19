@@ -2049,7 +2049,7 @@ export default function PreviewClient({
                 <div style={{ background: '#2a2a2a', height: 20, borderRadius: '0 0 12px 12px', width: '110%', marginLeft: '-5%' }} />
                 <div style={{ textAlign: 'center', marginTop: 16 }}>
                   <a
-                    href={`/api/campaigns/${campaign.id}/landing-html`}
+                    href={landingPreviewSrc ?? '#'}
                     target="_blank" rel="noopener noreferrer"
                     style={{ background: colors.ink, color: colors.accent, fontSize: fontSize.body, fontWeight: fontWeight.bold, padding: '10px 20px', borderRadius: radius.pill, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: shadow.dark, border: `1px solid ${colors.whiteAlpha10}` }}
                   >↗ View full page</a>
@@ -2068,7 +2068,7 @@ export default function PreviewClient({
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: `linear-gradient(to bottom, transparent, ${colors.paper})`, pointerEvents: 'none' }} />
                     <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}>
                       <a
-                        href={`/api/campaigns/${campaign.id}/landing-html`}
+                        href={landingPreviewSrc ?? '#'}
                         target="_blank" rel="noopener noreferrer"
                         style={{ background: colors.ink, color: colors.accent, fontSize: fontSize.caption, fontWeight: fontWeight.bold, padding: '8px 16px', borderRadius: radius.pill, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: shadow.dark }}
                       >↗ View full page</a>
