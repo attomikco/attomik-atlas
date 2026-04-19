@@ -2,6 +2,7 @@
 import { colors, fontSize, letterSpacing, radius, spacing } from '@/lib/design-tokens'
 import type { Block } from '../types'
 import type { PageTheme } from '../lib/getPageTheme'
+import { resolveBlockBg } from '../lib/resolveBg'
 import { displayStyle, Ph } from './shared'
 
 interface Data {
@@ -13,7 +14,7 @@ interface Data {
 export function VideoBlock({ block, theme }: { block: Block; theme: PageTheme }) {
   const d = block.data as Data
   return (
-    <div style={{ padding: `${spacing[16] + 8}px ${spacing[16]}px`, textAlign: 'center', background: theme.paper }}>
+    <div style={{ padding: `${spacing[16] + 8}px ${spacing[16]}px`, textAlign: 'center', background: resolveBlockBg(block, theme) }}>
       <h2 style={{ ...displayStyle(32, theme), margin: `0 0 ${spacing[6]}px` }}>{d.headline}</h2>
       <div style={{ maxWidth: 900, margin: '0 auto', position: 'relative' }}>
         <Ph h={440} label="video still" />

@@ -2,6 +2,7 @@
 import { colors, fontSize, fontWeight, letterSpacing, radius, spacing } from '@/lib/design-tokens'
 import type { Block } from '../types'
 import type { PageTheme } from '../lib/getPageTheme'
+import { resolveBlockBg } from '../lib/resolveBg'
 
 interface Data {
   quote?: string
@@ -13,7 +14,7 @@ export function TestimonialBlock({ block, theme }: { block: Block; theme: PageTh
   const d = block.data as Data
   const initial = (d.name ?? 'A').trim().charAt(0).toUpperCase()
   return (
-    <div style={{ padding: `${spacing[20] + 8}px ${spacing[16]}px`, textAlign: 'center', background: theme.cream }}>
+    <div style={{ padding: `${spacing[20] + 8}px ${spacing[16]}px`, textAlign: 'center', background: resolveBlockBg(block, theme) }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ fontSize: 64, lineHeight: 0.5, color: theme.accent, marginBottom: spacing[2] }}>❝</div>
         <p style={{
