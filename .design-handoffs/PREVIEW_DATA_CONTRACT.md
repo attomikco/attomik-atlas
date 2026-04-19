@@ -109,11 +109,11 @@ Each is a single placeholder; the renderer produces the joined HTML server-side 
 | `hero_micro_html` | `brief.benefits[].headline` | first 3 | Inline micro-bullets under hero CTA. |
 | `ingredients_cards_html` | `brief.benefits[] + brand_images` | first 3 | Solution section — paired headline/body with image from content pool. |
 | `products_html` | `brand.products[]` | first 3 (template renders 3-col grid) | Product cards: name, description, price, CTA. Falls back to empty grid if no products. |
-| `review_cards_html` | `brief.social_proof` | 3 (first from brief, remaining seeded from brief.hero.subheadline + solution.body) | Testimonial grid. V1 keeps the "3-card faked from single testimonial" pattern. |
-| `hiw_html` | `brief` (hero/solution/final_cta bodies) | 3 hardcoded steps | How-It-Works. Derived copy from brief sections. |
-| `press_bar_html` | `brief.benefits[].headline` | first 5 | Horizontal text bar in place of press logos (V1: no real press logos from brand). |
+| `review_cards_html` | `brief.reviews[]` (optional — not in LandingBrief type) | up to 3 | Testimonial grid. Requires real `{ text, author? }[]`; section hides otherwise. |
+| `hiw_html` | `brief.hiw[]` (optional — not in LandingBrief type) | up to 3 | How-It-Works. Requires real `{ title, desc }[]`; section hides otherwise. |
+| `press_bar_html` | `brand.press_mentions[]` (optional — not in Brand type) | first 5 | Real press mentions only; section hides otherwise. No fake benefit-derived text. |
 | `faq_html` | `brief.faq[]` | all | `<details>` accordion items (native, no JS). |
-| `guarantee_html` | `brief.benefits[].headline` | first 3 | Final-CTA trust badges row. |
+| `guarantee_html` | `brand.notes.guarantees[]` (optional — not in Brand type) | first 3 | Final-CTA trust badges. Requires real `{ text }[]` inside notes JSON; row hides otherwise. |
 | `photo_strip_html` | `brandImages` (content pool) | first 6 | Image gallery strip. |
 
 ## CSS variables (injected into `:root`)
@@ -174,9 +174,10 @@ Renderer strips the markers after substitution. Sections with `visible = false` 
 | `photo_strip` | `brandImages` content pool >= 3 |
 | `ingredients` (solution) | `brief.solution?.headline` truthy |
 | `founder` | `brand.mission` ‖ `brand.brand_voice` truthy (falls back to solution.body if set) |
-| `testimonials` | `brief.social_proof?.testimonial` truthy |
-| `press` | `brief.benefits.length >= 3` |
-| `how_it_works` | `brief.solution?.body` ‖ `brief.hero.subheadline` truthy (i.e. almost always) |
+| `testimonials` | real `brief.reviews?.length >= 1` (optional field not in LandingBrief type; hidden otherwise) |
+| `press` | real `brand.press_mentions?.length >= 1` (optional field not in Brand type; hidden otherwise) |
+| `how_it_works` | real `brief.hiw?.length >= 1` (optional field not in LandingBrief type; hidden otherwise) |
+| `guarantee` | real `brand.notes.guarantees?.length >= 1` (parsed from notes JSON; hidden otherwise — wrapped in its own SECTION markers inside final_cta) |
 | `faq` | `brief.faq?.length > 0` |
 | `final_cta` | always |
 | `floating_cta` | always |
@@ -194,10 +195,10 @@ Renderer strips the markers after substitution. Sections with `visible = false` 
 ## v1 gaps (flagged)
 
 - `hero_badge` — the current implementation mashes `brief.social_proof.stat` with brand name into one string, and many briefs have a vague stat. V1 keeps the pattern but the result is uneven. Proper fix is a dedicated `brief.hero.badge` field.
-- `review_cards_html` — the 3-card testimonial grid is faked from 1 real testimonial + 2 synthesized strings. V1 keeps the pattern. Proper fix is a `brief.reviews: Review[]` array from the AI pass.
-- `hiw_html` — "How it works" steps are derived from brief sections; titles are always `Discover / Experience / Love It`. V1 keeps these constants. Proper fix is a dedicated brief section.
-- `press_bar_html` — the current template renders 5 Afterdream press logos from their CDN; v1 replaces with a horizontal benefit text bar (same role, different content source). No actual press logos per brand yet.
-- `guarantee_html` — trust badges under the final CTA re-use benefit headlines. The original had explicit "Satisfaction Guaranteed / Free Shipping / 10% Off" strings. V1 reuses benefits; proper fix is a dedicated `brief.guarantees` field.
+- ✅ **fixed (post-v1)**: `review_cards_html` — no more "3-card faked from single testimonial" synthesis. Section now hides entirely unless the caller provides real `brief.reviews: Review[]`. No schema change; the reader looks for the optional field via duck-typed optional chaining. Wizard / scraper / manual-edit can produce it whenever.
+- ✅ **fixed (post-v1)**: `hiw_html` — no more hardcoded "Discover / Experience / Love It" across brands. Section hides unless real `brief.hiw: { title, desc }[]` is present.
+- ✅ **fixed (post-v1)**: `press_bar_html` — no more benefit-headlines-as-fake-press. Section hides unless real `brand.press_mentions: { name }[]` is present.
+- ✅ **fixed (post-v1)**: `guarantee_html` — no more benefit-headline reuse. Row hides unless real `brand.notes.guarantees: { text }[]` is present. Wrapped in its own `PREVIEW_SECTION_START:guarantee` markers inside `final_cta` so `final_cta` itself stays visible.
 - `products_html` — current renderer only renders the first product as a single wide card; v1 renders up to 3 in a grid (matches the template's original visual). Products beyond 3 are dropped silently.
 - Tracking IDs — GA4 and Meta Pixel IDs are null/empty; any analytics on preview pages will no-op until per-brand IDs become a brand field.
 - Structured data (Organization, Product, FAQPage JSON-LD) — dropped entirely v1. Re-adding requires mapping `brand.*` into schema.org shapes; not blocking preview rendering.
