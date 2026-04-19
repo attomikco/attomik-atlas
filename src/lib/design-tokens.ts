@@ -43,6 +43,15 @@ export const colors = {
   // Canvas surfaces (landing-page builder)
   canvasGray: '#e9e9e7',
 
+  // macOS traffic-light chrome (fake-browser-bar in canvas previews).
+  // Universal OS colors, not brand — but kept as tokens so the rule
+  // against inline hex holds. Same triplet repeats in PreviewClient
+  // and the marketing homepage; consolidating those sites is a
+  // separate cleanup.
+  trafficRed: '#ff5f57',
+  trafficYellow: '#febc2e',
+  trafficGreen: '#28c840',
+
   // Sidebar
   sidebarBg: '#000000',
   sidebarBorder: 'rgba(255,255,255,0.07)',
