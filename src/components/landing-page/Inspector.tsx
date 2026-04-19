@@ -2,21 +2,20 @@
 import { useState } from 'react'
 import { colors, font, fontSize, fontWeight, radius, spacing } from '@/lib/design-tokens'
 import type { Block } from './types'
+import type { BuilderActions } from './BuilderClient'
 import { BLOCK_REGISTRY } from './blocks/registry'
 import { ContentTab } from './inspector/ContentTab'
 import { StyleTab } from './inspector/StyleTab'
+import { IcnBtn } from './inspector/primitives'
 
 type Tab = 'content' | 'style' | 'ai'
 
 interface Props {
   block: Block | null
+  actions: BuilderActions
 }
 
-// Phase 2: 320px right rail. Header block + 3-tab switcher. Tab bodies are
-// placeholders for the real Content / Style / ✦ AI implementations landing
-// in Phases 3 and 5. Actions (visibility / duplicate / delete) render
-// disabled until Phase 4 wires them.
-export function Inspector({ block }: Props) {
+export function Inspector({ block, actions }: Props) {
   const [tab, setTab] = useState<Tab>('content')
 
   if (!block) {
@@ -39,7 +38,6 @@ export function Inspector({ block }: Props) {
 
   return (
     <div style={rootStyle}>
-      {/* Header: glyph + label + variant + action buttons */}
       <div style={{
         padding: `${spacing[3]}px ${spacing[4]}px`,
         borderBottom: `1px solid ${colors.border}`,
@@ -66,13 +64,15 @@ export function Inspector({ block }: Props) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          <IcnBtn disabled title="Coming soon">◉</IcnBtn>
-          <IcnBtn disabled title="Coming soon">⎘</IcnBtn>
-          <IcnBtn disabled title="Coming soon" danger>×</IcnBtn>
+          <IcnBtn
+            title={block.visible ? 'Hide on page' : 'Show on page'}
+            onClick={() => actions.toggleVisible(block.id)}
+          >{block.visible ? '◉' : '◎'}</IcnBtn>
+          <IcnBtn title="Duplicate" onClick={() => actions.duplicate(block.id)}>⎘</IcnBtn>
+          <IcnBtn title="Delete" onClick={() => actions.removeBlock(block.id)} danger>×</IcnBtn>
         </div>
       </div>
 
-      {/* Tabs */}
       <div style={{
         display: 'flex', gap: 4,
         padding: `${spacing[2]}px ${spacing[2]}px 0`,
@@ -96,18 +96,16 @@ export function Inspector({ block }: Props) {
         })}
       </div>
 
-      {/* Tab body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: `${spacing[4]}px ${spacing[4]}px ${spacing[6]}px` }}>
-        {tab === 'content' && <ContentTab block={block} />}
-        {tab === 'style' && <StyleTab block={block} />}
+        {tab === 'content' && <ContentTab block={block} actions={actions} />}
+        {tab === 'style' && <StyleTab block={block} actions={actions} />}
         {tab === 'ai' && <AiStub />}
       </div>
     </div>
   )
 }
 
-// AI tab still stubbed — real implementation lands in Phase 5 alongside
-// /api/landing-pages/[id]/rewrite-block.
+// AI tab still stubbed — Phase 5.
 function AiStub() {
   return (
     <div style={{
@@ -125,22 +123,6 @@ function AiStub() {
         fontWeight: fontWeight.bold,
       }}>Lands in Phase 5</div>
     </div>
-  )
-}
-
-function IcnBtn({
-  children, disabled, title, danger,
-}: { children: React.ReactNode; disabled?: boolean; title?: string; danger?: boolean }) {
-  return (
-    <button disabled={disabled} title={title} style={{
-      width: 30, height: 30,
-      border: `1px solid ${colors.border}`, background: colors.paper,
-      borderRadius: radius.sm, cursor: disabled ? 'not-allowed' : 'pointer',
-      color: danger ? colors.danger : colors.ink,
-      fontSize: fontSize.body,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      opacity: disabled ? 0.4 : 1,
-    }}>{children}</button>
   )
 }
 

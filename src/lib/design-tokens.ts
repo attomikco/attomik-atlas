@@ -43,6 +43,12 @@ export const colors = {
   // Canvas surfaces (landing-page builder)
   canvasGray: '#e9e9e7',
 
+  // Selection indicators — selected outline rows, highlighted drop targets.
+  // Background uses the existing accentMid (rgba 0.12); the border token is
+  // new because the handoff's rgba(0,168,107,0.35) pairs visually with the
+  // black text/glyphs on a green tint in a way accentDark alone doesn't.
+  accentTintBorder: 'rgba(0,168,107,0.35)',
+
   // macOS traffic-light chrome (fake-browser-bar in canvas previews).
   // Universal OS colors, not brand — but kept as tokens so the rule
   // against inline hex holds. Same triplet repeats in PreviewClient

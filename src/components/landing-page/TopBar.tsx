@@ -1,10 +1,10 @@
 'use client'
 import { colors, font, fontSize, fontWeight, radius, spacing, transition } from '@/lib/design-tokens'
 import type { PageSettings } from './types'
+import type { SaveState } from './lib/useAutosave'
 
 type Device = 'desktop' | 'tablet' | 'mobile'
 type Mode = 'edit' | 'preview'
-type SaveState = 'saved' | 'dirty' | 'saving'
 
 interface Props {
   pageSettings: PageSettings
@@ -13,12 +13,13 @@ interface Props {
   mode: Mode
   onMode: (m: Mode) => void
   saveState: SaveState
+  onRetrySave?: () => void
   onBack: () => void
 }
 
 // Phase 2: device/mode toggles wired; AI / Export / Publish are placeholders
 // (disabled, title="Coming soon"). Real behavior lands in Phase 5 + 7.
-export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState, onBack }: Props) {
+export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState, onRetrySave, onBack }: Props) {
   return (
     <div style={{
       display: 'flex',
@@ -48,7 +49,7 @@ export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 420,
           }}>{pageSettings.title || 'Untitled page'}</div>
         </div>
-        <SavePill state={saveState} />
+        <SavePill state={saveState} onRetry={onRetrySave} />
       </div>
 
       {/* Center: device toggle */}
@@ -71,9 +72,34 @@ export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState
   )
 }
 
-function SavePill({ state }: { state: SaveState }) {
+function SavePill({ state, onRetry }: { state: SaveState; onRetry?: () => void }) {
+  // idle renders nothing — avoids a stale "Saved" label lingering past the
+  // 2s hold window in useAutosave.
+  if (state === 'idle') return null
+
+  if (state === 'error') {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        style={{
+          display: 'flex', alignItems: 'center', gap: spacing[1],
+          padding: `4px ${spacing[2]}px`,
+          background: colors.dangerLight, border: `1px solid ${colors.danger}`,
+          borderRadius: radius.pill,
+          fontSize: fontSize.caption, fontFamily: font.mono,
+          letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.danger,
+          cursor: 'pointer', flexShrink: 0,
+        }}
+      >
+        <span style={{ width: 6, height: 6, borderRadius: radius.pill, background: colors.danger }} />
+        <span>Save failed — retry</span>
+      </button>
+    )
+  }
+
   const dot = state === 'saved' ? colors.success : state === 'saving' ? colors.warning : colors.danger
-  const label = state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving…' : 'Unsaved'
+  const label = state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving…' : 'Unsaved changes'
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: spacing[1],

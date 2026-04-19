@@ -1,47 +1,42 @@
 'use client'
-// Universal style inspector. Reads variant list from
-// BLOCK_REGISTRY[block.type].variants and renders the block's BlockStyle via
-// the shared primitives. Every input is read-only in Phase 3 — real
-// mutations wire up in Phase 4.
+// Universal style inspector. Every control live-mutates via actions.*
+// handlers. Variant change uses updateVariant; bg/pad/align/width/divider/
+// anchor/cls merge into block.style via updateStyle.
 
 import { colors, font, fontSize, spacing } from '@/lib/design-tokens'
 import type { AlignKey, BackgroundKey, Block, BlockStyle, PaddingKey, WidthKey } from '../types'
+import type { BuilderActions } from '../BuilderClient'
 import { BLOCK_REGISTRY } from '../blocks/registry'
 import { Field, PillGroup, SwatchGroup, TextInput, Toggle } from './primitives'
 
 interface Props {
   block: Block
+  actions: BuilderActions
 }
 
-const PAD_OPTIONS: readonly PaddingKey[]  = ['none', 'sm', 'md', 'lg', 'xl']
-const ALIGN_OPTIONS: readonly AlignKey[]  = ['left', 'center', 'right']
-const WIDTH_OPTIONS: readonly WidthKey[]  = ['narrow', 'default', 'wide', 'full']
+const PAD_OPTIONS: readonly PaddingKey[] = ['none', 'sm', 'md', 'lg', 'xl']
+const ALIGN_OPTIONS: readonly AlignKey[] = ['left', 'center', 'right']
+const WIDTH_OPTIONS: readonly WidthKey[] = ['narrow', 'default', 'wide', 'full']
 
-export function StyleTab({ block }: Props) {
+export function StyleTab({ block, actions }: Props) {
   const config = BLOCK_REGISTRY[block.type]
   const style: BlockStyle = block.style ?? {}
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
-      <div style={{
-        padding: `${spacing[2]}px ${spacing[3]}px`,
-        border: `1px dashed ${colors.border}`, borderRadius: 8,
-        fontFamily: font.mono, fontSize: fontSize.xs,
-        letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.subtle,
-        background: colors.cream,
-      }}>
-        Editing lands in Phase 4
-      </div>
-
       <Field label="Variant">
         <PillGroup
-          options={config?.variants ?? []}
+          options={(config?.variants ?? []) as readonly string[]}
           value={block.variant}
-          disabled
+          onChange={v => actions.updateVariant(block.id, v)}
         />
       </Field>
 
       <Field label="Background">
-        <SwatchGroup value={style.bg as BackgroundKey | undefined} disabled />
+        <SwatchGroup
+          value={style.bg as BackgroundKey | undefined}
+          onChange={v => actions.updateStyle(block.id, { bg: v })}
+        />
       </Field>
 
       <Field label="Padding">
@@ -49,7 +44,7 @@ export function StyleTab({ block }: Props) {
           options={PAD_OPTIONS}
           value={style.pad}
           fallback="lg"
-          disabled
+          onChange={v => actions.updateStyle(block.id, { pad: v })}
         />
       </Field>
 
@@ -58,7 +53,7 @@ export function StyleTab({ block }: Props) {
           options={ALIGN_OPTIONS}
           value={style.align}
           fallback="left"
-          disabled
+          onChange={v => actions.updateStyle(block.id, { align: v })}
         />
       </Field>
 
@@ -67,16 +62,25 @@ export function StyleTab({ block }: Props) {
           options={WIDTH_OPTIONS}
           value={style.width}
           fallback="default"
-          disabled
+          onChange={v => actions.updateStyle(block.id, { width: v })}
         />
       </Field>
 
       <Field label="Divider">
-        <Toggle on={!!style.divider} disabled labelOn="Show divider above" labelOff="No divider" />
+        <Toggle
+          on={!!style.divider}
+          onChange={v => actions.updateStyle(block.id, { divider: v })}
+          labelOn="Show divider above"
+          labelOff="No divider"
+        />
       </Field>
 
       <Field label="Anchor ID">
-        <TextInput value={style.anchor ?? ''} placeholder="e.g. benefits" readOnly />
+        <TextInput
+          value={style.anchor ?? ''}
+          placeholder="e.g. benefits"
+          onChange={v => actions.updateStyle(block.id, { anchor: v })}
+        />
       </Field>
 
       <div style={{ borderTop: `1px solid ${colors.border}`, margin: `${spacing[2]}px 0 0` }} />
@@ -85,7 +89,11 @@ export function StyleTab({ block }: Props) {
         letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.subtle,
       }}>Advanced</div>
       <Field label="Custom CSS class">
-        <TextInput value={style.cls ?? ''} placeholder="my-section" readOnly />
+        <TextInput
+          value={style.cls ?? ''}
+          placeholder="my-section"
+          onChange={v => actions.updateStyle(block.id, { cls: v })}
+        />
       </Field>
     </div>
   )

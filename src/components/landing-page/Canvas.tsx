@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { colors, font, fontSize, fontWeight, radius, spacing } from '@/lib/design-tokens'
-import type { Block } from './types'
+import { colors, font, fontSize, fontWeight, letterSpacing, radius, spacing } from '@/lib/design-tokens'
+import type { Block, BlockType } from './types'
 import { BlockWrap } from './BlockWrap'
 
 type Device = 'desktop' | 'tablet' | 'mobile'
@@ -10,6 +10,7 @@ interface Props {
   blocks: Block[]
   selectedId: string | null
   onSelect: (id: string | null) => void
+  onInsertAt: (type: BlockType, index: number) => void
   device: Device
   zoom: number
 }
@@ -20,11 +21,11 @@ const DEVICE_WIDTH: Record<Device, number> = {
   mobile: 390,
 }
 
-// Phase 3: real block rendering. <BlockWrap> handles selection chrome,
-// click-to-select with stopPropagation, and routes to the registry's
-// renderer. The outer gray field handles click-canvas-bg-to-deselect
-// via the e.target === e.currentTarget check.
-export function Canvas({ blocks, selectedId, onSelect, device, zoom }: Props) {
+// Canvas renders real blocks via <BlockWrap>. <InsertZone>s between every
+// pair of blocks (and at top/bottom) accept drags from the Blocks library
+// and click to insert a richtext block at that index (confirmed default).
+// Outer gray-field click with e.target === e.currentTarget clears selection.
+export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom }: Props) {
   const outerRef = useRef<HTMLDivElement>(null)
   const [autoScale, setAutoScale] = useState(1)
   const deviceWidth = DEVICE_WIDTH[device]
@@ -71,16 +72,75 @@ export function Canvas({ blocks, selectedId, onSelect, device, zoom }: Props) {
         }}>
           <BrowserBar />
           {blocks.length === 0 && <EmptyState />}
-          {blocks.map(b => (
-            <BlockWrap
-              key={b.id}
-              block={b}
-              selected={b.id === selectedId}
-              onSelect={onSelect}
-            />
+          {blocks.map((b, i) => (
+            <div key={b.id}>
+              <InsertZone index={i} onInsert={onInsertAt} />
+              <BlockWrap
+                block={b}
+                selected={b.id === selectedId}
+                onSelect={onSelect}
+              />
+            </div>
           ))}
+          <InsertZone index={blocks.length} onInsert={onInsertAt} last />
         </div>
       </div>
+    </div>
+  )
+}
+
+// Collapsed 8px strip between blocks (and at top/bottom). Expands to 36px
+// on hover or when a library card is dragged over. Click = insert richtext
+// (confirmed default; later we may swap for a type-picker popover). Drop
+// with a dataTransfer.blockType payload = insert that type.
+function InsertZone({ index, onInsert, last }: { index: number; onInsert: (type: BlockType, i: number) => void; last?: boolean }) {
+  const [hover, setHover] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    setHover(false)
+    const raw = e.dataTransfer.getData('blockType')
+    if (!raw) return
+    onInsert(raw as BlockType, index)
+  }
+
+  const expanded = hover || dragActive
+  const labelText = dragActive ? 'Drop here' : '+ Add block'
+
+  return (
+    <div
+      onClick={e => { e.stopPropagation(); onInsert('richtext', index) }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onDragOver={e => { e.preventDefault(); setDragActive(true) }}
+      onDragLeave={() => setDragActive(false)}
+      onDrop={handleDrop}
+      style={{
+        height: expanded ? 36 : 8,
+        position: 'relative',
+        transition: 'height .15s',
+        cursor: 'pointer',
+        background: dragActive ? colors.accentMid : 'transparent',
+        marginTop: last ? 0 : undefined,
+      }}
+    >
+      {expanded && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing[2] }}>
+          <div style={{ flex: 1, height: 1, background: dragActive ? colors.accent : colors.disabled, margin: `0 ${spacing[5]}px` }} />
+          <div style={{
+            fontSize: fontSize.xs, fontFamily: font.mono,
+            textTransform: 'uppercase', letterSpacing: letterSpacing.widest,
+            background: dragActive ? colors.accent : colors.ink,
+            color: dragActive ? colors.ink : colors.accent,
+            padding: `3px ${spacing[3]}px`, borderRadius: radius.pill,
+            fontWeight: fontWeight.bold, whiteSpace: 'nowrap',
+          }}>{labelText}</div>
+          <div style={{ flex: 1, height: 1, background: dragActive ? colors.accent : colors.disabled, margin: `0 ${spacing[5]}px` }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -117,7 +177,7 @@ function EmptyState() {
         Start your page
       </div>
       <div style={{ fontSize: fontSize.body, maxWidth: 340, margin: '0 auto', lineHeight: 1.5 }}>
-        Block library + drag-to-add arrive in Phase 4.
+        Drop a block from the library on the left — or click between any two blocks to insert.
       </div>
     </div>
   )
