@@ -117,7 +117,7 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
       />
       <CampaignModeBar />
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <LeftRail tab={ui.leftTab} onTab={t => patchUi({ leftTab: t })} />
+        <LeftRail tab={ui.leftTab} onTab={t => patchUi({ leftTab: t })} blocks={blocks} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
           <Canvas
             blocks={blocks}
