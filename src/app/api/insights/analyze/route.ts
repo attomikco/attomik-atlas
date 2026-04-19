@@ -22,8 +22,11 @@ interface AggRow {
   spend: number
   purchases: number
   purchase_value: number
-  avg_ctr: number
-  avg_roas: number
+  // CTR and ROAS are ratio-of-totals over the window, NOT averages of
+  // per-day stored rates. The "avg_" prefix was dropped when those
+  // averaging bugs were fixed.
+  ctr: number
+  roas: number
   avg_cpa: number
 }
 
@@ -37,17 +40,15 @@ export async function POST(req: NextRequest) {
   if (!brand) return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
 
   // Aggregate rows by ad_name
-  const map: Record<string, { impressions: number; clicks: number; spend: number; purchases: number; purchase_value: number; ctr_sum: number; roas_sum: number; count: number }> = {}
+  const map: Record<string, { impressions: number; clicks: number; spend: number; purchases: number; purchase_value: number; count: number }> = {}
   for (const r of rows) {
     const name = r.ad_name || '(no ad name)'
-    if (!map[name]) map[name] = { impressions: 0, clicks: 0, spend: 0, purchases: 0, purchase_value: 0, ctr_sum: 0, roas_sum: 0, count: 0 }
+    if (!map[name]) map[name] = { impressions: 0, clicks: 0, spend: 0, purchases: 0, purchase_value: 0, count: 0 }
     map[name].impressions += r.impressions || 0
     map[name].clicks += r.clicks || 0
     map[name].spend += r.spend || 0
     map[name].purchases += r.purchases || 0
     map[name].purchase_value += r.purchase_value || 0
-    map[name].ctr_sum += r.ctr || 0
-    map[name].roas_sum += r.roas || 0
     map[name].count++
   }
 
@@ -59,8 +60,15 @@ export async function POST(req: NextRequest) {
     spend: v.spend,
     purchases: v.purchases,
     purchase_value: v.purchase_value,
-    avg_ctr: v.count > 0 ? v.ctr_sum / v.count : 0,
-    avg_roas: v.count > 0 ? v.roas_sum / v.count : 0,
+    // Per-ad CTR as ratio-of-totals (matches ROAS pattern). Averaging
+    // per-day stored CTR across days weights every day equally regardless
+    // of impression volume — wrong for multi-day ads with variable reach.
+    // × 100 keeps the percentage format the prompt expects (CTR X.XX%).
+    ctr: v.impressions > 0 ? (v.clicks / v.impressions) * 100 : 0,
+    // Per-ad ROAS as ratio-of-totals. Previously this averaged per-day
+    // stored ROAS, which is mathematically wrong for multi-day ads and
+    // was feeding skewed numbers to Claude in the per-creative breakdown.
+    roas: v.spend > 0 ? v.purchase_value / v.spend : 0,
     avg_cpa: v.purchases > 0 ? v.spend / v.purchases : 0,
   }))
   aggregated.sort((a, b) => b.spend - a.spend)
@@ -82,7 +90,7 @@ export async function POST(req: NextRequest) {
     .join('\n')
 
   const adBreakdown = aggregated.slice(0, 20)
-    .map(a => `"${a.ad_name}" [${a.creative_type}]: $${a.spend.toFixed(2)} spend, ${a.impressions} impr, ${a.clicks} clicks, CTR ${a.avg_ctr.toFixed(2)}%, ${a.purchases} purchases, ROAS ${a.avg_roas.toFixed(2)}x, CPA ${a.avg_cpa > 0 ? '$' + a.avg_cpa.toFixed(2) : 'N/A'}`)
+    .map(a => `"${a.ad_name}" [${a.creative_type}]: $${a.spend.toFixed(2)} spend, ${a.impressions} impr, ${a.clicks} clicks, CTR ${a.ctr.toFixed(2)}%, ${a.purchases} purchases, ROAS ${a.roas.toFixed(2)}x, CPA ${a.avg_cpa > 0 ? '$' + a.avg_cpa.toFixed(2) : 'N/A'}`)
     .join('\n')
 
   const totalSpend = aggregated.reduce((s, a) => s + a.spend, 0)

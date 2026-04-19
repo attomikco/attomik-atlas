@@ -264,17 +264,15 @@ export default function InsightsPage() {
     const { data: rows } = await query
     if (!rows || rows.length === 0) { setAggRows([]); return }
 
-    const map: Record<string, { impressions: number; clicks: number; spend: number; purchases: number; purchase_value: number; ctr_sum: number; roas_sum: number; count: number; ad_id: string | null; creative_title: string | null; creative_body: string | null; creative_image_url: string | null; creative_cta: string | null }> = {}
+    const map: Record<string, { impressions: number; clicks: number; spend: number; purchases: number; purchase_value: number; count: number; ad_id: string | null; creative_title: string | null; creative_body: string | null; creative_image_url: string | null; creative_cta: string | null }> = {}
     for (const r of rows) {
       const name = r.ad_name || '(no ad name)'
-      if (!map[name]) map[name] = { impressions: 0, clicks: 0, spend: 0, purchases: 0, purchase_value: 0, ctr_sum: 0, roas_sum: 0, count: 0, ad_id: null, creative_title: null, creative_body: null, creative_image_url: null, creative_cta: null }
+      if (!map[name]) map[name] = { impressions: 0, clicks: 0, spend: 0, purchases: 0, purchase_value: 0, count: 0, ad_id: null, creative_title: null, creative_body: null, creative_image_url: null, creative_cta: null }
       map[name].impressions += r.impressions || 0
       map[name].clicks += r.clicks || 0
       map[name].spend += r.spend || 0
       map[name].purchases += r.purchases || 0
       map[name].purchase_value += r.purchase_value || 0
-      map[name].ctr_sum += r.ctr || 0
-      map[name].roas_sum += r.roas || 0
       map[name].count++
       map[name].ad_id = map[name].ad_id || r.ad_id || null
       map[name].creative_title = map[name].creative_title || r.creative_title || null
@@ -288,11 +286,22 @@ export default function InsightsPage() {
       ad_id: v.ad_id,
       impressions: v.impressions,
       clicks: v.clicks,
-      ctr: v.count > 0 ? v.ctr_sum / v.count : 0,
+      // CTR as ratio-of-totals, matching the ROAS pattern. Averaging stored
+      // per-day CTR across days weights a 100-impression day the same as a
+      // 10,000-impression day — wrong whenever daily impression volume
+      // varies. Always: total clicks ÷ total impressions, × 100 to match
+      // the stored-percentage format consumed by display sites
+      // (r.ctr.toFixed(2) + '%').
+      ctr: v.impressions > 0 ? (v.clicks / v.impressions) * 100 : 0,
       spend: v.spend,
       purchases: v.purchases,
       purchase_value: v.purchase_value,
-      roas: v.count > 0 ? v.roas_sum / v.count : 0,
+      // Per-ad ROAS as ratio-of-totals, not the mean of per-day stored ROAS.
+      // Averaging the stored roas column across days produces wildly wrong
+      // numbers for multi-day ads (a zero-revenue day drops the mean toward
+      // 0 regardless of spend weighting). Always: total revenue ÷ total
+      // spend for the window.
+      roas: v.spend > 0 ? v.purchase_value / v.spend : 0,
       cpa: v.purchases > 0 ? v.spend / v.purchases : 0,
       creative_title: v.creative_title,
       creative_body: v.creative_body,
@@ -406,16 +415,11 @@ export default function InsightsPage() {
     analyzeData()
   }, [activeBrandId, hasData, aggRows, analysis, analyzing, hasMetaCredentials])
 
-  // ── KPI computations ──────────────────────────────────────────
-  const kpis = useMemo(() => {
-    if (aggRows.length === 0) return null
-    const totalSpend = aggRows.reduce((s, r) => s + r.spend, 0)
-    const totalPurchases = aggRows.reduce((s, r) => s + r.purchases, 0)
-    const totalRoasSum = aggRows.reduce((s, r) => s + r.roas, 0)
-    const avgRoas = aggRows.length > 0 ? totalRoasSum / aggRows.length : 0
-    const avgCpa = totalPurchases > 0 ? totalSpend / totalPurchases : 0
-    return { totalSpend, totalPurchases, avgRoas, avgCpa }
-  }, [aggRows])
+  // KPI memo was previously computed here (totalSpend / totalPurchases /
+  // avgRoas / avgCpa) but had no readers. Blended ROAS for the top card is
+  // computed inline further down (totalRevenue / totalSpend). Removing the
+  // dead memo also removes a broken avgRoas formula that averaged already-
+  // averaged per-ad ROAS across ads — doubly wrong but never rendered.
 
   // ── Upload handler ────────────────────────────────────────────
   const handleFile = useCallback(async (file: File) => {
