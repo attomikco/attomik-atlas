@@ -173,6 +173,11 @@ export interface GeneratedContent {
   notes: string | null
   generated_html: string | null
   generated_html_hash: string | null
+  // Public URL of the frozen HTML snapshot in Supabase Storage
+  // (landing-previews/{brand_id}.html). Superseded `generated_html` —
+  // the column lingers until the 20260419 migration script clears the
+  // last legacy rows, then will be dropped.
+  landing_preview_url: string | null
 }
 
 // Landing pages table (20260419_landing_pages.sql). content is jsonb holding

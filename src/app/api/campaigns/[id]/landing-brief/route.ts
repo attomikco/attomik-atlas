@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildBrandSystemPrompt } from '@/lib/anthropic'
 import { renderLandingHtml, type LandingBrief } from '@/lib/landing-page-renderer'
+import { saveLandingPreviewHtml } from '@/lib/landing-preview-storage'
 import type { BrandImage } from '@/types'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -133,6 +134,13 @@ Suggested CTAs for this business type: ${defaultCtas.join(', ')}.`
     // so the Preview page can render it unchanged even if the brand is edited
     // later. Failure here is non-fatal — the brief is still saved and the
     // live /landing-html endpoint keeps working as a fallback.
+    //
+    // Storage-layer migration: as of 20260419 the snapshot lives in the
+    // `landing-previews` bucket at {brand_id}.html. We store the public URL
+    // on the generated_content row in `landing_preview_url`. The legacy
+    // `generated_html` TEXT column is no longer written; it's being phased
+    // out by a one-off migration script (keeping the column for a safety
+    // window, dropping it in a later migration).
     if (insertedRow && !insertErr) {
       try {
         const { data: allImagesRaw } = await supabase
@@ -146,9 +154,11 @@ Suggested CTAs for this business type: ${defaultCtas.join(', ')}.`
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
         })
 
+        const { url } = await saveLandingPreviewHtml(brand.id, snapshotHtml)
+
         await supabase
           .from('generated_content')
-          .update({ generated_html: snapshotHtml })
+          .update({ landing_preview_url: url })
           .eq('id', insertedRow.id)
       } catch (e) {
         console.error('[landing-brief] snapshot render failed:', e)
