@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:audit": "node --experimental-strip-types --test src/lib/audit/__tests__/*.test.ts",
-    "test:landing-page": "node --experimental-strip-types --test src/components/landing-page/lib/__tests__/*.test.ts"
+    "test:landing-page": "node --experimental-strip-types --test src/components/landing-page/lib/__tests__/*.test.ts",
+    "test:preview": "node --experimental-strip-types --test src/lib/__tests__/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",

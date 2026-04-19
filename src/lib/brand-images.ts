@@ -1,4 +1,7 @@
-import { type BrandImage } from '@/types'
+// Relative path (not @/ alias) so Node's strip-types test loader can
+// resolve this file when run outside the Next.js bundler. Type-only
+// import gets elided at runtime anyway.
+import { type BrandImage } from '../types/index.ts'
 
 export type BusinessType = 'shopify' | 'ecommerce' | 'saas' | 'restaurant' | 'service' | 'brand' | string | null | undefined
 

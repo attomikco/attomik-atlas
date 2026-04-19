@@ -15,14 +15,14 @@
 <meta property="og:title" content="{{page_title}}">
 <meta property="og:description" content="{{meta_description}}">
 
-<!-- Brand fonts injected by renderer at <!--FONT_LINKS--> marker below.
-     Renderer writes one <link> per Google Font family resolved from
-     brand.font_heading + brand.font_body. -->
+<!-- Renderer writes one Google Fonts <link> per family at the marker
+     below (one for heading family, one for body if different). The
+     marker comment itself is consumed by the replacement. -->
 <!--FONT_LINKS-->
 
 <style>
-  /* Placeholder :root values. Renderer overwrites these via a
-     <style id="brand-override"> block appended just before </head>. */
+  /* Placeholder :root values. Renderer appends a brand-override block
+     later in the head so the cascade overrides these defaults. */
   :root {
     --brand-primary: #000000;
     --brand-secondary: rgba(0,0,0,0.6);
