@@ -42,12 +42,26 @@ export function buildPreviewImageSlots(
   for (const img of productImages) bucketIds.add(img.id)
   const otherImages = content.filter(img => !bucketIds.has(img.id))
 
+  // Defensive: legacy data may still have square Shopify CDN product shots
+  // mis-tagged as lifestyle. Tightened Rule 11 in scanner prevents new
+  // occurrences. Remove this re-rank once all brands are rescraped post-fix.
+  const isSquareShopifyCdn = (img: BrandImage): boolean => {
+    if (!img.width || !img.height) return false
+    if (!img.source_url) return false
+    if (!/cdn\.shopify\.com\/s\/files/i.test(img.source_url)) return false
+    return Math.abs(img.width - img.height) < img.width * 0.15
+  }
+  const rerankedLifestyle = [
+    ...lifestyleImages.filter(img => !isSquareShopifyCdn(img)),
+    ...lifestyleImages.filter(img => isSquareShopifyCdn(img)),
+  ]
+
   // Dedupe as we build the pool — bucketBrandImages folds some tags into
   // lifestyle that might also show up in product depending on tag, so this
   // guards against the same row appearing twice.
   const seen = new Set<string>()
   const pool: BrandImage[] = []
-  for (const img of [...lifestyleImages, ...productImages, ...otherImages]) {
+  for (const img of [...rerankedLifestyle, ...productImages, ...otherImages]) {
     if (seen.has(img.id)) continue
     seen.add(img.id)
     pool.push(img)
