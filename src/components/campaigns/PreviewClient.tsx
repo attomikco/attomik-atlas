@@ -268,12 +268,20 @@ export default function PreviewClient({
   // the brand's palette/fonts baked in and stored as a file in the
   // `landing-previews` Supabase Storage bucket. Preview renders from this URL,
   // so edits to brand colors/fonts elsewhere in the app never drift the
-  // Preview. Legacy rows (pre-URL + pre-snapshot) with no landing_preview_url
-  // render as a skeleton rather than hitting the live /landing-html endpoint
-  // and breaking the frozen guarantee.
-  const landingPreviewUrl: string | null = landingContent.length > 0
+  // Preview.
+  //
+  // Legacy rows (pre-20260416) exist with a brief but no snapshot — they
+  // never had a `generated_html` and weren't caught by the Storage
+  // migration. For those we fall back to the live /landing-html endpoint
+  // as the iframe src: it renders from the same template + current brand
+  // palette. The frozen-palette guarantee only applies to rows that ever
+  // had a snapshot in the first place; legacy rows trading that guarantee
+  // for "actually renders" is the right call.
+  const storedPreviewUrl: string | null = landingContent.length > 0
     ? (landingContent[0].landing_preview_url ?? null)
     : null
+  const landingPreviewSrc: string | null = storedPreviewUrl
+    ?? (existingLandingBrief ? `/api/campaigns/${campaign.id}/landing-html` : null)
 
   // Content state — generation now happens before redirect (in OnboardingWizard)
   const [adVariations, setAdVariations] = useState<AdVariation[]>(existingAdVariations)
@@ -2014,7 +2022,7 @@ export default function PreviewClient({
               ✦ Conversion-optimized page
             </div>
           </div>
-          {landingBrief && landingPreviewUrl ? (
+          {landingBrief && landingPreviewSrc ? (
             <>
               {/* Desktop — laptop frame */}
               <div className="pv-landing-laptop" style={{ maxWidth: 900, margin: '0 auto' }}>
@@ -2033,7 +2041,7 @@ export default function PreviewClient({
                       pattern used on the mobile phone frame below. */}
                   <div className="pv-iframe" style={{ width: '100%', height: 600, overflow: 'hidden', borderRadius: '8px 8px 0 0', background: colors.paper }}>
                     <iframe
-                      src={landingPreviewUrl ?? 'about:blank'}
+                      src={landingPreviewSrc ?? 'about:blank'}
                       style={{
                         width: 'calc(100% / 0.6)',
                         height: 'calc(100% / 0.6)',
@@ -2061,7 +2069,7 @@ export default function PreviewClient({
                   <div style={{ width: 80, height: 20, background: '#1a1a1a', borderRadius: '0 0 12px 12px', margin: '0 auto 8px' }} />
                   <div style={{ borderRadius: 28, overflow: 'hidden', width: '100%', background: colors.paper, position: 'relative', height: 500 }}>
                     <iframe
-                      src={landingPreviewUrl ?? 'about:blank'}
+                      src={landingPreviewSrc ?? 'about:blank'}
                       style={{ position: 'absolute', top: 0, left: 0, width: '250%', height: '250%', border: 'none', transform: 'scale(0.4)', transformOrigin: 'top left', pointerEvents: 'none' }}
                       title="Landing page preview" loading="lazy"
                     />
