@@ -2,9 +2,11 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { VisionTags, VisionSceneType } from '@/types'
 
-// Model is an explicit override of the CLAUDE.md default (claude-sonnet-4-20250514)
-// — the user specified claude-sonnet-4-7 for the vision tagger in the task brief.
-const MODEL = 'claude-sonnet-4-7'
+// Intentional deviation from CLAUDE.md's pinned claude-sonnet-4-20250514.
+// Sonnet 4.6 has materially better vision and the pinned model is being
+// deprecated on 2026-06-15. Scope is vision-tagger-only — do not migrate
+// other call sites off the pinned model via this constant.
+const MODEL = 'claude-sonnet-4-6'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 

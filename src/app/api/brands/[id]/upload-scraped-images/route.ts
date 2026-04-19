@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
@@ -410,15 +410,18 @@ export async function POST(
 
   console.log(`[upload-scraped] Summary: tasks=${tasks.length} rows=${dedupedRows.length} inserted=${insertedCount}`)
 
-  // Fire-and-forget: tag newly-inserted images with vision metadata. Not
-  // awaited — the onboarding flow must not block on vision API latency.
-  // On Vercel the serverless function tears down once NextResponse resolves,
-  // so in production this will stop mid-batch; locally (and on any long-lived
-  // node process) it runs to completion. If we outgrow that, wrap this in
-  // `after()` from next/server or route through a separate queue endpoint.
+  // Tag newly-inserted images with vision metadata after the response is
+  // sent. Scheduled via `after()` so Vercel's serverless runtime keeps the
+  // function alive until the work completes — a plain fire-and-forget
+  // promise would be terminated when NextResponse resolves. The onboarding
+  // caller still sees the response immediately.
   if (insertedCount > 0) {
-    tagBrandImages(brandId).catch((e) => {
-      console.error(`[upload-scraped] tagBrandImages failed brand=${brandId}:`, e instanceof Error ? e.message : e)
+    after(async () => {
+      try {
+        await tagBrandImages(brandId)
+      } catch (e) {
+        console.error(`[upload-scraped] tagBrandImages failed brand=${brandId}:`, e instanceof Error ? e.message : e)
+      }
     })
   }
 
