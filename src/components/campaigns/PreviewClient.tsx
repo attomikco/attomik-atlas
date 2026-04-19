@@ -9,8 +9,8 @@ import {
   getContentImages,
   bucketBrandImages,
   getBusinessType,
-  pickSlotImages,
 } from '@/lib/brand-images'
+import { buildPreviewImageSlots } from '@/lib/image-helpers'
 import OverlayTemplate from '@/components/creatives/templates/OverlayTemplate'
 import SplitTemplate from '@/components/creatives/templates/SplitTemplate'
 import StatTemplate from '@/components/creatives/templates/StatTemplate'
@@ -609,38 +609,30 @@ export default function PreviewClient({
     return shuffled
   })()
 
-  // Creative slot images — routed through the same pickSlotImages helper
-  // landing-page-renderer.ts and the email routes use. Each 'hero' slot
-  // prefers landscape-first from the lifestyle bucket, falling back to
-  // product; pickSlotImages tracks used IDs so distinct rows are returned
-  // until the pool is exhausted. This replaces the old bespoke seeded
-  // shuffle + index-spread, which spread the carousel's images so thinly
-  // that the brand's strongest lifestyle shot (the Saint Spritz couch
-  // photo, in the verification case) never landed in a creative slot.
+  // Creative slot images — routed through the Preview-specific
+  // buildPreviewImageSlots helper, which orders the pool as
+  // [lifestyle → product → other] and fills every slot by cycling, so the
+  // brand's strong lifestyle shots land in creative slots before any
+  // product shot appears. Distinct from landing/email's pickSlotImages,
+  // which picks 1-3 images by orientation-per-role; Preview has 17 slots
+  // with uniform treatment and wants lifestyle-first above all else.
   //
   // 17 slots requested: 9 grid primaries + 6 story primaries + 2 grid
   // secondary picks (Grid template's secondImg, and the Story Grid's
-  // secondImg). All 'hero' so orientation preference is uniform.
+  // secondImg).
   function buildSlotUrl(storagePath: string): string {
     const cleanPath = storagePath.replace(/^brand-images\//, '')
     return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
   }
   const TOTAL_SLOTS = 17
-  const pickedSlotImages = pickSlotImages(
+  const pickedSlotImages = buildPreviewImageSlots(
     brandImagesState,
     getBusinessType(brand),
-    Array<'hero'>(TOTAL_SLOTS).fill('hero'),
+    TOTAL_SLOTS,
   )
-  // Cycle to guarantee TOTAL_SLOTS entries if the pool was too small for
-  // pickSlotImages' internal fallback to backfill. Matches the legacy
-  // "cycle" branch for ≤4-image brands. When the pool is genuinely empty,
-  // every slot stays null and templates render without an image.
-  const slotUrls: (string | null)[] = (() => {
-    if (pickedSlotImages.length === 0) return Array(TOTAL_SLOTS).fill(null)
-    return Array.from({ length: TOTAL_SLOTS }, (_, i) =>
-      buildSlotUrl(pickedSlotImages[i % pickedSlotImages.length].storage_path)
-    )
-  })()
+  const slotUrls: (string | null)[] = pickedSlotImages.length === 0
+    ? Array(TOTAL_SLOTS).fill(null)
+    : pickedSlotImages.map(img => buildSlotUrl(img.storage_path))
 
   const [img0, img1, img2, img3, img4, img5, img6, img7, img8,
          sImg0, sImg1, sImg2, sImg3, sImg4, sImg5,
