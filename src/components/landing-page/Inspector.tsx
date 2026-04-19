@@ -2,6 +2,9 @@
 import { useState } from 'react'
 import { colors, font, fontSize, fontWeight, radius, spacing } from '@/lib/design-tokens'
 import type { Block } from './types'
+import { BLOCK_REGISTRY } from './blocks/registry'
+import { ContentTab } from './inspector/ContentTab'
+import { StyleTab } from './inspector/StyleTab'
 
 type Tab = 'content' | 'style' | 'ai'
 
@@ -49,12 +52,12 @@ export function Inspector({ block }: Props) {
             marginBottom: 3,
           }}>Selected block</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-            <div style={glyphTileStyle}>{block.type[0].toUpperCase()}</div>
+            <div style={glyphTileStyle}>{BLOCK_REGISTRY[block.type]?.glyph ?? block.type[0].toUpperCase()}</div>
             <div>
               <div style={{
                 fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize.lg,
                 textTransform: 'uppercase', color: colors.ink,
-              }}>{block.type}</div>
+              }}>{BLOCK_REGISTRY[block.type]?.label ?? block.type}</div>
               <div style={{
                 fontFamily: font.mono, fontSize: fontSize.caption,
                 letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.subtle,
@@ -93,21 +96,19 @@ export function Inspector({ block }: Props) {
         })}
       </div>
 
-      {/* Tab body — placeholders for Phase 2 */}
+      {/* Tab body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: `${spacing[4]}px ${spacing[4]}px ${spacing[6]}px` }}>
-        <PhaseStub tab={tab} />
+        {tab === 'content' && <ContentTab block={block} />}
+        {tab === 'style' && <StyleTab block={block} />}
+        {tab === 'ai' && <AiStub />}
       </div>
     </div>
   )
 }
 
-function PhaseStub({ tab }: { tab: Tab }) {
-  const meta: Record<Tab, { label: string; phase: string }> = {
-    content: { label: 'Content fields per block type', phase: 'Phase 3' },
-    style:   { label: 'Variant · background · padding · alignment · width', phase: 'Phase 3' },
-    ai:      { label: 'Rewrite this block with AI', phase: 'Phase 5' },
-  }
-  const m = meta[tab]
+// AI tab still stubbed — real implementation lands in Phase 5 alongside
+// /api/landing-pages/[id]/rewrite-block.
+function AiStub() {
   return (
     <div style={{
       padding: spacing[4], textAlign: 'center',
@@ -117,12 +118,12 @@ function PhaseStub({ tab }: { tab: Tab }) {
         fontFamily: font.mono, fontSize: fontSize.caption,
         letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.subtle,
         marginBottom: spacing[2],
-      }}>{m.label}</div>
+      }}>Rewrite this block with AI</div>
       <div style={{
         fontFamily: font.mono, fontSize: fontSize.caption,
         letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.ink,
         fontWeight: fontWeight.bold,
-      }}>Lands in {m.phase}</div>
+      }}>Lands in Phase 5</div>
     </div>
   )
 }
