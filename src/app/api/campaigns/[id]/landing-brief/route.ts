@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildBrandSystemPrompt } from '@/lib/anthropic'
-import { renderLandingHtml, type LandingBrief } from '@/lib/landing-page-renderer'
+import { renderPreview, type LandingBrief } from '@/lib/landing-preview-renderer'
 import { saveLandingPreviewHtml } from '@/lib/landing-preview-storage'
-import type { BrandImage } from '@/types'
+import type { BrandImage, Product } from '@/types'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -147,10 +147,11 @@ Suggested CTAs for this business type: ${defaultCtas.join(', ')}.`
           .from('brand_images').select('*')
           .eq('brand_id', brand.id).order('created_at')
 
-        const snapshotHtml = renderLandingHtml({
+        const snapshotHtml = renderPreview({
           brand,
           brief: parsed,
           brandImages: (allImagesRaw || []) as BrandImage[],
+          products: (brand.products || []) as Product[],
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
         })
 
