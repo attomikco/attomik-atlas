@@ -6,6 +6,7 @@ import type { BuilderActions } from './BuilderClient'
 import { BLOCK_REGISTRY } from './blocks/registry'
 import { ContentTab } from './inspector/ContentTab'
 import { StyleTab } from './inspector/StyleTab'
+import { AiTab } from './inspector/AiTab'
 import { IcnBtn } from './inspector/primitives'
 
 type Tab = 'content' | 'style' | 'ai'
@@ -13,9 +14,10 @@ type Tab = 'content' | 'style' | 'ai'
 interface Props {
   block: Block | null
   actions: BuilderActions
+  pageId: string
 }
 
-export function Inspector({ block, actions }: Props) {
+export function Inspector({ block, actions, pageId }: Props) {
   const [tab, setTab] = useState<Tab>('content')
 
   if (!block) {
@@ -99,29 +101,8 @@ export function Inspector({ block, actions }: Props) {
       <div style={{ flex: 1, overflowY: 'auto', padding: `${spacing[4]}px ${spacing[4]}px ${spacing[6]}px` }}>
         {tab === 'content' && <ContentTab block={block} actions={actions} />}
         {tab === 'style' && <StyleTab block={block} actions={actions} />}
-        {tab === 'ai' && <AiStub />}
+        {tab === 'ai' && <AiTab block={block} pageId={pageId} actions={actions} />}
       </div>
-    </div>
-  )
-}
-
-// AI tab still stubbed — Phase 5.
-function AiStub() {
-  return (
-    <div style={{
-      padding: spacing[4], textAlign: 'center',
-      border: `1.5px dashed ${colors.border}`, borderRadius: radius.md,
-    }}>
-      <div style={{
-        fontFamily: font.mono, fontSize: fontSize.caption,
-        letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.subtle,
-        marginBottom: spacing[2],
-      }}>Rewrite this block with AI</div>
-      <div style={{
-        fontFamily: font.mono, fontSize: fontSize.caption,
-        letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.ink,
-        fontWeight: fontWeight.bold,
-      }}>Lands in Phase 5</div>
     </div>
   )
 }

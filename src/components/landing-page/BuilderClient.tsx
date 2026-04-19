@@ -211,7 +211,7 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
             version={version}
           />
         </div>
-        {ui.mode === 'edit' && <Inspector block={selectedBlock} actions={actions} />}
+        {ui.mode === 'edit' && <Inspector block={selectedBlock} actions={actions} pageId={pageId} />}
       </div>
     </div>
   )
