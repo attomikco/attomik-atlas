@@ -40,6 +40,9 @@ export const colors = {
   border: '#e0e0e0',
   borderStrong: '#c4c4c4',
 
+  // Canvas surfaces (landing-page builder)
+  canvasGray: '#e9e9e7',
+
   // Sidebar
   sidebarBg: '#000000',
   sidebarBorder: 'rgba(255,255,255,0.07)',
