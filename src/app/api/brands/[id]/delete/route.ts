@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { deleteLandingPreviewHtml } from '@/lib/landing-preview-storage'
 
 // Service-role client for the RLS-bypassing ownership check + cascade delete.
 // The authed SSR client is still used for authentication (cookie-bound), but
@@ -122,6 +123,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (campaignAssetPaths.length) {
     const r = await supabaseAdmin.storage.from('campaign-assets').remove(campaignAssetPaths)
     if (r.error) errs.push(`campaign-assets storage: ${r.error.message}`)
+  }
+
+  // Landing preview HTML snapshot — one file per brand at {brand_id}.html.
+  // deleteLandingPreviewHtml swallows "not found" so brands that never got
+  // past onboarding (no preview generated) don't noise up the error list.
+  try {
+    await deleteLandingPreviewHtml(id)
+  } catch (e) {
+    errs.push(`landing-previews storage: ${e instanceof Error ? e.message : String(e)}`)
   }
 
   // Row cleanup. The following tables have ON DELETE CASCADE on brand_id
