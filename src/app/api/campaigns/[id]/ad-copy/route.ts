@@ -130,6 +130,24 @@ Respond ONLY with valid JSON in this exact format, no other text:
       description: v.description.slice(0, 40),
     }))
 
+    // Snapshot the brand's current palette/fonts so the Preview page can
+    // render the creatives with the styling they were generated against,
+    // even if brand colors/fonts are edited later.
+    const fontHeading = (() => {
+      const raw = (brand as { font_heading?: unknown }).font_heading
+      if (typeof raw === 'string') {
+        try { return JSON.parse(raw) as { family?: string; transform?: string } } catch { return null }
+      }
+      return (raw as { family?: string; transform?: string } | null) || null
+    })()
+    parsed.style_snapshot = {
+      primary: brand.primary_color || null,
+      secondary: brand.secondary_color || null,
+      accent: brand.accent_color || null,
+      fontFamily: fontHeading?.family || brand.font_primary?.split('|')[0] || null,
+      headingTransform: fontHeading?.transform || 'none',
+    }
+
     // Save all variations as one row
     await supabase.from('generated_content').insert({
       campaign_id: id,

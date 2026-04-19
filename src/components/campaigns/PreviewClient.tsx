@@ -235,21 +235,36 @@ export default function PreviewClient({
   const hasContent = adCopyContent.length > 0 || landingContent.length > 0
 
   // Parse existing content — extract ALL variations (handles both formats)
-  const existingAdVariations: AdVariation[] = adCopyContent.length > 0
-    ? (() => {
-        try {
-          // Try first row — may contain {variations: [...]} or a single variation
-          const parsed = JSON.parse(adCopyContent[0].content)
-          if (parsed?.variations && Array.isArray(parsed.variations)) return parsed.variations.slice(0, 3)
-          // Old format: each row is a single variation
-          const all: AdVariation[] = [parsed].filter(Boolean)
-          for (let i = 1; i < Math.min(adCopyContent.length, 3); i++) {
-            try { all.push(JSON.parse(adCopyContent[i].content)) } catch {}
-          }
-          return all
-        } catch { return [] }
-      })()
-    : []
+  // Also capture the style_snapshot (primary/secondary/accent/fontFamily/
+  // headingTransform the brand had at generation time). Legacy rows generated
+  // before the snapshot field existed fall back to live brand.* values, so
+  // older campaigns still render (they just drift with brand edits).
+  type AdStyleSnapshot = {
+    primary?: string | null
+    secondary?: string | null
+    accent?: string | null
+    fontFamily?: string | null
+    headingTransform?: string | null
+  }
+  const { existingAdVariations, adStyleSnapshot } = ((): {
+    existingAdVariations: AdVariation[]
+    adStyleSnapshot: AdStyleSnapshot | null
+  } => {
+    if (adCopyContent.length === 0) return { existingAdVariations: [], adStyleSnapshot: null }
+    try {
+      const parsed = JSON.parse(adCopyContent[0].content)
+      const snapshot = (parsed?.style_snapshot ?? null) as AdStyleSnapshot | null
+      if (parsed?.variations && Array.isArray(parsed.variations)) {
+        return { existingAdVariations: parsed.variations.slice(0, 3), adStyleSnapshot: snapshot }
+      }
+      // Old format: each row is a single variation
+      const all: AdVariation[] = [parsed].filter(Boolean)
+      for (let i = 1; i < Math.min(adCopyContent.length, 3); i++) {
+        try { all.push(JSON.parse(adCopyContent[i].content)) } catch {}
+      }
+      return { existingAdVariations: all, adStyleSnapshot: snapshot }
+    } catch { return { existingAdVariations: [], adStyleSnapshot: null } }
+  })()
 
   const existingLandingBrief: LandingBrief | null = landingContent.length > 0
     ? (() => {
@@ -308,9 +323,13 @@ export default function PreviewClient({
   const [scoreBreakdown, setScoreBreakdown] = useState<Record<string, number> | null>(parsedNotes.scoreBreakdown ?? null)
   const [insights, setInsights] = useState<Array<{ label: string; text: string }>>(parsedNotes.insights ?? [])
 
-  const [brandPrimary, setBrandPrimary] = useState(brand.primary_color || colors.ink)
-  const [brandSecondary, setBrandSecondary] = useState(brand.secondary_color || brand.primary_color || colors.ink)
-  const [brandAccent, setBrandAccent] = useState(brand.accent_color || brand.secondary_color || brand.primary_color || colors.ink)
+  // Snapshot-preferring colors: when the fb_ad row carries a style_snapshot
+  // (new format), creatives + Brand Toolkit freeze to those values. Legacy
+  // rows fall through to the brand's live columns. Setters are retained for
+  // type compatibility but no longer called — Preview no longer edits these.
+  const [brandPrimary, setBrandPrimary] = useState(adStyleSnapshot?.primary || brand.primary_color || colors.ink)
+  const [brandSecondary, setBrandSecondary] = useState(adStyleSnapshot?.secondary || brand.secondary_color || brand.primary_color || colors.ink)
+  const [brandAccent, setBrandAccent] = useState(adStyleSnapshot?.accent || brand.accent_color || brand.secondary_color || brand.primary_color || colors.ink)
   function isLightColor(hex: string): boolean {
     const c = (hex || '').replace('#', ''); if (c.length < 6) return false
     const r = parseInt(c.slice(0,2),16); const g = parseInt(c.slice(2,4),16); const b = parseInt(c.slice(4,6),16)
@@ -323,9 +342,9 @@ export default function PreviewClient({
   // textOnAccent (which pairs with the CTA bg below) keys off brandSecondary.
   const textOnAccent = isLightColor(brandSecondary) ? colors.ink : colors.paper
 
-  // Brand font (editable state)
+  // Brand font (snapshot-preferring — see color note above)
   const fh = brand.font_heading
-  const [fontFamily, setFontFamily] = useState(fh?.family || brand.font_primary?.split('|')[0] || '')
+  const [fontFamily, setFontFamily] = useState(adStyleSnapshot?.fontFamily || fh?.family || brand.font_primary?.split('|')[0] || '')
   const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [savingBrand, setSavingBrand] = useState(false)
   const [emailHtml, setEmailHtml] = useState<string | null>(null)
@@ -711,7 +730,7 @@ export default function PreviewClient({
       brandName: brand.name,
       headlineFont: fontFamily,
       headlineWeight: fh?.weight || '800',
-      headlineTransform: fh?.transform || 'none',
+      headlineTransform: adStyleSnapshot?.headingTransform || fh?.transform || 'none',
       headlineColor: hColor,
       bodyFont: fontFamily,
       bodyWeight: '400',
