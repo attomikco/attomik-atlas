@@ -5,7 +5,9 @@ import { colors, font, fontSize, fontWeight, letterSpacing, radius, spacing } fr
 import type { Brand } from '@/types'
 import type { Block, BlockType } from './types'
 import { BlockWrap } from './BlockWrap'
+import type { RenderMode } from './blocks/registry'
 import { getPageTheme } from './lib/getPageTheme'
+import type { BrandImageBundle } from './lib/brandImageBundle'
 
 type Device = 'desktop' | 'tablet' | 'mobile'
 
@@ -17,6 +19,8 @@ interface Props {
   device: Device
   zoom: number
   brand: Brand
+  brandImages: BrandImageBundle
+  mode: RenderMode
 }
 
 const DEVICE_WIDTH: Record<Device, number> = {
@@ -29,11 +33,11 @@ const DEVICE_WIDTH: Record<Device, number> = {
 // pair of blocks (and at top/bottom) accept drags from the Blocks library
 // and click to insert a richtext block at that index (confirmed default).
 // Outer gray-field click with e.target === e.currentTarget clears selection.
-export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom, brand }: Props) {
+export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom, brand, brandImages, mode }: Props) {
   const outerRef = useRef<HTMLDivElement>(null)
   const [autoScale, setAutoScale] = useState(1)
   const deviceWidth = DEVICE_WIDTH[device]
-  const themeResult = useMemo(() => getPageTheme(brand), [brand])
+  const themeResult = useMemo(() => getPageTheme(brand, brandImages), [brand, brandImages])
 
   useEffect(() => {
     const el = outerRef.current
@@ -83,6 +87,7 @@ export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom,
             selectedId={selectedId}
             onSelect={onSelect}
             onInsertAt={onInsertAt}
+            mode={mode}
           />
         </div>
       </div>
@@ -175,7 +180,7 @@ function BrowserBar() {
 // Extracted so TS can narrow theme|null via a null guard into a separate
 // return branch, which it can't do cleanly inside the JSX ternary.
 function CanvasBody({
-  theme, missing, blocks, selectedId, onSelect, onInsertAt,
+  theme, missing, blocks, selectedId, onSelect, onInsertAt, mode,
 }: {
   theme: import('./lib/getPageTheme').PageTheme | null
   missing: string[]
@@ -183,6 +188,7 @@ function CanvasBody({
   selectedId: string | null
   onSelect: (id: string | null) => void
   onInsertAt: (type: BlockType, index: number, opts?: { select?: boolean }) => void
+  mode: RenderMode
 }) {
   if (!theme) return <ThemeMissing missing={missing} />
   return (
@@ -196,6 +202,7 @@ function CanvasBody({
             selected={b.id === selectedId}
             onSelect={onSelect}
             theme={theme}
+            mode={mode}
           />
         </div>
       ))}

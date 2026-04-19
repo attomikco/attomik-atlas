@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { briefToBlocks } from '../briefToBlocks.ts'
+import { briefToBlocks, splitStat } from '../briefToBlocks.ts'
 import type { LandingBrief } from '../../types.ts'
 import type { Brand } from '../../../../types/index.ts'
 
@@ -81,6 +81,27 @@ const FULL_BRIEF: LandingBrief = {
   ],
   final_cta: { headline: 'Feel the difference', body: 'Free shipping.', cta_text: 'Start with a 6-pack' },
 }
+
+describe('splitStat', () => {
+  it('number + unit + suffix (K+)', () => {
+    assert.deepEqual(splitStat('500K+ cans sold'), { n: '500K+', l: 'cans sold' })
+  })
+  it('number + percent', () => {
+    assert.deepEqual(splitStat('95% satisfaction'), { n: '95%', l: 'satisfaction' })
+  })
+  it('decimal + star glyph', () => {
+    assert.deepEqual(splitStat('4.9\u2605 avg review'), { n: '4.9\u2605', l: 'avg review' })
+  })
+  it('plain number + label', () => {
+    assert.deepEqual(splitStat('100K happy customers'), { n: '100K', l: 'happy customers' })
+  })
+  it('no leading digit → whole into n', () => {
+    assert.deepEqual(splitStat('Over 10 years'), { n: 'Over 10 years', l: '' })
+  })
+  it('trims whitespace on both sides', () => {
+    assert.deepEqual(splitStat('  4.9\u2605   avg review  '), { n: '4.9\u2605', l: 'avg review' })
+  })
+})
 
 describe('briefToBlocks', () => {
   it('full brief + products + stat → 10 blocks in expected order', () => {
@@ -168,6 +189,32 @@ describe('briefToBlocks', () => {
     assert.equal(pageSettings.slug, 'saint-spritz-landing')
     assert.equal(pageSettings.meta, 'Italian-made apéritif')
     assert.equal(pageSettings.maxWidth, 'default')
+  })
+
+  it('stat with leading number + suffix → split into n / l', () => {
+    const brief: LandingBrief = {
+      ...FULL_BRIEF,
+      social_proof: { ...FULL_BRIEF.social_proof, stat: '500K+ cans sold' },
+    }
+    const { blocks } = briefToBlocks(brief, makeBrand())
+    const stats = blocks.find(b => b.type === 'stats')
+    assert.ok(stats)
+    const data = stats.data as { items: Array<{ n: string; l: string }> }
+    assert.equal(data.items[0].n, '500K+')
+    assert.equal(data.items[0].l, 'cans sold')
+  })
+
+  it('stat with no leading number falls back to social_proof.headline', () => {
+    const brief: LandingBrief = {
+      ...FULL_BRIEF,
+      social_proof: { ...FULL_BRIEF.social_proof, stat: 'Loved by thousands', headline: 'community' },
+    }
+    const { blocks } = briefToBlocks(brief, makeBrand())
+    const stats = blocks.find(b => b.type === 'stats')
+    assert.ok(stats)
+    const data = stats.data as { items: Array<{ n: string; l: string }> }
+    assert.equal(data.items[0].n, 'Loved by thousands')
+    assert.equal(data.items[0].l, 'community')
   })
 
   it('every block has a block id, visible: true, no style field', () => {

@@ -15,7 +15,7 @@
 // pick up the brand's ink/accent/fonts.
 
 import { colors, font, fontSize, letterSpacing, spacing } from '@/lib/design-tokens'
-import { BLOCK_REGISTRY } from './blocks/registry'
+import { BLOCK_REGISTRY, type RenderMode } from './blocks/registry'
 import { BlockBadge } from './BlockBadge'
 import type { Block } from './types'
 import type { PageTheme } from './lib/getPageTheme'
@@ -25,9 +25,10 @@ interface Props {
   selected: boolean
   onSelect: (id: string) => void
   theme: PageTheme
+  mode: RenderMode
 }
 
-export function BlockWrap({ block, selected, onSelect, theme }: Props) {
+export function BlockWrap({ block, selected, onSelect, theme, mode }: Props) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onSelect(block.id)
@@ -90,7 +91,7 @@ export function BlockWrap({ block, selected, onSelect, theme }: Props) {
       }}
     >
       {selected && <BlockBadge block={block} />}
-      <Renderer block={block} theme={theme} />
+      <Renderer block={block} theme={theme} mode={mode} />
     </div>
   )
 }

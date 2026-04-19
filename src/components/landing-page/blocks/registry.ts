@@ -11,6 +11,11 @@ import type { ComponentType } from 'react'
 import type { Block, BlockType } from '../types'
 import type { PageTheme } from '../lib/getPageTheme'
 
+// Builder ("edit") vs. published-preview surface ("preview"). Threaded
+// through to every renderer so UX affordances like empty-state placeholders
+// ("Add benefits in the Inspector →") render only in the builder.
+export type RenderMode = 'edit' | 'preview'
+
 import { HeroBlock } from './HeroBlock'
 import { ProblemBlock } from './ProblemBlock'
 import { SolutionBlock } from './SolutionBlock'
@@ -51,7 +56,7 @@ export interface BlockConfig {
   defaultVariant: string
   defaultData: () => Record<string, unknown>
   contentFields: ContentField[]
-  renderer: ComponentType<{ block: Block; theme: PageTheme }>
+  renderer: ComponentType<{ block: Block; theme: PageTheme; mode: RenderMode }>
 }
 
 // Default-data factories live in ./defaults.ts so pure consumers (mutations,

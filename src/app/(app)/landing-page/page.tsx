@@ -15,9 +15,14 @@ import { useBrand } from '@/lib/brand-context'
 import { createClient } from '@/lib/supabase/client'
 import { colors, font, fontSize, spacing } from '@/lib/design-tokens'
 import { briefToBlocks } from '@/components/landing-page/lib/briefToBlocks'
+import {
+  EMPTY_IMAGE_BUNDLE,
+  resolveBrandImageBundle,
+  type BrandImageBundle,
+} from '@/components/landing-page/lib/brandImageBundle'
 import BuilderClient from '@/components/landing-page/BuilderClient'
 import type { LandingBrief, LandingPageDocument } from '@/components/landing-page/types'
-import type { Brand, LandingPage } from '@/types'
+import type { Brand, BrandImage, LandingPage } from '@/types'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -30,6 +35,7 @@ export default function LandingPageRoute() {
   // regeneratePage without re-fetching. Stale-brand concern on the next
   // edit is the same tradeoff every other (app) page makes — acceptable.
   const [brand, setBrand] = useState<Brand | null>(null)
+  const [brandImages, setBrandImages] = useState<BrandImageBundle>(EMPTY_IMAGE_BUNDLE)
 
   useEffect(() => {
     if (!brandsLoaded || !activeBrandId) return
@@ -41,20 +47,29 @@ export default function LandingPageRoute() {
       setError(null)
 
       try {
-        // Brand always; parallel with landing-pages lookup to keep
-        // first-paint time flat.
-        const [brandRes, listRes] = await Promise.all([
+        // Brand + images + landing-pages lookup in parallel. Images are
+        // rendered as defaults on hero/solution/product/gallery blocks —
+        // see resolveBrandImageBundle for the per-slot picking rules.
+        const [brandRes, imagesRes, listRes] = await Promise.all([
           supabase.from('brands').select('*').eq('id', activeBrandId).single(),
+          supabase.from('brand_images').select('*').eq('brand_id', activeBrandId).order('created_at'),
           fetch(`/api/landing-pages?brand_id=${activeBrandId}`),
         ])
         if (brandRes.error || !brandRes.data) throw new Error('brand not found')
         if (!listRes.ok) throw new Error(`list failed: HTTP ${listRes.status}`)
         const brandRow = brandRes.data as Brand
+        const imageRows = (imagesRes.data || []) as BrandImage[]
+        const toUrl = (img: BrandImage) => {
+          const cleanPath = img.storage_path.replace(/^brand-images\//, '')
+          return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
+        }
+        const bundle = resolveBrandImageBundle(imageRows, brandRow, toUrl)
         const listJson = (await listRes.json()) as { pages?: LandingPage[] }
 
         if (listJson.pages && listJson.pages.length > 0) {
           if (cancelled) return
           setBrand(brandRow)
+          setBrandImages(bundle)
           setPage(listJson.pages[0])
           setStatus('ready')
           return
@@ -99,6 +114,7 @@ export default function LandingPageRoute() {
 
         if (cancelled) return
         setBrand(brandRow)
+        setBrandImages(bundle)
         setPage(created.page)
         setStatus('ready')
       } catch (e) {
@@ -113,7 +129,14 @@ export default function LandingPageRoute() {
   }, [activeBrandId, brandsLoaded])
 
   if (status === 'ready' && page && brand && activeBrandId) {
-    return <BuilderClient brandId={activeBrandId} brand={brand} initialLandingPage={page} />
+    return (
+      <BuilderClient
+        brandId={activeBrandId}
+        brand={brand}
+        brandImages={brandImages}
+        initialLandingPage={page}
+      />
+    )
   }
 
   return (

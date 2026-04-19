@@ -11,6 +11,42 @@
 import { colors, font, fontSize, fontWeight, letterSpacing, radius, spacing } from '@/lib/design-tokens'
 import type { PageTheme } from '../lib/getPageTheme'
 
+// BrandMedia — swap-in replacement for <Ph> when a URL is available.
+// Falls back to <Ph>'s diagonal-stripe placeholder when url is empty so
+// every caller can use a single conditional site. object-fit:cover is the
+// universal default; most slots want the image to fill its cell without
+// distortion, and contain-fit is only useful for logos (which don't flow
+// through this component — logos are rendered inline via <img> in the
+// renderers that need them).
+export function BrandMedia({
+  url,
+  h = 160,
+  label = 'image',
+  dark = false,
+  fit = 'cover',
+}: {
+  url: string
+  h?: number | string
+  label?: string
+  dark?: boolean
+  fit?: 'cover' | 'contain'
+}) {
+  if (!url) return <Ph h={h} label={label} dark={dark} />
+  return (
+    <img
+      src={url}
+      alt={label}
+      style={{
+        display: 'block',
+        width: '100%',
+        height: h,
+        objectFit: fit,
+        borderRadius: radius.xs,
+      }}
+    />
+  )
+}
+
 export function Ph({
   w = '100%',
   h = 160,

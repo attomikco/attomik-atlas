@@ -28,6 +28,7 @@ import {
 import { useAutosave } from './lib/useAutosave'
 import { briefToBlocks } from './lib/briefToBlocks'
 import { getPageTheme } from './lib/getPageTheme'
+import type { BrandImageBundle } from './lib/brandImageBundle'
 import { useBrandFonts } from './lib/useBrandFonts'
 
 type Device = 'desktop' | 'tablet' | 'mobile'
@@ -36,6 +37,7 @@ type Mode = 'edit' | 'preview'
 interface Props {
   brandId: string
   brand: Brand
+  brandImages: BrandImageBundle
   initialLandingPage: LandingPage
 }
 
@@ -78,7 +80,7 @@ export interface BuilderActions {
   setPageSettings: (settings: PageSettings) => void
 }
 
-export default function BuilderClient({ brandId, brand, initialLandingPage }: Props) {
+export default function BuilderClient({ brandId, brand, brandImages, initialLandingPage }: Props) {
   const router = useRouter()
   const pageId = initialLandingPage.id
   const storageKey = `lpb_state:${brandId}:${pageId}`
@@ -117,7 +119,7 @@ export default function BuilderClient({ brandId, brand, initialLandingPage }: Pr
   // right heading/body families. No-op when the brand is missing colors
   // (theme invalid → fonts list empty on the invalid branch; we still
   // call the hook with what's available so font-only brands preload).
-  const themeFonts = useMemo(() => getPageTheme(brand).theme?.googleFonts ?? [], [brand])
+  const themeFonts = useMemo(() => getPageTheme(brand, brandImages).theme?.googleFonts ?? [], [brand, brandImages])
   useBrandFonts(themeFonts)
 
   // ── Mutation handlers ───────────────────────────────────────────────
@@ -275,6 +277,8 @@ export default function BuilderClient({ brandId, brand, initialLandingPage }: Pr
             device={ui.device}
             zoom={ui.zoom}
             brand={brand}
+            brandImages={brandImages}
+            mode={ui.mode}
           />
           <CanvasFooter
             blockCount={blocks.length}

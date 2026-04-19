@@ -17,6 +17,7 @@
 // If `brief` is null, emits the minimal skeleton: hero + finalcta + footer.
 
 import type { Brand } from '@/types'
+import { readBrandFooter, type BrandFooter } from '../../../lib/brand-footer.ts'
 import type { Block, BlockType, LandingBrief, PageSettings } from '../types'
 
 function newId(): string {
@@ -40,12 +41,57 @@ function parseBrandNotes(brand: Brand): Record<string, unknown> {
   }
 }
 
-function buildFooterCols(): Array<{ title: string; items: string[] }> {
-  return [
-    { title: 'Shop', items: ['All products', 'Bundles', 'Gift cards'] },
-    { title: 'Company', items: ['Our story', 'Ingredients', 'Press'] },
-    { title: 'Help', items: ['Contact', 'Shipping', 'Returns'] },
-  ]
+interface FooterCol { title: string; items: string[] }
+
+const DEFAULT_FOOTER_COLS: FooterCol[] = [
+  { title: 'Shop', items: ['All products', 'Bundles', 'Gift cards'] },
+  { title: 'Company', items: ['Our story', 'Ingredients', 'Press'] },
+  { title: 'Help', items: ['Contact', 'Shipping', 'Returns'] },
+]
+
+// Map the canonical BrandFooter (from @/lib/brand-footer — same shape
+// the email master template + brand hub editor read/write) into the
+// column layout FooterBlock renders. Semantics:
+//   Links  — user-authored `footerLinks` from the brand hub
+//   Legal  — derived from privacy / refund / terms URLs (only shown
+//            when at least one is set)
+// When the brand has no authored footer data at all (fresh brand, or
+// a brand that only uses the email footer's tagline), fall back to
+// the generic DTC column defaults so the landing page still renders.
+function brandFooterToCols(footer: BrandFooter): FooterCol[] {
+  const cols: FooterCol[] = []
+  if (footer.footerLinks.length) {
+    const labels = footer.footerLinks
+      .map(l => l.label.trim())
+      .filter(s => s.length > 0)
+    if (labels.length) cols.push({ title: 'Links', items: labels })
+  }
+  const legalItems: string[] = []
+  if (footer.privacyPolicyUrl) legalItems.push('Privacy')
+  if (footer.refundPolicyUrl) legalItems.push('Refunds')
+  if (footer.termsOfServiceUrl) legalItems.push('Terms')
+  if (legalItems.length) cols.push({ title: 'Legal', items: legalItems })
+  return cols.length ? cols : DEFAULT_FOOTER_COLS
+}
+
+// Splits a free-form stat string into { n, l } for the stats block. The
+// brief adapter used to stuff the whole string into `n`, which rendered
+// "500K+ cans sold" as one giant number — no label, wrong emphasis. The
+// regex captures a leading numeric token (digits + decimals + common
+// quantifiers like K/M/B and suffixes %/+/★), and treats everything
+// after as the descriptive label.
+//
+// Examples:
+//   "500K+ cans sold"  → { n: "500K+",   l: "cans sold" }
+//   "95% satisfaction" → { n: "95%",     l: "satisfaction" }
+//   "4.9\u2605 avg review" → { n: "4.9\u2605", l: "avg review" }
+//   "100K happy"       → { n: "100K",    l: "happy" }
+//   "Over 10 years"    → { n: "Over 10 years", l: "" }  (no leading digit)
+export function splitStat(raw: string): { n: string; l: string } {
+  const trimmed = raw.trim()
+  const m = trimmed.match(/^([\d.,]+\s*[a-zA-Z%+\u2605]*)\s*(.*)$/)
+  if (!m || !m[1]) return { n: trimmed, l: '' }
+  return { n: m[1].trim(), l: (m[2] ?? '').trim() }
 }
 
 function mkBlock(type: BlockType, variant: string, data: Record<string, unknown>): Block {
@@ -57,7 +103,11 @@ export function briefToBlocks(
   brand: Brand,
 ): { blocks: Block[]; pageSettings: PageSettings } {
   const notes = parseBrandNotes(brand)
-  const tagline = typeof notes.tagline === 'string' ? notes.tagline : ''
+  const brandFooter = readBrandFooter(brand.notes)
+  // Prefer the canonical BrandFooter.tagline (same source the email footer
+  // reads); fall back to a legacy notes.tagline key for older brands.
+  const tagline = brandFooter.tagline
+    || (typeof notes.tagline === 'string' ? notes.tagline : '')
 
   const pageSettings: PageSettings = {
     title: `${brand.name} — Landing Page`,
@@ -69,7 +119,7 @@ export function briefToBlocks(
   const footerBlock = mkBlock('footer', 'columns', {
     brand: brand.name,
     tagline,
-    cols: buildFooterCols(),
+    cols: brandFooterToCols(brandFooter),
   })
 
   // Minimal default when there's no brief at all.
@@ -147,9 +197,14 @@ export function briefToBlocks(
   const statRaw = brief.social_proof?.stat
   const stat = typeof statRaw === 'string' ? statRaw.trim() : ''
   if (stat) {
+    // Prefer the leading-number split — "500K+ cans sold" → n=500K+, l=cans
+    // sold. If the string has no leading digits (e.g. "Loved by thousands"),
+    // fall through with the brief's social_proof.headline as the label.
+    const split = splitStat(stat)
+    const label = split.l || brief.social_proof?.headline || ''
     blocks.push(
       mkBlock('stats', 'inline', {
-        items: [{ n: stat, l: brief.social_proof?.headline || '' }],
+        items: [{ n: split.n, l: label }],
       }),
     )
   }

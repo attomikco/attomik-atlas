@@ -14,6 +14,17 @@
 
 import type { Brand } from '../../../types/index.ts'
 import { colors, font } from '../../../lib/design-tokens.ts'
+// Type-only import keeps the Node strip-types loader happy — brandImageBundle
+// transitively pulls in @/types via lib/brand-images.ts, which the loader
+// can't resolve. Runtime fallback literal is defined below.
+import type { BrandImageBundle } from './brandImageBundle.ts'
+
+const EMPTY_IMAGE_BUNDLE: BrandImageBundle = {
+  hero: '',
+  solution: '',
+  productList: [],
+  lifestyle: [],
+}
 
 export interface PageTheme {
   // Core brand swaps
@@ -43,6 +54,10 @@ export interface PageTheme {
 
   // Font URLs the page needs loaded. Consumed by useBrandFonts.
   googleFonts: string[]
+
+  // Pre-picked brand images for hero / solution / product / gallery slots.
+  // Empty bundle when no rows available — renderers fall back to <Ph>.
+  images: BrandImageBundle
 }
 
 export interface PageThemeValidation {
@@ -91,7 +106,10 @@ function googleFontUrl(family: string): string {
 }
 
 // ── Resolver ───────────────────────────────────────────────────────
-export function getPageTheme(brand: Brand): PageThemeValidation {
+export function getPageTheme(
+  brand: Brand,
+  images: BrandImageBundle = EMPTY_IMAGE_BUNDLE,
+): PageThemeValidation {
   const missing: string[] = []
   if (!brand.primary_color) missing.push('primary_color')
   if (!brand.accent_color) missing.push('accent_color')
@@ -141,6 +159,8 @@ export function getPageTheme(brand: Brand): PageThemeValidation {
     fontMono: font.mono,
 
     googleFonts,
+
+    images,
   }
 
   return { valid: true, missing: [], theme }
