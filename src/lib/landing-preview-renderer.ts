@@ -282,7 +282,12 @@ function renderGuarantee(brand: Brand): string {
 }
 
 function renderPhotoStrip(images: BrandImage[], getUrl: (path: string) => string, brandName: string): string {
-  return images.slice(0, 6).map(img =>
+  // Hard cap at 4 so the strip is always a single row of 4 on desktop
+  // (the template's grid is repeat(4, 1fr) — anything over 4 wrapped
+  // into a second row). Paired with the "visible only when >= 4 images"
+  // rule in computeVisibility so 3-image brands hide the section entirely
+  // rather than leaving an empty fourth cell.
+  return images.slice(0, 4).map(img =>
     `<img src="${esc(getUrl(img.storage_path))}" alt="${esc(brandName)}" loading="lazy">`
   ).join('')
 }
@@ -468,7 +473,7 @@ function computeVisibility(input: RenderPreviewInput): Record<string, boolean> {
     proof_strip:   (brief.benefits?.length ?? 0) >= 2,
     lifestyle:     !!brief.problem?.headline,
     showcase:      products.length > 0,
-    photo_strip:   contentCount >= 3,
+    photo_strip:   contentCount >= 4,
     ingredients:   !!brief.solution?.headline,
     founder:       !!(brand.mission || brand.brand_voice || brief.solution?.body),
     // These four require REAL data under optional fields that don't
