@@ -291,7 +291,11 @@ function renderPhotoStrip(images: BrandImage[], getUrl: (path: string) => string
 
 function buildThemeOverride(brand: Brand): { styleBlock: string; fontLinks: string } {
   const primary = brand.primary_color || '#000000'
-  const secondary = brand.secondary_color || primary
+  // No secondary_color set → tint of primary at 60% alpha (matches the
+  // template's placeholder :root). Keeps visual separation between the
+  // announcement bar (which now uses --brand-secondary) and the hero
+  // (--bg-dark = primary) for brands with no secondary.
+  const secondary = brand.secondary_color || hexAlpha(primary, '99')
   const accent = brand.accent_color || secondary
   const primaryIsLight = isLight(primary)
   const textOnDark = primaryIsLight ? '#000000' : '#ffffff'
