@@ -1,12 +1,15 @@
 'use client'
 // Shared renderer primitives. <Ph> is the diagonal-stripe image placeholder
 // the handoff uses on every hero/product/gallery shot before real images
-// are wired up (Phase 6 Assets panel lands that). <Btn> is the shared
-// button vocabulary (dark / ghost / accent) so the 13 renderers stay
-// consistent without each re-declaring button styles.
+// are wired up (Phase 6 Assets panel lands that). The btn* + display helpers
+// are now theme-aware — they take a PageTheme so each brand's ink/accent/
+// fontHeading flows through.
+//
+// Ph, labelStyle — unchanged. They use neutral substrate (grays, mono)
+// that stays Attomik-token-sourced per the Phase 5b decision.
 
-import type { ReactNode } from 'react'
 import { colors, font, fontSize, fontWeight, letterSpacing, radius, spacing } from '@/lib/design-tokens'
+import type { PageTheme } from '../lib/getPageTheme'
 
 export function Ph({
   w = '100%',
@@ -45,50 +48,59 @@ export function Ph({
   )
 }
 
-export const btnDark: React.CSSProperties = {
-  background: colors.ink, color: colors.paper,
-  border: 'none', padding: `${spacing[3]}px ${spacing[5]}px`,
-  borderRadius: radius.pill, fontFamily: font.heading,
-  fontWeight: fontWeight.extrabold, fontSize: fontSize.body,
-  letterSpacing: letterSpacing.label, textTransform: 'uppercase',
-  cursor: 'pointer',
+// Dark CTA — black bg → brand ink, white text → brand paper. Used on
+// light-bg hero centered / hero split / solution image-left / product
+// cards / final CTA.
+export function btnDark(theme: PageTheme): React.CSSProperties {
+  return {
+    background: theme.ink, color: theme.paper,
+    border: 'none', padding: `${spacing[3]}px ${spacing[5]}px`,
+    borderRadius: radius.pill, fontFamily: theme.fontHeading,
+    fontWeight: fontWeight.extrabold, fontSize: fontSize.body,
+    letterSpacing: letterSpacing.label, textTransform: 'uppercase',
+    cursor: 'pointer',
+  }
 }
 
-export const btnGhost: React.CSSProperties = {
-  background: 'transparent', color: colors.ink,
-  border: `1.5px solid ${colors.ink}`,
-  padding: `${spacing[3]}px ${spacing[5]}px`,
-  borderRadius: radius.pill, fontFamily: font.heading,
-  fontWeight: fontWeight.extrabold, fontSize: fontSize.body,
-  letterSpacing: letterSpacing.label, textTransform: 'uppercase',
-  cursor: 'pointer',
+// Ghost CTA — transparent with a 1.5px brand-ink border. Secondary action
+// next to btnDark on hero centered / hero split.
+export function btnGhost(theme: PageTheme): React.CSSProperties {
+  return {
+    background: 'transparent', color: theme.ink,
+    border: `1.5px solid ${theme.ink}`,
+    padding: `${spacing[3]}px ${spacing[5]}px`,
+    borderRadius: radius.pill, fontFamily: theme.fontHeading,
+    fontWeight: fontWeight.extrabold, fontSize: fontSize.body,
+    letterSpacing: letterSpacing.label, textTransform: 'uppercase',
+    cursor: 'pointer',
+  }
 }
 
-export const btnAccent: React.CSSProperties = {
-  ...btnDark,
-  background: colors.accent, color: colors.ink,
+// Accent CTA — brand accent bg, brand ink text. Hero overlay's primary
+// action fires this.
+export function btnAccent(theme: PageTheme): React.CSSProperties {
+  return {
+    ...btnDark(theme),
+    background: theme.accent, color: theme.ink,
+  }
 }
 
-// Handoff uses a generic "label" class — DM Mono caps with wide tracking.
+// Labels / eyebrows — mono caps, muted. NEUTRAL substrate, not brand-themed.
+// Kept static so section eyebrows read consistently across brands.
 export const labelStyle: React.CSSProperties = {
   fontFamily: font.mono, fontSize: fontSize.xs,
   letterSpacing: letterSpacing.xwide, textTransform: 'uppercase',
   color: colors.muted,
 }
 
-// "display" in the handoff = Barlow 900 uppercase tight tracking, used for
-// every headline/H1/H2/H3.
-export function displayStyle(size: number): React.CSSProperties {
+// "display" in the handoff = Barlow 900 uppercase tight tracking. Now uses
+// brand heading font + brand ink. Caller may override color (hero overlay
+// needs white text on a dark image for example).
+export function displayStyle(size: number, theme: PageTheme): React.CSSProperties {
   return {
-    fontFamily: font.heading, fontWeight: fontWeight.heading,
+    fontFamily: theme.fontHeading, fontWeight: fontWeight.heading,
     fontSize: size, lineHeight: size >= 40 ? 0.95 : 1,
     textTransform: 'uppercase', letterSpacing: letterSpacing.slight,
-    margin: 0, color: colors.ink,
+    margin: 0, color: theme.ink,
   }
 }
-
-export type BlockRendererProps<TData = Record<string, unknown>> = {
-  block: { id: string; type: string; variant: string; data: TData; style?: Record<string, unknown> }
-}
-
-export function Kids({ children }: { children: ReactNode }) { return <>{children}</> }
