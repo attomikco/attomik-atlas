@@ -57,13 +57,16 @@ async function handle(req: NextRequest, params: Promise<{ id: string }>) {
   } as Record<string, string[]>)[businessType] || ['Learn More', 'Shop Now']
 
   const body = await req.json().catch(() => ({}))
-  const variationCount = body.count || 3
+  // When the caller specifies count (e.g. Copy Creator regeneration), honor
+  // it. Onboarding fires without a body, in which case the prompt tells the
+  // model to pick 6-8 angles and produce one variation per angle.
+  const requestedCount: number | null = typeof body.count === 'number' ? body.count : null
   const angleOverride = body.angle || ''
   const audienceOverride = body.audience || ''
   const product = body.product || null
 
   const audience = audienceOverride || campaign.audience_notes || brand.target_audience || 'their target audience'
-  const angle = angleOverride ? `Use this specific angle: ${angleOverride}` : campaign.angle ? `Copy angle: ${campaign.angle}` : ''
+  const campaignAngle = angleOverride ? `Use this specific angle: ${angleOverride}` : campaign.angle ? `Campaign angle: ${campaign.angle}` : ''
 
   // Map campaign goal to type-specific context for the prompt
   const goalKey = (campaign.goal || '').toLowerCase().replace(/[^a-z]/g, '_').replace(/_+/g, '_')
@@ -80,37 +83,82 @@ async function handle(req: NextRequest, params: Promise<{ id: string }>) {
     ? `\n\nPRODUCT FOCUS — center every variation on this specific product:\n- Product name: ${product.name || product.title || 'Unnamed product'}${product.description ? `\n- Description: ${product.description}` : ''}${product.price ? `\n- Price: ${product.price}` : ''}${product.benefits ? `\n- Key benefits: ${product.benefits}` : ''}\nWrite copy that specifically promotes THIS product, not generic brand messaging.`
     : ''
 
-  const userPrompt = `Write ${variationCount} distinct Facebook ad variations for ${brand.name}, which is ${offeringContext}.
+  // Brand context pulled from both columns (generate-voice output) and
+  // brand.notes JSON (onboarding scraper output). Notes keys are the
+  // fallback when the column is missing — e.g. a stale brand that skipped
+  // generate-voice but still has `what_you_do` / `who_buys` from scanning.
+  const whatTheyDo = brand.mission || notesData?.what_you_do || offeringContext
+  const whoBuys = brand.target_audience || notesData?.who_buys || audience
+  const brandVoice = brand.brand_voice || notesData?.brand_voice || ''
+  const toneKeywords = brand.tone_keywords?.join(', ') || (Array.isArray(notesData?.tone) ? notesData.tone.join(', ') : '')
+  const tagline = typeof notesData?.tagline === 'string' ? notesData.tagline : ''
 
-${campaignTypeContext}${productContext}
+  const countInstruction = requestedCount
+    ? `Produce exactly ${requestedCount} variations. Pick ${requestedCount} angles from the list below, one per variation.`
+    : `Produce 6-8 variations. Pick 6-8 angles from the list below that best fit THIS brand — some angles will be wrong for this brand and you should skip them. One variation per angle.`
+
+  const userPrompt = `Write distinct Facebook ad variations for ${brand.name}.
+
+BRAND CONTEXT:
+- Name: ${brand.name}
+- What they do: ${whatTheyDo}
+- Audience: ${whoBuys}
+${brandVoice ? `- Voice: ${brandVoice}` : ''}
+${toneKeywords ? `- Tone: ${toneKeywords}` : ''}
+${tagline ? `- Tagline: ${tagline}` : ''}
 
 CAMPAIGN BRIEF:
 - Campaign: ${campaign.name}
-${angle}
+${campaignAngle}
 - Offer/product: ${campaign.offer || 'Not specified'}
 - Key message: ${campaign.key_message || 'Not specified'}
 - Goal: ${campaign.goal || 'Conversions'}
-- Target audience: ${audience}
-- Write specifically FOR this audience. Use language, references, and pain points that resonate with them directly.
+${campaignTypeContext ? `- ${campaignTypeContext}` : ''}${productContext}
 
-For each variation write:
-1. PRIMARY TEXT: Engaging copy up to 300 characters. This is the main body above the image. Hook the reader, lead with value, end with a soft CTA if needed.
-2. HEADLINE: Maximum 27 characters. Short, punchy, benefit-focused.
-3. DESCRIPTION: Maximum 27 characters. Supports the headline, adds context or urgency.
+ANGLES — pick the ones that fit. Do NOT use any angle twice:
 
-Make each variation feel distinctly different — vary the angle, tone, and hook. Don't just rephrase.
+- sensory — what the product feels, tastes, sounds, looks, smells like. Concrete and physical.
+- mission — why the brand exists. What it's fighting for or against.
+- craft — how it's made. The process, the care, the people behind it.
+- origin — where it comes from. Heritage, founding story, a specific place.
+- occasion — when and why you'd reach for this specifically. The moment it belongs to.
+- identity — who you become when you use it. What it says about the person carrying it.
+- objection — the assumption this product overturns. Example: "wine you can drink on a Tuesday" overturns "wine is for special occasions."
+- contrast — what this is NOT. What it refuses to be. A rejection of a category norm.
+
+${countInstruction}
+
+FORMAT per variation:
+- headline: 2-5 words. Direct, specific, not generic ad speak.
+- primary_text: The body. VARY LENGTH deliberately across the set — at least 2 variations must be under 80 characters (short, single-idea, punchy), and at least 2 must be 150-280 characters (a fuller thought, a real sentence or two). Do not default every variation to the same mid-length.
+- description: Up to 27 characters. Supports the headline.
+
+VOICE — read the context above, then write as if the founder of ${brand.name} wrote these themselves. Not a marketing team. Not a copywriter. The founder.
+
+AVOID the following — these instantly mark copy as AI-generated and must not appear:
+- Balanced three-part clauses. Do NOT write phrases like "rooted in the past, conjured in the present, alive in your glass."
+- Sensory clichés. Do NOT use "awaken your senses", "taste the magic", "experience the difference", or anything in that family.
+- Closer lines that summarize the brand at the end. Do NOT end with sweeping statements like "release the spirit within" or "discover what's been waiting."
+- The word "elevate."
+- The word "crafted" unless you are literally describing a craft process (someone making something by hand).
+- Em-dashes used for dramatic pause. A hyphen in a compound adjective is fine; "— and then —" is not.
+
+SELF-CHECK before finalizing — read each variation back. Would the founder actually say this, or does it sound like a generic ad? If it's generic, rewrite it.
+
 Suggested CTAs for this business type: ${defaultCtas.join(', ')}.
 
-Respond ONLY with valid JSON in this exact format, no other text:
+Respond ONLY with valid JSON, no other text:
 {
   "variations": [
-    ${Array(variationCount).fill('{ "primary_text": "...", "headline": "...", "description": "..." }').join(',\n    ')}
+    { "angle": "sensory|mission|craft|origin|occasion|identity|objection|contrast", "headline": "2-5 words", "primary_text": "body — length varies per variation", "description": "short support line" }
   ]
-}`
+}
+
+The "angle" value must be exactly one of: sensory, mission, craft, origin, occasion, identity, objection, contrast.`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: Math.max(1500, variationCount * 500),
+    max_tokens: 4500,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   })
@@ -124,7 +172,12 @@ Respond ONLY with valid JSON in this exact format, no other text:
 
   try {
     const parsed = JSON.parse(clean)
-    parsed.variations = parsed.variations.map((v: { primary_text: string; headline: string; description: string }) => ({
+    const VALID_ANGLES = new Set(['sensory', 'mission', 'craft', 'origin', 'occasion', 'identity', 'objection', 'contrast'])
+    parsed.variations = parsed.variations.map((v: { angle?: string; primary_text: string; headline: string; description: string }) => ({
+      // angle is additive and optional — whitelist against the allowed set so
+      // a hallucinated value doesn't leak into storage. Unknown values fall
+      // through to null rather than propagating.
+      angle: v.angle && VALID_ANGLES.has(v.angle.toLowerCase()) ? v.angle.toLowerCase() : null,
       primary_text: v.primary_text.slice(0, 500),
       headline: v.headline.slice(0, 40),
       description: v.description.slice(0, 40),
