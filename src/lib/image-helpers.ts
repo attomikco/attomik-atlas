@@ -1,10 +1,5 @@
 import type { BrandImage } from '@/types'
 
-// Images smaller than this on either axis are unusable for ad templates.
-// Applied unconditionally at the top of pickImageForTemplate. Matches the
-// threshold PreviewClient uses for its vision-aware picker.
-const MIN_USABLE_DIMENSION = 400
-
 /**
  * Build an ordered pool with lifestyle first, product second, other last.
  * Lifestyle sets the emotional tone for a creative and is the default pick
@@ -44,63 +39,20 @@ export type ImagePools = {
 }
 
 /**
- * Pick the best image for a template.
+ * Pick the best image for a template by orientation, with a first-of-ordered
+ * fallback when the preferred orientation isn't available.
  *
- * Vision-aware branch (when `angle` is provided AND any image in the pools
- * has vision_tags populated): rank images by whether the angle appears in
- * vision_tags.suitable_for, then by composition_quality desc. The
- * orientation rules below are skipped — the vision model's judgment
- * dominates. Images with vision_tags.scene_type === 'logo' are excluded.
- *
- * Legacy branch (no angle provided OR no image has vision_tags): the
- * original orientation-per-template behavior — overlay/stat → random
- * square, split → random portrait, ugc/testimonial → random landscape,
- * grid/default → first of ordered pool.
- *
- * Applies a 400x400 minimum-dimension filter up front in both branches.
- * Images with unknown width/height pass through (legacy rows).
+ * - overlay / stat → random square
+ * - split → random portrait
+ * - ugc / testimonial → random landscape
+ * - grid / default → first of ordered pool
  */
 export function pickImageForTemplate(
   templateId: string,
-  pools: ImagePools,
-  angle?: string | null
+  pools: ImagePools
 ): BrandImage | null {
-  const isUsableSize = (img: BrandImage): boolean => {
-    if (!img.width || !img.height) return true
-    return img.width >= MIN_USABLE_DIMENSION && img.height >= MIN_USABLE_DIMENSION
-  }
-
-  const filteredPools: ImagePools = {
-    lifestyleImages: pools.lifestyleImages.filter(isUsableSize),
-    productImages: pools.productImages.filter(isUsableSize),
-    otherImages: pools.otherImages.filter(isUsableSize),
-  }
-
-  const ordered = buildOrderedImagePool(
-    filteredPools.lifestyleImages,
-    filteredPools.productImages,
-    filteredPools.otherImages
-  )
+  const ordered = buildOrderedImagePool(pools.lifestyleImages, pools.productImages, pools.otherImages)
   if (ordered.length === 0) return null
-
-  // Vision-aware branch
-  if (angle) {
-    const normalized = angle.toLowerCase()
-    const visionEligible = ordered.filter(img =>
-      img.vision_tags && img.vision_tags.scene_type !== 'logo'
-    )
-    if (visionEligible.length > 0) {
-      const scored = visionEligible.map(img => {
-        const tags = img.vision_tags!
-        const angleMatch = tags.suitable_for.includes(normalized) ? 1 : 0
-        return { img, score: angleMatch * 100 + tags.composition_quality }
-      })
-      scored.sort((a, b) => b.score - a.score)
-      return scored[0]?.img ?? null
-    }
-    // Fall through to legacy orientation logic if no vision_tags populated.
-  }
-
   const { portraits, landscapes, squares } = filterByOrientation(ordered)
   const firstOrdered = ordered[0] ?? null
 

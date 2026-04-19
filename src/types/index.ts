@@ -4,21 +4,6 @@ export type CampaignStatus = 'draft' | 'in_review' | 'approved' | 'scheduled' | 
 export type AssetType = 'guidelines' | 'html_template' | 'logo' | 'other'
 export type ImageTag = 'product' | 'lifestyle' | 'ugc' | 'background' | 'seasonal' | 'logo' | 'press' | 'shopify' | 'generated' | 'other'
 
-export type VisionSceneType = 'lifestyle' | 'product' | 'texture' | 'logo' | 'other'
-
-// Populated by src/lib/image-vision-tagger.ts. Nullable on the row — rows
-// backfill asynchronously, and the tagger swallows per-row failures, so
-// consumers must always null-check vision_tags before reading it.
-export interface VisionTags {
-  has_people: boolean
-  scene_type: VisionSceneType
-  mood: string[]
-  composition_quality: 1 | 2 | 3 | 4 | 5
-  suitable_for: string[]   // ad-copy angles: sensory, mission, craft, origin, occasion, identity, objection, contrast
-  description: string
-  tagged_at: string        // ISO
-}
-
 export interface FontStyle {
   family: string
   weight: string
@@ -135,7 +120,6 @@ export interface BrandImage {
   height: number | null
   source_url: string | null
   source: string | null
-  vision_tags: VisionTags | null
 }
 
 export interface Campaign {

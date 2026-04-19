@@ -4,7 +4,6 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
 import { imageSize } from 'image-size'
 import { resizeBufferForUpload, swapExtension } from '@/lib/resize-image-server'
-import { tagBrandImages } from '@/lib/image-vision-tagger'
 
 // Tags we're willing to auto-override via background detection. If the scrape
 // already classified an image as shopify/logo/press/product, we trust that.
@@ -409,19 +408,6 @@ export async function POST(
   }
 
   console.log(`[upload-scraped] Summary: tasks=${tasks.length} rows=${dedupedRows.length} inserted=${insertedCount}`)
-
-  // Fire-and-forget: tag newly-inserted images with vision metadata. Not
-  // awaited — the onboarding flow must not block on vision API latency.
-  // On Vercel the serverless function tears down once NextResponse resolves,
-  // so in production this will stop mid-batch; locally (and on any long-lived
-  // node process) it runs to completion. If we outgrow that, wrap this in
-  // `after()` from next/server or route through a separate queue endpoint.
-  if (insertedCount > 0) {
-    tagBrandImages(brandId).catch((e) => {
-      console.error(`[upload-scraped] tagBrandImages failed brand=${brandId}:`, e instanceof Error ? e.message : e)
-    })
-  }
-
   return NextResponse.json({
     success: true,
     inserted: insertedCount,
