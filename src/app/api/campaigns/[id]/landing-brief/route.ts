@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildBrandSystemPrompt } from '@/lib/anthropic'
+import { renderLandingHtml, type LandingBrief } from '@/lib/landing-page-renderer'
+import type { BrandImage } from '@/types'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -113,15 +115,45 @@ Suggested CTAs for this business type: ${defaultCtas.join(', ')}.`
   const clean = text.replace(/```json|```/g, '').trim()
 
   try {
-    const parsed = JSON.parse(clean)
+    const parsed = JSON.parse(clean) as LandingBrief
 
-    // Save to generated_content
-    await supabase.from('generated_content').insert({
-      campaign_id: id,
-      brand_id: brand.id,
-      type: 'landing_brief',
-      content: JSON.stringify(parsed),
-    })
+    // Insert the brief row first so we have an id to update.
+    const { data: insertedRow, error: insertErr } = await supabase
+      .from('generated_content')
+      .insert({
+        campaign_id: id,
+        brand_id: brand.id,
+        type: 'landing_brief',
+        content: JSON.stringify(parsed),
+      })
+      .select('id')
+      .single()
+
+    // Snapshot the landing HTML with the brand's current palette/fonts baked in
+    // so the Preview page can render it unchanged even if the brand is edited
+    // later. Failure here is non-fatal — the brief is still saved and the
+    // live /landing-html endpoint keeps working as a fallback.
+    if (insertedRow && !insertErr) {
+      try {
+        const { data: allImagesRaw } = await supabase
+          .from('brand_images').select('*')
+          .eq('brand_id', brand.id).order('created_at')
+
+        const snapshotHtml = renderLandingHtml({
+          brand,
+          brief: parsed,
+          brandImages: (allImagesRaw || []) as BrandImage[],
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        })
+
+        await supabase
+          .from('generated_content')
+          .update({ generated_html: snapshotHtml })
+          .eq('id', insertedRow.id)
+      } catch (e) {
+        console.error('[landing-brief] snapshot render failed:', e)
+      }
+    }
 
     return NextResponse.json(parsed)
   } catch {

@@ -257,6 +257,16 @@ export default function PreviewClient({
       })()
     : null
 
+  // Frozen snapshot: landing HTML is rendered once at brief-generation time with
+  // the brand's palette/fonts baked in and stored on the same row. Preview
+  // renders from this stored HTML, so edits to brand colors/fonts elsewhere in
+  // the app never drift the Preview. Legacy rows (pre-snapshot) have a null
+  // generated_html — those render as a skeleton rather than hitting the live
+  // /landing-html endpoint and breaking the frozen guarantee.
+  const landingHtml: string | null = landingContent.length > 0
+    ? (landingContent[0].generated_html ?? null)
+    : null
+
   // Content state — generation now happens before redirect (in OnboardingWizard)
   const [adVariations, setAdVariations] = useState<AdVariation[]>(existingAdVariations)
   const adVariation = adVariations[0] || null
@@ -1039,7 +1049,7 @@ export default function PreviewClient({
           .pv-finale { height: 80vh !important; }
           .pv-finale-col { width: clamp(100px, 22vw, 140px) !important; }
           .pv-finale-stats { gap: 24px !important; flex-wrap: wrap !important; }
-          .pv-finale-num { font-size: clamp(36px, 8vw, 56px) !important; }
+          .pv-finale-num { font-size: clamp(22px, 4.8vw, 34px) !important; }
           .pv-landing-laptop { display: none !important; }
           .pv-landing-phone { display: block !important; }
           .pv-email-laptop { display: none !important; }
@@ -2044,7 +2054,7 @@ export default function PreviewClient({
                       pattern used on the mobile phone frame below. */}
                   <div className="pv-iframe" style={{ width: '100%', height: 600, overflow: 'hidden', borderRadius: '8px 8px 0 0', background: colors.paper }}>
                     <iframe
-                      src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                      srcDoc={landingHtml || ''}
                       style={{
                         width: 'calc(100% / 0.6)',
                         height: 'calc(100% / 0.6)',
@@ -2060,7 +2070,7 @@ export default function PreviewClient({
                 <div style={{ background: '#2a2a2a', height: 20, borderRadius: '0 0 12px 12px', width: '110%', marginLeft: '-5%' }} />
                 <div style={{ textAlign: 'center', marginTop: 16 }}>
                   <a
-                    href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                    href={`/api/campaigns/${campaign.id}/landing-html`}
                     target="_blank" rel="noopener noreferrer"
                     style={{ background: colors.ink, color: colors.accent, fontSize: fontSize.body, fontWeight: fontWeight.bold, padding: '10px 20px', borderRadius: radius.pill, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: shadow.dark, border: `1px solid ${colors.whiteAlpha10}` }}
                   >↗ View full page</a>
@@ -2072,14 +2082,14 @@ export default function PreviewClient({
                   <div style={{ width: 80, height: 20, background: '#1a1a1a', borderRadius: '0 0 12px 12px', margin: '0 auto 8px' }} />
                   <div style={{ borderRadius: 28, overflow: 'hidden', width: '100%', background: colors.paper, position: 'relative', height: 500 }}>
                     <iframe
-                      src={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                      srcDoc={landingHtml || ''}
                       style={{ position: 'absolute', top: 0, left: 0, width: '250%', height: '250%', border: 'none', transform: 'scale(0.4)', transformOrigin: 'top left', pointerEvents: 'none' }}
                       title="Landing page preview" loading="lazy"
                     />
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: `linear-gradient(to bottom, transparent, ${colors.paper})`, pointerEvents: 'none' }} />
                     <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}>
                       <a
-                        href={`/api/campaigns/${campaign.id}/landing-html?primary=${encodeURIComponent(brandPrimary)}&secondary=${encodeURIComponent(brandAccent)}&accent=${encodeURIComponent(brandSecondary)}&font=${encodeURIComponent(fontFamily)}&transform=${encodeURIComponent(brand.font_heading?.transform || 'none')}`}
+                        href={`/api/campaigns/${campaign.id}/landing-html`}
                         target="_blank" rel="noopener noreferrer"
                         style={{ background: colors.ink, color: colors.accent, fontSize: fontSize.caption, fontWeight: fontWeight.bold, padding: '8px 16px', borderRadius: radius.pill, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: shadow.dark }}
                       >↗ View full page</a>
@@ -2370,15 +2380,15 @@ export default function PreviewClient({
           <div className="pv-finale-stats" style={{ display: 'flex', gap: 48, justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
             {([
               { value: '60s', label: 'Time to build' },
+              { value: '27', label: 'Creatives generated' },
               { value: '4', label: 'Channels ready' },
-              { value: '100%', label: 'Brand accurate' },
               { value: '$0', label: 'To get started' },
             ] as const).map((stat, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
                 <div style={{ textAlign: 'center' }}>
                   <div className="pv-finale-num" style={{
                     fontFamily: font.heading, fontWeight: fontWeight.heading,
-                    fontSize: 'clamp(64px, 9vw, 112px)', color: colors.paper, lineHeight: 1,
+                    fontSize: 'clamp(38px, 5.4vw, 68px)', color: colors.paper, lineHeight: 1,
                   }}>
                     {stat.value}
                   </div>
