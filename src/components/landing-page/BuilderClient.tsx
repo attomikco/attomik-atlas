@@ -27,6 +27,8 @@ import {
 } from './lib/mutations'
 import { useAutosave } from './lib/useAutosave'
 import { briefToBlocks } from './lib/briefToBlocks'
+import { getPageTheme } from './lib/getPageTheme'
+import { useBrandFonts } from './lib/useBrandFonts'
 
 type Device = 'desktop' | 'tablet' | 'mobile'
 type Mode = 'edit' | 'preview'
@@ -110,6 +112,13 @@ export default function BuilderClient({ brandId, brand, initialLandingPage }: Pr
     () => blocks.find(b => b.id === ui.selectedId) ?? null,
     [blocks, ui.selectedId],
   )
+
+  // Inject brand-font <link>s into <head> so Canvas renders with the
+  // right heading/body families. No-op when the brand is missing colors
+  // (theme invalid → fonts list empty on the invalid branch; we still
+  // call the hook with what's available so font-only brands preload).
+  const themeFonts = useMemo(() => getPageTheme(brand).theme?.googleFonts ?? [], [brand])
+  useBrandFonts(themeFonts)
 
   // ── Mutation handlers ───────────────────────────────────────────────
   // Each wraps the pure function from lib/mutations + updates selection
@@ -265,6 +274,7 @@ export default function BuilderClient({ brandId, brand, initialLandingPage }: Pr
             onInsertAt={actions.insertBlock}
             device={ui.device}
             zoom={ui.zoom}
+            brand={brand}
           />
           <CanvasFooter
             blockCount={blocks.length}

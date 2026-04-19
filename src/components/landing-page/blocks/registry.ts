@@ -9,6 +9,7 @@
 
 import type { ComponentType } from 'react'
 import type { Block, BlockType } from '../types'
+import type { PageTheme } from '../lib/getPageTheme'
 
 import { HeroBlock } from './HeroBlock'
 import { ProblemBlock } from './ProblemBlock'
@@ -50,7 +51,7 @@ export interface BlockConfig {
   defaultVariant: string
   defaultData: () => Record<string, unknown>
   contentFields: ContentField[]
-  renderer: ComponentType<{ block: Block }>
+  renderer: ComponentType<{ block: Block; theme: PageTheme }>
 }
 
 // Default-data factories live in ./defaults.ts so pure consumers (mutations,

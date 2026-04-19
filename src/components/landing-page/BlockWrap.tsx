@@ -2,23 +2,32 @@
 // Canvas-level wrapper around each rendered block. Owns:
 //   - click-to-select (stopPropagation so Canvas's outer bg handler doesn't
 //     deselect when the user clicks a block)
-//   - selection outline (2px accent, -2px offset)
-//   - floating BlockBadge when selected
+//   - selection outline (2px accent, -2px offset) — uses ATTOMIK accent
+//     (tokens.colors.accent), NOT brand accent. The outline is builder
+//     chrome, not rendered-page chrome.
+//   - floating BlockBadge when selected — Attomik-themed for the same
+//     reason
 //   - hidden-state diagonal-stripe placeholder (shown instead of the real
 //     renderer when block.visible === false)
+//
+// Theme propagation: the `theme` prop flows through to the registry's
+// renderer so block internals (hero bg, headline color, CTAs, etc.)
+// pick up the brand's ink/accent/fonts.
 
 import { colors, font, fontSize, letterSpacing, spacing } from '@/lib/design-tokens'
 import { BLOCK_REGISTRY } from './blocks/registry'
 import { BlockBadge } from './BlockBadge'
 import type { Block } from './types'
+import type { PageTheme } from './lib/getPageTheme'
 
 interface Props {
   block: Block
   selected: boolean
   onSelect: (id: string) => void
+  theme: PageTheme
 }
 
-export function BlockWrap({ block, selected, onSelect }: Props) {
+export function BlockWrap({ block, selected, onSelect, theme }: Props) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onSelect(block.id)
@@ -51,8 +60,6 @@ export function BlockWrap({ block, selected, onSelect }: Props) {
 
   const Renderer = BLOCK_REGISTRY[block.type]?.renderer
   if (!Renderer) {
-    // Defensive — an unknown block type shouldn't exist, but if a stale doc
-    // carries one we render a visible stub instead of crashing.
     return (
       <div
         onClick={handleClick}
@@ -83,7 +90,7 @@ export function BlockWrap({ block, selected, onSelect }: Props) {
       }}
     >
       {selected && <BlockBadge block={block} />}
-      <Renderer block={block} />
+      <Renderer block={block} theme={theme} />
     </div>
   )
 }

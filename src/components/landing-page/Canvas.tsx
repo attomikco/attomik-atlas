@@ -1,8 +1,11 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { colors, font, fontSize, fontWeight, letterSpacing, radius, spacing } from '@/lib/design-tokens'
+import type { Brand } from '@/types'
 import type { Block, BlockType } from './types'
 import { BlockWrap } from './BlockWrap'
+import { getPageTheme } from './lib/getPageTheme'
 
 type Device = 'desktop' | 'tablet' | 'mobile'
 
@@ -13,6 +16,7 @@ interface Props {
   onInsertAt: (type: BlockType, index: number, opts?: { select?: boolean }) => void
   device: Device
   zoom: number
+  brand: Brand
 }
 
 const DEVICE_WIDTH: Record<Device, number> = {
@@ -25,10 +29,11 @@ const DEVICE_WIDTH: Record<Device, number> = {
 // pair of blocks (and at top/bottom) accept drags from the Blocks library
 // and click to insert a richtext block at that index (confirmed default).
 // Outer gray-field click with e.target === e.currentTarget clears selection.
-export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom }: Props) {
+export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom, brand }: Props) {
   const outerRef = useRef<HTMLDivElement>(null)
   const [autoScale, setAutoScale] = useState(1)
   const deviceWidth = DEVICE_WIDTH[device]
+  const themeResult = useMemo(() => getPageTheme(brand), [brand])
 
   useEffect(() => {
     const el = outerRef.current
@@ -71,18 +76,14 @@ export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom 
           overflow: 'hidden',
         }}>
           <BrowserBar />
-          {blocks.length === 0 && <EmptyState />}
-          {blocks.map((b, i) => (
-            <div key={b.id}>
-              <InsertZone index={i} onInsert={onInsertAt} />
-              <BlockWrap
-                block={b}
-                selected={b.id === selectedId}
-                onSelect={onSelect}
-              />
-            </div>
-          ))}
-          <InsertZone index={blocks.length} onInsert={onInsertAt} last />
+          <CanvasBody
+            theme={themeResult.valid ? themeResult.theme : null}
+            missing={themeResult.missing}
+            blocks={blocks}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onInsertAt={onInsertAt}
+          />
         </div>
       </div>
     </div>
@@ -167,6 +168,95 @@ function BrowserBar() {
         borderRadius: radius.pill, padding: `4px ${spacing[3]}px`,
         fontSize: fontSize.caption, color: colors.subtle, fontFamily: font.mono,
       }}>🔒 preview</div>
+    </div>
+  )
+}
+
+// Extracted so TS can narrow theme|null via a null guard into a separate
+// return branch, which it can't do cleanly inside the JSX ternary.
+function CanvasBody({
+  theme, missing, blocks, selectedId, onSelect, onInsertAt,
+}: {
+  theme: import('./lib/getPageTheme').PageTheme | null
+  missing: string[]
+  blocks: Block[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  onInsertAt: (type: BlockType, index: number, opts?: { select?: boolean }) => void
+}) {
+  if (!theme) return <ThemeMissing missing={missing} />
+  return (
+    <>
+      {blocks.length === 0 && <EmptyState />}
+      {blocks.map((b, i) => (
+        <div key={b.id}>
+          <InsertZone index={i} onInsert={onInsertAt} />
+          <BlockWrap
+            block={b}
+            selected={b.id === selectedId}
+            onSelect={onSelect}
+            theme={theme}
+          />
+        </div>
+      ))}
+      <InsertZone index={blocks.length} onInsert={onInsertAt} last />
+    </>
+  )
+}
+
+// Rendered inside the canvas paper when getPageTheme returns invalid (the
+// brand is missing primary_color / accent_color). Drops the user straight
+// into Brand Hub rather than crashing or rendering unthemed blocks. Chrome
+// stays Attomik-themed (cream / ink / accent tokens) because this is builder
+// surface, not rendered-page surface.
+function ThemeMissing({ missing }: { missing: string[] }) {
+  return (
+    <div style={{
+      padding: `${spacing[20]}px ${spacing[8]}px`,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+      minHeight: 420, background: colors.paper,
+    }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: radius.lg,
+        border: `2px dashed ${colors.border}`, background: colors.cream,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 28, color: colors.subtle, marginBottom: spacing[5],
+      }}>◐</div>
+      <div style={{
+        fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['3xl'],
+        textTransform: 'uppercase', letterSpacing: letterSpacing.slight,
+        color: colors.ink, marginBottom: spacing[3], maxWidth: 460,
+      }}>Set your brand colors to build your landing page</div>
+      <div style={{
+        fontSize: fontSize.body, color: colors.muted,
+        maxWidth: 440, lineHeight: 1.5, marginBottom: spacing[5],
+      }}>
+        Your landing page uses your brand&rsquo;s primary color and accent color.
+        Set them in Brand Hub to get started.
+      </div>
+      <Link
+        href="/brand-hub"
+        style={{
+          display: 'inline-block',
+          padding: `${spacing[3]}px ${spacing[5]}px`,
+          background: colors.ink, color: colors.accent,
+          borderRadius: radius.md, textDecoration: 'none',
+          fontFamily: font.heading, fontWeight: fontWeight.extrabold,
+          fontSize: fontSize.body, letterSpacing: letterSpacing.label,
+          textTransform: 'uppercase',
+        }}
+      >Open Brand Hub →</Link>
+      {missing.length > 0 && (
+        <div style={{
+          marginTop: spacing[4],
+          fontFamily: font.mono, fontSize: fontSize.xs,
+          letterSpacing: letterSpacing.widest, textTransform: 'uppercase',
+          color: colors.subtle,
+        }}>
+          Missing: {missing.join(', ')}
+        </div>
+      )}
     </div>
   )
 }
