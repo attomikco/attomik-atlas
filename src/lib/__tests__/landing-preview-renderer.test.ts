@@ -133,21 +133,19 @@ describe('renderPreview — happy path', () => {
 })
 
 describe('renderPreview — visibility rules', () => {
-  it('empty testimonial → testimonials section absent', () => {
-    const brief: LandingBrief = {
-      ...FULL_BRIEF,
-      social_proof: { ...FULL_BRIEF.social_proof, testimonial: '' },
-    }
+  it('no brief.reviews → testimonials section absent (no synthesis from testimonial)', () => {
+    // FULL_BRIEF has a testimonial set but no optional `reviews` array.
+    // Pre-fix, that testimonial was synthesized into a fake 3-card grid.
+    // Post-fix, the testimonials section only lights up when the caller
+    // provides real reviews[], so this must render as absent.
     const html = renderPreview({
       brand: makeBrand(),
-      brief,
+      brief: FULL_BRIEF,
       brandImages: BRAND_IMAGES,
       products: PRODUCTS,
       supabaseUrl: 'https://test.supabase.co',
     })
-    // testimonials section's hardcoded header copy shouldn't appear
     assert.ok(!html.includes('What Customers Are Saying'))
-    // markers must be stripped regardless
     assert.doesNotMatch(html, /<!-- PREVIEW_SECTION_[A-Z]+:testimonials -->/)
   })
 
@@ -199,6 +197,72 @@ describe('renderPreview — visibility rules', () => {
     })
     assert.doesNotMatch(html, /<!-- PREVIEW_SECTION_(START|END):\w+ -->/)
   })
+
+  it('no brief.hiw → how-it-works section absent (no hardcoded steps)', () => {
+    const html = renderPreview({
+      brand: makeBrand(),
+      brief: FULL_BRIEF,
+      brandImages: BRAND_IMAGES,
+      products: PRODUCTS,
+      supabaseUrl: 'https://test.supabase.co',
+    })
+    assert.ok(!html.includes('How It Works'))
+    assert.ok(!html.includes('Simple As It Gets'))
+  })
+
+  it('no brand.press_mentions → press section absent (no benefit-derived fake)', () => {
+    const html = renderPreview({
+      brand: makeBrand(),
+      brief: FULL_BRIEF,
+      brandImages: BRAND_IMAGES,
+      products: PRODUCTS,
+      supabaseUrl: 'https://test.supabase.co',
+    })
+    assert.ok(!html.includes('<section class="press">'))
+  })
+
+  it('no brand.notes.guarantees → guarantee row absent (no benefit-reuse badges)', () => {
+    const html = renderPreview({
+      brand: makeBrand(),
+      brief: FULL_BRIEF,
+      brandImages: BRAND_IMAGES,
+      products: PRODUCTS,
+      supabaseUrl: 'https://test.supabase.co',
+    })
+    // guarantee div wraps inside final-cta; the class='guarantee' node
+    // should be entirely gone along with its markers.
+    assert.ok(!html.includes('class="guarantee"'))
+    // final-cta section itself is unaffected (always visible).
+    assert.ok(html.includes('class="final-cta"'))
+  })
+
+  it('brand.notes.guarantees = [] → guarantee still hidden (empty array is falsy)', () => {
+    const html = renderPreview({
+      brand: makeBrand({ notes: JSON.stringify({ guarantees: [] }) }),
+      brief: FULL_BRIEF,
+      brandImages: BRAND_IMAGES,
+      products: PRODUCTS,
+      supabaseUrl: 'https://test.supabase.co',
+    })
+    assert.ok(!html.includes('class="guarantee"'))
+  })
+
+  it('brand.notes.guarantees populated → guarantee row renders', () => {
+    const html = renderPreview({
+      brand: makeBrand({
+        notes: JSON.stringify({
+          guarantees: [{ text: '30-day return policy' }, { text: 'Free shipping' }],
+        }),
+      }),
+      brief: FULL_BRIEF,
+      brandImages: BRAND_IMAGES,
+      products: PRODUCTS,
+      supabaseUrl: 'https://test.supabase.co',
+    })
+    assert.ok(html.includes('class="guarantee"'))
+    assert.ok(html.includes('30-day return policy'))
+    assert.ok(html.includes('Free shipping'))
+  })
 })
 
 describe('renderPreview — CSS var substitution', () => {
@@ -242,10 +306,13 @@ describe('renderPreview — escape safety', () => {
     assert.ok(!html.includes('<script>alert(1)'))
   })
 
-  it('brief testimonial quotes get escaped', () => {
+  it('brief copy with quotes gets escaped in the output', () => {
+    // Previously checked via brief.social_proof.testimonial → review card,
+    // but that path is gone now (reviews section hides without real
+    // brief.reviews). Swap to hero.subheadline which always renders.
     const brief: LandingBrief = {
       ...FULL_BRIEF,
-      social_proof: { ...FULL_BRIEF.social_proof, testimonial: 'It\'s "great"!' },
+      hero: { ...FULL_BRIEF.hero, subheadline: 'It\'s "great"!' },
     }
     const html = renderPreview({
       brand: makeBrand(),
