@@ -1,33 +1,31 @@
 'use client'
-// PHASE 1 SMOKE TEST — replaced in Phase 2 with the real block builder shell.
+// Phase 2 wrapper. Client component because the active brand comes from
+// useBrand() (localStorage-backed context) — there's no server equivalent
+// in this app.
 //
-// Purpose: verify the Phase 1 plumbing works end to end.
-//   1. useBrand() → activeBrandId
-//   2. GET /api/landing-pages?brand_id=<id> → latest row for brand
-//   3. If no row, look up latest generated_content row (type='landing_brief'),
-//      run briefToBlocks() against it + the brand, POST a new landing_pages
-//      row, refetch.
-//   4. Dump the resulting { blocks, pageSettings } as pre-formatted JSON.
-//
-// Intentionally minimal UI — design tokens only, no visual polish. The real
-// builder replaces this file entirely in Phase 2.
+// Flow:
+//   1. Wait for brandsLoaded + activeBrandId.
+//   2. GET /api/landing-pages?brand_id=<id>. If a row exists → render builder.
+//   3. Otherwise fetch the brand + latest landing_brief (if any), run
+//      briefToBlocks, POST a new landing_pages row, render builder.
+//   4. Show a thin loading surface during the roundtrip.
 
 import { useEffect, useState } from 'react'
 import { useBrand } from '@/lib/brand-context'
 import { createClient } from '@/lib/supabase/client'
-import { colors, font, fontSize, fontWeight, radius, spacing } from '@/lib/design-tokens'
+import { colors, font, fontSize, spacing } from '@/lib/design-tokens'
 import { briefToBlocks } from '@/components/landing-page/lib/briefToBlocks'
-import type { Block, LandingBrief, LandingPageDocument, PageSettings } from '@/components/landing-page/types'
+import BuilderClient from '@/components/landing-page/BuilderClient'
+import type { LandingBrief, LandingPageDocument } from '@/components/landing-page/types'
 import type { Brand, LandingPage } from '@/types'
 
-type Status = 'idle' | 'loading' | 'adapting' | 'ready' | 'error'
+type Status = 'idle' | 'loading' | 'ready' | 'error'
 
-export default function LandingPageSmokeTest() {
+export default function LandingPageRoute() {
   const { activeBrandId, brandsLoaded } = useBrand()
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [document, setDocument] = useState<LandingPageDocument | null>(null)
-  const [source, setSource] = useState<'landing_pages' | 'adapted_from_brief' | 'default' | null>(null)
+  const [page, setPage] = useState<LandingPage | null>(null)
 
   useEffect(() => {
     if (!brandsLoaded || !activeBrandId) return
@@ -39,21 +37,19 @@ export default function LandingPageSmokeTest() {
       setError(null)
 
       try {
-        // Step 1 — existing landing_pages row?
+        // Look for an existing row first.
         const listRes = await fetch(`/api/landing-pages?brand_id=${activeBrandId}`)
         if (!listRes.ok) throw new Error(`list failed: HTTP ${listRes.status}`)
         const listJson = (await listRes.json()) as { pages?: LandingPage[] }
 
         if (listJson.pages && listJson.pages.length > 0) {
           if (cancelled) return
-          const doc = listJson.pages[0].content as LandingPageDocument
-          setDocument(doc)
-          setSource('landing_pages')
+          setPage(listJson.pages[0])
           setStatus('ready')
           return
         }
 
-        // Step 2 — no landing_pages row; look for a legacy brief and adapt.
+        // No row — fetch brand + legacy brief, adapt, create.
         const { data: brand } = await supabase
           .from('brands')
           .select('*')
@@ -72,16 +68,9 @@ export default function LandingPageSmokeTest() {
 
         let brief: LandingBrief | null = null
         if (briefRow?.content) {
-          try {
-            brief = JSON.parse(briefRow.content) as LandingBrief
-          } catch {
-            // malformed brief row — fall through to minimal default
-            brief = null
-          }
+          try { brief = JSON.parse(briefRow.content) as LandingBrief }
+          catch { brief = null }
         }
-
-        if (cancelled) return
-        setStatus('adapting')
 
         const { blocks, pageSettings } = briefToBlocks(brief, brand as Brand)
         const doc: LandingPageDocument = { blocks, pageSettings, version: 1 }
@@ -101,10 +90,11 @@ export default function LandingPageSmokeTest() {
           const errBody = await createRes.json().catch(() => ({ error: `HTTP ${createRes.status}` }))
           throw new Error(`create failed: ${errBody.error}`)
         }
+        const created = (await createRes.json()) as { page?: LandingPage }
+        if (!created.page) throw new Error('create returned no row')
 
         if (cancelled) return
-        setDocument(doc)
-        setSource(brief ? 'adapted_from_brief' : 'default')
+        setPage(created.page)
         setStatus('ready')
       } catch (e) {
         if (cancelled) return
@@ -117,101 +107,30 @@ export default function LandingPageSmokeTest() {
     return () => { cancelled = true }
   }, [activeBrandId, brandsLoaded])
 
+  if (status === 'ready' && page && activeBrandId) {
+    return <BuilderClient brandId={activeBrandId} initialLandingPage={page} />
+  }
+
   return (
     <div style={{
-      minHeight: '100vh',
-      background: colors.cream,
-      padding: spacing[6],
-      fontFamily: font.mono,
-      fontSize: fontSize.caption,
-      color: colors.ink,
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: colors.cream, fontFamily: font.mono, fontSize: fontSize.caption, color: colors.ink,
     }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{
-          fontFamily: font.heading,
-          fontWeight: fontWeight.heading,
-          fontSize: fontSize['2xl'],
-          textTransform: 'uppercase',
-          marginBottom: spacing[2],
-        }}>
-          Phase 1 Smoke Test
-        </div>
-        <div style={{ color: colors.muted, marginBottom: spacing[6] }}>
-          Verifies briefToBlocks + /api/landing-pages plumbing. Replaced in Phase 2.
-        </div>
-
-        <div style={{
-          background: colors.paper,
-          border: `1px solid ${colors.border}`,
-          borderRadius: radius.md,
-          padding: spacing[4],
-          marginBottom: spacing[4],
-          display: 'flex',
-          gap: spacing[4],
-          flexWrap: 'wrap',
-        }}>
-          <Pill label="brand" value={activeBrandId || '—'} />
-          <Pill label="status" value={status} />
-          <Pill label="source" value={source || '—'} />
-          {document && <Pill label="blocks" value={String(document.blocks.length)} />}
-          {document && <Pill label="version" value={String(document.version)} />}
-        </div>
-
-        {status === 'error' && (
-          <div style={{
-            background: colors.paper,
-            border: `1px solid ${colors.border}`,
-            borderLeft: `3px solid ${colors.accent}`,
-            borderRadius: radius.md,
-            padding: spacing[4],
-            marginBottom: spacing[4],
-            color: colors.ink,
-          }}>
-            <div style={{ fontWeight: fontWeight.bold, marginBottom: spacing[1] }}>Error</div>
-            <div>{error}</div>
+      <div style={{
+        background: colors.paper, padding: spacing[5],
+        border: `1px solid ${colors.border}`, borderRadius: 8, maxWidth: 480,
+      }}>
+        {status === 'error' ? (
+          <>
+            <div style={{ fontWeight: 700, marginBottom: spacing[2] }}>Couldn&rsquo;t load landing page</div>
+            <div style={{ color: colors.muted }}>{error}</div>
+          </>
+        ) : (
+          <div style={{ color: colors.muted, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Loading landing page…
           </div>
         )}
-
-        {document && (
-          <pre style={{
-            background: colors.paper,
-            border: `1px solid ${colors.border}`,
-            borderRadius: radius.md,
-            padding: spacing[4],
-            overflow: 'auto',
-            fontFamily: font.mono,
-            fontSize: fontSize.caption,
-            lineHeight: 1.6,
-            color: colors.ink,
-            margin: 0,
-          }}>
-{JSON.stringify(document, null, 2)}
-          </pre>
-        )}
       </div>
-    </div>
-  )
-}
-
-function Pill({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-      <span style={{
-        fontFamily: font.mono,
-        fontSize: fontSize.caption,
-        color: colors.muted,
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-      }}>{label}</span>
-      <span style={{
-        background: colors.cream,
-        border: `1px solid ${colors.border}`,
-        borderRadius: radius.pill,
-        padding: `2px ${spacing[2]}px`,
-        fontFamily: font.mono,
-        fontSize: fontSize.caption,
-        color: colors.ink,
-      }}>{value}</span>
     </div>
   )
 }
