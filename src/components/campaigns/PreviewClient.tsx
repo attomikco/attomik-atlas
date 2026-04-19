@@ -264,24 +264,16 @@ export default function PreviewClient({
       })()
     : null
 
-  // Frozen snapshot: landing HTML is rendered once at brief-generation time with
-  // the brand's palette/fonts baked in and stored as a file in the
-  // `landing-previews` Supabase Storage bucket. Preview renders from this URL,
-  // so edits to brand colors/fonts elsewhere in the app never drift the
-  // Preview.
-  //
-  // Legacy rows (pre-20260416) exist with a brief but no snapshot — they
-  // never had a `generated_html` and weren't caught by the Storage
-  // migration. For those we fall back to the live /landing-html endpoint
-  // as the iframe src: it renders from the same template + current brand
-  // palette. The frozen-palette guarantee only applies to rows that ever
-  // had a snapshot in the first place; legacy rows trading that guarantee
-  // for "actually renders" is the right call.
-  const storedPreviewUrl: string | null = landingContent.length > 0
+  // Frozen snapshot: landing HTML is rendered once at brief-generation time
+  // with the brand's palette/fonts baked in and stored as a file in the
+  // `landing-previews` Supabase Storage bucket. Preview renders from this
+  // URL, so edits to brand colors/fonts elsewhere in the app never drift
+  // the Preview. Every landing_brief row has a URL after the 20260419
+  // regenerate-all-landing-previews script ran; new rows get one at scan
+  // time in /api/campaigns/[id]/landing-brief. No fallback needed.
+  const landingPreviewSrc: string | null = landingContent.length > 0
     ? (landingContent[0].landing_preview_url ?? null)
     : null
-  const landingPreviewSrc: string | null = storedPreviewUrl
-    ?? (existingLandingBrief ? `/api/campaigns/${campaign.id}/landing-html` : null)
 
   // Content state — generation now happens before redirect (in OnboardingWizard)
   const [adVariations, setAdVariations] = useState<AdVariation[]>(existingAdVariations)
