@@ -9,6 +9,7 @@ import {
   getContentImages,
   bucketBrandImages,
   getBusinessType,
+  pickSlotImages,
 } from '@/lib/brand-images'
 import OverlayTemplate from '@/components/creatives/templates/OverlayTemplate'
 import SplitTemplate from '@/components/creatives/templates/SplitTemplate'
@@ -287,6 +288,11 @@ export default function PreviewClient({
   const [lifestyleImageUrls, setLifestyleImageUrls] = useState<string[]>([])
   const [logoImageUrls, setLogoImageUrls] = useState<string[]>([])
   const [imagesLoaded, setImagesLoaded] = useState(brandImages.length > 0)
+  // Mirror of the raw BrandImage rows so the creative slot picker below can
+  // call pickSlotImages() with the same inputs landing/email use. Polling
+  // in loadImages() updates this alongside the URL-array state so
+  // late-arriving rows flow into slot picks without a reload.
+  const [brandImagesState, setBrandImagesState] = useState<BrandImage[]>(brandImages)
   const brandImageUrl = productImageUrl
 
   async function filterGoodImages(urls: string[]): Promise<string[]> {
@@ -437,6 +443,9 @@ export default function PreviewClient({
       return data.publicUrl
     }
     function loadImages(images: BrandImage[]) {
+      // Keep the raw BrandImage array in sync for the creative slot picker
+      // below (pickSlotImages needs width/height/tag to rank orientation).
+      setBrandImagesState(images)
       // Build set of known logo URLs to exclude from content pools.
       // We still need the brand.logo_url vs file-name match below because some brands
       // have a stored brand.logo_url that may also appear in brand_images without a 'logo' tag.
@@ -600,26 +609,42 @@ export default function PreviewClient({
     return shuffled
   })()
 
-  const SLOTS = 9
-  const slotImages: (string | null)[] = (() => {
-    if (imagePool.length === 0) return Array(SLOTS).fill(null)
-    if (imagePool.length >= SLOTS) {
-      // Spread evenly across the pool — each slot picks from a different section
-      return Array.from({ length: SLOTS }, (_, i) =>
-        imagePool[Math.floor(i * imagePool.length / SLOTS)]
-      )
-    }
-    if (imagePool.length >= 4) {
-      // Use each image once, fill remaining from the end of the pool
-      const result = [...imagePool]
-      while (result.length < SLOTS) result.push(imagePool[imagePool.length - 1 - (result.length % imagePool.length)])
-      return result
-    }
-    // Fewer than 4 — cycle
-    return Array.from({ length: SLOTS }, (_, i) => imagePool[i % imagePool.length])
+  // Creative slot images — routed through the same pickSlotImages helper
+  // landing-page-renderer.ts and the email routes use. Each 'hero' slot
+  // prefers landscape-first from the lifestyle bucket, falling back to
+  // product; pickSlotImages tracks used IDs so distinct rows are returned
+  // until the pool is exhausted. This replaces the old bespoke seeded
+  // shuffle + index-spread, which spread the carousel's images so thinly
+  // that the brand's strongest lifestyle shot (the Saint Spritz couch
+  // photo, in the verification case) never landed in a creative slot.
+  //
+  // 17 slots requested: 9 grid primaries + 6 story primaries + 2 grid
+  // secondary picks (Grid template's secondImg, and the Story Grid's
+  // secondImg). All 'hero' so orientation preference is uniform.
+  function buildSlotUrl(storagePath: string): string {
+    const cleanPath = storagePath.replace(/^brand-images\//, '')
+    return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
+  }
+  const TOTAL_SLOTS = 17
+  const pickedSlotImages = pickSlotImages(
+    brandImagesState,
+    getBusinessType(brand),
+    Array<'hero'>(TOTAL_SLOTS).fill('hero'),
+  )
+  // Cycle to guarantee TOTAL_SLOTS entries if the pool was too small for
+  // pickSlotImages' internal fallback to backfill. Matches the legacy
+  // "cycle" branch for ≤4-image brands. When the pool is genuinely empty,
+  // every slot stays null and templates render without an image.
+  const slotUrls: (string | null)[] = (() => {
+    if (pickedSlotImages.length === 0) return Array(TOTAL_SLOTS).fill(null)
+    return Array.from({ length: TOTAL_SLOTS }, (_, i) =>
+      buildSlotUrl(pickedSlotImages[i % pickedSlotImages.length].storage_path)
+    )
   })()
 
-  const [img0, img1, img2, img3, img4, img5, img6, img7, img8] = slotImages
+  const [img0, img1, img2, img3, img4, img5, img6, img7, img8,
+         sImg0, sImg1, sImg2, sImg3, sImg4, sImg5,
+         gridSecondImg, storyGridSecondImg] = slotUrls
 
   // ── Hoisted creative card definitions (shared by Feed, Showcase, and Ad Creatives sections) ──
   const v0 = adVariations[0] || adVariation
@@ -641,24 +666,24 @@ export default function PreviewClient({
   }
 
   const gridCards: GridCard[] = adVariation ? [
-    { label: 'Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
-    { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandAccent },
-    { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandSecondary },
-    { label: 'Card', Comp: UGCTemplate, img: img4, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Grid', Comp: GridTemplate, img: img5, secondImg: img6, variation: v0, tp: 'center', bgColor: brandAccent },
-    { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center', bgColor: brandSecondary },
-    { label: 'Split Alt', Comp: SplitTemplate, img: img7, variation: v0, tp: 'center', bgColor: brandPrimary },
-    { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center', bgColor: brandAccent },
+    { label: 'Overlay',     Comp: OverlayTemplate,     img: img0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
+    { label: 'Split',       Comp: SplitTemplate,       img: img1, variation: v1, tp: 'center',      bgColor: brandAccent },
+    { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Statement',   Comp: StatTemplate,        img: img3, variation: v1, tp: 'center',      bgColor: brandSecondary },
+    { label: 'Card',        Comp: UGCTemplate,         img: img4, variation: v2, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Grid',        Comp: GridTemplate,        img: img5, secondImg: gridSecondImg, variation: v0, tp: 'center', bgColor: brandAccent },
+    { label: 'Overlay Alt', Comp: OverlayTemplate,     img: img6, variation: v2, tp: 'center',      bgColor: brandSecondary },
+    { label: 'Split Alt',   Comp: SplitTemplate,       img: img7, variation: v0, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Stat Alt',    Comp: StatTemplate,        img: img8, variation: v1, tp: 'center',      bgColor: brandAccent },
   ] : []
 
   const storyCards: GridCard[] = adVariation ? [
-    { label: 'Story — Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
-    { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandAccent },
-    { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center', bgColor: brandSecondary },
-    { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandAccent },
-    { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: img4, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Story — Grid', Comp: GridTemplate, img: img5, secondImg: img7, variation: v0, tp: 'center', bgColor: brandAccent },
+    { label: 'Story — Overlay',     Comp: OverlayTemplate,     img: sImg0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
+    { label: 'Story — Split',       Comp: SplitTemplate,       img: sImg1, variation: v1, tp: 'center',      bgColor: brandAccent },
+    { label: 'Story — Statement',   Comp: StatTemplate,        img: sImg2, variation: v2, tp: 'center',      bgColor: brandSecondary },
+    { label: 'Story — Overlay Alt', Comp: OverlayTemplate,     img: sImg3, variation: v1, tp: 'center',      bgColor: brandAccent },
+    { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: sImg4, variation: v2, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Story — Grid',        Comp: GridTemplate,        img: sImg5, secondImg: storyGridSecondImg, variation: v0, tp: 'center', bgColor: brandAccent },
   ] : []
 
   function makeCreativeProps(card: GridCard) {
