@@ -214,6 +214,7 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
         mime_type: resized.mimeType, size_bytes: resized.blob.size,
         tag: autoTag, alt_text: null, width, height,
         source_url: null, source: null,
+        vision_tags: null,
       }
       uploaded.push(newImage)
 

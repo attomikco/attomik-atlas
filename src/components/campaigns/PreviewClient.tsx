@@ -26,6 +26,9 @@ interface AdVariation {
   primary_text: string
   headline: string
   description: string
+  // angle is an optional tag populated by the angle-driven ad-copy prompt
+  // (commit d853eaa1). Consumed by the vision-aware slot picker below.
+  angle?: string | null
 }
 
 interface LandingBrief {
@@ -287,6 +290,11 @@ export default function PreviewClient({
   const [lifestyleImageUrls, setLifestyleImageUrls] = useState<string[]>([])
   const [logoImageUrls, setLogoImageUrls] = useState<string[]>([])
   const [imagesLoaded, setImagesLoaded] = useState(brandImages.length > 0)
+  // Mirror of the raw BrandImage rows so the vision-aware slot picker below
+  // can read width/height/vision_tags directly. Polling in loadImages() calls
+  // setBrandImagesState alongside setLifestyleImageUrls/etc so late-arriving
+  // tagged rows flow into slot picking without a page reload.
+  const [brandImagesState, setBrandImagesState] = useState<BrandImage[]>(brandImages)
   const brandImageUrl = productImageUrl
 
   async function filterGoodImages(urls: string[]): Promise<string[]> {
@@ -437,6 +445,9 @@ export default function PreviewClient({
       return data.publicUrl
     }
     function loadImages(images: BrandImage[]) {
+      // Keep the raw row array in sync with URL-based state so the vision-
+      // aware picker downstream can read width / height / vision_tags.
+      setBrandImagesState(images)
       // Build set of known logo URLs to exclude from content pools.
       // We still need the brand.logo_url vs file-name match below because some brands
       // have a stored brand.logo_url that may also appear in brand_images without a 'logo' tag.
@@ -582,15 +593,15 @@ export default function PreviewClient({
   }
 
   // Unified image pool — deduped, seeded shuffle for variety per brand.
-  // Lifestyle-first: lifestyle shots set the emotional tone for ad templates,
-  // product shots serve as fallback when no lifestyle content exists.
+  // Preserved at this scope because downstream sections (AI Lifestyle Images
+  // gallery, others) read it directly. The vision-aware slot picker below
+  // derives its own pool from brandImagesState when vision_tags exist.
   const imagePool = (() => {
     const seen = new Set<string>()
     const pool: string[] = []
     for (const url of [...lifestyleImageUrls, ...shopifyImageUrls, ...productImageUrls]) {
       if (!seen.has(url)) { seen.add(url); pool.push(url) }
     }
-    // Seeded shuffle based on campaign id for consistent but varied ordering
     const seed = campaign.id.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
     const shuffled = [...pool]
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -599,27 +610,6 @@ export default function PreviewClient({
     }
     return shuffled
   })()
-
-  const SLOTS = 9
-  const slotImages: (string | null)[] = (() => {
-    if (imagePool.length === 0) return Array(SLOTS).fill(null)
-    if (imagePool.length >= SLOTS) {
-      // Spread evenly across the pool — each slot picks from a different section
-      return Array.from({ length: SLOTS }, (_, i) =>
-        imagePool[Math.floor(i * imagePool.length / SLOTS)]
-      )
-    }
-    if (imagePool.length >= 4) {
-      // Use each image once, fill remaining from the end of the pool
-      const result = [...imagePool]
-      while (result.length < SLOTS) result.push(imagePool[imagePool.length - 1 - (result.length % imagePool.length)])
-      return result
-    }
-    // Fewer than 4 — cycle
-    return Array.from({ length: SLOTS }, (_, i) => imagePool[i % imagePool.length])
-  })()
-
-  const [img0, img1, img2, img3, img4, img5, img6, img7, img8] = slotImages
 
   // ── Hoisted creative card definitions (shared by Feed, Showcase, and Ad Creatives sections) ──
   const v0 = adVariations[0] || adVariation
@@ -640,25 +630,140 @@ export default function PreviewClient({
     bgColor: string
   }
 
+  // ── Angle-aware slot picker ──────────────────────────────────────────
+  //
+  // New behavior (when any brand_images row has vision_tags populated):
+  //   Each slot's target variation carries an `angle` field from the
+  //   angle-driven ad-copy prompt. The picker ranks images by whether the
+  //   angle is in vision_tags.suitable_for, breaking ties on
+  //   composition_quality, and avoids reusing IDs already consumed. Images
+  //   with vision_tags.scene_type === 'logo' are excluded. Images smaller
+  //   than 400x400 are excluded (unknown dimensions pass through).
+  //
+  // Legacy fallback (when NO row has vision_tags — fresh campaigns before
+  // the background tagger has finished, or brands onboarded before B1):
+  //   The original deduped + seeded-shuffle + index-spread pool across 15
+  //   slots is preserved verbatim. Nothing changes for those brands.
+  //
+  // The tag column is intentionally ignored in vision mode — the scanner's
+  // classifier mis-labels product shots as lifestyle often enough that
+  // relying on scene_type from the vision model is strictly better.
+  function buildImageUrlFromPath(storagePath: string): string {
+    const cleanPath = storagePath.replace(/^brand-images\//, '')
+    return supabase.storage.from('brand-images').getPublicUrl(cleanPath).data.publicUrl
+  }
+
+  const eligibleVisionImages = brandImagesState.filter((img) => {
+    if (!img.vision_tags) return false
+    if (img.vision_tags.scene_type === 'logo') return false
+    const w = img.width || 0
+    const h = img.height || 0
+    // Allow unknown dimensions through — older rows lack width/height but
+    // might still have tagged content. If dims are known, enforce 400x400.
+    if (w === 0 || h === 0) return true
+    return w >= 400 && h >= 400
+  })
+
+  const hasVisionData = eligibleVisionImages.length > 0
+
+  function pickForAngle(angle: string | null | undefined, usedIds: Set<string>): BrandImage | null {
+    if (eligibleVisionImages.length === 0) return null
+    const normalized = (angle || '').toLowerCase()
+    const scored = eligibleVisionImages.map((img) => {
+      const tags = img.vision_tags!
+      const angleMatch = normalized && tags.suitable_for.includes(normalized) ? 1 : 0
+      const unused = usedIds.has(img.id) ? 0 : 1
+      const quality = tags.composition_quality
+      // Weighting: angle match dominates (100), then unused (10), then quality (1-5).
+      return { img, score: angleMatch * 100 + unused * 10 + quality }
+    })
+    scored.sort((a, b) => b.score - a.score)
+    return scored[0]?.img || null
+  }
+
+  // Slot → variation mapping mirrors the gridCards / storyCards shape below.
+  // Kept as separate arrays so the picker knows each slot's target angle
+  // without parsing the card definitions twice.
+  const gridSlotVariations: Array<AdVariation | null> = [v0, v1, v2, v1, v2, v0, v2, v0, v1]
+  const storySlotVariations: Array<AdVariation | null> = [v0, v1, v2, v1, v2, v0]
+  const GRID_SLOTS = gridSlotVariations.length
+  const STORY_SLOTS = storySlotVariations.length
+
+  type SlotPick = { url: string | null; secondUrl?: string | null }
+
+  const { gridSlotPicks, storySlotPicks } = ((): { gridSlotPicks: SlotPick[]; storySlotPicks: SlotPick[] } => {
+    if (hasVisionData) {
+      const usedIds = new Set<string>()
+      const pickSlot = (angle: string | null | undefined, wantSecond: boolean): SlotPick => {
+        const primary = pickForAngle(angle, usedIds)
+        if (primary) usedIds.add(primary.id)
+        const secondary = wantSecond ? pickForAngle(angle, usedIds) : null
+        if (secondary) usedIds.add(secondary.id)
+        return {
+          url: primary ? buildImageUrlFromPath(primary.storage_path) : null,
+          secondUrl: secondary ? buildImageUrlFromPath(secondary.storage_path) : undefined,
+        }
+      }
+      const grid = gridSlotVariations.map((variation, idx) =>
+        // Grid card is slot index 5 in the grid list.
+        pickSlot(variation?.angle, idx === 5)
+      )
+      const story = storySlotVariations.map((variation, idx) =>
+        // Story Grid is slot index 5 in the story list.
+        pickSlot(variation?.angle, idx === 5)
+      )
+      return { gridSlotPicks: grid, storySlotPicks: story }
+    }
+
+    // ── Legacy fallback: preserve the original shuffle + index-spread ──
+    // Uses the outer `imagePool` (declared above); no need to rebuild it.
+    const TOTAL_SLOTS = GRID_SLOTS + STORY_SLOTS
+    const legacySlotUrls: (string | null)[] = (() => {
+      if (imagePool.length === 0) return Array(TOTAL_SLOTS).fill(null)
+      if (imagePool.length >= TOTAL_SLOTS) {
+        return Array.from({ length: TOTAL_SLOTS }, (_, i) =>
+          imagePool[Math.floor(i * imagePool.length / TOTAL_SLOTS)]
+        )
+      }
+      if (imagePool.length >= 4) {
+        const result = [...imagePool]
+        while (result.length < TOTAL_SLOTS) result.push(imagePool[imagePool.length - 1 - (result.length % imagePool.length)])
+        return result
+      }
+      return Array.from({ length: TOTAL_SLOTS }, (_, i) => imagePool[i % imagePool.length])
+    })()
+    const wrapSecond = (url: string | null, i: number): SlotPick => ({
+      url,
+      secondUrl: legacySlotUrls[(i + 1) % legacySlotUrls.length],
+    })
+    const grid = legacySlotUrls.slice(0, GRID_SLOTS).map((url, i) =>
+      i === 5 ? wrapSecond(url, i) : { url }
+    )
+    const story = legacySlotUrls.slice(GRID_SLOTS, GRID_SLOTS + STORY_SLOTS).map((url, i) =>
+      i === 5 ? wrapSecond(url, GRID_SLOTS + i) : { url }
+    )
+    return { gridSlotPicks: grid, storySlotPicks: story }
+  })()
+
   const gridCards: GridCard[] = adVariation ? [
-    { label: 'Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
-    { label: 'Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandAccent },
-    { label: 'Testimonial', Comp: TestimonialTemplate, img: img2, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Statement', Comp: StatTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandSecondary },
-    { label: 'Card', Comp: UGCTemplate, img: img4, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Grid', Comp: GridTemplate, img: img5, secondImg: img6, variation: v0, tp: 'center', bgColor: brandAccent },
-    { label: 'Overlay Alt', Comp: OverlayTemplate, img: img6, variation: v2, tp: 'center', bgColor: brandSecondary },
-    { label: 'Split Alt', Comp: SplitTemplate, img: img7, variation: v0, tp: 'center', bgColor: brandPrimary },
-    { label: 'Stat Alt', Comp: StatTemplate, img: img8, variation: v1, tp: 'center', bgColor: brandAccent },
+    { label: 'Overlay',      Comp: OverlayTemplate,     img: gridSlotPicks[0].url, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
+    { label: 'Split',        Comp: SplitTemplate,       img: gridSlotPicks[1].url, variation: v1, tp: 'center',      bgColor: brandAccent },
+    { label: 'Testimonial',  Comp: TestimonialTemplate, img: gridSlotPicks[2].url, variation: v2, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Statement',    Comp: StatTemplate,        img: gridSlotPicks[3].url, variation: v1, tp: 'center',      bgColor: brandSecondary },
+    { label: 'Card',         Comp: UGCTemplate,         img: gridSlotPicks[4].url, variation: v2, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Grid',         Comp: GridTemplate,        img: gridSlotPicks[5].url, secondImg: gridSlotPicks[5].secondUrl ?? null, variation: v0, tp: 'center', bgColor: brandAccent },
+    { label: 'Overlay Alt',  Comp: OverlayTemplate,     img: gridSlotPicks[6].url, variation: v2, tp: 'center',      bgColor: brandSecondary },
+    { label: 'Split Alt',    Comp: SplitTemplate,       img: gridSlotPicks[7].url, variation: v0, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Stat Alt',     Comp: StatTemplate,        img: gridSlotPicks[8].url, variation: v1, tp: 'center',      bgColor: brandAccent },
   ] : []
 
   const storyCards: GridCard[] = adVariation ? [
-    { label: 'Story — Overlay', Comp: OverlayTemplate, img: img0, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
-    { label: 'Story — Split', Comp: SplitTemplate, img: img1, variation: v1, tp: 'center', bgColor: brandAccent },
-    { label: 'Story — Statement', Comp: StatTemplate, img: img2, variation: v2, tp: 'center', bgColor: brandSecondary },
-    { label: 'Story — Overlay Alt', Comp: OverlayTemplate, img: img3, variation: v1, tp: 'center', bgColor: brandAccent },
-    { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: img4, variation: v2, tp: 'center', bgColor: brandPrimary },
-    { label: 'Story — Grid', Comp: GridTemplate, img: img5, secondImg: img7, variation: v0, tp: 'center', bgColor: brandAccent },
+    { label: 'Story — Overlay',     Comp: OverlayTemplate,     img: storySlotPicks[0].url, variation: v0, tp: 'bottom-left', bgColor: brandPrimary },
+    { label: 'Story — Split',       Comp: SplitTemplate,       img: storySlotPicks[1].url, variation: v1, tp: 'center',      bgColor: brandAccent },
+    { label: 'Story — Statement',   Comp: StatTemplate,        img: storySlotPicks[2].url, variation: v2, tp: 'center',      bgColor: brandSecondary },
+    { label: 'Story — Overlay Alt', Comp: OverlayTemplate,     img: storySlotPicks[3].url, variation: v1, tp: 'center',      bgColor: brandAccent },
+    { label: 'Story — Testimonial', Comp: TestimonialTemplate, img: storySlotPicks[4].url, variation: v2, tp: 'center',      bgColor: brandPrimary },
+    { label: 'Story — Grid',        Comp: GridTemplate,        img: storySlotPicks[5].url, secondImg: storySlotPicks[5].secondUrl ?? null, variation: v0, tp: 'center', bgColor: brandAccent },
   ] : []
 
   function makeCreativeProps(card: GridCard) {
