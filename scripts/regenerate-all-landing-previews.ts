@@ -85,8 +85,10 @@ async function main() {
       })
       if (uploadErr) throw new Error(`upload: ${uploadErr.message}`)
 
-      const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path)
-      const url = pub.publicUrl
+      // landing_preview_url points at the same-origin proxy route, NOT
+      // the raw Supabase public URL (see src/lib/landing-preview-storage.ts
+      // for why). Relative so dev + prod share one value.
+      const url = `/api/preview/html/${row.brand_id}`
 
       const { error: updateErr } = await admin
         .from('generated_content')

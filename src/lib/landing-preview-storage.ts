@@ -1,10 +1,13 @@
 // Landing-preview HTML storage — one frozen HTML snapshot per brand in
 // the `landing-previews` Supabase Storage bucket. Format: {brand_id}.html.
-// Public bucket so the iframe on /preview/:id can load the URL directly
-// with no auth; writes gate via brand_members RLS (see the 20260419
-// migration). These helpers use the service-role admin client so they
-// work from anonymous-funnel codepaths (onboarding wizard fires AI
-// generation before the user has signed in) without tripping RLS.
+// Iframes load the HTML through a same-origin proxy at
+// /api/preview/html/{brand_id}, NOT the raw Supabase URL, because
+// Supabase's public CDN serves every file as `text/plain` with a
+// sandbox CSP as anti-XSS hardening — which breaks iframe rendering.
+// The proxy re-serves the same bytes with Content-Type: text/html.
+// These helpers use the service-role admin client so they work from
+// anonymous-funnel codepaths (onboarding wizard fires AI generation
+// before the user has signed in) without tripping RLS.
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -21,11 +24,21 @@ function objectPath(brandId: string): string {
   return `${brandId}.html`
 }
 
+// Pure URL construction — returns the same-origin proxy URL that
+// re-serves the Storage object with the correct Content-Type. Relative
+// on purpose: the only consumer is the iframe on /preview/:id, which
+// is always same-origin, so the browser resolves the relative URL
+// against the current host. Storing relative avoids baking dev vs prod
+// hostnames into the DB.
+export function getLandingPreviewUrl(brandId: string): string {
+  return `/api/preview/html/${brandId}`
+}
+
 // Uploads the full HTML document to landing-previews/{brandId}.html,
 // overwriting any existing file. Cache-Control allows a 60s window for
-// CDN freshness — short enough that regenerating a preview surfaces
-// within a minute, long enough that repeat /preview/:id visits during
-// the same session hit the CDN. Returns the public URL.
+// freshness — regenerating a preview surfaces within a minute, repeat
+// /preview/:id visits during the same session hit the CDN. Returns the
+// proxy URL (not the raw Supabase URL — see file header for why).
 export async function saveLandingPreviewHtml(
   brandId: string,
   html: string,
@@ -34,8 +47,9 @@ export async function saveLandingPreviewHtml(
   const path = objectPath(brandId)
 
   // contentType is the bare MIME — the bucket's allowed_mime_types check
-  // won't accept the parameterized form ("text/html; charset=utf-8"), and
-  // the template declares charset via <meta charset="utf-8"> anyway.
+  // won't accept the parameterized form ("text/html; charset=utf-8").
+  // Metadata is correct-serving side, but Supabase's public CDN still
+  // overrides this at response time; the proxy route re-sets the header.
   const { error } = await admin.storage.from(BUCKET).upload(path, html, {
     upsert: true,
     contentType: 'text/html',
@@ -43,18 +57,7 @@ export async function saveLandingPreviewHtml(
   })
   if (error) throw error
 
-  const { data } = admin.storage.from(BUCKET).getPublicUrl(path)
-  return { url: data.publicUrl }
-}
-
-// Pure URL construction — no network call, no auth. Safe to call from
-// anywhere (server, client, tests) as long as NEXT_PUBLIC_SUPABASE_URL
-// is defined. Returns the public URL even if the object doesn't exist
-// yet; callers that need an existence check should fetch it.
-export function getLandingPreviewUrl(brandId: string): string {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!base) throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set')
-  return `${base}/storage/v1/object/public/${BUCKET}/${objectPath(brandId)}`
+  return { url: getLandingPreviewUrl(brandId) }
 }
 
 // Removes the brand's HTML file. Called from the brand-delete cleanup.
