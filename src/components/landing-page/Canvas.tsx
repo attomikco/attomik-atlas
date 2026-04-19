@@ -10,7 +10,7 @@ interface Props {
   blocks: Block[]
   selectedId: string | null
   onSelect: (id: string | null) => void
-  onInsertAt: (type: BlockType, index: number) => void
+  onInsertAt: (type: BlockType, index: number, opts?: { select?: boolean }) => void
   device: Device
   zoom: number
 }
@@ -93,7 +93,7 @@ export function Canvas({ blocks, selectedId, onSelect, onInsertAt, device, zoom 
 // on hover or when a library card is dragged over. Click = insert richtext
 // (confirmed default; later we may swap for a type-picker popover). Drop
 // with a dataTransfer.blockType payload = insert that type.
-function InsertZone({ index, onInsert, last }: { index: number; onInsert: (type: BlockType, i: number) => void; last?: boolean }) {
+function InsertZone({ index, onInsert, last }: { index: number; onInsert: (type: BlockType, i: number, opts?: { select?: boolean }) => void; last?: boolean }) {
   const [hover, setHover] = useState(false)
   const [dragActive, setDragActive] = useState(false)
 
@@ -104,7 +104,9 @@ function InsertZone({ index, onInsert, last }: { index: number; onInsert: (type:
     setHover(false)
     const raw = e.dataTransfer.getData('blockType')
     if (!raw) return
-    onInsert(raw as BlockType, index)
+    // Drop carries explicit user intent ("put this block here, I'll edit it
+    // next") — select the new block so the inspector opens on it.
+    onInsert(raw as BlockType, index, { select: true })
   }
 
   const expanded = hover || dragActive
@@ -112,7 +114,10 @@ function InsertZone({ index, onInsert, last }: { index: number; onInsert: (type:
 
   return (
     <div
-      onClick={e => { e.stopPropagation(); onInsert('richtext', index) }}
+      // Click (no drag data) inserts a richtext stub but keeps selection
+      // where it was — the user was navigating between existing blocks,
+      // not asking to pivot focus onto the stub.
+      onClick={e => { e.stopPropagation(); onInsert('richtext', index, { select: false }) }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onDragOver={e => { e.preventDefault(); setDragActive(true) }}

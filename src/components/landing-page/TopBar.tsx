@@ -73,9 +73,24 @@ export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState
 }
 
 function SavePill({ state, onRetry }: { state: SaveState; onRetry?: () => void }) {
-  // idle renders nothing — avoids a stale "Saved" label lingering past the
-  // 2s hold window in useAutosave.
-  if (state === 'idle') return null
+  // idle renders a subtle ambient indicator — low-emphasis, always visible
+  // so the user knows autosave is working without a flashing pill chrome.
+  if (state === 'idle') {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: spacing[1],
+        fontSize: fontSize.xs, fontFamily: font.mono,
+        letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.subtle,
+        flexShrink: 0,
+      }}>
+        <span style={{
+          width: 5, height: 5, borderRadius: radius.pill,
+          background: colors.success, opacity: 0.5,
+        }} />
+        <span>All changes saved</span>
+      </div>
+    )
+  }
 
   if (state === 'error') {
     return (

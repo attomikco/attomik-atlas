@@ -56,7 +56,12 @@ const DEFAULT_UI: UiState = {
 // map 1:1 to lib/mutations.ts functions so the handler flow reads cleanly.
 export interface BuilderActions {
   appendBlock: (type: BlockType) => void
-  insertBlock: (type: BlockType, index: number) => void
+  // When a library drag lands on an InsertZone we want the new block
+  // selected so the user can tweak it immediately (drop-to-edit UX).
+  // When the user clicks an empty InsertZone to spawn a richtext stub
+  // we specifically DON'T want to yank selection — the user was
+  // navigating between existing blocks. `select` controls both paths.
+  insertBlock: (type: BlockType, index: number, opts?: { select?: boolean }) => void
   removeBlock: (id: string) => void
   duplicate: (id: string) => void
   toggleVisible: (id: string) => void
@@ -65,6 +70,8 @@ export interface BuilderActions {
   updateVariant: (id: string, variant: string) => void
   reorder: (from: number, to: number) => void
   select: (id: string | null) => void
+  setBlocks: (blocks: Block[]) => void
+  setPageSettings: (settings: PageSettings) => void
 }
 
 export default function BuilderClient({ brandId, initialLandingPage }: Props) {
@@ -74,7 +81,7 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
 
   const initialDoc = initialLandingPage.content as LandingPageDocument
   const [blocks, setBlocks] = useState<Block[]>(initialDoc.blocks)
-  const [pageSettings] = useState<PageSettings>(initialDoc.pageSettings)
+  const [pageSettings, setPageSettings] = useState<PageSettings>(initialDoc.pageSettings)
 
   const [ui, setUi] = useState<UiState>(DEFAULT_UI)
   const hydrated = useRef(false)
@@ -115,11 +122,14 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
         return next
       })
     },
-    insertBlock: (type, index) => {
+    insertBlock: (type, index, opts) => {
+      const select = opts?.select ?? true
       setBlocks(prev => {
         const next = addBlock(prev, type, index)
-        const inserted = next[Math.max(0, Math.min(index, next.length - 1))]
-        if (inserted) setUi(u => ({ ...u, selectedId: inserted.id }))
+        if (select) {
+          const inserted = next[Math.max(0, Math.min(index, next.length - 1))]
+          if (inserted) setUi(u => ({ ...u, selectedId: inserted.id }))
+        }
         return next
       })
     },
@@ -152,6 +162,8 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
       setBlocks(prev => reorderBlocks(prev, from, to))
     },
     select: (id) => setUi(u => ({ ...u, selectedId: id })),
+    setBlocks: (next) => setBlocks(next),
+    setPageSettings: (next) => setPageSettings(next),
   }), [])
 
   // ── Autosave ───────────────────────────────────────────────────────
