@@ -561,6 +561,27 @@ export function buildMasterEmail(
   .eyebrow-text { font-size: 12px !important; letter-spacing: 2px !important; }
   .hero-headline { font-size: 36px !important; line-height: 1.1 !important; }
   .section-headline { font-size: 28px !important; line-height: 1.15 !important; }
+
+  /* Block 08 — YOU'LL ALSO LOVE product cards stack image-over-text on
+     mobile. The border-radius flip from left-only (6px 0 0 6px) to
+     top-only (6px 6px 0 0) is load-bearing — without it the stacked
+     card has a squared seam at the image/text boundary that breaks the
+     rounded-card visual. The link's min-height override lets the anchor
+     fill the now-full-width image cell instead of staying at its
+     140px desktop minimum. */
+  .product-card-image { display: block !important; width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; height: 240px !important; border-radius: 6px 6px 0 0 !important; }
+  .product-card-image-link { display: block !important; width: 100% !important; height: 240px !important; min-height: 0 !important; }
+  .product-card-text { display: block !important; width: 100% !important; box-sizing: border-box !important; padding: 16px 18px 18px !important; word-wrap: break-word !important; overflow-wrap: break-word !important; }
+
+  /* Block 09 — INSTAGRAM GRID reflows from desktop 3x2 to mobile 2x3 via
+     floats inside a single 6-cell table. width:50% + float:left +
+     box-sizing:border-box is the reflow mechanism: six sequential 50%
+     floated cells wrap to 3 rows of 2. box-sizing is critical — without
+     it the 2px padding pushes each cell past 50% and a third cell
+     squeezes into row 2. Outlook desktop ignores the float rules and
+     keeps the 3x2 desktop layout, which is the intended fallback. */
+  .ig-cell { display: block !important; width: 50% !important; float: left !important; box-sizing: border-box !important; }
+  .ig-cell div { height: 180px !important; }
 }
 </style>
 </head>
@@ -608,13 +629,9 @@ ${on('01a') ? `
 ${on('01b') ? `
 <!-- BLOCK 01b: HERO TEXT -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
-  <tr><td align="center" class="section-pad" style="padding:48px 48px 0;">
-    <p class="eyebrow-text" style="margin:0;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.heroEyebrow}</p>
-  </td></tr>
-  <tr><td align="center" class="section-pad" style="padding:12px 48px 0;">
-    <h1 class="hero-headline" style="margin:0;font-family:${hf};font-size:35px;font-weight:${hw};color:${palette.lightText};line-height:1.1;text-align:center;text-transform:${ht};letter-spacing:1px;">${config.heroHeadline}</h1>
-  </td></tr>
-  <tr><td align="center" class="section-pad" style="padding:20px 48px 48px;">
+  <tr><td align="center" class="section-pad" style="padding:48px 48px;">
+    <p class="eyebrow-text" style="margin:0 0 8px;font-family:${hf};font-size:13px;font-weight:700;color:${palette.darkBg};letter-spacing:3px;text-transform:${ht};text-align:center;">${config.heroEyebrow}</p>
+    <h1 class="hero-headline" style="margin:0 0 20px;font-family:${hf};font-size:35px;font-weight:${hw};color:${palette.lightText};line-height:1.1;text-align:center;text-transform:${ht};letter-spacing:1px;">${config.heroHeadline}</h1>
     <p style="margin:0 auto;font-family:${hf};font-size:15px;font-weight:400;color:${palette.lightText};line-height:1.8;text-align:center;max-width:500px;">${config.heroBody}</p>
   </td></tr>
 </table>` : ''}
@@ -821,12 +838,12 @@ ${(on('08') && allProducts.length > 0) ? `
   <h2 class="section-headline" style="margin:0 0 12px;font-family:${hf};font-size:27px;font-weight:${hw};color:${palette.lightText};text-align:center;text-transform:${ht};">${config.youllAlsoLoveHeadline}</h2>
   ${config.youllAlsoLoveSubheadline ? `<p style="margin:0 0 32px;font-family:${hf};font-size:15px;font-weight:400;color:rgba(${hexToRgbStr(palette.lightText)},0.7);line-height:1.7;text-align:center;">${config.youllAlsoLoveSubheadline}</p>` : '<p style="margin:0 0 32px;"></p>'}
   ${allProducts.map((p: any) => `
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(${hexToRgbStr(palette.lightText)},0.06);border:1px solid rgba(${hexToRgbStr(palette.lightText)},0.15);border-radius:6px;margin-bottom:12px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:100%;box-sizing:border-box;background:rgba(${hexToRgbStr(palette.lightText)},0.06);border:1px solid rgba(${hexToRgbStr(palette.lightText)},0.15);border-radius:6px;margin-bottom:12px;">
   <tr>
-    <td width="140" style="padding:0;width:140px;min-width:140px;border-radius:6px 0 0 6px;${p.imageUrl ? `background-image:url('${p.imageUrl}');background-size:cover;background-position:center center;background-repeat:no-repeat;` : `background-color:rgba(${hexToRgbStr(palette.lightText)},0.06);`}">
-      ${p.imageUrl ? `<a href="${p.url || site}" style="display:block;width:140px;height:100%;text-decoration:none;min-height:140px;" aria-label="${p.name}">&nbsp;</a>` : ''}
+    <td width="140" class="product-card-image" style="padding:0;width:140px;min-width:140px;border-radius:6px 0 0 6px;${p.imageUrl ? `background-image:url('${p.imageUrl}');background-size:cover;background-position:center center;background-repeat:no-repeat;` : `background-color:rgba(${hexToRgbStr(palette.lightText)},0.06);`}">
+      ${p.imageUrl ? `<a href="${p.url || site}" class="product-card-image-link" style="display:block;width:140px;height:100%;text-decoration:none;min-height:140px;" aria-label="${p.name}">&nbsp;</a>` : ''}
     </td>
-    <td valign="top" style="padding:10px 16px;vertical-align:top;">
+    <td valign="top" class="product-card-text" style="padding:10px 16px;vertical-align:top;">
       <p style="margin:0 0 2px;font-family:${hf};font-size:14px;font-weight:900;line-height:1.2;color:${palette.lightText};text-transform:${ht};">${p.name}</p>
       <p style="margin:0 0 6px;font-family:${hf};font-size:14px;font-weight:400;line-height:1.4;color:rgba(${hexToRgbStr(palette.lightText)},0.7);">${(() => {
         const desc = p.description || ''
@@ -874,19 +891,16 @@ ${on('09') ? `
     <a href="${config.igUrl || '#'}" class="cta-button" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.igCta}</a>
   </td></tr></table>
 </td></tr>
-<tr><td style="padding:0 24px 3px;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-    <td width="33%" style="padding:0 2px 0 0;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(0)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" style="padding:0 2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(1)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" style="padding:0 0 0 2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(2)}');background-size:cover;background-position:center;"></div></a></td>
+<tr><td style="padding:0 24px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" class="ig-grid-table"><tr>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(0)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(1)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(2)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(3)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(4)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(5)}');background-size:cover;background-position:center;"></div></a></td>
   </tr></table>
-</td></tr>
-<tr><td style="padding:3px 24px 0;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-    <td width="33%" style="padding:0 2px 0 0;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(3)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" style="padding:0 2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(4)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" style="padding:0 0 0 2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(5)}');background-size:cover;background-position:center;"></div></a></td>
-  </tr></table>
+  <div style="clear:both;line-height:0;font-size:0;">&nbsp;</div>
 </td></tr>
 <tr><td style="padding:0 24px 48px;">&nbsp;</td></tr>
 </table>` : ''}
