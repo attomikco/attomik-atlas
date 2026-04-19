@@ -427,13 +427,28 @@ palette.accentText   // text on accent backgrounds
 
 ### Critical email rules:
 - **Zero hardcoded brand content in template** — no Jolene, no Afterdream, nothing
-- **No media queries in email HTML** — email renders the same on all screen sizes
+- **Media queries ARE allowed and required** in email HTML for mobile responsiveness. Use a `<style>` block in `<head>` with `@media only screen and (max-width: 479px)` for mobile overrides. Inline styles remain the default/desktop rendering; media queries only activate on mobile (~iPhone SE 320 → iPhone Pro Max portrait ~430px). **Every declaration inside the media query MUST use `!important`** — Gmail and other major clients will not override inline styles without it.
+- **Standard responsive class vocabulary** — reuse these classes when adding new blocks, don't invent new ones:
+  - `.section-pad` — outer section `<td>` padding
+  - `.card-pad` — inner card `<td>` padding
+  - `.discount-headline` — oversized promo discount text (block 02)
+  - `.coupon-pill` + `.coupon-code` — block 02's coupon code: pill = container `<td>` padding, code = inner `<p>` text styling (font-size + letter-spacing). Keep them split; one class can't target padding on the container and font on the child without double-applying.
+  - `.cta-button` — every clickable CTA `<a>`
+  - `.eyebrow-text` — small letter-spaced label above headlines
+  - `.hero-headline` — main hero H1
+  - `.section-headline` — section-level H2s
 - **Colors always from buildEmailPalette** — never hardcoded, never from saved config
 - **Fonts parsed from JSON** before use — `font_heading` and `font_body` may be strings in DB
+- **Truncate strings server-side, not via CSS.** Klaviyo, Gmail, and Outlook strip or ignore `max-height`, `overflow:hidden`, and `-webkit-line-clamp` on `<p>` elements — all three together don't reliably clamp copy. If a block requires physically-bounded text (e.g. product card descriptions), truncate `p.description.slice(0, N)` in the render itself so the string cannot exceed N characters regardless of how the client renders CSS. CSS truncation (`-webkit-line-clamp`) can stay as progressive enhancement for Apple/iOS Mail, but never as the only bound. Sample real-world failure: block 08 product cards rendered 2× their declared height until 80-char truncation was moved from the `<p>` style block into a server-side `slice()`.
+- **HTML5 table cell `height` is a MINIMUM, not a maximum.** Every email client and browser treats `height:140px` on a `<td>` as a floor — content taller than 140px expands the cell freely; content shorter than 140px leaves empty space. Declaring `height` on a `<table>`, `<tr>`, or `<td>` cannot cap a cell's rendered height. To bound a table cell, bound the CONTENT that drives the row, not the cell itself. For product-card-style layouts with variable-length copy, prefer letting the cell size to content (no `height` declaration) over fighting the cell-as-min behavior — the alternative is a cream void below short content or silent overflow above long content, neither of which are fixable with more CSS. Sample failure: block 08 product cards were asked to cap at 140px with `height:140px` on card table + image td + text td; description text exceeded the internal budget and every cell expanded in lockstep.
+- **Single master wrapper directly inside `<body>`.** All blocks must be wrapped in one `<table role="presentation" width="100%" style="width:100%;table-layout:fixed;">` sitting directly inside `<body>`. Without it, content-driven width in any block (long footer labels, over-wide coupon pills) propagates upward through `<body>` and breaks viewport alignment for sibling blocks — the symptom is block 01a (background-image, zero intrinsic content width) rendering narrower than everything else on mobile. `table-layout:fixed` is load-bearing; without it the wrapper still expands to fit its widest child.
 
 ### Klaviyo integration:
 - API key stored in `brand.notes.klaviyo_api_key`
 - Push endpoint: `/api/campaigns/[id]/email/klaviyo`
+- **API revision pinned at `2026-04-15`** across `src/lib/klaviyo.ts` (`KLAVIYO_REVISION`) AND `src/lib/klaviyo/klaviyoClient.ts` (`KLAVIYO_API_VERSION`). Bump both files in the same change. Drift has caused production bugs — create enforces stricter schema than update, and required fields flip across revisions.
+- **All push routes must implement stale-ID self-healing**: when PATCH against a stored `klaviyo_template_id` returns any 4xx, clear the stored ID before falling through to POST create. Reference implementations: `src/app/api/campaigns/[id]/email/klaviyo/route.ts` and `src/app/api/email-templates/[id]/klaviyo/route.ts` — new push routes must follow the `KlaviyoPushError.staleIdDetected` pattern.
+- **Create-template payload must include `editor_type: 'CODE'`** for custom HTML templates (required on revision 2026-04-15). Do NOT attempt to create `SYSTEM_DRAGGABLE` templates via API — Klaviyo doesn't allow it.
 
 ---
 
@@ -483,6 +498,13 @@ Always deduplicate before insert using a seen Set on the same key.
   "opportunities": [{ "title": "string", "insight": "string", "action": "pause|scale|test|optimize", "recommendation": "string" }]
 }
 ```
+
+---
+
+## ANALYTICS METRICS RULES
+
+- **Rate metrics aggregate as ratio-of-totals, NEVER as an average of per-row rates.** ROAS, CTR, CPC, CPM, CPA, conversion rate — all of these, when aggregated across days/ads/campaigns, must be computed as `sum(numerator) / sum(denominator)`. Averaging stored per-row rates (`sum(rate) / count`) is mathematically wrong and produces wildly skewed numbers when the denominator (spend, impressions, sends) varies across rows. Stored per-row rates are correct for that single row only — don't re-aggregate them. Sample failure: per-ad ROAS fed to Claude's creative analyzer was an unweighted average of per-day stored ROAS, inverting the real winners/losers.
+- **Preserve the fractional-vs-percentage format across calculation, storage, prompt-feed, and display.** Meta stores CTR as a percentage (`2.34` meaning 2.34%). Computing CTR as `clicks / impressions` returns a fraction (`0.0234`). Downstream consumers (`r.ctr.toFixed(2) + '%'`) expect the percentage format. Multiply by 100 at the aggregation site and add an inline comment noting the conversion — otherwise a future "simplification" reversion silently breaks every CTR display. Same discipline applies wherever a rate crosses a format boundary.
 
 ---
 
@@ -825,6 +847,46 @@ Step 3 is deliberately manual today — it's a judgement call which brand's tuni
 12. **Meta API version**
     - We call v19.0 but Meta auto-upgrades to v25.0
     - Don't change the version — let Meta handle upgrades
+
+---
+
+## AUDIT FRAMEWORK
+
+The retention audit scores a brand's Klaviyo email program against 2026 DTC benchmarks. The benchmark data layer is the single source of truth for what "good" looks like per lifecycle stage.
+
+- **Benchmarks** live in `src/lib/audit/benchmarks.ts` as `DTC_BENCHMARKS_2026: Record<LifecycleStage, FlowBenchmark>`. Rates are stored as decimals (`0.45` = 45%); revenue per recipient is in USD.
+- **Types** live in `src/lib/audit/types.ts` — `LifecycleStage`, `FlowMetric`, `BenchmarkRange`, `FlowBenchmark`.
+- **Helpers** exported from `benchmarks.ts`: `getBenchmark(stage)`, `getMetricBenchmark(stage, metric)`, `scoreAgainstBenchmark(actual, stage, metric)` (returns -1..1 where 0 = low end, 1 = at/above high), `getCriticalStages()`, `getRequiredStages()`.
+- **Review cadence:** refresh these numbers annually — benchmark drift is real and stale targets will over- or under-grade brands. The source/date is noted at the top of `benchmarks.ts`.
+- Klaviyo integration, scoring logic, and audit UI are built on top of this layer in later prompts — don't couple benchmark data to any of those yet.
+- Tests use `node:test` (zero-dep). Run with `npm run test:audit`.
+- Test files import production code with explicit `.ts` extensions (required by Node's strip-types loader). This is enabled project-wide via `allowImportingTsExtensions: true` in tsconfig.
+
+**Scoring engine** (`src/lib/audit/scoring.ts`) grades a normalized `Flow` across 5 dimensions worth 20 pts each — structure, performance, copy, segmentation, design — for a 0-100 total and A-F grade. It is **pure and deterministic**: no fetch, no fs, no AI calls. The copy dimension accepts a pre-computed `CopyAnalysisInput`; the audit orchestrator (later prompt) owns the Claude call that produces that input and passes it in. Keep scoring.ts free of I/O so it stays trivially unit-testable and safe to invoke from anywhere.
+
+**Klaviyo integration** is two-layer: `src/lib/klaviyo/klaviyoClient.ts` (pure HTTP transport, retry/backoff on 429/5xx, cursor pagination via `links.next`, injectable `fetchImpl` for tests) and `src/lib/audit/fetchAuditData.ts` (transformer that orchestrates client calls and produces a normalized `AuditContext` with `Flow[]`). API version is pinned via `KLAVIYO_API_VERSION` constant at the top of `klaviyoClient.ts` — bump in one place when upgrading. Assumed read scopes: `accounts:read`, `flows:read`, `segments:read`, `metrics:read`, `events:read`. No write scopes — the audit is read-only.
+
+**Flow classification** (Klaviyo flow → `LifecycleStage`) is deterministic in `src/lib/audit/classifier.ts` — trigger metric rules (high confidence) and name-keyword rules (medium confidence), with `campaign` as the low-confidence fallback. If trigger and name conflict, trigger wins but confidence drops to medium. v1 intentionally does NOT use Claude for classification; add a low-confidence Claude fallback in the orchestrator only if real-world brands hit too many misclassifications.
+
+**The fetcher never calls Claude.** AI calls live only in the audit orchestrator (built in a later prompt). The fetcher's crude HTML heuristics (tag-count regex for `<img>` and `<a>`, viewport/`@media` sniff for mobile-readiness, href-substring match for unsubscribe/preference links) are intentionally simple — fine for keyword-level scoring, not fine for layout-aware analysis.
+
+**Audit orchestrator** (`src/lib/audit/orchestrator.ts`) is the **only** Claude caller in the audit system. It stitches the fetcher, parallel copy analysis, and the pure scoring / coverage / fixes modules together into a single `AuditReport`. Pipeline: `fetchAuditData` → `Promise.allSettled(analyzeCopy per flow)` → `scoreFlow` per flow (folding in real or neutral-fallback `CopyAnalysisInput`) → `computeCoverage` → `generateFixes` → `computeRevenueLeftOnTable` → assembled `AuditReport`. A single flow's copy-analysis failure degrades gracefully via a neutral `CopyAnalysisInput` + `COPY_ANALYSIS_FAILED` warning — never abort the batch. Overall score is `flowAverage × 0.7 + coverageScore × 0.3` where `flowAverage` is weighted by send volume (simple average fallback when every flow has zero sends, with a `NO_PERFORMANCE_DATA` warning).
+
+**Pure modules** stay pure — `coverage.ts` (lifecycle gaps), `fixes.ts` (prioritized fix list + revenue estimates), and `scoring.ts` do no I/O and are trivially unit-testable in isolation. `copyAnalyzer.ts` is the only file that knows the Anthropic API shape (raw fetch, no SDK, injectable `fetchImpl` for tests, throws `CopyAnalysisError` on any network/parse/validation failure so the orchestrator can convert to a warning).
+
+**Imports rule for audit modules:** always top-level ESM imports — never `require()`. Node's strip-types loader runs the files as ESM at test time, and `require` isn't defined in that context (it will throw `ReferenceError: require is not defined` at runtime, even though tsc accepts it). If you need a value from another module, import it at the top of the file. We've tripped on this twice — the rule exists because both times it slipped in as a "lazy load" optimization that wasn't needed.
+
+**Two Klaviyo clients, one pinned revision:** `src/lib/klaviyo.ts` is the template-write client (`pushTemplateToKlaviyo`, `deleteTemplateFromKlaviyo`). `src/lib/klaviyo/klaviyoClient.ts` is the audit read client with retry + pagination (`KlaviyoClient` class). **Both files are pinned to Klaviyo API revision `2026-04-15`.** Use the new client for all read-side and future Klaviyo work.
+
+**Klaviyo API revision rule:** pinned at `2026-04-15` across **both** `src/lib/klaviyo.ts` (`KLAVIYO_REVISION`) and `src/lib/klaviyo/klaviyoClient.ts` (`KLAVIYO_API_VERSION`). When bumping, update both files in the same change and re-test both the template push path and the audit fetch path. **Drift between revisions has caused production bugs** — `editor_type` on the template resource churned from optional → absent → required across revisions, and the audit statistics / filter syntax changed between `2024-02-15` and `2024-10-15`. Keep them in lockstep.
+
+**Template push self-heals from stale Klaviyo IDs.** `pushTemplateToKlaviyo` PATCHes first if an existing `klaviyo_template_id` is stored, and falls back to POST create if the PATCH returns any 4xx (not just 404 — a schema rejection on a stale id is treated the same as a deleted template). On thrown push failures, `KlaviyoPushError.staleIdDetected` tells the caller to clear the stored id from `generated_content.content` so the next push starts fresh. 5xx failures on PATCH are NOT treated as stale — the stored id is preserved across transient Klaviyo outages.
+
+**Audit kickoff route:** `POST /api/brands/[id]/audit/run` — runs inline with `export const maxDuration = 60`. Stateless; v1 does not persist the report. Reads the Klaviyo key inline from `brand.notes.klaviyo_api_key` following the existing pattern (5 other call sites do the same) — don't refactor that into a shared accessor as part of an audit-related PR. Body: `{ monthlyOrders?: number, aov?: number }`, both optional. Errors return `{ error, message, code }` — no stack traces to the client. Auth pattern matches `/api/campaigns/[id]/email/klaviyo`: `getUser()` + RLS-gated `from('brands').select().eq('id', id).single()`; non-members get `null` from RLS and we 404.
+
+**Audit UI:** `/audit` — query-scoped page (active brand comes from `useBrand()` context, matching `/store` and `/insights`; the URL is NOT `/brands/[id]/audit` because that conflicts with the rest of the app's context-scoped navigation). Three states — `idle` / `running` / `report` — plus a `no Klaviyo key` pre-empt that links to Brand Setup instead of rendering the kickoff button. The "Build this flow" CTAs render in the report but are stubbed to a toast for v1; wiring them into the email generator is the next prompt and is the wedge that closes the audit → ship loop. Nav link lives in `TopNav.tsx` as the 9th entry with a `BETA` badge; middleware matcher covers `/audit` and `/audit/:path*`.
+
+**Klaviyo perf interval** is auto-selected from window length: `daily` ≤60d, `weekly` ≤365d, `monthly` otherwise. Default audit window is 60 days.
 
 ---
 
