@@ -169,21 +169,74 @@ function renderProductCards(
   }).join('')
 }
 
+// ── Optional-field readers ─────────────────────────────────────────
+// These four sections (reviews / hiw / press / guarantees) used to
+// synthesize fake content from other fields (testimonial quotes,
+// benefit headlines, hero subheadline, etc.). They now render ONLY
+// when real data exists under an optional field and are hidden
+// otherwise via the visibility pass. The fields don't exist in the
+// DB schema today — optional chaining against duck-typed shapes
+// returns falsy for every current row, which hides the section.
+// When wizard / scraper / manual-edit starts populating these, the
+// sections light up automatically. No fabrication anywhere.
+
+interface OptionalReview { text: string; author?: string }
+interface OptionalHiwStep { title: string; desc: string }
+interface OptionalPressMention { name: string }
+interface OptionalGuarantee { text: string }
+
+function optReviews(brief: LandingBrief): OptionalReview[] {
+  const v = (brief as unknown as Record<string, unknown>).reviews
+  if (!Array.isArray(v)) return []
+  return v.filter((r): r is OptionalReview =>
+    !!r && typeof r === 'object' && typeof (r as { text?: unknown }).text === 'string'
+  )
+}
+
+function optHiwSteps(brief: LandingBrief): OptionalHiwStep[] {
+  const v = (brief as unknown as Record<string, unknown>).hiw
+  if (!Array.isArray(v)) return []
+  return v.filter((s): s is OptionalHiwStep =>
+    !!s && typeof s === 'object'
+    && typeof (s as { title?: unknown }).title === 'string'
+    && typeof (s as { desc?: unknown }).desc === 'string'
+  )
+}
+
+function optPressMentions(brand: Brand): OptionalPressMention[] {
+  const v = (brand as unknown as Record<string, unknown>).press_mentions
+  if (!Array.isArray(v)) return []
+  return v.filter((p): p is OptionalPressMention =>
+    !!p && typeof p === 'object' && typeof (p as { name?: unknown }).name === 'string'
+  )
+}
+
+function optGuarantees(brand: Brand): OptionalGuarantee[] {
+  if (!brand.notes) return []
+  try {
+    const parsed = JSON.parse(brand.notes) as Record<string, unknown>
+    const v = parsed.guarantees
+    if (!Array.isArray(v)) return []
+    return v.filter((g): g is OptionalGuarantee =>
+      !!g && typeof g === 'object' && typeof (g as { text?: unknown }).text === 'string'
+    )
+  } catch {
+    return []
+  }
+}
+
+// ── Fake-content-free renderers ────────────────────────────────────
+// Each takes the real data (or nothing) and returns a possibly-empty
+// string. The visibility pass strips the surrounding section block
+// when no real data exists, so these functions never need to produce
+// placeholder fallbacks.
+
 function renderReviewCards(brief: LandingBrief): string {
-  // V1 synthesizes a 3-card grid from the single testimonial in the
-  // brief. The data contract flags this as a known gap.
-  const seed = brief.social_proof?.testimonial || ''
-  const author = brief.social_proof?.attribution || 'Verified Customer'
-  const cards = [
-    { text: seed, author },
-    { text: `${brief.hero.subheadline} — exactly what I was looking for.`, author: 'Verified Customer' },
-    { text: ((brief.solution?.body || '').slice(0, 120) + (brief.solution?.body && brief.solution.body.length > 120 ? '…' : '')), author: 'Verified Customer' },
-  ].filter(c => c.text.trim().length > 0)
-  return cards.map(c => `
+  return optReviews(brief).slice(0, 3).map(r => `
     <div class="review-card">
       <div class="review-stars">★★★★★</div>
-      <p class="review-text">"${esc(c.text)}"</p>
-      <p class="review-author">${esc(c.author)}</p>
+      <p class="review-text">"${esc(r.text)}"</p>
+      <p class="review-author">${esc(r.author || 'Verified Customer')}</p>
       <p class="review-verified">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         Verified Purchase
@@ -193,26 +246,19 @@ function renderReviewCards(brief: LandingBrief): string {
 }
 
 function renderHiwSteps(brief: LandingBrief): string {
-  // Titles are intentional constants per data contract — no brief field
-  // yet drives them.
-  const steps = [
-    { num: '1', title: 'Discover', desc: brief.hero.subheadline.slice(0, 100) },
-    { num: '2', title: 'Experience', desc: (brief.solution?.body || '').slice(0, 100) },
-    { num: '3', title: 'Love It', desc: (brief.final_cta?.body || brief.hero.cta_text).slice(0, 100) },
-  ].filter(s => s.desc.trim().length > 0)
-  return steps.map(s => `
+  return optHiwSteps(brief).slice(0, 3).map((s, i) => `
     <div class="hiw-step">
-      <div class="step-num heading">${esc(s.num)}</div>
+      <div class="step-num heading">${i + 1}</div>
       <h4 class="heading">${esc(s.title)}</h4>
       <p>${esc(s.desc)}</p>
     </div>
   `).join('')
 }
 
-function renderPressBar(benefits: Array<{ headline: string }>): string {
-  return benefits.slice(0, 5).map(b => `
+function renderPressBar(brand: Brand): string {
+  return optPressMentions(brand).slice(0, 5).map(p => `
     <span style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 24px;border-right:1px solid var(--border);">
-      ${esc(b.headline)}
+      ${esc(p.name)}
     </span>
   `).join('')
 }
@@ -226,11 +272,11 @@ function renderFaq(faq: Array<{ question: string; answer: string }>): string {
   `).join('')
 }
 
-function renderGuarantee(benefits: Array<{ headline: string }>): string {
-  return benefits.slice(0, 3).map(b => `
+function renderGuarantee(brand: Brand): string {
+  return optGuarantees(brand).slice(0, 3).map(g => `
     <span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
-      ${esc(b.headline)}
+      ${esc(g.text)}
     </span>
   `).join('')
 }
@@ -421,9 +467,13 @@ function computeVisibility(input: RenderPreviewInput): Record<string, boolean> {
     photo_strip:   contentCount >= 3,
     ingredients:   !!brief.solution?.headline,
     founder:       !!(brand.mission || brand.brand_voice || brief.solution?.body),
-    testimonials:  !!brief.social_proof?.testimonial,
-    press:         (brief.benefits?.length ?? 0) >= 3,
-    how_it_works:  !!(brief.solution?.body || brief.hero.subheadline),
+    // These four require REAL data under optional fields that don't
+    // exist in the schema yet — always hidden today, light up when
+    // wizard / scraper / manual edit starts populating them.
+    testimonials:  optReviews(brief).length >= 1,
+    how_it_works:  optHiwSteps(brief).length >= 1,
+    press:         optPressMentions(brand).length >= 1,
+    guarantee:     optGuarantees(brand).length >= 1,
     faq:           (brief.faq?.length ?? 0) > 0,
     final_cta:     true,
     footer:        true,
@@ -480,9 +530,9 @@ export function renderPreview(input: RenderPreviewInput): string {
     products_html:           renderProductCards(products, productImages, brand.website || '#', brief.hero.cta_text, getUrl),
     review_cards_html:       renderReviewCards(brief),
     hiw_html:                renderHiwSteps(brief),
-    press_bar_html:          renderPressBar(brief.benefits || []),
+    press_bar_html:          renderPressBar(brand),
     faq_html:                renderFaq(brief.faq || []),
-    guarantee_html:          renderGuarantee(brief.benefits || []),
+    guarantee_html:          renderGuarantee(brand),
     photo_strip_html:        renderPhotoStrip(
                                brandImages.filter(i => i.tag !== 'logo' && i.tag !== 'press' && i.tag !== 'generated'),
                                getUrl,
