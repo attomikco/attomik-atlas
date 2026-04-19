@@ -1,6 +1,8 @@
 export function decodeHtml(str: string | null | undefined): string {
   if (!str) return ''
   return str
+    // Brandpoof fix — Atlas doesn't handle double-encoded ampersands; port back upstream
+    .replace(/&amp;/g, '&')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
