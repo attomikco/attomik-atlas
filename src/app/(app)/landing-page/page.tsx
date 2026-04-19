@@ -26,6 +26,10 @@ export default function LandingPageRoute() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState<LandingPage | null>(null)
+  // Brand fetched unconditionally on page load so BuilderClient can run
+  // regeneratePage without re-fetching. Stale-brand concern on the next
+  // edit is the same tradeoff every other (app) page makes — acceptable.
+  const [brand, setBrand] = useState<Brand | null>(null)
 
   useEffect(() => {
     if (!brandsLoaded || !activeBrandId) return
@@ -37,26 +41,26 @@ export default function LandingPageRoute() {
       setError(null)
 
       try {
-        // Look for an existing row first.
-        const listRes = await fetch(`/api/landing-pages?brand_id=${activeBrandId}`)
+        // Brand always; parallel with landing-pages lookup to keep
+        // first-paint time flat.
+        const [brandRes, listRes] = await Promise.all([
+          supabase.from('brands').select('*').eq('id', activeBrandId).single(),
+          fetch(`/api/landing-pages?brand_id=${activeBrandId}`),
+        ])
+        if (brandRes.error || !brandRes.data) throw new Error('brand not found')
         if (!listRes.ok) throw new Error(`list failed: HTTP ${listRes.status}`)
+        const brandRow = brandRes.data as Brand
         const listJson = (await listRes.json()) as { pages?: LandingPage[] }
 
         if (listJson.pages && listJson.pages.length > 0) {
           if (cancelled) return
+          setBrand(brandRow)
           setPage(listJson.pages[0])
           setStatus('ready')
           return
         }
 
-        // No row — fetch brand + legacy brief, adapt, create.
-        const { data: brand } = await supabase
-          .from('brands')
-          .select('*')
-          .eq('id', activeBrandId)
-          .single()
-        if (!brand) throw new Error('brand not found')
-
+        // No row — look up legacy brief + adapt + create.
         const { data: briefRow } = await supabase
           .from('generated_content')
           .select('content')
@@ -72,7 +76,7 @@ export default function LandingPageRoute() {
           catch { brief = null }
         }
 
-        const { blocks, pageSettings } = briefToBlocks(brief, brand as Brand)
+        const { blocks, pageSettings } = briefToBlocks(brief, brandRow)
         const doc: LandingPageDocument = { blocks, pageSettings, version: 1 }
 
         const createRes = await fetch('/api/landing-pages', {
@@ -94,6 +98,7 @@ export default function LandingPageRoute() {
         if (!created.page) throw new Error('create returned no row')
 
         if (cancelled) return
+        setBrand(brandRow)
         setPage(created.page)
         setStatus('ready')
       } catch (e) {
@@ -107,8 +112,8 @@ export default function LandingPageRoute() {
     return () => { cancelled = true }
   }, [activeBrandId, brandsLoaded])
 
-  if (status === 'ready' && page && activeBrandId) {
-    return <BuilderClient brandId={activeBrandId} initialLandingPage={page} />
+  if (status === 'ready' && page && brand && activeBrandId) {
+    return <BuilderClient brandId={activeBrandId} brand={brand} initialLandingPage={page} />
   }
 
   return (

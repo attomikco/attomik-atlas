@@ -7,7 +7,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colors } from '@/lib/design-tokens'
-import { createClient } from '@/lib/supabase/client'
 import type { Brand, LandingPage } from '@/types'
 import type { Block, BlockStyle, BlockType, LandingBrief, LandingPageDocument, PageSettings } from './types'
 import { CampaignModeBar } from '@/components/ui/CampaignModeBar'
@@ -34,6 +33,7 @@ type Mode = 'edit' | 'preview'
 
 interface Props {
   brandId: string
+  brand: Brand
   initialLandingPage: LandingPage
 }
 
@@ -76,7 +76,7 @@ export interface BuilderActions {
   setPageSettings: (settings: PageSettings) => void
 }
 
-export default function BuilderClient({ brandId, initialLandingPage }: Props) {
+export default function BuilderClient({ brandId, brand, initialLandingPage }: Props) {
   const router = useRouter()
   const pageId = initialLandingPage.id
   const storageKey = `lpb_state:${brandId}:${pageId}`
@@ -176,15 +176,27 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
   // wholesale. pageSettings is also regenerated — consistent with the
   // "your edits will be lost" warning. Autosave picks up the change.
   const [regenerating, setRegenerating] = useState(false)
+  const [regenerateError, setRegenerateError] = useState<string | null>(null)
+  const regenerateErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Error pill auto-dismisses after 5s. User can also dismiss manually
+  // via the × on the pill (wired in TopBar).
+  const clearRegenerateError = useCallback(() => {
+    if (regenerateErrorTimerRef.current) {
+      clearTimeout(regenerateErrorTimerRef.current)
+      regenerateErrorTimerRef.current = null
+    }
+    setRegenerateError(null)
+  }, [])
+
+  useEffect(() => () => {
+    if (regenerateErrorTimerRef.current) clearTimeout(regenerateErrorTimerRef.current)
+  }, [])
+
   const regeneratePage = useCallback(async () => {
     setRegenerating(true)
+    clearRegenerateError()
     try {
-      const supabase = createClient()
-      const { data: brand } = await supabase
-        .from('brands').select('*')
-        .eq('id', brandId).single()
-      if (!brand) throw new Error('brand not found')
-
       const campaignId = initialLandingPage.campaign_id
       const res = await fetch('/api/landing-page/generate-brief', {
         method: 'POST',
@@ -194,21 +206,24 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const brief = (await res.json()) as LandingBrief
 
-      const next = briefToBlocks(brief, brand as Brand)
+      // brand comes from props — fetched once by the page wrapper on mount.
+      // Stale-brand tradeoff is documented there; same as every other
+      // (app) page in this codebase.
+      const next = briefToBlocks(brief, brand)
       setBlocks(next.blocks)
       setPageSettings(next.pageSettings)
       setUi(u => ({ ...u, selectedId: null }))
     } catch (e) {
       console.error('[regeneratePage] failed:', e instanceof Error ? e.message : e)
-      // Error surfacing: inline toast would be nice, but there's no global
-      // toast system yet. Log + leave the current doc intact; the save pill
-      // won't flip to 'error' because no save was in flight — the user
-      // can retry via the button.
-      alert(`Regenerate failed: ${e instanceof Error ? e.message : 'unknown error'}`)
+      setRegenerateError('Regeneration failed — please try again')
+      regenerateErrorTimerRef.current = setTimeout(() => {
+        setRegenerateError(null)
+        regenerateErrorTimerRef.current = null
+      }, 5000)
     } finally {
       setRegenerating(false)
     }
-  }, [brandId, initialLandingPage.campaign_id])
+  }, [brandId, brand, initialLandingPage.campaign_id, clearRegenerateError])
 
   // ── Autosave ───────────────────────────────────────────────────────
   const liveDoc: LandingPageDocument = useMemo(
@@ -230,6 +245,8 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
         onBack={() => router.push('/dashboard')}
         onRegenerate={regeneratePage}
         regenerating={regenerating}
+        regenerateError={regenerateError}
+        onDismissRegenerateError={clearRegenerateError}
       />
       <CampaignModeBar />
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>

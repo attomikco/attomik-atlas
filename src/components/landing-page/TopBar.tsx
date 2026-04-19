@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { colors, font, fontSize, fontWeight, letterSpacing, radius, spacing, transition, zIndex } from '@/lib/design-tokens'
 import type { PageSettings } from './types'
 import type { SaveState } from './lib/useAutosave'
@@ -18,6 +18,8 @@ interface Props {
   onBack: () => void
   onRegenerate: () => Promise<void>
   regenerating: boolean
+  regenerateError: string | null
+  onDismissRegenerateError: () => void
 }
 
 // Phase 5: Regenerate wired behind a confirm. Export HTML / Publish still
@@ -27,6 +29,7 @@ export function TopBar({
   pageSettings, device, onDevice, mode, onMode,
   saveState, onRetrySave, onBack,
   onRegenerate, regenerating,
+  regenerateError, onDismissRegenerateError,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -65,6 +68,9 @@ export function TopBar({
           }}>{pageSettings.title || 'Untitled page'}</div>
         </div>
         <SavePill state={saveState} onRetry={onRetrySave} />
+        {regenerateError && (
+          <RegenerateErrorPill message={regenerateError} onDismiss={onDismissRegenerateError} />
+        )}
       </div>
 
       {/* Center: device toggle */}
@@ -102,6 +108,37 @@ export function TopBar({
   )
 }
 
+// Inline pill that surfaces regenerate-page errors. Styled to match the
+// save pill's error variant (dangerLight bg, danger text + border) so the
+// two occupy the same visual slot. Auto-dismiss is driven from the parent
+// via setTimeout; × button here calls onDismiss for manual close.
+function RegenerateErrorPill({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: spacing[1],
+      padding: `4px ${spacing[2]}px`,
+      background: colors.dangerLight, border: `1px solid ${colors.danger}`,
+      borderRadius: radius.pill,
+      fontSize: fontSize.caption, fontFamily: font.mono,
+      letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.danger,
+      flexShrink: 0,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: radius.pill, background: colors.danger }} />
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        style={{
+          border: 'none', background: 'transparent', cursor: 'pointer',
+          padding: 0, marginLeft: spacing[1],
+          color: colors.danger, fontSize: fontSize.md, lineHeight: 1,
+        }}
+      >×</button>
+    </div>
+  )
+}
+
 // Minimal inline confirm dialog. Backdrop + centered card + two buttons.
 // No reusable Modal component exists in this repo yet; building a full
 // modal system just for this would be overkill.
@@ -115,6 +152,19 @@ function ConfirmDialog({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  // Esc-to-cancel. Registered on document rather than the dialog root so a
+  // keydown on the backdrop / cancel button also counts. Standard pattern.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCancel()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onCancel])
+
   return (
     <div
       onClick={onCancel}
