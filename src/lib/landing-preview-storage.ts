@@ -33,9 +33,12 @@ export async function saveLandingPreviewHtml(
   const admin = getAdmin()
   const path = objectPath(brandId)
 
+  // contentType is the bare MIME — the bucket's allowed_mime_types check
+  // won't accept the parameterized form ("text/html; charset=utf-8"), and
+  // the template declares charset via <meta charset="utf-8"> anyway.
   const { error } = await admin.storage.from(BUCKET).upload(path, html, {
     upsert: true,
-    contentType: 'text/html; charset=utf-8',
+    contentType: 'text/html',
     cacheControl: '60',
   })
   if (error) throw error
