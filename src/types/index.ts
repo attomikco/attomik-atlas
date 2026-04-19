@@ -175,6 +175,23 @@ export interface GeneratedContent {
   generated_html_hash: string | null
 }
 
+// Landing pages table (20260419_landing_pages.sql). content is jsonb holding
+// { blocks, pageSettings, version } — typed at consumer sites via the
+// LandingPageDocument interface in src/components/landing-page/types.ts.
+export interface LandingPage {
+  id: string
+  created_at: string
+  updated_at: string
+  brand_id: string
+  campaign_id: string | null
+  name: string
+  slug: string
+  meta: string | null
+  content: unknown
+  status: 'draft' | 'published' | 'archived'
+  published_url: string | null
+}
+
 export interface EmailSend {
   id: string
   created_at: string
@@ -201,6 +218,7 @@ export type Database = {
       generated_content: { Row: GeneratedContent; Insert: Omit<GeneratedContent, 'id' | 'created_at'>; Update: Partial<GeneratedContent>; Relationships: Rel[] }
       email_sends: { Row: EmailSend; Insert: Omit<EmailSend, 'id' | 'created_at'>; Update: Partial<EmailSend>; Relationships: Rel[] }
       campaign_assets: { Row: CampaignAsset; Insert: Omit<CampaignAsset, 'id' | 'created_at'>; Update: Partial<CampaignAsset>; Relationships: Rel[] }
+      landing_pages: { Row: LandingPage; Insert: Omit<LandingPage, 'id' | 'created_at' | 'updated_at'>; Update: Partial<LandingPage>; Relationships: Rel[] }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
