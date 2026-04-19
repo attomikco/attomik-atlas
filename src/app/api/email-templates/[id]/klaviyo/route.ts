@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildMasterEmail, type MasterEmailConfig } from '@/lib/email-master-template'
 import { bucketBrandImages, getBusinessType } from '@/lib/brand-images'
-import { pushTemplateToKlaviyo } from '@/lib/klaviyo'
+import { KlaviyoPushError, pushTemplateToKlaviyo } from '@/lib/klaviyo'
 import type { BrandImage } from '@/types'
 
 // POST /api/email-templates/[id]/klaviyo
@@ -84,7 +84,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     existingKlaviyoId,
   })
 
-  let pushResult: { klaviyoId: string; created: boolean }
+  let pushResult: { klaviyoId: string; created: boolean; staleIdDetected: boolean }
   try {
     pushResult = await pushTemplateToKlaviyo(klaviyoKey, templateName, html, existingKlaviyoId)
   } catch (e) {
@@ -95,6 +95,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       htmlLength: html.length,
       error: e instanceof Error ? { message: e.message, stack: e.stack } : e,
     })
+    // When PATCH against a stored klaviyo_template_id returns a 4xx and the
+    // POST fallback also fails, pushTemplateToKlaviyo throws a
+    // KlaviyoPushError with staleIdDetected=true. Null the column so the
+    // next push starts fresh (no PATCH against a dead id). Without this,
+    // every retry repeats the same PATCH→4xx→POST→fail cycle.
+    const staleIdDetected = e instanceof KlaviyoPushError && e.staleIdDetected
+    if (staleIdDetected && existingKlaviyoId) {
+      await supabase
+        .from('email_templates')
+        .update({ klaviyo_template_id: null })
+        .eq('id', id)
+    }
     const message = e instanceof Error ? e.message : 'Klaviyo push failed'
     return NextResponse.json({ error: message }, { status: 502 })
   }

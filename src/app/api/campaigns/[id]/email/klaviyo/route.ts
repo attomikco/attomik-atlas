@@ -6,7 +6,7 @@ import {
   type MasterEmailConfig,
 } from '@/lib/email-master-template'
 import { bucketBrandImages, getBusinessType, pickSlotImages } from '@/lib/brand-images'
-import { pushTemplateToKlaviyo } from '@/lib/klaviyo'
+import { KlaviyoPushError, pushTemplateToKlaviyo } from '@/lib/klaviyo'
 import type { BrandImage } from '@/types'
 
 // POST /api/campaigns/[id]/email/klaviyo
@@ -131,10 +131,25 @@ export async function POST(
 
   const templateName = `${brand.name} — ${campaign.name}`
 
-  let pushResult: { klaviyoId: string; created: boolean }
+  let pushResult: { klaviyoId: string; created: boolean; staleIdDetected: boolean }
   try {
     pushResult = await pushTemplateToKlaviyo(klaviyoKey, templateName, html, existingKlaviyoId)
   } catch (e) {
+    // When PATCH against a stored klaviyo_template_id returns a 4xx and the
+    // POST fallback also fails, pushTemplateToKlaviyo throws a
+    // KlaviyoPushError with staleIdDetected=true. Strip the stale id from
+    // generated_content.content so the next push starts fresh (no PATCH
+    // against a dead id). Without this, every retry repeats the same
+    // PATCH→4xx→POST→fail cycle.
+    const staleIdDetected = e instanceof KlaviyoPushError && e.staleIdDetected
+    if (staleIdDetected && latestRow?.id && parsedLatest) {
+      const cleaned: Record<string, unknown> = { ...parsedLatest }
+      delete cleaned.klaviyo_template_id
+      await supabase
+        .from('generated_content')
+        .update({ content: JSON.stringify(cleaned) })
+        .eq('id', latestRow.id)
+    }
     const message = e instanceof Error ? e.message : 'Klaviyo push failed'
     return NextResponse.json({ error: message }, { status: 502 })
   }
