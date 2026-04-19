@@ -10,7 +10,7 @@ import InitialsAvatar from './InitialsAvatar'
 import LogoImage from './LogoImage'
 import { colors, font, fontWeight, fontSize, radius, zIndex, shadow, transition, layout } from '@/lib/design-tokens'
 
-const NAV_LINKS = [
+const NAV_LINKS: Array<{ href: string; label: string; badge?: string }> = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/brand-setup', label: 'Brand Hub' },
   { href: '/creatives', label: 'Creative Studio' },
@@ -187,14 +187,31 @@ export default function TopNav() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-        {(brandsLoaded && brands.length === 0 ? NAV_LINKS.filter(l => l.href === '/dashboard') : NAV_LINKS).map(({ href, label }) => {
+        {(brandsLoaded && brands.length === 0 ? NAV_LINKS.filter(l => l.href === '/dashboard') : NAV_LINKS).map(({ href, label, badge }) => {
           const active = href === '/dashboard' ? pathname === '/dashboard' || pathname === '/' : href === '/brand-setup' ? pathname.startsWith('/brand-setup') : pathname.startsWith(href)
           return (
             <Link key={href} href={getBrandNavHref(href)} style={{
               fontSize: fontSize.md, fontWeight: active ? fontWeight.bold : fontWeight.medium, color: active ? colors.ink : colors.gray750,
               textDecoration: 'none', padding: '7px 14px', borderRadius: radius.md,
               background: active ? colors.gray250 : 'transparent', transition: `all ${transition.base}`, whiteSpace: 'nowrap',
-            }}>{label}</Link>
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+              {label}
+              {badge && (
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: fontWeight.bold,
+                  letterSpacing: '0.08em',
+                  color: colors.ink,
+                  background: colors.accent,
+                  padding: '2px 5px',
+                  borderRadius: 3,
+                  lineHeight: 1,
+                }}>
+                  {badge}
+                </span>
+              )}
+            </Link>
           )
         })}
       </div>
@@ -293,6 +310,38 @@ export default function TopNav() {
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
                       Store
+                    </Link>
+                    <Link
+                      href={getBrandNavHref('/audit')}
+                      onClick={() => setUserMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        fontSize: 14,
+                        fontWeight: fontWeight.semibold,
+                        color: colors.ink,
+                        textDecoration: 'none',
+                        transition: `background ${transition.fast}`,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--cream)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      Retention Audit
+                      <span style={{
+                        fontSize: 9,
+                        fontWeight: fontWeight.bold,
+                        letterSpacing: '0.08em',
+                        color: colors.ink,
+                        background: colors.accent,
+                        padding: '2px 5px',
+                        borderRadius: 3,
+                        lineHeight: 1,
+                      }}>
+                        BETA
+                      </span>
                     </Link>
                   </>
                 )}

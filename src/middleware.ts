@@ -75,6 +75,8 @@ export const config = {
     '/landing-page/:path*',
     '/store/:path*',
     '/insights/:path*',
+    '/audit/:path*',
+    '/audit',
     '/settings/:path*',
     '/brands/:path*',
   ],
