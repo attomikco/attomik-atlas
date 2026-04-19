@@ -1,5 +1,6 @@
 'use client'
-import { colors, font, fontSize, fontWeight, radius, spacing, transition } from '@/lib/design-tokens'
+import { useState } from 'react'
+import { colors, font, fontSize, fontWeight, letterSpacing, radius, spacing, transition, zIndex } from '@/lib/design-tokens'
 import type { PageSettings } from './types'
 import type { SaveState } from './lib/useAutosave'
 
@@ -15,11 +16,25 @@ interface Props {
   saveState: SaveState
   onRetrySave?: () => void
   onBack: () => void
+  onRegenerate: () => Promise<void>
+  regenerating: boolean
 }
 
-// Phase 2: device/mode toggles wired; AI / Export / Publish are placeholders
-// (disabled, title="Coming soon"). Real behavior lands in Phase 5 + 7.
-export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState, onRetrySave, onBack }: Props) {
+// Phase 5: Regenerate wired behind a confirm. Export HTML / Publish still
+// deferred (Phase 7) — rendered as disabled ghost buttons with
+// title="Coming soon".
+export function TopBar({
+  pageSettings, device, onDevice, mode, onMode,
+  saveState, onRetrySave, onBack,
+  onRegenerate, regenerating,
+}: Props) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const handleRegenerateConfirm = async () => {
+    setConfirmOpen(false)
+    await onRegenerate()
+  }
+
   return (
     <div style={{
       display: 'flex',
@@ -55,10 +70,14 @@ export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState
       {/* Center: device toggle */}
       <DeviceGroup device={device} onDevice={onDevice} />
 
-      {/* Right: mode toggle + disabled actions */}
+      {/* Right: mode toggle + actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
         <ModeGroup mode={mode} onMode={onMode} />
-        <GhostBtn disabled title="Coming soon">✦ Regenerate page</GhostBtn>
+        <GhostBtn
+          disabled={regenerating}
+          onClick={() => setConfirmOpen(true)}
+          title={regenerating ? 'Generating…' : 'Regenerate whole page with AI'}
+        >{regenerating ? 'Generating…' : '✦ Regenerate page'}</GhostBtn>
         <GhostBtn disabled title="Coming soon">Export HTML</GhostBtn>
         <button disabled title="Coming soon" style={{
           padding: `${spacing[2]}px ${spacing[4]}px`,
@@ -67,6 +86,88 @@ export function TopBar({ pageSettings, device, onDevice, mode, onMode, saveState
           fontSize: fontSize.body, letterSpacing: '0.04em', textTransform: 'uppercase',
           opacity: 0.5, cursor: 'not-allowed',
         }}>Publish →</button>
+      </div>
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title="Regenerate page?"
+          body="This will replace all current blocks with freshly generated content. Your edits will be lost."
+          cancelLabel="Cancel"
+          confirmLabel="Regenerate"
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => void handleRegenerateConfirm()}
+        />
+      )}
+    </div>
+  )
+}
+
+// Minimal inline confirm dialog. Backdrop + centered card + two buttons.
+// No reusable Modal component exists in this repo yet; building a full
+// modal system just for this would be overkill.
+function ConfirmDialog({
+  title, body, cancelLabel, confirmLabel, onCancel, onConfirm,
+}: {
+  title: string
+  body: string
+  cancelLabel: string
+  confirmLabel: string
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div
+      onClick={onCancel}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: zIndex.modal,
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: colors.paper, borderRadius: radius.lg,
+          padding: spacing[5],
+          maxWidth: 440, width: '90%',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+        }}
+      >
+        <div style={{
+          fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: fontSize['3xl'],
+          textTransform: 'uppercase', letterSpacing: letterSpacing.slight,
+          color: colors.ink, marginBottom: spacing[3],
+        }}>{title}</div>
+        <div style={{ fontSize: fontSize.body, lineHeight: 1.5, color: colors.muted, marginBottom: spacing[5] }}>
+          {body}
+        </div>
+        <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            autoFocus
+            style={{
+              padding: `${spacing[2]}px ${spacing[4]}px`,
+              background: colors.paper, border: `1px solid ${colors.border}`,
+              borderRadius: radius.md, cursor: 'pointer',
+              fontSize: fontSize.body, fontWeight: fontWeight.medium,
+              color: colors.ink, fontFamily: 'inherit',
+            }}
+          >{cancelLabel}</button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              padding: `${spacing[2]}px ${spacing[4]}px`,
+              background: colors.ink, color: colors.accent,
+              border: 'none', borderRadius: radius.md, cursor: 'pointer',
+              fontFamily: font.heading, fontWeight: fontWeight.extrabold,
+              fontSize: fontSize.body, letterSpacing: letterSpacing.label,
+              textTransform: 'uppercase',
+            }}
+          >{confirmLabel}</button>
+        </div>
       </div>
     </div>
   )
@@ -176,14 +277,22 @@ function ModeGroup({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }) 
   )
 }
 
-function GhostBtn({ children, disabled, title }: { children: React.ReactNode; disabled?: boolean; title?: string }) {
+function GhostBtn({
+  children, disabled, title, onClick,
+}: { children: React.ReactNode; disabled?: boolean; title?: string; onClick?: () => void }) {
   return (
-    <button disabled={disabled} title={title} style={{
-      padding: `${spacing[2]}px ${spacing[3]}px`, background: colors.paper,
-      border: `1px solid ${colors.border}`, borderRadius: radius.md,
-      fontSize: fontSize.body, fontWeight: fontWeight.medium, cursor: disabled ? 'not-allowed' : 'pointer',
-      fontFamily: 'inherit', color: colors.ink,
-      opacity: disabled ? 0.5 : 1,
-    }}>{children}</button>
+    <button
+      type="button"
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+      style={{
+        padding: `${spacing[2]}px ${spacing[3]}px`, background: colors.paper,
+        border: `1px solid ${colors.border}`, borderRadius: radius.md,
+        fontSize: fontSize.body, fontWeight: fontWeight.medium, cursor: disabled ? 'not-allowed' : 'pointer',
+        fontFamily: 'inherit', color: colors.ink,
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >{children}</button>
   )
 }

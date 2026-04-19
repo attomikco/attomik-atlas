@@ -7,8 +7,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colors } from '@/lib/design-tokens'
-import type { LandingPage } from '@/types'
-import type { Block, BlockStyle, BlockType, LandingPageDocument, PageSettings } from './types'
+import { createClient } from '@/lib/supabase/client'
+import type { Brand, LandingPage } from '@/types'
+import type { Block, BlockStyle, BlockType, LandingBrief, LandingPageDocument, PageSettings } from './types'
 import { CampaignModeBar } from '@/components/ui/CampaignModeBar'
 import { TopBar } from './TopBar'
 import { LeftRail, type LeftTab } from './LeftRail'
@@ -26,6 +27,7 @@ import {
   updateBlockVariant,
 } from './lib/mutations'
 import { useAutosave } from './lib/useAutosave'
+import { briefToBlocks } from './lib/briefToBlocks'
 
 type Device = 'desktop' | 'tablet' | 'mobile'
 type Mode = 'edit' | 'preview'
@@ -166,6 +168,48 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
     setPageSettings: (next) => setPageSettings(next),
   }), [])
 
+  // ── Page regenerate ────────────────────────────────────────────────
+  // Confirm dialog lives in TopBar; this handler runs only after the user
+  // confirms. Calls the existing /api/landing-page/generate-brief endpoint
+  // (same endpoint onboarding fires), then briefToBlocks converts the
+  // structured brief into a Block[] document which replaces the canvas
+  // wholesale. pageSettings is also regenerated — consistent with the
+  // "your edits will be lost" warning. Autosave picks up the change.
+  const [regenerating, setRegenerating] = useState(false)
+  const regeneratePage = useCallback(async () => {
+    setRegenerating(true)
+    try {
+      const supabase = createClient()
+      const { data: brand } = await supabase
+        .from('brands').select('*')
+        .eq('id', brandId).single()
+      if (!brand) throw new Error('brand not found')
+
+      const campaignId = initialLandingPage.campaign_id
+      const res = await fetch('/api/landing-page/generate-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId, campaignId: campaignId ?? undefined }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const brief = (await res.json()) as LandingBrief
+
+      const next = briefToBlocks(brief, brand as Brand)
+      setBlocks(next.blocks)
+      setPageSettings(next.pageSettings)
+      setUi(u => ({ ...u, selectedId: null }))
+    } catch (e) {
+      console.error('[regeneratePage] failed:', e instanceof Error ? e.message : e)
+      // Error surfacing: inline toast would be nice, but there's no global
+      // toast system yet. Log + leave the current doc intact; the save pill
+      // won't flip to 'error' because no save was in flight — the user
+      // can retry via the button.
+      alert(`Regenerate failed: ${e instanceof Error ? e.message : 'unknown error'}`)
+    } finally {
+      setRegenerating(false)
+    }
+  }, [brandId, initialLandingPage.campaign_id])
+
   // ── Autosave ───────────────────────────────────────────────────────
   const liveDoc: LandingPageDocument = useMemo(
     () => ({ blocks, pageSettings, version: initialDoc.version ?? 1 }),
@@ -184,6 +228,8 @@ export default function BuilderClient({ brandId, initialLandingPage }: Props) {
         saveState={saveState}
         onRetrySave={retrySave}
         onBack={() => router.push('/dashboard')}
+        onRegenerate={regeneratePage}
+        regenerating={regenerating}
       />
       <CampaignModeBar />
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
