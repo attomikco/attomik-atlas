@@ -200,16 +200,8 @@ export default function PreviewClient({
     await supabase.storage.from('brand-images').remove([match.storage_path]).catch(() => {})
   }
 
-  async function syncBrandChanges() {
-    await supabase.from('brands').update({
-      primary_color: brandPrimary, secondary_color: brandSecondary,
-      accent_color: brandAccent, font_primary: fontFamily || null,
-    }).eq('id', brand.id)
-  }
-
   async function activateBrand() {
     setActivating(true)
-    await syncBrandChanges()
     await supabase.from('brands').update({ status: 'active' }).eq('id', brand.id)
     sessionStorage.removeItem('attomik_draft_brand_id')
     sessionStorage.removeItem('attomik_draft_campaign_id')
@@ -219,7 +211,6 @@ export default function PreviewClient({
 
   async function navigateWithActivation(href: string) {
     if (brand.status === 'draft') {
-      await syncBrandChanges()
       await supabase.from('brands').update({ status: 'active' }).eq('id', brand.id)
       sessionStorage.removeItem('attomik_draft_brand_id')
       sessionStorage.removeItem('attomik_draft_campaign_id')
@@ -346,7 +337,6 @@ export default function PreviewClient({
   const fh = brand.font_heading
   const [fontFamily, setFontFamily] = useState(adStyleSnapshot?.fontFamily || fh?.family || brand.font_primary?.split('|')[0] || '')
   const [activeImageIndex, setActiveImageIndex] = useState(0)
-  const [savingBrand, setSavingBrand] = useState(false)
   const [emailHtml, setEmailHtml] = useState<string | null>(null)
   const [emailSubject, setEmailSubject] = useState('')
   const [generatingEmail, setGeneratingEmail] = useState(false)
@@ -396,36 +386,9 @@ export default function PreviewClient({
     }
   }
 
-  async function saveBrandColors() {
-    setSavingBrand(true)
-    await supabase.from('brands').update({
-      primary_color: brandPrimary,
-      secondary_color: brandSecondary,
-      accent_color: brandAccent,
-      font_primary: fontFamily,
-    }).eq('id', brand.id)
-    setSavingBrand(false)
-    localStorage.setItem('attomik_active_brand_id', brand.id)
-    router.push(`/brand-setup/${brand.id}`)
-  }
-
-  // Auto-save brand colors/font on change (debounced) so brand hub stays in sync
-  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const initialRender = useRef(true)
-  useEffect(() => {
-    // Skip auto-save on initial mount (values come from DB, no change)
-    if (initialRender.current) { initialRender.current = false; return }
-    if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-    autoSaveRef.current = setTimeout(() => {
-      supabase.from('brands').update({
-        primary_color: brandPrimary,
-        secondary_color: brandSecondary,
-        accent_color: brandAccent,
-        font_primary: fontFamily || null,
-      }).eq('id', brand.id).then(() => {})
-    }, 1500)
-    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current) }
-  }, [brandPrimary, brandSecondary, brandAccent, fontFamily])
+  // Brand Toolkit is read-only on Preview — the snapshot model means Preview
+  // never writes to brands. Earlier versions auto-saved color/font edits from
+  // this page; that effect was removed to honor the frozen-preview contract.
 
   // Fetch existing email on mount — auto-generate if none exists
   useEffect(() => {
@@ -605,33 +568,12 @@ export default function PreviewClient({
     }
   }, [brand.id, brandImages])
 
-  // Brand voice — if generation already ran (from OnboardingWizard), the
-  // brand object has mission/audience/voice baked in. If it's missing
-  // (e.g. direct URL visit to an old brand), fetch it in background.
-  useEffect(() => {
-    if (brand.mission || brand.target_audience || brand.brand_voice) return
-    // Refresh brand data from DB in case generate-voice wrote it after
-    // the server component rendered the page.
-    const t = setTimeout(() => {
-      supabase.from('brands').select('mission, target_audience, brand_voice, tone_keywords, notes')
-        .eq('id', brand.id).single()
-        .then(({ data }) => {
-          if (data?.mission) setBrandMission(data.mission)
-          if (data?.target_audience) setBrandAudience(data.target_audience)
-          if (data?.brand_voice) setBrandVoice(data.brand_voice)
-          if (data?.tone_keywords?.length) setBrandTone(data.tone_keywords)
-          if (data?.notes) {
-            try {
-              const n = JSON.parse(data.notes)
-              if (n.score !== undefined) setIntelligenceScore(n.score)
-              if (n.scoreBreakdown) setScoreBreakdown(n.scoreBreakdown)
-              if (n.insights?.length) setInsights(n.insights)
-            } catch {}
-          }
-        })
-    }, 2000)
-    return () => clearTimeout(t)
-  }, [brand.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Brand voice polling removed — the frozen-preview model assumes generation
+  // completes before Preview renders, so the brand row already has mission /
+  // target_audience / brand_voice / tone_keywords + notes(score, insights)
+  // populated. If a stale link lands on a pre-generation row, those sections
+  // render empty rather than fetching live — acceptable for the snapshot
+  // contract.
 
   const headingStyle: React.CSSProperties = {
     fontFamily: fontFamily ? `${fontFamily}, sans-serif` : undefined,
