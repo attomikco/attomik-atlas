@@ -298,10 +298,34 @@ export function classifyImages(
     else if (bgImgUrls.has(url)) {
       tag = 'background'
     }
-    // 11. Shopify CDN fallback — any image served from /cdn/shop/files/ or
-    // cdn.shopify.com/s/files/ that wasn't caught by earlier rules. Tagged
-    // as 'lifestyle' (not 'shopify') because page-HTML scrapes from the CDN
-    // are typically editorial/banner content. True product shots from
+    // 11a. Shopify CDN (hosted) — SQUARE shots tag as 'shopify'. Page HTML
+    // scrapes from cdn.shopify.com/s/files/ with square aspect ratio are
+    // almost always product thumbnails referenced outside /products.json
+    // (Shopify admin's "files" tab, theme section blocks, etc.), not
+    // editorial content. Misclassifying them as 'lifestyle' displaces real
+    // editorial shots in downstream pickers (see Saint Spritz audit:
+    // 8 SS_*_virgins / ss_*_pour / hugo1 rows all 1200x1200 square shots
+    // that beat the COUCH out of grid slots 1-8). The ±15% square tolerance
+    // matches filterByOrientation's definition in src/lib/image-helpers.ts.
+    // Only fires when raw.width/height are known — otherwise drops through
+    // to 11b and tags lifestyle as before.
+    //
+    // Custom-domain Shopify storefronts ({host}.com/cdn/shop/files/) are
+    // intentionally NOT tightened — legitimate editorial imagery lives
+    // there (Saint Spritz's couch hero is saintspritz.com/cdn/shop/files/,
+    // 1600x1517, and should stay lifestyle). Audit confirmed the custom-
+    // domain path carries real editorial content more often than the
+    // hosted-CDN path does.
+    else if (!isLogoByName
+        && /cdn\.shopify\.com\/s\/files/i.test(url)
+        && raw.width && raw.height
+        && Math.abs(raw.width - raw.height) < raw.width * 0.15) {
+      tag = 'shopify'
+    }
+    // 11b. Shopify CDN fallback — any image served from /cdn/shop/files/ or
+    // cdn.shopify.com/s/files/ that wasn't caught by earlier rules or 11a.
+    // Tagged as 'lifestyle' because non-square CDN shots from page HTML are
+    // typically editorial/banner content. True product shots from
     // /products.json are caught earlier by rule 1a (source='shopify-product').
     // Guard: never override a logo signal. Rule 0a (isLogoByName) already
     // catches logos first, but the explicit guard here documents the intent.
