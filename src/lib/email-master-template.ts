@@ -573,15 +573,13 @@ export function buildMasterEmail(
   .product-card-image-link { display: block !important; width: 100% !important; height: 240px !important; min-height: 0 !important; }
   .product-card-text { display: block !important; width: 100% !important; box-sizing: border-box !important; padding: 16px 18px 18px !important; word-wrap: break-word !important; overflow-wrap: break-word !important; }
 
-  /* Block 09 — INSTAGRAM GRID reflows from desktop 3x2 to mobile 2x3 via
-     floats inside a single 6-cell table. width:50% + float:left +
-     box-sizing:border-box is the reflow mechanism: six sequential 50%
-     floated cells wrap to 3 rows of 2. box-sizing is critical — without
-     it the 2px padding pushes each cell past 50% and a third cell
-     squeezes into row 2. Outlook desktop ignores the float rules and
-     keeps the 3x2 desktop layout, which is the intended fallback. */
-  .ig-cell { display: block !important; width: 50% !important; float: left !important; box-sizing: border-box !important; }
-  .ig-cell div { height: 180px !important; }
+  /* Block 09 — INSTAGRAM GRID stays 3x2 on both desktop and mobile.
+     Structure is two <tr> rows of 3 td cells — a single <tr> of 6 cells
+     at width=33% each totals 198% and gets clipped by the master
+     wrapper's table-layout:fixed, which drops half the grid. With two
+     rows the natural table layout handles both desktop and mobile;
+     mobile only needs a shorter cell height so the images stay square. */
+  .ig-cell div { height: 110px !important; }
 }
 </style>
 </head>
@@ -892,15 +890,18 @@ ${on('09') ? `
   </td></tr></table>
 </td></tr>
 <tr><td style="padding:0 24px;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" class="ig-grid-table"><tr>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" class="ig-grid-table">
+  <tr>
     <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(0)}');background-size:cover;background-position:center;"></div></a></td>
     <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(1)}');background-size:cover;background-position:center;"></div></a></td>
     <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(2)}');background-size:cover;background-position:center;"></div></a></td>
+  </tr>
+  <tr>
     <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(3)}');background-size:cover;background-position:center;"></div></a></td>
     <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(4)}');background-size:cover;background-position:center;"></div></a></td>
     <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(5)}');background-size:cover;background-position:center;"></div></a></td>
-  </tr></table>
-  <div style="clear:both;line-height:0;font-size:0;">&nbsp;</div>
+  </tr>
+  </table>
 </td></tr>
 <tr><td style="padding:0 24px 48px;">&nbsp;</td></tr>
 </table>` : ''}
