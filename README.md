@@ -14,7 +14,7 @@ Brand management + AI content platform. Separate app from the main dashboard.
 ## Setup
 
 ### 1. Create a new Supabase project
-Go to supabase.com → New project. Name it `attomik-marketing-os`.
+Go to supabase.com → New project. Name it `attomik-atlas`.
 
 ### 2. Run the schema
 In your Supabase dashboard → SQL Editor → paste and run `/supabase/schema.sql`.
@@ -40,8 +40,8 @@ Add your email under Auth → Users for initial access.
 
 ### 5. Clone and install
 ```bash
-git clone https://github.com/attomikco/attomik-marketing-os
-cd attomik-marketing-os
+git clone https://github.com/attomikco/attomik-atlas
+cd attomik-atlas
 npm install
 ```
 
