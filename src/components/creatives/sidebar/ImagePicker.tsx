@@ -58,7 +58,13 @@ function ImageGroup({ label, images, selectedImageId, setSelectedImageId, brandC
 export default function ImagePicker({ images, selectedImageId, setSelectedImageId, brandColor, getPublicUrl }: ImagePickerProps) {
   const productImages = images.filter(i => i.tag === 'product')
   const lifestyleImages = images.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
-  const otherImages = images.filter(i => i.tag !== 'product' && i.tag !== 'lifestyle' && i.tag !== 'background')
+  // Exclude press_logo (publication logos like Forbes/BEVNET) and logo from
+  // the "Other" rail — they'd otherwise appear as selectable creative
+  // backgrounds. press/generated are excluded for the same reason.
+  const otherImages = images.filter(i =>
+    i.tag !== 'product' && i.tag !== 'lifestyle' && i.tag !== 'background'
+    && i.tag !== 'press_logo' && i.tag !== 'press' && i.tag !== 'logo' && i.tag !== 'generated'
+  )
 
   return (
     <div className="bg-paper border border-border rounded-card p-4">

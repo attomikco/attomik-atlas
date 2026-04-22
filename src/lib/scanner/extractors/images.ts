@@ -3,6 +3,70 @@ import type { ClassifiedImage, ImageTagType, Product } from '../types'
 
 type RawImage = { url: string; alt: string | null; context: string; source: string; width?: number; height?: number }
 
+// ── Press-logo detection tokens ────────────────────────────────────
+// Substrings that identify a publication/press mention when they appear
+// in an image filename (extension + query stripped, lowercased). Tokens
+// with trailing `_`/`-` (people_, inc_, elle_, gq_, vice_) avoid false
+// positives on English words ("people-cheers.jpg", "vice-city-lookbook").
+// `frobes` is intentionally included — real typo observed on Saint Spritz.
+const PRESS_FILENAME_TOKENS: string[] = [
+  'forbes', 'wsj', 'nyt', 'nytimes', 'rolling', 'rollingstone',
+  'esquire', 'esquirre', 'essence', 'laweekly', 'la-weekly', 'la_weekly',
+  'bloomberg', 'people_', 'interview', 'wine-enthusiast', 'wine_enthusiast',
+  'wineenthusiast', 'foodandwine', 'food-and-wine', 'food_and_wine', 'fw_logo',
+  'punch', 'punchdrink', 'snaxshot', 'dieline', 'bevnet', 'trendhunter',
+  'trend-hunter', 'billboard', 'beanscene', 'bean-scene', 'stereogum',
+  'inc_', 'inc-', 'frobes', 'gma', 'goodmorningamerica', 'good-morning-america',
+  'nbc', 'nypost', 'ny-post', 'newyorkpost', 'new-york-post', 'vogue',
+  'vanityfair', 'vanity-fair', 'gq_', 'cnbc', 'eater', 'thrillist',
+  'businessinsider', 'business-insider', 'fastcompany', 'fast-company',
+  'adweek', 'ad-week', 'marieclaire', 'marie-claire', 'harpersbazaar',
+  'harpers-bazaar', 'elle_', 'instyle', 'in-style', 'refinery29', 'refinery-29',
+  'hypebeast', 'hypebae', 'vice_', 'buzzfeed', 'huffpost', 'huffingtonpost',
+  'mashable', 'techcrunch', 'tech-crunch',
+]
+// Generic "this is a press/featured-in section" filename tokens — used in
+// addition to publication names. Shopify merchants frequently name these
+// `pub_logos.png` or `featured-in.png` regardless of which publications
+// appear inside.
+const PRESS_SECTION_TOKENS: string[] = [
+  'press_', 'press-', 'pub_logos', 'press_logos', 'publication_logos',
+  'featured-in', 'featured_in', 'as-seen-in', 'as_seen_in',
+  'media-logos', 'media_logos', 'as-seen-on', 'as_seen_on',
+  'featuredin', 'asseenin',
+]
+const PRESS_ALL_TOKENS: string[] = [...PRESS_FILENAME_TOKENS, ...PRESS_SECTION_TOKENS]
+
+// Second-level domain label from the brand's own URL, used to exclude the
+// brand's own assets from press_logo matching. Strips the most common
+// subdomain prefixes so `mx.seiz.am` returns `seiz` not `mx`. Returns null
+// when the URL is missing/malformed or the token would be too short to be
+// useful (<3 chars — avoids spurious 'mx'/'us' matches if stripping misses).
+function extractBrandDomainToken(url: string | null): string | null {
+  if (!url) return null
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    const stripped = host.replace(/^(www|www2|m|shop|store|us|uk|eu|en|mx|ca)\./, '')
+    const firstLabel = stripped.split('.')[0]
+    return firstLabel && firstLabel.length >= 3 ? firstLabel : null
+  } catch {
+    return null
+  }
+}
+
+// Last path segment with extension + query stripped, lowercased. Used for
+// substring match against PRESS_ALL_TOKENS. Falls back to the raw URL so
+// URL-parse failures don't silently drop candidates.
+function filenameForPressMatch(url: string): string {
+  try {
+    const pathname = new URL(url).pathname
+    const lastSegment = pathname.split('/').pop() || ''
+    return lastSegment.replace(/\.[a-z0-9]+$/i, '').toLowerCase()
+  } catch {
+    return url.toLowerCase()
+  }
+}
+
 // Pure image classifier. All HTTP fetches done upstream — `shopifyJson` is the
 // pre-fetched /products.json body (for variant images); `bgImgUrls` is the set
 // of CSS background-image URLs already parsed from the CSS.
@@ -16,6 +80,9 @@ export function classifyImages(
   shopifyJson: unknown | null,
 ): ClassifiedImage[] {
   const platformIsShopify = !!shopifyJson
+  // Computed once — used inside the per-image loop to skip the brand's
+  // own assets when testing publication-token matches.
+  const brandDomainToken = extractBrandDomainToken(normalizedUrl)
 
   const imagePool: RawImage[] = []
 
@@ -186,7 +253,9 @@ export function classifyImages(
     // Default to 'lifestyle' — most unclassified scraped content from brand websites
     // is lifestyle imagery, not genuinely unclassifiable. 'other' is reserved for
     // cases that fail every specific rule AND aren't lifestyle-appropriate.
+    // `reason` mirrors whatever branch fires so admin can debug placement.
     let tag: ImageTagType = 'lifestyle'
+    let reason: string = 'lifestyle: default fallback (no rule matched)'
 
     // Pre-check: is this image likely a brand mark / logo?
     const freq = urlFrequency.get(pathname) || 0
@@ -216,20 +285,58 @@ export function classifyImages(
       /header|nav|footer/i.test(ctx) ||
       freq >= 3
 
-    // 0. Press/media logos — check BEFORE everything to prevent misclassification
+    // Press-logo filename match (Rule 0-press-filename, below). Computed once
+    // so the own-brand exclusion runs even if Rule 0 doesn't fire.
+    const filenameNoExt = filenameForPressMatch(url)
+    const ownBrandInFilename = !!(brandDomainToken && filenameNoExt.includes(brandDomainToken))
+    const pressTokenMatch = ownBrandInFilename
+      ? null
+      : (PRESS_ALL_TOKENS.find(t => filenameNoExt.includes(t)) || null)
+    const dimensionsLookPressy =
+      (!raw.width && !raw.height) ||
+      !!(raw.width && raw.height
+        && raw.width >= 100 && raw.width <= 700
+        && raw.height >= 50 && raw.height <= 300
+        && raw.width / raw.height > 1.3)
+
+    // 0. Press/media logos (DOM/URL/alt context) — check BEFORE everything to
+    // prevent misclassification. Unlike Rule 0-press-filename below, this rule
+    // doesn't require a filename token — it fires when the surrounding page
+    // markup declares the section as press/media/featured-in.
     if (pressContextPattern.test(ctx) || pressUrlPattern.test(url) ||
         (altLower && pressAltPattern.test(altLower))) {
       tag = 'press'
+      reason = pressContextPattern.test(ctx)
+        ? 'press: DOM context matched press/media/featured-in'
+        : pressUrlPattern.test(url)
+        ? 'press: URL path matched /press|/media|/featured-in'
+        : 'press: alt text matched publication name'
+    }
+    // 0-press-filename. Publication logo by filename + small-wide dimensions.
+    // Catches Shopify merchants who name their press-mention image after the
+    // publication (forbes.png, essence.png, wine-enthusiast.png) without any
+    // surrounding DOM signal. See Phase 1 audit — Wesake had 8 of these
+    // leaking into the lifestyle bucket as hero creatives. Dimension guard
+    // excludes large square/landscape editorial shots that happen to name a
+    // publication (e.g. a Forbes-branded press photo at 1600x1200). When
+    // dimensions are missing we still tag — safer to over-tag press_logo
+    // than let one slip into the creative carousel.
+    else if (pressTokenMatch && dimensionsLookPressy) {
+      tag = 'press_logo'
+      const dims = (raw.width && raw.height) ? `${raw.width}x${raw.height}` : 'no-dims'
+      reason = `press_logo: filename matched '${pressTokenMatch}' (${dims})`
     }
     // 0a. Strong logo signal — fires regardless of source. URL/alt with "logo"
     // is unambiguous and must win over Shopify product sources and CDN fallbacks.
     else if (isLogoByName) {
       tag = 'logo'
+      reason = 'logo: filename/alt contains logo/wordmark/emblem'
     }
     // 0b. Weak brand-mark heuristics — still respect the Shopify-product guard
     // so that legit product thumbnails don't get mistagged as logos.
     else if (isBrandMarkHeuristic && raw.source !== 'shopify-product' && raw.source !== 'jsonld-product') {
       tag = 'logo'
+      reason = 'logo: brand-mark heuristic (size/aspect/context/freq)'
     }
     // 1a. Shopify product images (from products.json API or Shopify CDN in product context).
     // Matches cdn.shopify.com AND custom-domain Shopify stores that serve via
@@ -238,11 +345,15 @@ export function classifyImages(
         (raw.source === 'jsonld-product' && /cdn\.shopify\.com|\/cdn\/shop\/files\//i.test(url)) ||
         ((/cdn\.shopify\.com\/s\/files/i.test(url) || /\/cdn\/shop\/files\//i.test(url)) && (knownProductUrls.has(url) || knownProductUrls.has(pathname)))) {
       tag = 'shopify'
+      reason = raw.source === 'shopify-product'
+        ? 'shopify: source=shopify-product (/products.json)'
+        : 'shopify: CDN URL + known-product match'
     }
     // 1b. Other known product URLs (JSON-LD Product, etc.)
     else if (knownProductUrls.has(url) || knownProductUrls.has(pathname) ||
         raw.source === 'jsonld-product') {
       tag = 'product'
+      reason = 'product: known product URL or JSON-LD Product'
     }
     // Shopify CDN guard — Rules 2 and 4 over-tag lifestyle shots on Shopify
     // brands because editorial images live on the same CDN as product shots
@@ -258,6 +369,7 @@ export function classifyImages(
         && !/\/cdn\/shop\/files\//i.test(url)
         && !/cdn\.shopify\.com\/s\/files/i.test(url)) {
       tag = 'product'
+      reason = 'product: alt text matched detected product name'
     }
     // 3. URL path signals product catalog page.
     // Use pathname (not full URL) and require the segment to be at the start of
@@ -266,6 +378,7 @@ export function classifyImages(
     else if (/^\/(products?|collections?|catalog)\//i.test(pathname)
           || /^\/shop\//i.test(pathname)) {
       tag = 'product'
+      reason = 'product: URL path /products|/collections|/catalog|/shop'
     }
     // 4. Context signals product (parent class/id)
     else if (productContextPattern.test(ctx) && !logoContextPattern.test(ctx)
@@ -273,30 +386,37 @@ export function classifyImages(
         && !/\/cdn\/shop\/files\//i.test(url)
         && !/cdn\.shopify\.com\/s\/files/i.test(url)) {
       tag = 'product'
+      reason = 'product: DOM context matched product section'
     }
     // 5. Logo detection — URL or context
     else if (/logo/i.test(url) || /logo/i.test(altLower) || logoContextPattern.test(ctx)) {
       tag = 'logo'
+      reason = 'logo: URL/alt/ctx contains logo keyword'
     }
     // 6. SVG images are usually logos/icons
     else if (/\.svg/i.test(url)) {
       tag = 'logo'
+      reason = 'logo: SVG asset'
     }
     // 7. Hero/lifestyle — URL or context
     else if (/\/lifestyle|\/campaign|\/lookbook|\/editorial|\/hero|\/banner/i.test(url) || heroContextPattern.test(ctx)) {
       tag = 'lifestyle'
+      reason = 'lifestyle: URL/ctx matched hero/editorial keyword'
     }
     // 8. OG/Twitter images are usually lifestyle/hero shots
     else if (raw.source === 'og' || raw.source === 'twitter') {
       tag = 'lifestyle'
+      reason = `lifestyle: source=${raw.source}`
     }
     // 9. Testimonials/UGC
     else if (testimonialContextPattern.test(ctx) || testimonialContextPattern.test(altLower)) {
       tag = 'lifestyle'
+      reason = 'lifestyle: testimonial/UGC context'
     }
     // 10. CSS background images
     else if (bgImgUrls.has(url)) {
       tag = 'background'
+      reason = 'background: CSS background-image URL'
     }
     // 11a. Shopify CDN (hosted) — SQUARE shots tag as 'shopify'. Page HTML
     // scrapes from cdn.shopify.com/s/files/ with square aspect ratio are
@@ -321,6 +441,7 @@ export function classifyImages(
         && raw.width && raw.height
         && Math.abs(raw.width - raw.height) < raw.width * 0.15) {
       tag = 'shopify'
+      reason = `shopify: hosted CDN + square aspect (${raw.width}x${raw.height})`
     }
     // 11b. Shopify CDN fallback — any image served from /cdn/shop/files/ or
     // cdn.shopify.com/s/files/ that wasn't caught by earlier rules or 11a.
@@ -331,6 +452,7 @@ export function classifyImages(
     // catches logos first, but the explicit guard here documents the intent.
     else if (!isLogoByName && (/\/cdn\/shop\/files\//i.test(url) || /cdn\.shopify\.com\/s\/files/i.test(url))) {
       tag = 'lifestyle'
+      reason = 'lifestyle: Shopify CDN fallback (non-square)'
     }
 
     // ── Score ──
@@ -342,7 +464,7 @@ export function classifyImages(
     if (tag === 'shopify') score += 8
     if (tag === 'product') score += 5
     if (tag === 'lifestyle') score += 3
-    if (tag === 'logo' || tag === 'press') score -= 10
+    if (tag === 'logo' || tag === 'press' || tag === 'press_logo') score -= 10
     // Format bonuses
     if (/\.(jpg|jpeg|webp)/i.test(url)) score += 3
     if (raw.source === 'og' || raw.source === 'twitter') score += 2
@@ -351,7 +473,7 @@ export function classifyImages(
     if (/thumb|thumbnail|_small|_mini|32x|16x/i.test(url)) score -= 3
     if (/icon|badge|button/i.test(url) && tag !== 'logo') score -= 2
 
-    uniqueImages.push({ url, tag, score, alt: raw.alt })
+    uniqueImages.push({ url, tag, score, alt: raw.alt, reason })
   }
 
   return uniqueImages

@@ -136,17 +136,25 @@ export async function scanUrl(url: string, opts: ScanOptions = {}): Promise<RawS
       if (best) logo = best.url
     }
 
-    // Sort by score, products first, then lifestyle, then others. Exclude logos and press from main images.
+    // Sort by score, products first, then lifestyle, then others. Exclude
+    // logos and press (both 'press' from DOM signals and 'press_logo' from
+    // filename matches) from main images so they can't reach the creative
+    // carousel.
     const contentImages = rawImages
-      .filter(i => i.tag !== 'logo' && i.tag !== 'press')
+      .filter(i => i.tag !== 'logo' && i.tag !== 'press' && i.tag !== 'press_logo')
       .sort((a, b) => b.score - a.score)
       .slice(0, 25)
     const logoImages = rawImages
       .filter(i => i.tag === 'logo')
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
+    // Press bucket returned to callers includes both the DOM-signal tag
+    // ('press') and the filename-signal tag ('press_logo'). Consumers today
+    // don't distinguish — the scanner keeps them separate internally so the
+    // admin audit UI can surface the distinction, but the downstream upload
+    // pipe treats them identically.
     const pressImages = rawImages
-      .filter(i => i.tag === 'press')
+      .filter(i => i.tag === 'press' || i.tag === 'press_logo')
       .sort((a, b) => b.score - a.score)
       .slice(0, 10)
     // Deduplicate final images array by URL

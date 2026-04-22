@@ -7,13 +7,19 @@ export type Product = {
   image: string | null
 }
 
-export type ImageTagType = 'product' | 'lifestyle' | 'background' | 'logo' | 'press' | 'shopify' | 'other'
+export type ImageTagType = 'product' | 'lifestyle' | 'background' | 'logo' | 'press' | 'press_logo' | 'shopify' | 'other'
 
 export type ClassifiedImage = {
   url: string
   tag: ImageTagType
   score: number
   alt: string | null
+  // Short human-readable string ("<tag>: <what fired>") written by every
+  // rule in classifyImages. Persisted to brand_images.classification_reason
+  // so the admin surface can show why a row landed where it did. Nullable
+  // so synthetic consumers (og-image fallback, product-URL-only rows
+  // bypassing the scanner) can leave it empty.
+  reason: string | null
 }
 
 export type BusinessType = 'shopify' | 'ecommerce' | 'saas' | 'restaurant' | 'service' | 'brand'

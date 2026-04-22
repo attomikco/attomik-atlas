@@ -743,7 +743,7 @@ FB_DESCRIPTION: <under 12 words>`,
   // non-Shopify brands use tag='product'. Lifestyle covers everything else.
   const { productImages, lifestyleImages } = bucketBrandImages(images, getBusinessType(brand))
   const otherImages = images.filter(i =>
-    i.tag !== 'product' && i.tag !== 'shopify' && i.tag !== 'lifestyle' && i.tag !== 'background' && i.tag !== 'generated'
+    i.tag !== 'product' && i.tag !== 'shopify' && i.tag !== 'lifestyle' && i.tag !== 'background' && i.tag !== 'generated' && i.tag !== 'press_logo'
   )
   // AI-generated images — newest first so freshly generated images appear at the top
   const generatedImages = [...images]
