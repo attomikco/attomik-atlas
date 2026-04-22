@@ -1013,7 +1013,6 @@ export default function PreviewClient({
           .pv-iframe { height: 380px !important; }
           .pv-intel-cols { flex-direction: column !important; }
           .pv-intel-left, .pv-intel-right { width: 100% !important; flex: none !important; }
-          .pv-intel-grid { grid-template-columns: 1fr !important; }
           .pv-creatives-wrap { margin-left: 0 !important; margin-right: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }
           .pv-copy-headline { font-size: 24px !important; }
           .pv-bar-btn { font-size: 13px !important; padding: 8px 16px !important; }
@@ -1814,14 +1813,14 @@ export default function PreviewClient({
             )}
 
             {/* ═══ Tier 2: factual brand data ═══
-                2-col grid (collapses to single column below ~900px via the
-                existing `.pv-intel-grid` media query rule). `.pv-intel-grid`
-                is keyed off grid-template-columns so the initial value here
-                sets the desktop layout, then the media query overrides. */}
+                One card per row — full-width stack mirroring the Voice card
+                above so Voice / What you do / Who buys read as three equal
+                sibling cards. */}
             {(brandMission || brandAudience) && (
-              <div className="pv-intel-grid" style={{
-                display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: 16, marginBottom: brandTone.length > 0 ? 40 : 0,
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 16,
+                maxWidth: 860, margin: '0 auto',
+                marginBottom: brandTone.length > 0 ? 40 : 0,
               }}>
                 {[
                   brandMission && { label: 'What you do', text: brandMission },
@@ -1832,14 +1831,14 @@ export default function PreviewClient({
                     <div key={i} style={{
                       background: colors.whiteAlpha5,
                       border: `1px solid ${colors.whiteAlpha10}`,
-                      borderTop: `3px solid ${colors.accent}`,
-                      borderRadius: radius.xl, padding: '22px 24px',
+                      borderLeft: `3px solid ${colors.accent}`,
+                      borderRadius: radius.xl, padding: '32px 36px',
                       display: 'flex', flexDirection: 'column',
                     }}>
                       <div style={{
                         fontFamily: font.mono, fontSize: fontSize.caption, color: colors.accent,
                         letterSpacing: letterSpacing.wide, textTransform: 'uppercase',
-                        marginBottom: 10,
+                        marginBottom: 14,
                       }}>{f.label}</div>
                       {/* No truncation — these are 1–3 sentence summaries;
                           cards grow to fit naturally. */}

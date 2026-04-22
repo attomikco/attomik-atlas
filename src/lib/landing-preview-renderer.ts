@@ -17,7 +17,8 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 // Relative paths (not @/ alias) so Node's strip-types loader can run the
 // renderer directly for tests and the regenerate-all script.
-import { bucketBrandImages, getBusinessType, pickSlotImages } from './brand-images.ts'
+import { bucketBrandImages, getBusinessType } from './brand-images.ts'
+import { buildPreviewImageSlots } from './image-helpers.ts'
 import type { Brand, BrandImage, Product } from '../types/index.ts'
 
 // LandingBrief shape — unchanged from the old landing-page-renderer.
@@ -519,12 +520,14 @@ export function renderPreview(input: RenderPreviewInput): string {
   const getUrl = (path: string) =>
     `${supabaseUrl}/storage/v1/object/public/brand-images/${path}`
 
-  // Image slot picks — hero gets the lifestyle-first pick, lifestyle
-  // alternate goes to the founder section, ingredients reuse content pool.
-  const [heroSlot, lifestyleSlot] =
-    pickSlotImages(brandImages, getBusinessType(brand), ['hero', 'lifestyle'])
-  const heroImg = heroSlot ? getUrl(heroSlot.storage_path) : ''
-  const lifestyleImg = lifestyleSlot ? getUrl(lifestyleSlot.storage_path) : ''
+  // Image slot picks — share the Preview's `buildPreviewImageSlots` so the
+  // landing hero matches the first creative (img0) and the lifestyle /
+  // founder image matches the second creative (img1). pickSlotImages's
+  // orientation-per-role logic produced different picks vs. the showcase's
+  // lifestyle-first uniform ordering, which read as a mismatch in Preview.
+  const slots = buildPreviewImageSlots(brandImages, getBusinessType(brand), 2)
+  const heroImg = slots[0] ? getUrl(slots[0].storage_path) : ''
+  const lifestyleImg = slots[1] ? getUrl(slots[1].storage_path) : ''
 
   const { productImages, lifestyleImages } = bucketBrandImages(brandImages, getBusinessType(brand))
 

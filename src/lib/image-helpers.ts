@@ -1,5 +1,9 @@
-import type { BrandImage } from '@/types'
-import { bucketBrandImages, getContentImages, type BusinessType } from './brand-images'
+// Relative paths (with .ts extensions) so Node's strip-types loader can
+// resolve this file when imported from `landing-preview-renderer.ts`,
+// which runs both under Next.js (bundler resolution) and under
+// `node --experimental-strip-types` for tests / regenerate-all.
+import type { BrandImage } from '../types/index.ts'
+import { bucketBrandImages, getContentImages, type BusinessType } from './brand-images.ts'
 
 // Dimension floor for Preview creative slots. 76x137 icon artefacts and
 // other undersized scrapes would blow out layout in 1080x1350/1080x1920

@@ -151,6 +151,8 @@ export default function HomePage() {
   const router = useRouter()
   const [heroUrl, setHeroUrl] = useState('')
   const [ctaUrl, setCtaUrl] = useState('')
+  const [heroError, setHeroError] = useState('')
+  const [ctaError, setCtaError] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
@@ -195,16 +197,25 @@ export default function HomePage() {
     })
   }, [])
 
-  function go(url: string) {
+  function go(url: string, setError: (msg: string) => void) {
     const v = url.trim()
-    if (!v) return
+    if (!v) {
+      setError('Please enter a URL')
+      return
+    }
     let normalized = v
     if (!/^https?:\/\//i.test(normalized)) normalized = 'https://' + normalized
     try {
       const parsed = new URL(normalized)
-      if (!parsed.hostname.includes('.')) return
+      if (!parsed.hostname.includes('.')) {
+        setError("That doesn't look like a valid URL. Try something like afterdream.co")
+        return
+      }
+      setError('')
       router.push(`/onboarding?url=${encodeURIComponent(normalized)}`)
-    } catch { return }
+    } catch {
+      setError("That doesn't look like a valid URL. Try something like afterdream.co")
+    }
   }
 
   return (
@@ -372,23 +383,30 @@ export default function HomePage() {
             AI-powered marketing for CPG brands. Testing and learning has never been faster — or more efficient.
           </p>
 
-          <div className="fade4 url-row" style={{ width: '100%', maxWidth: 560, display: 'flex', border: `1px solid ${BORDER_STRONG}`, background: '#fff' }}>
-            <input
-              value={heroUrl}
-              onChange={e => setHeroUrl(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && go(heroUrl)}
-              placeholder="Enter your brand URL (e.g. afterdream.co)"
-              className="hero-input"
-              autoFocus
-              style={{ flex: 1, padding: '18px 20px', fontSize: 15, fontFamily: MONO, fontWeight: 500, border: 'none', background: 'transparent', color: '#000', minWidth: 0 }}
-            />
-            <button
-              onClick={() => go(heroUrl)}
-              className="cta-btn"
-              style={{ padding: '0 28px', background: colors.accent, color: '#000', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'opacity 0.15s' }}
-            >
-              Analyze my brand →
-            </button>
+          <div className="fade4" style={{ width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+            <div className="url-row" style={{ width: '100%', display: 'flex', border: `1px solid ${heroError ? '#ff4d4d' : BORDER_STRONG}`, background: '#fff' }}>
+              <input
+                value={heroUrl}
+                onChange={e => { setHeroUrl(e.target.value); if (heroError) setHeroError('') }}
+                onKeyDown={e => e.key === 'Enter' && go(heroUrl, setHeroError)}
+                placeholder="Enter your brand URL (e.g. afterdream.co)"
+                className="hero-input"
+                autoFocus
+                style={{ flex: 1, padding: '18px 20px', fontSize: 15, fontFamily: MONO, fontWeight: 500, border: 'none', background: 'transparent', color: '#000', minWidth: 0 }}
+              />
+              <button
+                onClick={() => go(heroUrl, setHeroError)}
+                className="cta-btn"
+                style={{ padding: '0 28px', background: colors.accent, color: '#000', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'opacity 0.15s' }}
+              >
+                Analyze my brand →
+              </button>
+            </div>
+            {heroError && (
+              <div role="alert" style={{ marginTop: 10, fontFamily: MONO, fontSize: 12, color: '#ff6b6b', textAlign: 'left' }}>
+                {heroError}
+              </div>
+            )}
           </div>
 
           <ScanPanel />
@@ -518,22 +536,29 @@ export default function HomePage() {
             Drop your URL below. Live demo. No credit card. Free to explore.
           </p>
 
-          <div className="url-row" style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'flex', border: `1px solid ${BORDER_STRONG}`, background: '#fff' }}>
-            <input
-              value={ctaUrl}
-              onChange={e => setCtaUrl(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && go(ctaUrl)}
-              placeholder="Enter your brand URL (e.g. afterdream.co)"
-              className="hero-input"
-              style={{ flex: 1, padding: '18px 20px', fontSize: 15, fontFamily: MONO, fontWeight: 500, border: 'none', background: 'transparent', color: '#000', minWidth: 0 }}
-            />
-            <button
-              onClick={() => go(ctaUrl)}
-              className="cta-btn"
-              style={{ padding: '0 28px', background: colors.accent, color: '#000', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'opacity 0.15s' }}
-            >
-              Analyze my brand →
-            </button>
+          <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+            <div className="url-row" style={{ width: '100%', display: 'flex', border: `1px solid ${ctaError ? '#ff4d4d' : BORDER_STRONG}`, background: '#fff' }}>
+              <input
+                value={ctaUrl}
+                onChange={e => { setCtaUrl(e.target.value); if (ctaError) setCtaError('') }}
+                onKeyDown={e => e.key === 'Enter' && go(ctaUrl, setCtaError)}
+                placeholder="Enter your brand URL (e.g. afterdream.co)"
+                className="hero-input"
+                style={{ flex: 1, padding: '18px 20px', fontSize: 15, fontFamily: MONO, fontWeight: 500, border: 'none', background: 'transparent', color: '#000', minWidth: 0 }}
+              />
+              <button
+                onClick={() => go(ctaUrl, setCtaError)}
+                className="cta-btn"
+                style={{ padding: '0 28px', background: colors.accent, color: '#000', fontFamily: font.heading, fontWeight: fontWeight.heading, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'opacity 0.15s' }}
+              >
+                Analyze my brand →
+              </button>
+            </div>
+            {ctaError && (
+              <div role="alert" style={{ marginTop: 10, fontFamily: MONO, fontSize: 12, color: '#ff6b6b', textAlign: 'left' }}>
+                {ctaError}
+              </div>
+            )}
           </div>
         </div>
       </section>

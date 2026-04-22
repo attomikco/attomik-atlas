@@ -182,7 +182,6 @@ Return a COMPLETE JSON object with ALL of these fields. Every field must be fill
   "igEyebrow": "Label above IG grid, 2-3 words",
   "igHeadline": "IG section headline, 3-5 words",
   "igHandle": "@${brand.name.toLowerCase().replace(/\\s+/g, '')}",
-  "igUrl": "",
   "igCta": "Follow CTA text, 3-5 words"
 }
 

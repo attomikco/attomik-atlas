@@ -119,11 +119,13 @@ export interface MasterEmailConfig {
   products: Array<{ name: string; description: string; imageUrl: string; url: string }>
 
   // Block 09 — Instagram Grid
+  // Note: the destination URL (both the CTA button and the 6 image tiles)
+  // comes from brand.notes.footer.instagramUrl via readBrandFooter() inside
+  // buildMasterEmail — it is NOT stored per-template.
   igEyebrow: string
   igHeadline: string
   igHandle: string
   igImages: string[]  // exactly 6 URLs
-  igUrl: string
   igCta: string
 
   // Block 11 — Callout Card
@@ -224,7 +226,6 @@ export const DEFAULT_MASTER_CONFIG: MasterEmailConfig = {
   igHeadline: 'Join Us on Instagram',
   igHandle: '',
   igImages: ['', '', '', '', '', ''],
-  igUrl: '',
   igCta: 'Follow Us on Instagram',
 
   calloutEyebrow: '',
@@ -451,19 +452,24 @@ export function buildMasterEmail(
   const ht = (brand.font_heading?.transform || 'uppercase') as string
   const site = brand.website || '#'
   const footer = readBrandFooter(brand.notes)
-  // Logo resolution — prefer the light (white) variant for dark header/footer
-  // bars. Fall back to the color logo as-is (no CSS filter — scraped color
-  // logos with gradients / multi-color marks get mangled by brightness(0)
-  // invert(1), so we trust what the brand hub has and leave it untouched).
-  // When neither exists, render the brand name in the heading font.
+  // Logo resolution — mirrors the brand hub / dashboard treatment so the
+  // header and footer navbars don't render an invisible dark logo on a
+  // dark primary. Precedence: an explicit white variant > color logo with
+  // a `brightness(0) invert(1)` filter on dark bg > color logo as-is on
+  // light bg. When neither logo exists, render the brand name in the
+  // heading font with text color matched to the bar.
   const logoLight = (typeof brand.logo_url_light === 'string' && brand.logo_url_light) || ''
   const logoColor = (typeof brand.logo_url === 'string' && brand.logo_url) || ''
-  const logo = logoLight || logoColor
-  const headerLogoHtml = logo
-    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;">`
+  const barBgIsDark = isDark(palette.darkBg)
+  const barLogoSrc = barBgIsDark ? (logoLight || logoColor) : logoColor
+  const barLogoFilter = barBgIsDark && !logoLight && !!logoColor
+    ? 'filter:brightness(0) invert(1);-webkit-filter:brightness(0) invert(1);'
+    : ''
+  const headerLogoHtml = barLogoSrc
+    ? `<img src="${barLogoSrc}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;${barLogoFilter}">`
     : `<span style="font-family:${hf};font-size:22px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
-  const footerLogoHtml = logo
-    ? `<img src="${logo}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;">`
+  const footerLogoHtml = barLogoSrc
+    ? `<img src="${barLogoSrc}" alt="${brand.name}" height="60" style="display:block;height:60px;width:auto;max-width:240px;border:0;margin:0 auto;${barLogoFilter}">`
     : `<span style="font-family:${hf};font-size:15px;font-weight:${hw};color:${palette.darkText};letter-spacing:1px;text-transform:${ht};">${brand.name}</span>`
   const year = new Date().getFullYear()
 
@@ -875,7 +881,9 @@ ${on('12') ? `
   </td></tr></table>` : ''}
 </td></tr></table>` : ''}
 
-${on('09') ? `
+${on('09') ? (() => {
+  const igHref = footer.instagramUrl || '#'
+  return `
 <!-- BLOCK 09: INSTAGRAM GRID -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.lightBg};">
 <tr><td align="center" class="section-pad" style="padding:48px 48px 0;">
@@ -886,25 +894,26 @@ ${on('09') ? `
 <tr><td align="center" style="padding:0 24px 32px;">
   <table cellpadding="0" cellspacing="0" border="0" align="center">
   <tr><td style="background-color:${palette.primaryButtonBg};border-radius:2px;font-family:${hf};">
-    <a href="${config.igUrl || '#'}" class="cta-button" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.igCta}</a>
+    <a href="${igHref}" class="cta-button" style="display:inline-block;padding:16px 44px;font-family:${hf};font-size:15px;font-weight:700;color:${palette.primaryButtonText};text-decoration:none;text-transform:${ht};">${config.igCta}</a>
   </td></tr></table>
 </td></tr>
 <tr><td style="padding:0 24px;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" class="ig-grid-table">
   <tr>
-    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(0)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(1)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(2)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${igHref}" style="display:block;"><div style="height:200px;background-image:url('${igImg(0)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${igHref}" style="display:block;"><div style="height:200px;background-image:url('${igImg(1)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${igHref}" style="display:block;"><div style="height:200px;background-image:url('${igImg(2)}');background-size:cover;background-position:center;"></div></a></td>
   </tr>
   <tr>
-    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(3)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(4)}');background-size:cover;background-position:center;"></div></a></td>
-    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${config.igUrl || '#'}" style="display:block;"><div style="height:200px;background-image:url('${igImg(5)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${igHref}" style="display:block;"><div style="height:200px;background-image:url('${igImg(3)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${igHref}" style="display:block;"><div style="height:200px;background-image:url('${igImg(4)}');background-size:cover;background-position:center;"></div></a></td>
+    <td width="33%" class="ig-cell" style="padding:2px;"><a href="${igHref}" style="display:block;"><div style="height:200px;background-image:url('${igImg(5)}');background-size:cover;background-position:center;"></div></a></td>
   </tr>
   </table>
 </td></tr>
 <tr><td style="padding:0 24px 48px;">&nbsp;</td></tr>
-</table>` : ''}
+</table>`
+})() : ''}
 
 <!-- FOOTER -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${palette.darkBg};">

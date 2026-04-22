@@ -1210,7 +1210,27 @@ export default function EmailTemplateClient({ brand, initialConfig, emails, allI
         <Field label="Eyebrow"><input value={config.igEyebrow} onChange={e => update({ igEyebrow: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Headline"><input value={config.igHeadline} onChange={e => update({ igHeadline: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Handle"><input value={config.igHandle} onChange={e => update({ igHandle: e.target.value })} onBlur={saveConfig} placeholder="@handle" style={inputStyle} /></Field>
-        <Field label="Instagram URL"><input value={config.igUrl} onChange={e => update({ igUrl: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
+        <Field label="Instagram URL">
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            gap: 12, padding: '8px 10px', background: '#fafafa',
+            border: `1px solid ${colors.border}`, borderRadius: 8, fontSize: 12,
+          }}>
+            <span style={{
+              color: brandFooter.instagramUrl ? colors.ink : colors.muted,
+              fontStyle: brandFooter.instagramUrl ? 'normal' : 'italic',
+              fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {brandFooter.instagramUrl || 'not set in brand hub'}
+            </span>
+            <Link
+              href={`/brand-setup/${brand.id}#footer`}
+              style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: colors.ink, textDecoration: 'none', borderBottom: `1px solid ${colors.ink}` }}
+            >
+              Edit →
+            </Link>
+          </div>
+        </Field>
         <Field label="CTA Text"><input value={config.igCta} onChange={e => update({ igCta: e.target.value })} onBlur={saveConfig} style={inputStyle} /></Field>
         <Field label="Images (6)">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
