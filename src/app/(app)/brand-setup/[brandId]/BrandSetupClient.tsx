@@ -563,7 +563,7 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
         const uploadBody: {
           logoUrl: string | null
           productImageUrls: string[]
-          scrapedImages: Array<{ url: string; tag: string; alt: string | null }>
+          scrapedImages: Array<{ url: string; tag: string; alt: string | null; reason: string | null; score: number | null }>
         } = {
           logoUrl: opts.logo ? (detect.logo || null) : null,
           productImageUrls: opts.images
@@ -571,8 +571,8 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
             : [],
           scrapedImages: opts.images
             ? [
-                ...(detect.ogImage ? [{ url: detect.ogImage, tag: 'lifestyle', alt: null }] : []),
-                ...(detect.images || []).map((i: { url: string; tag: string; alt: string | null }) => ({ url: i.url, tag: i.tag, alt: i.alt || null })),
+                ...(detect.ogImage ? [{ url: detect.ogImage, tag: 'lifestyle', alt: null, reason: null, score: null }] : []),
+                ...(detect.images || []).map((i: { url: string; tag: string; alt: string | null; reason: string | null; score: number | null }) => ({ url: i.url, tag: i.tag, alt: i.alt || null, reason: i.reason || null, score: typeof i.score === 'number' ? i.score : null })),
               ].slice(0, 25)
             : [],
         }
@@ -1216,56 +1216,79 @@ export default function BrandHubClient({ brand, initialImages }: { brand: Brand;
       <SectionHeader title="Images" subtitle={`${images.length} image${images.length !== 1 ? 's' : ''} in your library`} />
 
       {(() => {
-        const { productImages: bucketProduct, lifestyleImages: bucketLifestyle, shouldCollapse } =
-          bucketBrandImages(images, getBusinessType(brand))
+        // Group every row by tag so the audit surface shows exactly what the
+        // scanner produced — including press_logo/logo/generated that the
+        // old bucketBrandImages view filtered out. Order matters:
+        //   1. product + lifestyle (today's main experience at the top)
+        //   2. press_logo + logo + press + generated + ugc/seasonal/other +
+        //      background (debug-centric buckets below so Pablo can sanity-
+        //      check the scanner's classification without disrupting the
+        //      day-to-day Hub experience).
+        const groups = new Map<string, BrandImage[]>()
+        for (const img of images) {
+          const key = img.tag || 'other'
+          if (!groups.has(key)) groups.set(key, [])
+          groups.get(key)!.push(img)
+        }
+        const TAG_ORDER: Array<{ tag: string; label: string; subtitle: string; uploadAs?: 'product' | 'lifestyle' }> = [
+          { tag: 'product',    label: 'Product images',    subtitle: 'Hero shots of your product',                       uploadAs: 'product' },
+          { tag: 'shopify',    label: 'Shopify products',  subtitle: 'From /products.json (first-image per SKU)' },
+          { tag: 'lifestyle',  label: 'Lifestyle images',  subtitle: 'Brand context, mood, people using the product',    uploadAs: 'lifestyle' },
+          { tag: 'background', label: 'Background images', subtitle: 'CSS background-image URLs' },
+          { tag: 'ugc',        label: 'UGC',               subtitle: 'User-generated / testimonial shots' },
+          { tag: 'seasonal',   label: 'Seasonal',          subtitle: 'Time-bound campaign assets' },
+          { tag: 'other',      label: 'Other',             subtitle: 'Content images without a more specific tag' },
+          { tag: 'press_logo', label: 'Press logos',       subtitle: 'Publication / "featured in" logos — excluded from creatives' },
+          { tag: 'press',      label: 'Press mentions',    subtitle: 'Press-section images (DOM-context match) — excluded from creatives' },
+          { tag: 'logo',       label: 'Brand logos',       subtitle: 'Brand marks / wordmarks — excluded from creatives' },
+          { tag: 'generated',  label: 'AI-generated',      subtitle: 'Generated via the creative studio' },
+        ]
+
         return (
           <>
-            {/* Product images — only shown if bucket is non-empty */}
-            {!shouldCollapse && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Product images
-                  <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>Hero shots of your product</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {bucketProduct.map(img => (
-                    <div key={img.id} style={{ position: 'relative' }}>
-                      <img src={getImageUrl(img)} alt="" style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', display: 'block' }} onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }} />
-                      <button onClick={() => removeImageById(img.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
-                    </div>
-                  ))}
-                  <label style={{ width: 120, height: 120, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 11, fontWeight: 600, gap: 4, transition: 'border-color 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-                    <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>Add
-                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files || []); if (f.length) handleImageUpload(f, 'product'); e.target.value = '' }} />
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {/* Lifestyle images — always shown. Heading adapts to whether
-                Product section is visible above it. */}
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                {shouldCollapse ? 'Images' : 'Lifestyle images'}
-                <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>
-                  {shouldCollapse ? 'All content images for this brand' : 'Brand context, mood, people using the product'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {bucketLifestyle.map(img => (
-                  <div key={img.id} style={{ position: 'relative' }}>
-                    <img src={getImageUrl(img)} alt="" style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', display: 'block' }} onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }} />
-                    <button onClick={() => removeImageById(img.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+            {TAG_ORDER.map(({ tag, label, subtitle, uploadAs }) => {
+              const rows = groups.get(tag) || []
+              if (rows.length === 0 && !uploadAs) return null
+              return (
+                <div key={tag} style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    {label} ({rows.length})
+                    <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>
+                      {subtitle}
+                    </span>
                   </div>
-                ))}
-                <label style={{ width: 120, height: 120, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 11, fontWeight: 600, gap: 4, transition: 'border-color 0.15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-                  <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>Add
-                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files || []); if (f.length) handleImageUpload(f, 'lifestyle'); e.target.value = '' }} />
-                </label>
-              </div>
-            </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    {rows.map(img => {
+                      const fileNameDisplay = img.file_name && img.file_name.length > 30
+                        ? img.file_name.slice(0, 28) + '…'
+                        : img.file_name || '—'
+                      const dimsDisplay = img.width && img.height ? `${img.width}×${img.height}` : '—'
+                      const reasonDisplay = img.classification_reason || '—'
+                      return (
+                        <div key={img.id} style={{ position: 'relative', width: 160 }}>
+                          <img src={getImageUrl(img)} alt="" style={{ width: 160, height: 160, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', display: 'block' }} onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }} />
+                          <button onClick={() => removeImageById(img.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#000', color: '#fff', border: '2px solid #fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                          <div title={img.file_name || ''} style={{ fontSize: 10, color: 'var(--ink)', fontFamily: 'var(--font-mono, ui-monospace, monospace)', marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {fileNameDisplay}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{dimsDisplay}</div>
+                          <div title={img.classification_reason || ''} style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {reasonDisplay}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {uploadAs && (
+                      <label style={{ width: 160, height: 160, borderRadius: 10, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', fontSize: 11, fontWeight: 600, gap: 4, transition: 'border-color 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = '#000')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+                        <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>Add
+                        <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files || []); if (f.length) handleImageUpload(f, uploadAs); e.target.value = '' }} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </>
         )
       })()}

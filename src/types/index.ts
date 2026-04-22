@@ -2,7 +2,7 @@ export type BrandStatus = 'active' | 'draft' | 'paused' | 'offboarded'
 export type CampaignType = 'email' | 'ad_copy' | 'social' | 'seo' | 'dtc_brief' | 'funnel'
 export type CampaignStatus = 'draft' | 'in_review' | 'approved' | 'scheduled' | 'sent' | 'archived'
 export type AssetType = 'guidelines' | 'html_template' | 'logo' | 'other'
-export type ImageTag = 'product' | 'lifestyle' | 'ugc' | 'background' | 'seasonal' | 'logo' | 'press' | 'shopify' | 'generated' | 'other'
+export type ImageTag = 'product' | 'lifestyle' | 'ugc' | 'background' | 'seasonal' | 'logo' | 'press' | 'press_logo' | 'shopify' | 'generated' | 'other'
 
 export interface FontStyle {
   family: string
@@ -120,6 +120,18 @@ export interface BrandImage {
   height: number | null
   source_url: string | null
   source: string | null
+  // Short human-readable string ("<tag>: <what fired>") written by the
+  // scanner's classifyImages (or synthesized at the upload route for
+  // non-scanner rows). Populated from migration 20260421 onward; legacy
+  // rows read null until rescraped.
+  classification_reason: string | null
+  // Scanner quality score (computed in classifyImages from source, CDN,
+  // tag, format, and name signals — see images.ts scoring section).
+  // Range ~-15 to +37 in practice. Populated from migration 20260422
+  // onward; legacy rows read null until rescraped. Used by rankLifestyle
+  // as a secondary sort key to promote higher-quality images within each
+  // tag-rank tier.
+  score: number | null
 }
 
 export interface Campaign {

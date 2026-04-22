@@ -20,9 +20,9 @@ export function getGeneratedImages(images: BrandImage[]): BrandImage[] {
   return images.filter(img => img.tag === 'generated')
 }
 
-/** Every image that can appear inside an ad/email template — excludes logos, press, and generated */
+/** Every image that can appear inside an ad/email template — excludes logos, press, press_logo, and generated */
 export function getContentImages(images: BrandImage[]): BrandImage[] {
-  return images.filter(img => img.tag !== 'logo' && img.tag !== 'press' && img.tag !== 'generated')
+  return images.filter(img => img.tag !== 'logo' && img.tag !== 'press' && img.tag !== 'press_logo' && img.tag !== 'generated')
 }
 
 /**
@@ -55,10 +55,24 @@ const LIFESTYLE_TAG_RANK: Record<string, number> = {
   other: 99,
 }
 
+// Primary sort: LIFESTYLE_TAG_RANK (lower index = higher-quality tier).
+// Secondary sort DESC by scanner score (higher = stronger quality signal
+// from classifyImages — cdn.shopify.com + jpg + name-in-url + shopify-
+// product-source etc.). NULL scores sort last within their tier to keep
+// legacy rows (pre-migration 20260422) stable by DB insertion order so
+// brands that haven't been rescraped don't shuffle unexpectedly.
+//
+// Transitively affects every consumer of bucketBrandImages: Preview's
+// creative carousel (via buildPreviewImageSlots), landing-preview hero +
+// founder slots, email builder defaults, Creative Studio sidebar, the
+// Shopify-theme Store factory, and the newsletter page's image bundle.
 function rankLifestyle(a: BrandImage, b: BrandImage): number {
   const ra = LIFESTYLE_TAG_RANK[a.tag ?? 'other'] ?? 50
   const rb = LIFESTYLE_TAG_RANK[b.tag ?? 'other'] ?? 50
-  return ra - rb
+  if (ra !== rb) return ra - rb
+  const sa = a.score ?? -Infinity
+  const sb = b.score ?? -Infinity
+  return sb - sa
 }
 
 export function bucketBrandImages(
@@ -75,6 +89,12 @@ export function bucketBrandImages(
   let productImages: BrandImage[]
   let lifestyleImages: BrandImage[]
 
+  // INCLUSION LISTS — do not add 'press', 'press_logo', 'logo', or 'generated'
+  // here. getContentImages() already strips them before we partition, and
+  // this function's contract is "content images only". Press_logo in
+  // particular must never surface in either bucket; it's filtered two layers
+  // deep (getContentImages + these inclusion filters) so adding it here by
+  // mistake would leak press logos into the preview creative carousel.
   if (isShopify) {
     productImages = content.filter(img => img.tag === 'shopify')
     lifestyleImages = content.filter(img =>

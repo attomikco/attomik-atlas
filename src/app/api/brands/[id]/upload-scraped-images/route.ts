@@ -5,10 +5,6 @@ import sharp from 'sharp'
 import { imageSize } from 'image-size'
 import { resizeBufferForUpload, swapExtension } from '@/lib/resize-image-server'
 
-// Tags we're willing to auto-override via background detection. If the scrape
-// already classified an image as shopify/logo/press/product, we trust that.
-const OVERRIDABLE_TAGS = new Set(['other', 'lifestyle', 'background'])
-
 // Service-role client for storage uploads to buckets with strict RLS policies
 // (brand-assets). brand_images table inserts still use the user-scoped client
 // so RLS continues to protect DB-level access.
@@ -106,6 +102,8 @@ export async function POST(
     width?: number | null
     height?: number | null
     source_url?: string | null
+    classification_reason?: string | null
+    score?: number | null
   }
   const imageRows: ImageRow[] = []
 
@@ -283,6 +281,20 @@ export async function POST(
       // DB row stays in sync if resize swapped PNG → JPEG.
       const fileName = result.storagePath.split('/').pop() || `${prefix}_${idx}.${ext}`
       console.log(`[upload-scraped] PRODUCT_URL  ${url.slice(0, 100)}  → ${finalTag}  (${result.width}×${result.height})`)
+      const syntheticReason = isShopify
+        ? 'shopify: product from /products.json (upload route)'
+        : 'product: non-shopify product URL (upload route)'
+      // Synthetic score matches what classifyImages would have produced
+      // for this path: shopify-product source (+15) or jsonld-product
+      // (+15 — we don't know which, assume jsonld equivalent), cdn.shopify
+      // URL (+10 when applicable), tag bonus (+8 shopify or +5 product),
+      // jpg/jpeg/webp format (+3 when applicable), brand name in URL (+1
+      // when applicable). Using a conservative floor — the real wizard
+      // path computes its own; this path is the rescrape-only fallback.
+      const tagBonus = isShopify ? 8 : 5
+      const cdnBonus = /cdn\.shopify\.com/i.test(url) ? 10 : 0
+      const fmtBonus = /\.(jpg|jpeg|webp)/i.test(url) ? 3 : 0
+      const syntheticScore = 15 + cdnBonus + tagBonus + fmtBonus
       imageRows.push({
         brand_id: brandId,
         file_name: fileName,
@@ -292,13 +304,15 @@ export async function POST(
         width: result.width,
         height: result.height,
         source_url: url,
+        classification_reason: syntheticReason,
+        score: syntheticScore,
       })
     })())
   })
 
   // ── Scraped images — preserve tag and alt_text from detection ────────
   ;(scrapedImages || []).slice(0, 25).forEach(
-    (img: { url: string; tag: string; alt?: string | null }, idx: number) => {
+    (img: { url: string; tag: string; alt?: string | null; reason?: string | null; score?: number | null }, idx: number) => {
       if (!img.url || seenUrls.has(img.url)) return
       seenUrls.add(img.url)
       tasks.push((async () => {
@@ -315,6 +329,7 @@ export async function POST(
           : earlyTag === 'product' ? 'product'
           : earlyTag === 'lifestyle' ? 'lifestyle'
           : earlyTag === 'press' ? 'press'
+          : earlyTag === 'press_logo' ? 'press_logo'
           : 'scraped'
         const path = `${brandId}/${prefix}_${idx}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`
         const isLogo = earlyTag === 'logo'
@@ -324,22 +339,32 @@ export async function POST(
           console.log(`[upload-scraped] SCRAPED(${earlyTag}) failed  ${img.url.slice(0, 100)}`)
           return
         }
-        // Override only ambiguous tags when we see a white/transparent background.
-        // Trust shopify/product/logo/press as-is.
+        // The white-bg → product promotion was removed (Phase 3): it was
+        // laundering press-logo-on-white-background rows into the product
+        // bucket (Afterdream's 4_112c2413.png → tag=product, sneaking into
+        // creative pipelines via the product bucket). Legitimate flat-lay
+        // Shopify products flow through the /products.json source path
+        // (Rule 1a in classifyImages → tag=shopify), not this route. The
+        // logo-url rescue on the next line stays — that check is about
+        // rescuing logos the classifier missed, unrelated to backgrounds.
         let finalTag = earlyTag
         let overrideReason = ''
         if (rescuedToLogo) {
           overrideReason = ' (logo-url rescue)'
-        }
-        if (OVERRIDABLE_TAGS.has(finalTag) && result.hasProductBackground) {
-          finalTag = 'product'
-          overrideReason = overrideReason ? `${overrideReason} + white-bg` : ' (white-bg override)'
         }
         console.log(`[upload-scraped] SCRAPED  ${img.url.slice(0, 100)}  → ${img.tag} → ${finalTag}${overrideReason}  (${result.width}×${result.height})`)
         // Logo-tagged scraped images are stored in brand-assets (not brand_images)
         // since brand_images is reserved for creative content. Skip the DB insert.
         if (isLogo) return
         const fileName = result.storagePath.split('/').pop() || `${prefix}_${idx}.${ext}`
+        // Scanner-supplied reason is the source of truth; append the upload
+        // route's overrides (logo rescue, white-bg) so the admin row tells
+        // the full story. Synthesize a reason for rows that reach us without
+        // one (og-image fallback, legacy callers).
+        const baseReason = img.reason || `${img.tag}: carried over (no scanner reason)`
+        const finalReason = overrideReason
+          ? `${baseReason} →${overrideReason} → ${finalTag}`
+          : baseReason
         imageRows.push({
           brand_id: brandId,
           file_name: fileName,
@@ -350,6 +375,12 @@ export async function POST(
           width: result.width,
           height: result.height,
           source_url: img.url,
+          classification_reason: finalReason,
+          // Defensive: accept any numeric value from the scanner, store
+          // null for og-image fallback and legacy callers that don't
+          // thread score. rankLifestyle treats null as sort-last within
+          // the tier so legacy rows don't break ordering.
+          score: typeof img.score === 'number' ? img.score : null,
         })
       })())
     }
@@ -372,10 +403,14 @@ export async function POST(
     dedupedRows.push(row)
   }
 
-  // DB CHECK constraint (migration 20260411_fix_brand_images_tags.sql):
-  // product | lifestyle | background | ugc | seasonal | other | logo | press | shopify
+  // DB CHECK constraint (migration 20260421_brand_images_press_logo.sql):
+  // product | lifestyle | background | ugc | seasonal | other | logo | press |
+  // press_logo | shopify | generated. Note: `generated` is intentionally omitted
+  // here today (pre-existing drift — separate cleanup task), so AI-generated
+  // rows would still fall through to `'other'` if they ever reached this route.
   const ALLOWED_TAGS = new Set([
-    'product', 'lifestyle', 'background', 'ugc', 'seasonal', 'other', 'logo', 'press', 'shopify',
+    'product', 'lifestyle', 'background', 'ugc', 'seasonal', 'other',
+    'logo', 'press', 'press_logo', 'shopify',
   ])
   for (const row of dedupedRows) {
     if (!ALLOWED_TAGS.has(row.tag)) {

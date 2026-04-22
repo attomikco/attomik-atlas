@@ -7,7 +7,7 @@ import EmailGateModal from '@/components/auth/EmailGateModal'
 import { colors, font, fontWeight, fontSize, radius, transition, letterSpacing } from '@/lib/design-tokens'
 
 type BusinessType = 'shopify' | 'ecommerce' | 'saas' | 'restaurant' | 'service' | 'brand'
-type ScrapedImage = { url: string; tag: string; score: number; alt?: string | null }
+type ScrapedImage = { url: string; tag: string; score: number; alt?: string | null; reason?: string | null }
 type DetectedProduct = { name: string; description: string | null; price: string | null; image: string | null }
 type DetectedOffering = { name: string; description: string | null; price: string | null; image: string | null; type: string }
 
@@ -185,7 +185,7 @@ export default function OnboardingWizard() {
   }
 
   const displayImages = (() => {
-    const nonLogo = images.filter(i => i.tag !== 'logo' && i.tag !== 'press')
+    const nonLogo = images.filter(i => i.tag !== 'logo' && i.tag !== 'press' && i.tag !== 'press_logo')
     const lifestyle = nonLogo.filter(i => i.tag === 'lifestyle' || i.tag === 'background')
     const product = nonLogo.filter(i => i.tag === 'product' || i.tag === 'shopify')
     const rest = nonLogo.filter(i => !lifestyle.includes(i) && !product.includes(i))
@@ -284,6 +284,11 @@ export default function OnboardingWizard() {
     sessionStorage.setItem('attomik_draft_campaign_id', campaign.id)
     pendingRedirect.current = `/preview/${campaign.id}`
 
+    // Warm up the preview route so the "View my Atlas" click navigates
+    // instantly instead of leaving the user on the pulsing modal for the
+    // 1-3s the server component's queries take to resolve.
+    try { router.prefetch(pendingRedirect.current) } catch {}
+
     // Fire-and-forget: image upload (same as before — don't await)
     fetch(`/api/brands/${brand.id}/upload-scraped-images`, {
       method: 'POST',
@@ -292,8 +297,8 @@ export default function OnboardingWizard() {
         logoUrl: logo || null,
         productImageUrls: products.map(p => p.image).filter(Boolean),
         scrapedImages: [
-          ...(ogImage ? [{ url: ogImage, tag: 'lifestyle', alt: null }] : []),
-          ...images.map(i => ({ url: i.url, tag: i.tag, alt: i.alt || null })),
+          ...(ogImage ? [{ url: ogImage, tag: 'lifestyle', alt: null, reason: null, score: null }] : []),
+          ...images.map(i => ({ url: i.url, tag: i.tag, alt: i.alt || null, reason: i.reason || null, score: typeof i.score === 'number' ? i.score : null })),
         ].slice(0, 25),
       }),
     }).catch(() => {})

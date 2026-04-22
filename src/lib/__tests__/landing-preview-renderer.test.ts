@@ -64,16 +64,20 @@ const PRODUCTS: Product[] = [
 const BRAND_IMAGES: BrandImage[] = [
   { id: 'i1', created_at: '', brand_id: 'brand_test', file_name: 'hero.jpg',
     storage_path: 'brand-images/hero.jpg', mime_type: 'image/jpeg', size_bytes: 100000,
-    tag: 'lifestyle', alt_text: null, width: 1200, height: 800, source_url: null, source: null },
+    tag: 'lifestyle', alt_text: null, width: 1200, height: 800, source_url: null, source: null,
+    classification_reason: null, score: null },
   { id: 'i2', created_at: '', brand_id: 'brand_test', file_name: 'product.png',
     storage_path: 'brand-images/product.png', mime_type: 'image/png', size_bytes: 100000,
-    tag: 'product', alt_text: null, width: 800, height: 800, source_url: null, source: null },
+    tag: 'product', alt_text: null, width: 800, height: 800, source_url: null, source: null,
+    classification_reason: null, score: null },
   { id: 'i3', created_at: '', brand_id: 'brand_test', file_name: 'lifestyle.jpg',
     storage_path: 'brand-images/lifestyle.jpg', mime_type: 'image/jpeg', size_bytes: 100000,
-    tag: 'lifestyle', alt_text: null, width: 1200, height: 800, source_url: null, source: null },
+    tag: 'lifestyle', alt_text: null, width: 1200, height: 800, source_url: null, source: null,
+    classification_reason: null, score: null },
   { id: 'i4', created_at: '', brand_id: 'brand_test', file_name: 'lifestyle2.jpg',
     storage_path: 'brand-images/lifestyle2.jpg', mime_type: 'image/jpeg', size_bytes: 100000,
-    tag: 'lifestyle', alt_text: null, width: 1200, height: 800, source_url: null, source: null },
+    tag: 'lifestyle', alt_text: null, width: 1200, height: 800, source_url: null, source: null,
+    classification_reason: null, score: null },
 ]
 
 describe('renderPreview — happy path', () => {

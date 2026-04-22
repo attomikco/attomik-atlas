@@ -5,7 +5,7 @@ import { BrandImage, ImageTag } from '@/types'
 import { Upload, Trash2, Loader2, ImageIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-const TAGS: ImageTag[] = ['product', 'shopify', 'lifestyle', 'background', 'ugc', 'seasonal', 'logo', 'press', 'other']
+const TAGS: ImageTag[] = ['product', 'shopify', 'lifestyle', 'background', 'ugc', 'seasonal', 'logo', 'press', 'press_logo', 'other']
 
 // Uploaded originals are capped at this longest-edge in pixels. A 4000×5000
 // source becomes 1600×2000, which is still plenty for every downstream
@@ -214,6 +214,10 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
         mime_type: resized.mimeType, size_bytes: resized.blob.size,
         tag: autoTag, alt_text: null, width, height,
         source_url: null, source: null,
+        classification_reason: `${autoTag}: manual upload (white-bg → product | default → lifestyle)`,
+        // Manual uploads bypass the scanner entirely — leave score null so
+        // rankLifestyle keeps them in insertion order within their tier.
+        score: null,
       }
       uploaded.push(newImage)
 
@@ -226,6 +230,7 @@ export default function BrandImageLibrary({ brandId, brandSlug, images }: Props)
         tag: autoTag,
         width,
         height,
+        classification_reason: newImage.classification_reason,
       })
     }
 
